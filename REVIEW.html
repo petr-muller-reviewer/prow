@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Review: kubernetes-sigs/prow#728</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; line-height: 1.6; color: #24292e; max-width: 860px; margin: 40px auto; padding: 0 20px; }
+  h1 { font-size: 1.4em; border-bottom: 2px solid #e1e4e8; padding-bottom: 8px; }
+  h2 { font-size: 1.15em; margin-top: 2em; border-bottom: 1px solid #e1e4e8; padding-bottom: 4px; }
+  h3 { font-size: 1em; margin-top: 1.4em; margin-bottom: 0.3em; }
+  code, pre { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; font-size: 0.87em; }
+  pre { background: #f6f8fa; border: 1px solid #e1e4e8; border-radius: 6px; padding: 12px 16px; overflow-x: auto; }
+  .meta { background: #f6f8fa; border: 1px solid #e1e4e8; border-radius: 6px; padding: 12px 16px; font-size: 0.9em; margin-bottom: 1.5em; }
+  .meta a { color: #0366d6; text-decoration: none; }
+  .meta a:hover { text-decoration: underline; }
+  .verdict-box { border-radius: 6px; padding: 12px 16px; margin-bottom: 1.5em; }
+  .verdict-approve { background: #dcffe4; border: 1px solid #34d058; }
+  .verdict-label { font-weight: 700; font-size: 1.05em; }
+  .severity { display: inline-block; border-radius: 4px; padding: 2px 8px; font-size: 0.78em; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; margin-right: 6px; }
+  .sev-should-fix { background: #fff5b1; color: #735c0f; border: 1px solid #e5c84e; }
+  .sev-nit { background: #f1f8ff; color: #0366d6; border: 1px solid #c8e1ff; }
+  .file-ref { background: #f6f8fa; border: 1px solid #e1e4e8; border-radius: 3px; padding: 1px 6px; font-size: 0.85em; }
+  .finding { border-left: 3px solid #e1e4e8; padding-left: 14px; margin: 1em 0 1.5em; }
+  .finding.should-fix { border-left-color: #e5c84e; }
+  .finding.nit { border-left-color: #c8e1ff; }
+  .highlight { background: #fffbdd; }
+  ul { padding-left: 1.4em; }
+  li { margin: 0.25em 0; }
+</style>
+</head>
+<body>
+
+<div class="meta">
+  <strong>PR:</strong> <a href="https://github.com/kubernetes-sigs/prow/pull/728">kubernetes-sigs/prow#728</a><br>
+  <strong>Title:</strong> chore: upgrade gopkg.in/robfig/cron.v2 to github.com/robfig/cron/v3<br>
+  <strong>Author:</strong> chimanjain<br>
+  <strong>Base:</strong> main<br>
+  <strong>Head SHA:</strong> <code>519165993bc0d7827b83fe27f9e5506be654cf4d</code><br>
+  <strong>Reviewed at:</strong> 2026-05-26T16:17:25Z
+</div>
+
+<h1>Review: kubernetes-sigs/prow#728</h1>
+
+<div class="verdict-box verdict-approve">
+  <span class="verdict-label">APPROVE</span><br>
+  The core migration is correct and complete. The parser flags preserve v2 behavior, all callsites are updated, and no old import paths remain. The main concern — an identical <code>cronParser</code> var defined independently in two packages — is a latent inconsistency risk but not a correctness bug today. Worth a follow-up or inline suggestion, not a blocker.
+</div>
+
+<h2>What this PR does</h2>
+<ul>
+  <li>Replaces the unmaintained <code>gopkg.in/robfig/cron.v2</code> with the maintained <code>github.com/robfig/cron/v3</code> in <code>go.mod</code>/<code>go.sum</code>.</li>
+  <li>Adds an explicit <code>cronParser</code> var (with <code>SecondOptional | Minute | Hour | Dom | Month | Dow | Descriptor</code>) to both <code>pkg/config</code> and <code>pkg/cron</code>, needed because v3 no longer exposes a bare <code>cron.Parse()</code> function.</li>
+  <li>Passes the parser into <code>cron.New()</code> via <code>cron.WithParser(cronParser)</code> to keep the scheduler consistent with validation.</li>
+  <li>Updates the expected error message in a test case to match v3's slightly different format; adds two new test cases (5-field and 6-field) for cron validation.</li>
+  <li>Includes unrelated cosmetic test cleanup (<code>var testCases = []</code> → <code>testCases := []</code>, blank line removals, struct literal reformatting).</li>
+</ul>
+
+<h2>Findings</h2>
+
+<div class="finding should-fix">
+  <h3><span class="severity sev-should-fix">Should fix</span> <code>cronParser</code> duplicated across two packages</h3>
+  <p>
+    <span class="file-ref">pkg/config/config.go:66-69</span> and <span class="file-ref">pkg/cron/cron.go:33-36</span>
+  </p>
+  <p>Both packages independently define an identical <code>cronParser</code> with the same flags. If they ever diverge — e.g., someone adds a new flag in one place but not the other — <code>config.validatePeriodics()</code> would silently accept cron strings that <code>pkg/cron</code> rejects at runtime, or vice versa. The clean fix is to export the parser (or a parse helper) from <code>pkg/cron</code> and import it in <code>pkg/config</code>.</p>
+  <pre><span class="highlight">// pkg/config/config.go:66</span>
+var cronParser = cron.NewParser(
+    cron.SecondOptional | cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow | cron.Descriptor,
+)
+
+<span class="highlight">// pkg/cron/cron.go:33 — identical</span>
+var cronParser = cron.NewParser(
+    cron.SecondOptional | cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow | cron.Descriptor,
+)</pre>
+</div>
+
+<div class="finding nit">
+  <h3><span class="severity sev-nit">Nit</span> <code>TZ=UTC</code> string prefix could use <code>cron.WithLocation</code></h3>
+  <p><span class="file-ref">pkg/cron/cron.go:156</span></p>
+  <p>The string prefix approach still works in v3 via the <code>Descriptor</code> flag, but v3 provides <code>cron.WithLocation(time.UTC)</code> as a first-class constructor option. Using it would make the UTC-enforcement explicit at construction time rather than embedded in every job spec string. Not broken as-is.</p>
+  <pre>id, err := c.cronAgent.AddFunc(<span class="highlight">"TZ=UTC "</span>+cron, func() {</pre>
+</div>
+
+<div class="finding nit">
+  <h3><span class="severity sev-nit">Nit</span> Cosmetic test changes inflate the diff</h3>
+  <p><span class="file-ref">pkg/config/config_test.go</span> (bulk of the test diff)</p>
+  <p>Dozens of <code>var testCases = []</code> → <code>testCases := []</code> changes, blank line removals, and struct literal brace reformatting are unrelated to the dependency upgrade. They are not wrong, but they make the actual upgrade changes harder to isolate during review.</p>
+  <pre>-	var testCases = []struct {
++	testCases := []struct {</pre>
+</div>
+
+<h2>Things I checked and was fine with</h2>
+<ul>
+  <li>Parser flags (<code>SecondOptional | Minute | Hour | Dom | Month | Dow | Descriptor</code>) correctly preserve v2 behavior for both standard 5-field and optional-second 6-field expressions.</li>
+  <li><code>@every</code> descriptor handling in <code>pkg/cron/cron.go:174</code> (<code>strings.HasPrefix(cron, "@every")</code>) still works — the <code>Descriptor</code> flag enables it in v3.</li>
+  <li><code>cron.WithParser(cronParser)</code> in <code>cron.New()</code> is correct v3 API.</li>
+  <li>Error message in test updated to match v3 format: <code>"expected 5 to 6 fields, found 1: [hello]"</code>.</li>
+  <li>No remaining references to <code>gopkg.in/robfig/cron.v2</code> anywhere in the codebase.</li>
+  <li>Two new test cases for 5-field and 6-field cron validation are correct and improve coverage.</li>
+  <li><code>go.mod</code>/<code>go.sum</code> — only the cron dependency changed; no unintended version bumps elsewhere.</li>
+</ul>
+
+<h2>Open questions for the author</h2>
+<ul>
+  <li>Would you be open to exporting the parser (or a <code>Parse(spec string)</code> helper) from <code>pkg/cron</code> and importing it in <code>pkg/config</code>, to ensure the validation and runtime parsers can never diverge?</li>
+  <li>Was the cosmetic test cleanup (variable declaration style, blank lines, struct formatting) intentional, or a side effect of running a formatter? Either way it's fine — just helps with review context.</li>
+</ul>
+
+</body>
+</html>

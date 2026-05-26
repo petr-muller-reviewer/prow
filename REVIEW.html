@@ -56,10 +56,17 @@
   }
   .finding-should-fix { background: #fff8c5; border-left: 3px solid #d4a72c; }
   .finding-nit { background: #f6f8fa; border-left: 3px solid #8b949e; }
+  .finding-question { background: #fff0f0; border-left: 3px solid #cf222e; }
   .finding-title { font-weight: 600; margin-bottom: 0.3rem; }
   .finding-location { color: #57606a; font-size: 0.9em; margin-bottom: 0.4rem; }
-  .checked-list { columns: 2; column-gap: 2rem; }
-  .checked-list li { break-inside: avoid; margin-bottom: 0.3rem; }
+  .refresh-block {
+    background: #f0f4ff;
+    border: 1px solid #c8d8f0;
+    border-radius: 6px;
+    padding: 0.8rem 1rem;
+    margin: 1rem 0;
+  }
+  .refresh-block h3 { margin: 0 0 0.5rem 0; font-size: 0.95rem; color: #444; }
   ul { padding-left: 1.4rem; }
   li { margin-bottom: 0.4rem; }
 </style>
@@ -71,9 +78,20 @@
 <div class="header-block">
   <p><strong>PR:</strong> <a href="https://github.com/kubernetes-sigs/prow/pull/723">kubernetes-sigs/prow#723</a></p>
   <p><strong>Title:</strong> fix(clonerefs): fall back to full clone when sparse checkout fails</p>
-  <p><strong>Head SHA:</strong> <code>644f75be0c9cd7f6b685f16523e2f1a3cc32f093</code></p>
+  <p><strong>Head SHA:</strong> <code>b39aefab51e996cb2d94d5224685bd0e9727e3c7</code></p>
   <p><strong>Base:</strong> main</p>
-  <p><strong>Reviewed:</strong> 2026-05-18T18:13:21Z</p>
+  <p><strong>Reviewed:</strong> 2026-05-26T11:43:10Z &mdash; incorporates activity through 2026-05-26</p>
+</div>
+
+<div class="refresh-block">
+  <h3>Since initial review (644f75be → b39aefab)</h3>
+  <ul>
+    <li>Tests refactored to table-driven style (<code>cases</code> slice with <code>setup</code> func per case) per droslean's request — removes duplication between the two subtests.</li>
+    <li>Helper renamed <code>fakeGitRepoSHA</code> → <code>gitRepoHEAD</code> (more accurate).</li>
+    <li>Fallback log level changed <code>Info</code> → <code>Warn</code> — improves operator visibility when sparse clone falls back to full clone.</li>
+    <li><code>cmdStart</code> reverted to <code>startTime</code> inside <code>runClone</code> per droslean's "not related to your changes" comment. No shadowing risk since they are separate functions.</li>
+    <li>droslean (2026-05-25) raised an open design question: if sparse checkout is permanently broken for a repo, every clone silently degrades to full clone. Prucek responded that logs are in <code>clone-log.txt</code> in PJ artifacts. Unresolved — see Open Questions.</li>
+  </ul>
 </div>
 
 <h2>Verdict</h2>
@@ -84,16 +102,17 @@
 <p>
   Clean, well-tested change that adds a generic fallback from sparse checkout to full clone when the sparse clone fails.
   The <code>runClone</code> extraction is the right structural move, the retry orchestration in <code>Run()</code> is straightforward,
-  and the tests cover both the fallback and happy paths using real git repos. No critical issues, no deployment risk,
-  no configuration or API surface changes. Two "should-fix" items are worth the author's consideration but neither is blocking.
+  and the tests cover both fallback and happy paths using real git repos. No critical issues, no deployment risk,
+  no configuration or API surface changes. Two "should-fix" items are worth considering but neither is blocking.
+  An open design question from droslean about permanent sparse checkout degradation visibility is noted but not blocking merge.
 </p>
 
 <h2>What this PR does</h2>
 <ul>
-  <li>Extracts the inner clone logic from <code>Run()</code> into a new <code>runClone()</code> function that returns a <code>Record</code>.</li>
+  <li>Extracts the inner clone logic from <code>Run()</code> into a new <code>runClone()</code> function returning a <code>Record</code>.</li>
   <li>When a clone fails and sparse checkout was enabled, wipes the clone directory and retries with a full clone (no sparse checkout, no blobless filter).</li>
-  <li>Merges the command history from both the failed sparse attempt and the successful full clone into a single <code>Record</code> for debugging visibility.</li>
-  <li>Adds two integration tests: one that forces a sparse checkout failure via filesystem sabotage and verifies the fallback succeeds, and one that confirms the happy path still works.</li>
+  <li>Merges command history from both the failed sparse attempt and the successful full clone into a single <code>Record</code> for debugging.</li>
+  <li>Adds two integration tests (table-driven) covering the fallback path and the happy path, each using real git repos.</li>
 </ul>
 
 <h2>Findings</h2>
@@ -107,7 +126,7 @@
     After fallback, <code>record = runClone(fullRefs, ...)</code> overwrites <code>record.Refs</code> with <code>fullRefs</code>,
     which has <code>SparseCheckoutFiles: nil</code>. Any downstream consumer inspecting
     <code>Record.Refs.SparseCheckoutFiles</code> will not know sparse checkout was originally requested.
-    The PR description explicitly calls out debugging visibility as a goal, so the record should reflect the original request.
+    The PR description explicitly calls out debugging visibility as a goal.
   </p>
   <p>Fix: add <code>record.Refs = refs</code> after the fallback <code>runClone</code> call.</p>
   <pre><code>record = runClone(fullRefs, dir, gitUserName, gitUserEmail, cookiePath, env, user, token)
@@ -125,7 +144,8 @@ record.Commands = append(failedCommands, record.Commands...)
   </p>
   <pre><code>if err := os.RemoveAll(cloneDir); err != nil {
     logrus.WithError(err).Warn("Failed to clean up clone directory for fallback")
-}</code></pre>
+}
+// proceeds unconditionally — consider returning original failed record here</code></pre>
 </div>
 
 <h3>Nits</h3>
@@ -141,29 +161,48 @@ record.Commands = append(failedCommands, record.Commands...)
 
 <div class="finding finding-nit">
   <div class="finding-title">Fallback test could assert record.Failed more directly</div>
-  <div class="finding-location"><code>pkg/pod-utils/clone/clone_test.go:999</code></div>
+  <div class="finding-location"><code>pkg/pod-utils/clone/clone_test.go</code> (table-driven fallback case)</div>
   <p>
-    The test checks <code>record.Failed</code> via an <code>if</code> branch but doesn't have a standalone assertion
-    that makes the success contract immediately scannable. Minor readability improvement.
+    The fallback case checks <code>record.Failed</code> via an <code>if</code> branch rather than a direct assertion.
+    Still present after the table-driven refactor. Minor readability improvement.
+  </p>
+</div>
+
+<h3>Open design question</h3>
+
+<div class="finding finding-question">
+  <div class="finding-title">Silent permanent sparse checkout degradation</div>
+  <div class="finding-location"><code>pkg/pod-utils/clone/clone.go:77-88</code></div>
+  <p>
+    <strong>Raised by droslean (2026-05-25):</strong> If sparse checkout is permanently broken for a repo (e.g. an always-present submodule conflict),
+    every clone attempt silently falls back to full clone. The fallback is now logged at <code>Warn</code> level (improved from <code>Info</code>),
+    and logs are preserved in <code>clone-log.txt</code> in PJ artifacts (Prucek's response).
+  </p>
+  <p>
+    droslean's position: this makes the sparse checkout feature pointless in degraded cases with no operator signal.
+    Prucek's position: failures are rare edge cases; Warn-level logging is sufficient.
+    Open for assigned reviewers (cjwagner, stevekuznetsov): is Warn-in-clone-log adequate, or should permanent failures
+    surface via a metric or ProwJob annotation?
   </p>
 </div>
 
 <h2>Things I checked and was fine with</h2>
-<ul class="checked-list">
-  <li><code>runClone</code> extraction is clean; <code>startTime</code> renamed to <code>cmdStart</code> to avoid shadowing</li>
-  <li><code>fullRefs := refs</code> is a safe struct copy; nil-ing the slice correctly flips <code>isSparseCheckoutSet</code></li>
-  <li><code>append(failedCommands, record.Commands...)</code> is safe &mdash; separate slice reference</li>
-  <li>Fallback only triggers when sparse checkout is set AND clone failed &mdash; no impact on normal clones</li>
-  <li>Tests use real git repos and assert on behavioral outcomes, not brittle implementation details</li>
-  <li>No configuration, API, CLI flag, or ProwJob spec changes &mdash; purely internal</li>
+<ul>
+  <li><code>runClone</code> extraction is clean; <code>startTime</code> in <code>runClone</code> does not shadow <code>startTime</code> in <code>Run()</code> (separate functions); duration accounting correctly moved to <code>Run()</code> caller</li>
+  <li><code>fullRefs := refs</code> is a safe struct copy; nil-ing <code>SparseCheckoutFiles</code> correctly makes <code>isSparseCheckoutSet</code> return false</li>
+  <li><code>append(failedCommands, record.Commands...)</code> is safe — <code>failedCommands</code> is a separate slice reference</li>
+  <li>Fallback only triggers when <code>isSparseCheckoutSet(refs)</code> is true AND <code>record.Failed</code> is true — no impact on non-sparse clones</li>
+  <li>Tests use real git repos and assert on behavioral outcomes; table-driven refactor is clean and addresses droslean's feedback</li>
+  <li>No configuration, API, CLI flag, or ProwJob spec changes — purely internal resilience improvement</li>
   <li>No breaking changes, safe to roll back, zero upgrade friction for operators</li>
-  <li>Deployment risk is LOW: only observable change is previously-failing sparse jobs now succeed</li>
+  <li>Deployment risk is LOW: only observable change is previously-failing sparse jobs now succeed via full clone</li>
 </ul>
 
 <h2>Open questions for the author</h2>
 <ul>
-  <li>Should <code>record.Refs</code> after a successful fallback reflect the original request (with <code>SparseCheckoutFiles</code>) or what was actually executed (without)? The PR description emphasizes debugging visibility, which argues for the original request.</li>
-  <li>Is warn-and-continue the right behavior when <code>os.RemoveAll</code> fails, or should the fallback be skipped entirely in that case?</li>
+  <li>Should <code>record.Refs</code> after a successful fallback reflect the original request (with <code>SparseCheckoutFiles</code>) or what was actually executed (without)? Debugging visibility argues for the original request.</li>
+  <li>Is warn-and-continue the right behavior when <code>os.RemoveAll</code> fails, or should the fallback be skipped entirely?</li>
+  <li>Is Warn-level logging in <code>clone-log.txt</code> sufficient operator visibility for silent permanent sparse checkout degradation, or does this need a metric or explicit ProwJob status annotation? (droslean's concern, 2026-05-25, unresolved)</li>
 </ul>
 
 </body>

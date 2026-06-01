@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Review: kubernetes-sigs/prow#732</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; line-height: 1.6; color: #24292e; max-width: 880px; margin: 40px auto; padding: 0 20px; }
+  h1 { font-size: 1.5rem; border-bottom: 2px solid #e1e4e8; padding-bottom: 8px; }
+  h2 { font-size: 1.15rem; margin-top: 2em; border-bottom: 1px solid #e1e4e8; padding-bottom: 4px; }
+  h3 { font-size: 1rem; margin-top: 1.4em; margin-bottom: 0.3em; }
+  code, pre { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; font-size: 0.875em; }
+  code { background: #f6f8fa; padding: 2px 5px; border-radius: 3px; }
+  pre { background: #f6f8fa; padding: 12px 16px; border-radius: 6px; overflow-x: auto; line-height: 1.45; }
+  .meta { background: #f6f8fa; border: 1px solid #e1e4e8; border-radius: 6px; padding: 14px 18px; font-size: 0.9rem; margin-bottom: 1.5em; }
+  .meta table { border-collapse: collapse; }
+  .meta td { padding: 2px 12px 2px 0; vertical-align: top; }
+  .meta td:first-child { font-weight: 600; white-space: nowrap; }
+  .verdict { border-left: 4px solid #d73a49; background: #ffeef0; padding: 12px 16px; border-radius: 0 6px 6px 0; margin: 1em 0; }
+  .verdict .label { font-weight: 700; color: #d73a49; font-size: 1.05rem; }
+  .finding { border: 1px solid #e1e4e8; border-radius: 6px; margin: 1em 0; padding: 14px 16px; }
+  .finding.blocking { border-left: 4px solid #d73a49; }
+  .finding.should-fix { border-left: 4px solid #e36209; }
+  .finding.nit { border-left: 4px solid #6f42c1; }
+  .finding.question { border-left: 4px solid #0366d6; }
+  .badge { display: inline-block; font-size: 0.72rem; font-weight: 700; padding: 2px 7px; border-radius: 12px; text-transform: uppercase; letter-spacing: 0.04em; margin-right: 6px; }
+  .badge.blocking { background: #ffeef0; color: #d73a49; }
+  .badge.should-fix { background: #fff8f0; color: #e36209; }
+  .badge.nit { background: #f5f0ff; color: #6f42c1; }
+  .badge.question { background: #f0f6ff; color: #0366d6; }
+  .finding-title { font-weight: 600; font-size: 1rem; }
+  .where { font-size: 0.85rem; color: #586069; margin: 4px 0 8px; }
+  .convergence { background: #fffbdd; border: 1px solid #f0c23c; border-radius: 4px; padding: 4px 8px; font-size: 0.82rem; display: inline-block; margin: 2px 0 8px; }
+  ul { padding-left: 1.4em; }
+  li { margin: 0.3em 0; }
+  a { color: #0366d6; }
+  .summary-box { background: #f6f8fa; border: 1px solid #e1e4e8; border-radius: 6px; padding: 14px 18px; font-style: italic; margin-top: 0.5em; }
+</style>
+</head>
+<body>
+
+<h1>Review: kubernetes-sigs/prow#732</h1>
+
+<div class="meta">
+  <table>
+    <tr><td>PR</td><td><a href="https://github.com/kubernetes-sigs/prow/pull/732">kubernetes-sigs/prow#732</a></td></tr>
+    <tr><td>Title</td><td>docs: add hook component documentation</td></tr>
+    <tr><td>Author</td><td>Amulya Meka (@Amulyam24)</td></tr>
+    <tr><td>Base</td><td><code>main</code></td></tr>
+    <tr><td>Head SHA</td><td><code>ab2db2738583a88b0796c82dfb127cf06da798ca</code></td></tr>
+    <tr><td>Reviewed at</td><td>2026-05-27T12:47:51Z</td></tr>
+    <tr><td>Method</td><td>Multi-perspective maintainer review (Code Quality + Maintainability + Deployment Risk)</td></tr>
+    <tr><td>Files changed</td><td>1 (+165 / −2)</td></tr>
+  </table>
+</div>
+
+<h2>Verdict</h2>
+
+<div class="verdict">
+  <div class="label">REQUEST CHANGES</div>
+  <p>The documentation is a genuine and largely accurate improvement over the placeholder — event types, CLI flags, YAML examples, and the dispatch flow are all verified correct against source. One factual error must be fixed before merge: the Endpoints section documents <code>/</code> on port 8888 as the health check endpoint, but that handler is a legacy stub explicitly marked for removal in the source code. The real health infrastructure (<code>/healthz</code> and <code>/healthz/ready</code> on port 8081) is absent from the doc. Operators configuring Kubernetes liveness/readiness probes from this doc will target the wrong endpoint. That is a one-line fix. Several non-blocking gaps (missing GitHub auth flags, no ghproxy mention, undersold <code>--dry-run</code> footgun) are strongly encouraged as follow-ups but do not block merge.</p>
+</div>
+
+<h2>What this PR does</h2>
+
+<ul>
+  <li>Replaces the empty placeholder page for the <code>hook</code> component at <code>site/content/en/docs/components/core/hook.md</code> with substantive operator documentation.</li>
+  <li>Documents the full webhook dispatch pipeline: receive → HMAC validate → parse → repo check → dispatch to internal plugins → forward to external plugins.</li>
+  <li>Lists all seven GitHub event types with registered internal handlers, and explains that any event type can be forwarded to external plugins.</li>
+  <li>Provides copy-paste-ready YAML for HMAC secret setup, <code>plugins.yaml</code> (org/repo scoping with <code>excluded_repos</code>), and external plugin configuration.</li>
+  <li>Documents CLI flags with defaults, HTTP endpoints, and a troubleshooting section for the two most common failure modes.</li>
+</ul>
+
+<h2>Findings</h2>
+
+<!-- BLOCKING -->
+
+<div class="finding blocking">
+  <p><span class="badge blocking">blocking</span><span class="finding-title">Health endpoint is misdocumented — will break probe configuration</span></p>
+  <p class="where">📍 <code>site/content/en/docs/components/core/hook.md:149-152</code></p>
+  <div class="convergence">⚑ Flagged independently by Code Quality and Deployment Risk reviewers</div>
+  <p>The Endpoints section lists <code>/</code> on the main port (8888) as "Health check endpoint (returns 200 OK)". That handler is a legacy stub — the source code even has a <code>// TODO remove this health endpoint when the migration to health endpoint is done</code> comment on it. The actual health infrastructure is served by <code>pjutil.NewHealthOnPort</code> on a separate port (default <strong>8081</strong>), exposing <code>/healthz</code> (liveness) and <code>/healthz/ready</code> (readiness). Kubernetes operators following this doc will configure probes against the wrong port and endpoint, which silently appears to work (the stub returns 200) while the real health port is unchecked.</p>
+  <pre>- `/hook` - Webhook receiver endpoint (configurable via `--webhook-path`)
+- `/plugin-help` - Returns help information about enabled plugins
+- `/` - Health check endpoint (returns 200 OK)   ← incorrect</pre>
+  <p><strong>Fix</strong>: Replace the <code>/</code> entry with <code>/healthz</code> and <code>/healthz/ready</code> on the health port (default 8081). Optionally note that <code>/</code> on port 8888 exists only for legacy compatibility.</p>
+</div>
+
+<!-- SHOULD FIX -->
+
+<div class="finding should-fix">
+  <p><span class="badge should-fix">should fix</span><span class="finding-title">GitHub authentication flags entirely absent</span></p>
+  <p class="where">📍 <code>site/content/en/docs/components/core/hook.md:130-143</code></p>
+  <p>The CLI flags section does not list <code>--github-token-path</code> (personal access token) or the GitHub App pair <code>--github-app-id</code> / <code>--github-app-private-key-path</code>. Hook cannot call the GitHub API without one of these — plugins will receive events but cannot respond to them. An operator following this doc as their primary reference will produce a deployment that silently accepts webhooks but never comments, labels, or triggers ProwJobs.</p>
+  <pre>Common flags for Hook:
+
+- `--config-path`: Path to [Prow config file](/docs/config/)
+- `--plugin-config`: ...
+- `--hmac-secret-file`: ...
+  [--github-token-path and GitHub App flags absent]</pre>
+</div>
+
+<div class="finding should-fix">
+  <p><span class="badge should-fix">should fix</span><span class="finding-title">No mention of ghproxy or --github-endpoint</span></p>
+  <p class="where">📍 <code>site/content/en/docs/components/core/hook.md:130-143</code></p>
+  <p>The Prow codebase itself warns "It doesn't look like you are using ghproxy to cache API calls to GitHub! This has become a required component of Prow." Despite this, neither <code>--github-endpoint</code> (the flag for pointing Hook at ghproxy) nor ghproxy itself is mentioned anywhere in the doc. Operators will hit GitHub API rate limits without it.</p>
+</div>
+
+<div class="finding should-fix">
+  <p><span class="badge should-fix">should fix</span><span class="finding-title">--dry-run footgun is undersold</span></p>
+  <p class="where">📍 <code>site/content/en/docs/components/core/hook.md:143</code></p>
+  <p>The <code>--dry-run=true</code> default is the single most common footgun for new Prow operators. Hook will silently accept webhooks, produce log output that looks healthy, and take zero real actions (no ProwJob creation, no GitHub comments, no status updates). The current doc mentions this only as a single sentence at the bottom of the flags list — easy to miss. It should be a prominent callout box or bold warning in the Configuration section, not an afterthought.</p>
+  <pre>Production deployments must set `--dry-run=false`.   ← buried at end of flags section</pre>
+</div>
+
+<!-- NITS -->
+
+<div class="finding nit">
+  <p><span class="badge nit">nit</span><span class="finding-title">Stale GitHub webhook docs URL</span></p>
+  <p class="where">📍 <code>site/content/en/docs/components/core/hook.md:8</code></p>
+  <p>The link uses GitHub's deprecated <code>/en/developers/webhooks-and-events/</code> path structure. GitHub migrated this content; the current canonical URL is <code>https://docs.github.com/en/webhooks/about-webhooks</code>. The old URL still redirects, but the canonical form is preferred.</p>
+  <pre>[GitHub webhooks](https://docs.github.com/en/developers/webhooks-and-events/webhooks/about-webhooks)</pre>
+</div>
+
+<div class="finding nit">
+  <p><span class="badge nit">nit</span><span class="finding-title">See Also section omits external plugins</span></p>
+  <p class="where">📍 <code>site/content/en/docs/components/core/hook.md:169-171</code></p>
+  <p>The intro links to <code>/docs/components/external-plugins/</code> and there is a full "External Plugins" configuration subsection, but the See Also section only lists plugins. The <code>site/content/en/docs/components/external-plugins/</code> directory exists.</p>
+  <pre>## See Also
+
+- [Plugins Documentation](/docs/components/plugins/)
+  [/docs/components/external-plugins/ absent]</pre>
+</div>
+
+<div class="finding nit">
+  <p><span class="badge nit">nit</span><span class="finding-title">Hardcoded flag defaults will drift silently</span></p>
+  <p class="where">📍 <code>site/content/en/docs/components/core/hook.md:134-141</code></p>
+  <p>Six default values are hardcoded in the flags table (ports, paths, durations), copied from <code>cmd/hook/main.go</code>. There is no automated check tying this table to actual flag registration; any default can change without notice. A more durable pattern: remove the default values and add "Run <code>hook --help</code> for current defaults." Keep the operationally significant <code>--dry-run</code> warning as prose (it's already there) but not as a table entry.</p>
+</div>
+
+<div class="finding nit">
+  <p><span class="badge nit">nit</span><span class="finding-title">--slack-token-file listed without context</span></p>
+  <p class="where">📍 <code>site/content/en/docs/components/core/hook.md:141</code></p>
+  <p>This flag exists for the Slack <em>plugin</em> specifically, not for Slack reporting (that is Crier's responsibility — documented fully in <code>crier.md</code>). Without that context, operators may think Hook is a Slack reporter. Either drop it or add a one-sentence clarification.</p>
+  <pre>- `--slack-token-file`: Path to Slack token file (optional)</pre>
+</div>
+
+<div class="finding nit">
+  <p><span class="badge nit">nit</span><span class="finding-title">Event types list is a second copy of ground truth</span></p>
+  <p class="where">📍 <code>site/content/en/docs/components/core/hook.md:24-33</code></p>
+  <p>Accurate now, but as new event handlers are added (e.g., <code>check_run</code>), this list won't update automatically. A note pointing to <code>pkg/hook/server.go</code> as the source of truth — or reframing the list as illustrative rather than exhaustive — would improve long-term durability.</p>
+</div>
+
+<h2>Things I checked and was fine with</h2>
+
+<ul>
+  <li>All seven event type strings (<code>issues</code>, <code>issue_comment</code>, <code>pull_request</code>, <code>pull_request_review</code>, <code>pull_request_review_comment</code>, <code>push</code>, <code>status</code>) exactly match the <code>case</code> labels in <code>pkg/hook/server.go</code>'s <code>demuxEvent</code> switch.</li>
+  <li>All documented CLI flag names and their defaults verified correct against <code>cmd/hook/main.go:89-105</code>: <code>--webhook-path=/hook</code>, <code>--port=8888</code>, <code>--dry-run=true</code>, <code>--grace-period=180s</code>, <code>--hmac-secret-file=/etc/webhook/hmac</code>, <code>--plugin-config=/etc/plugins/plugins.yaml</code>.</li>
+  <li>Plugin config YAML (<code>plugins.yaml</code>) structurally valid and matches the <code>OrgPlugins</code> struct including <code>plugins</code> and <code>excluded_repos</code> fields.</li>
+  <li>External plugin YAML accurately reflects the <code>ExternalPlugin</code> struct fields (<code>name</code>, <code>endpoint</code>, <code>events</code>).</li>
+  <li>HMAC Secret YAML: key <code>hmac</code> + mount at <code>/etc/webhook</code> produces path <code>/etc/webhook/hmac</code>, matching the flag default exactly.</li>
+  <li>"How Hook Works" six-step flow correctly captures the <code>ServeHTTP</code> → <code>demuxEvent</code> → <code>demuxExternal</code> sequence.</li>
+  <li>Internal links <code>/docs/components/plugins/</code>, <code>/docs/components/external-plugins/</code>, and <code>/docs/config/</code> all resolve to existing directories/files.</li>
+  <li>"All event types can be forwarded to external plugins" is accurate — the <code>default</code> case in <code>demuxEvent</code> routes all unrecognized types to <code>demuxExternal</code>.</li>
+  <li>HMAC secret is shown mounted <code>readOnly: true</code> — correct and good practice.</li>
+</ul>
+
+<h2>Open questions for the author</h2>
+
+<ul>
+  <li>For the <code>/</code> endpoint fix: should it be dropped entirely from the Endpoints section, or kept with a "legacy stub only, do not use for probes" note? The former is cleaner; the latter is more honest about what's actually registered.</li>
+  <li>Is the "Common flags" framing intentionally partial? If so, a "see <code>hook --help</code> for all flags" note would help readers know there is more (particularly the GitHub auth flags without which Hook is non-functional).</li>
+  <li>Would you prefer to add the GitHub auth flags and ghproxy reference in this PR, or as a follow-up? I'd lean toward this PR since they are operationally critical for anyone deploying Hook for the first time.</li>
+</ul>
+
+<h2>Summary for PR Comment</h2>
+
+<div class="summary-box">
+  <p>This is a welcome and largely accurate first-pass doc for Hook — the core mechanics, event types, plugin configuration examples, and flag defaults are all correct against source. I'm requesting one change before merge: the Endpoints section documents <code>/</code> as the health check endpoint, but that handler is a legacy stub explicitly marked for removal in the source code (<code>// TODO remove this health endpoint when the migration to health endpoint is done</code>). The real health infrastructure is <code>/healthz</code> and <code>/healthz/ready</code> on the health port (default 8081). As written, operators would configure Kubernetes liveness/readiness probes against the wrong port. That's a one-line fix and unblocks merge.</p>
+  <p>Separately, I'd encourage a follow-up (or additions to this PR) for: GitHub authentication flags (<code>--github-token-path</code>, GitHub App flags) — Hook won't respond to events without auth configured; a ghproxy reference — the codebase treats it as a required production component; and elevating the <code>--dry-run=true</code> default warning to a prominent callout rather than a line at the bottom of the flags section. But I won't hold the PR for those.</p>
+</div>
+
+</body>
+</html>

@@ -35,6 +35,9 @@
   li { margin: 0.3em 0; }
   a { color: #0366d6; }
   .summary-box { background: #f6f8fa; border: 1px solid #e1e4e8; border-radius: 6px; padding: 14px 18px; font-style: italic; margin-top: 0.5em; }
+  .gate { border-left: 4px solid #e36209; background: #fff8f0; padding: 12px 16px; border-radius: 0 6px 6px 0; margin: 1em 0; }
+  .gate .label { font-weight: 700; color: #e36209; font-size: 1.05rem; }
+  .gate ul { margin: 0.5em 0 0; }
 </style>
 </head>
 <body>
@@ -59,6 +62,18 @@
 <div class="verdict">
   <div class="label">REQUEST CHANGES</div>
   <p>The documentation is a genuine and largely accurate improvement over the placeholder — event types, CLI flags, YAML examples, and the dispatch flow are all verified correct against source. One factual error must be fixed before merge: the Endpoints section documents <code>/</code> on port 8888 as the health check endpoint, but that handler is a legacy stub explicitly marked for removal in the source code. The real health infrastructure (<code>/healthz</code> and <code>/healthz/ready</code> on port 8081) is absent from the doc. Operators configuring Kubernetes liveness/readiness probes from this doc will target the wrong endpoint. That is a one-line fix. Several non-blocking gaps (missing GitHub auth flags, no ghproxy mention, undersold <code>--dry-run</code> footgun) are strongly encouraged as follow-ups but do not block merge.</p>
+</div>
+
+<h2>Gate</h2>
+
+<div class="gate">
+  <div class="label">HOLD — 2026-06-01T18:16:02Z @ ab2db27</div>
+  <p>The blocking finding from the local review is not addressed — SHA is unchanged and <code>hook.md:151</code> still reads <code>- `/` - Health check endpoint (returns 200 OK)</code>, which is factually wrong. The real health infrastructure is <code>/healthz</code>/<code>/healthz/ready</code> on the health port (default 8081); the <code>/</code> handler on port 8888 is a legacy stub marked for removal in source. Additionally, the PR is NOT APPROVED per k8s-ci-robot: @Prucek's APPROVED counts as LGTM but @Prucek is not in the OWNERS approvers list. A listed approver (matthyx, droslean, krzyzacy, smg247, or petr-muller) must <code>/approve</code>.</p>
+  <p><strong>No independent merge risk</strong> — docs-only PR, no code changes, no API/config/behavioral impact.</p>
+  <ul>
+    <li><code>hook.md:151</code> — <strong>[blocking, not addressed]</strong> <code>/</code> still documented as health check endpoint; must be replaced with <code>/healthz</code>/<code>/healthz/ready</code> on health port 8081.</li>
+    <li><strong>[process]</strong> PR NOT APPROVED; needs <code>/approve</code> from an OWNERS approver.</li>
+  </ul>
 </div>
 
 <h2>What this PR does</h2>
@@ -172,6 +187,54 @@
   <li>Is the "Common flags" framing intentionally partial? If so, a "see <code>hook --help</code> for all flags" note would help readers know there is more (particularly the GitHub auth flags without which Hook is non-functional).</li>
   <li>Would you prefer to add the GitHub auth flags and ghproxy reference in this PR, or as a follow-up? I'd lean toward this PR since they are operationally critical for anyone deploying Hook for the first time.</li>
 </ul>
+
+<h2>Followups</h2>
+
+<div class="finding should-fix">
+  <p><span class="badge should-fix">docs · should</span><span class="finding-title">Create operator-facing GitHub authentication and ghproxy setup page</span></p>
+  <p class="where">📍 new file under <code>site/content/en/docs/</code></p>
+  <p>PR #732 omitted GitHub auth flags and ghproxy from hook.md because they apply across multiple components. A standalone operator-facing page (auth methods: token vs GitHub App; ghproxy setup; <code>--github-endpoint</code>) should be created and linked from hook.md, crier.md, and tide docs. The existing <code>github.md</code> is developer-focused (Go client library); the new page is operator-focused.</p>
+  <pre>In kubernetes-sigs/prow, following PR #732 ("docs: add hook component documentation"),
+create an operator-facing documentation page covering how Prow components authenticate
+to GitHub and how to deploy ghproxy.
+
+[... see REVIEW.md ## Followups / [1] for full handoff prompt ...]</pre>
+</div>
+
+<div class="finding should-fix">
+  <p><span class="badge should-fix">docs · should</span><span class="finding-title">Elevate --dry-run=true warning in hook.md</span></p>
+  <p class="where">📍 <code>site/content/en/docs/components/core/hook.md</code> — Configuration section</p>
+  <p>The --dry-run warning is a single sentence buried at the bottom of the CLI Flags section. It should be a prominent callout at the top of the Configuration section. In dry-run mode Hook silently accepts webhooks without creating ProwJobs or posting GitHub comments — the most common new-operator footgun.</p>
+  <pre>In kubernetes-sigs/prow, following PR #732, add a prominent --dry-run=true
+warning callout to the Configuration section of hook.md and remove the
+duplicate sentence at the bottom of the CLI Flags section.
+
+[... see REVIEW.md ## Followups / [2] for full handoff prompt ...]</pre>
+</div>
+
+<div class="finding nit">
+  <p><span class="badge nit">docs · could</span><span class="finding-title">Fix deprecated GitHub webhook docs URL</span></p>
+  <p class="where">📍 <code>site/content/en/docs/components/core/hook.md:8</code></p>
+  <p>One-line fix: replace <code>/en/developers/webhooks-and-events/webhooks/about-webhooks</code> with <code>/en/webhooks/about-webhooks</code>.</p>
+</div>
+
+<div class="finding nit">
+  <p><span class="badge nit">docs · could</span><span class="finding-title">Add external plugins to See Also section</span></p>
+  <p class="where">📍 <code>site/content/en/docs/components/core/hook.md:169-171</code></p>
+  <p>Add <code>[External Plugins Documentation](/docs/components/external-plugins/)</code> to the See Also list.</p>
+</div>
+
+<div class="finding nit">
+  <p><span class="badge nit">docs · could</span><span class="finding-title">Add --help note to CLI flags section</span></p>
+  <p class="where">📍 <code>site/content/en/docs/components/core/hook.md:130-143</code></p>
+  <p>Add one sentence: "Run <code>hook --help</code> for the full flag list and to verify current defaults." Existing flag entries and defaults unchanged.</p>
+</div>
+
+<div class="finding nit">
+  <p><span class="badge nit">docs · could</span><span class="finding-title">Add plugin-specific flags pattern note</span></p>
+  <p class="where">📍 <code>site/content/en/docs/components/core/hook.md:130-143</code></p>
+  <p>Some plugins require extra flags/credentials (e.g. <code>--slack-token-file</code> for the Slack plugin). Add a short note documenting this pattern so operators know to consult plugin docs for their specific requirements.</p>
+</div>
 
 <h2>Summary for PR Comment</h2>
 

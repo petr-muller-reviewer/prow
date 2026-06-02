@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Triage: kubernetes-sigs/prow#438</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; line-height: 1.6; color: #1a1a1a; margin: 0; padding: 2rem; background: #fafafa; }
+  .container { max-width: 860px; margin: 0 auto; background: #fff; padding: 2rem 2.5rem; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
+  h1 { font-size: 1.4rem; margin-top: 0; }
+  h2 { font-size: 1.1rem; border-bottom: 1px solid #e0e0e0; padding-bottom: 0.3rem; margin-top: 2rem; }
+  h3 { font-size: 0.95rem; margin-bottom: 0.3rem; }
+  code { font-family: "SFMono-Regular", Consolas, monospace; font-size: 0.85em; background: #f4f4f4; padding: 0.1em 0.3em; border-radius: 3px; }
+  pre { font-family: "SFMono-Regular", Consolas, monospace; font-size: 0.82em; background: #f4f4f4; padding: 0.8rem 1rem; border-radius: 4px; overflow-x: auto; line-height: 1.45; }
+  .meta { background: #f0f4f8; border-left: 4px solid #4a90d9; padding: 0.8rem 1rem; border-radius: 0 4px 4px 0; margin-bottom: 1.5rem; font-size: 0.9rem; }
+  .meta table { border-collapse: collapse; }
+  .meta td { padding: 0.15rem 0.5rem 0.15rem 0; }
+  .meta td:first-child { font-weight: 600; color: #555; white-space: nowrap; }
+  .verdict { background: #e8f5e9; border-left: 4px solid #43a047; padding: 0.8rem 1rem; border-radius: 0 4px 4px 0; margin-bottom: 1.5rem; }
+  .verdict .label { font-weight: 700; font-size: 1.05rem; color: #2e7d32; }
+  .finding { margin-bottom: 1.2rem; }
+  .finding-tag { display: inline-block; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; padding: 0.1em 0.4em; border-radius: 3px; margin-right: 0.4em; background: #e3f2fd; color: #1565c0; }
+  .finding-tag.cause { background: #fce4ec; color: #880e4f; }
+  .finding-tag.related-code { background: #e8f5e9; color: #1b5e20; }
+  .finding-tag.related-issue { background: #fff3e0; color: #e65100; }
+  .finding-tag.related-pr { background: #f3e5f5; color: #4a148c; }
+  ul { padding-left: 1.3rem; }
+  li { margin-bottom: 0.3rem; }
+  a { color: #1a73e8; }
+  .label-chip { display: inline-block; background: #e1e4e8; border-radius: 12px; padding: 0.1em 0.6em; font-size: 0.82em; margin-right: 0.3em; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>Triage: <a href="https://github.com/kubernetes-sigs/prow/issues/438">kubernetes-sigs/prow#438</a></h1>
+
+<div class="meta">
+  <table>
+    <tr><td>Title</td><td>Add regex support for branch matching in Tide status controller</td></tr>
+    <tr><td>State</td><td>open</td></tr>
+    <tr><td>Labels</td><td><span class="label-chip">kind/feature</span><span class="label-chip">area/tide</span></td></tr>
+    <tr><td>Triaged at</td><td>2026-06-02T09:01:39Z</td></tr>
+    <tr><td>Main SHA</td><td><code>24f6b2904e9231919e1c8bb4b9258c648c82991d</code></td></tr>
+    <tr><td>Reported by</td><td><a href="https://github.com/kaovilai">kaovilai</a> on 2025-04-25</td></tr>
+  </table>
+</div>
+
+<div class="verdict">
+  <div class="label">ACCEPTED</div>
+  <p style="margin:0.5rem 0 0">Legitimate feature request. Tide's <code>includedBranches</code>/<code>excludedBranches</code> only support exact string matching while branchprotector supports regex — the inconsistency is real and the use case (covering release-* or feature/* patterns) is valid. However, the implementation is significantly more complex than the issue implies because the GitHub Search API's <code>base:</code> qualifier does not support regex, requiring a deliberate workaround. A design discussion should precede any implementation PR.</p>
+</div>
+
+<h2>What the issue reports</h2>
+<ul>
+  <li>Tide's <code>TideQuery.includedBranches</code> and <code>excludedBranches</code> fields accept only exact branch name strings — no wildcards or patterns.</li>
+  <li>Users with patterned branch names (release branches, feature branches) must enumerate every branch explicitly in their Tide config.</li>
+  <li>Branchprotector already supports regex for its <code>include</code>/<code>exclude</code> fields (<code>cmd/branchprotector/protect.go:312-346</code>).</li>
+  <li>The request is to add the same capability to Tide for consistency and flexibility.</li>
+  <li>The issue has been repeatedly marked stale and revived by the author, indicating real ongoing need.</li>
+</ul>
+
+<h2>Analysis</h2>
+
+<h3>Probable cause / why this is hard</h3>
+<p>The branchprotector analogy is architecturally misleading. Branchprotector enumerates all branches via the GitHub Branches API, then filters locally using compiled <code>*regexp.Regexp</code>. Tide works entirely differently: <code>constructQuery()</code> translates each branch name into a <code>base:"X"</code> or <code>-base:"X"</code> qualifier in a GitHub Search API query, and GitHub executes the filter server-side. <strong>The GitHub Search API's <code>base:</code> qualifier is exact-match only — it does not support regex patterns.</strong> Any regex implementation in Tide requires a workaround.</p>
+
+<p>Additionally, the branch matching in <code>requirementDiff()</code> (<code>pkg/tide/status.go:149-155</code>) only scores query-to-PR affinity for status display purposes — it does not drive merge decisions. A regex fix applied only there would be incomplete.</p>
+
+<h3>Related code</h3>
+
+<div class="finding">
+  <span class="finding-tag related-code">related-code</span>
+  <strong>TideQuery branch fields</strong> — <code>pkg/config/tide.go:546-562</code>
+  <pre>ExcludedBranches []string `json:"excludedBranches,omitempty"`
+IncludedBranches []string `json:"includedBranches,omitempty"`</pre>
+</div>
+
+<div class="finding">
+  <span class="finding-tag related-code">related-code</span>
+  <strong>constructQuery() — branch qualifiers</strong> — <code>pkg/config/tide.go:620-625</code>
+  <pre>for _, b := range tq.ExcludedBranches {
+    queryString = append(queryString, fmt.Sprintf("-base:\"%s\"", b))
+}
+for _, b := range tq.IncludedBranches {
+    queryString = append(queryString, fmt.Sprintf("base:\"%s\"", b))
+}</pre>
+</div>
+
+<div class="finding">
+  <span class="finding-tag related-code">related-code</span>
+  <strong>requirementDiff() — branch scoring (status only)</strong> — <code>pkg/tide/status.go:149-155</code>
+  <pre>targetBranchDenied := slices.Contains(q.ExcludedBranches, string(pr.BaseRef.Name))
+targetBranchAllowed := len(q.IncludedBranches) == 0
+if slices.Contains(q.IncludedBranches, string(pr.BaseRef.Name)) {
+    targetBranchAllowed = true
+}</pre>
+</div>
+
+<div class="finding">
+  <span class="finding-tag related-code">related-code</span>
+  <strong>branchprotector regex filtering (the analogy)</strong> — <code>cmd/branchprotector/protect.go:312-346</code>
+  <pre>var branchInclusions *regexp.Regexp
+if len(repo.Policy.Include) > 0 {
+    branchInclusions, err = regexp.Compile(strings.Join(repo.Policy.Include, `|`))
+}
+// then filters against GetBranches() results locally</pre>
+</div>
+
+<h3>Implementation approaches</h3>
+<p>Three workarounds exist; none is cost-free:</p>
+<ol>
+  <li><strong>Enumerate-and-expand</strong>: Call the GitHub Branches API before query construction, expand regex matches to explicit branch names, pass those as <code>base:</code> qualifiers. Correct semantics; adds one Branches API call per org/repo per sync cycle.</li>
+  <li><strong>Local post-filter</strong>: Omit <code>base:</code> qualifier when patterns are configured, fetch all open PRs, filter locally. No extra API calls; potentially much larger result sets.</li>
+  <li><strong>New config fields</strong> (<code>includedBranchPatterns</code>/<code>excludedBranchPatterns</code>): Add separate fields for patterns alongside the existing exact-match fields. Fully backwards compatible, cleaner API surface; uses either approach 1 or 2 as the backend.</li>
+</ol>
+<p>Recommended: Approach 3 (new fields) + Approach 1 (enumerate-and-expand). Requires a design discussion before implementation begins.</p>
+
+<h3>Related issues / PRs</h3>
+<div class="finding">
+  <span class="finding-tag related-issue">related-issue</span>
+  <strong><a href="https://github.com/kubernetes-sigs/prow/issues/482">#482 — Explore GitHub's Improved Search API</a></strong>: If GitHub ever adds regex support to <code>base:</code> qualifier, the implementation becomes trivial. Worth monitoring.
+</div>
+
+<h2>What I checked</h2>
+<ul>
+  <li><code>constructQuery()</code> confirmed to use verbatim strings for <code>base:</code>/<code>-base:</code> qualifiers — no pattern support.</li>
+  <li>GitHub Search API reference comment at <code>pkg/config/tide.go:545</code> confirms the API basis.</li>
+  <li><code>requirementDiff()</code> confirmed to be status scoring only, not merge gating — a partial fix there would be insufficient.</li>
+  <li>branchprotector's regex works because it calls <code>GetBranches()</code> first — not applicable to Tide's architecture.</li>
+  <li>No existing PRs are implementing this feature.</li>
+  <li>Config validation at <code>pkg/config/tide.go:849-857</code> — currently only checks for duplicates and mutual exclusivity of included+excluded; no regex validation exists.</li>
+</ul>
+
+<h2>Recommended next steps</h2>
+<ul>
+  <li>Apply <code>help-wanted</code> label (feature is accepted; needs a contributor).</li>
+  <li>Post a comment summarizing the GitHub Search API constraint and the three implementation approaches — contributors should not start coding without agreeing on the approach first.</li>
+  <li>Require a design discussion (GitHub comment thread or GH Discussion) before accepting implementation PRs.</li>
+  <li>Monitor issue <a href="https://github.com/kubernetes-sigs/prow/issues/482">#482</a> for GitHub Search API improvements that could simplify the implementation.</li>
+  <li>Remove stale lifecycle if it gets re-applied before the design discussion happens.</li>
+</ul>
+
+<h2>Open questions</h2>
+<ul>
+  <li>Which implementation approach do Tide maintainers prefer: enumerate-and-expand (correct semantics, extra Branches API calls per sync cycle), local post-filter (no extra calls, larger PR result sets), or both with separate config fields?</li>
+  <li>Is the additional GitHub Branches API call overhead acceptable given Tide's existing rate limit budget on large deployments (many repos)?</li>
+  <li>Should regex fields be named <code>includedBranchPatterns</code>/<code>excludedBranchPatterns</code> or something else?</li>
+</ul>
+
+</div>
+</body>
+</html>

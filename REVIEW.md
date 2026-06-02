@@ -1,62 +1,58 @@
 ---
 pr: kubernetes-sigs/prow#738
 title: "invalidcommitmsg: add config surface for fixup commit checking"
-head_sha: cdf377c5a45273b181f7f6e8416f72fa7f43696c
+head_sha: 7189547bdfc3d607ec9d4f621f1902e80f9a1347
 base: main
-reviewed_at: 2026-06-02T09:02:10Z
+reviewed_at: 2026-06-02T23:11:46Z
 verdict: request-changes
+state: merged
+refresh_log:
+  - old_sha: cdf377c5a45273b181f7f6e8416f72fa7f43696c
+    new_sha: 7189547bdfc3d607ec9d4f621f1902e80f9a1347
+    summary: "PR merged; one commit added wiring up issueClosingKeywords check (resolves blocking finding #1); fixup-default polarity finding merged unresolved"
 ---
 
 ## Findings
 
-### [blocking] issueClosingKeywords registered in config but never consulted at runtime
-- where: `pkg/plugins/config.go:1529`, `pkg/plugins/invalidcommitmsg/invalidcommitmsg.go:93`
-- concern: `validInvalidCommitMsgChecks` includes `"issueClosingKeywords"`, it passes validation, and the help text documents it as disableable — but `IsCheckDisabled("issueClosingKeywords")` is never called in `handle()`. The `CloseIssueRegex` checks at lines 115 and 124 run unconditionally. An operator who configures `{name: issueClosingKeywords, disabled: true}` gets no effect, silently. Either gate the checks in `handle()` behind `!cfg.IsCheckDisabled("issueClosingKeywords")`, or remove `issueClosingKeywords` from the valid set until it is implemented. Flagged by all three reviewers.
-- excerpt: |
-    var validInvalidCommitMsgChecks = sets.New[string]("fixupPrefix", "issueClosingKeywords")
-    // handle() only ever calls:
-    checkFixup := !cfg.IsCheckDisabled("fixupPrefix")
-    // IsCheckDisabled("issueClosingKeywords") is never called
+### [resolved] issueClosingKeywords registered in config but never consulted at runtime
+- resolved_in: `7189547bdfc3d607ec9d4f621f1902e80f9a1347`
+- resolution: Commit "invalidcommitmsg: make issueClosingKeywords check configurable via plugin config" adds `checkIssueClosing := !cfg.IsCheckDisabled("issueClosingKeywords")` and gates both `CloseIssueRegex` checks (commit body at line 113, PR title at line 122) behind it. Two new test cases added: "issue closing keywords ignored when check disabled" and "issue closing keywords detected when check enabled". Also cleans up test setup to always pass both checks explicitly via `append` rather than conditional slice construction.
 
-### [blocking] fixup check default silently flipped from opt-in to opt-out
+### [blocking] fixup check default silently flipped from opt-in to opt-out — merged unresolved
 - where: `pkg/plugins/invalidcommitmsg/invalidcommitmsg.go:92-93`
-- concern: Old code `os.Getenv("ENABLE_FIXUP_CHECK") == "true"` defaulted to false — opt-in. New code: `InvalidCommitMsgFor` returns `&InvalidCommitMsg{}` when no config exists; `IsCheckDisabled("fixupPrefix")` on an empty struct returns `false` (not found → not disabled); `checkFixup = !false = true`. Fixup checking is now ON by default for any repo without an explicit `invalid_commit_msg` block. Any deployment that relied on not setting `ENABLE_FIXUP_CHECK` will silently start labeling PRs with fixup commits. Must either restore opt-in semantics (return `true` from `IsCheckDisabled` when check is absent) or explicitly commit to opt-out and document it with a migration note. Flagged by all three reviewers.
+- concern: Old code `os.Getenv("ENABLE_FIXUP_CHECK") == "true"` defaulted to false — opt-in. New code: `InvalidCommitMsgFor` returns `&InvalidCommitMsg{}` when no config exists; `IsCheckDisabled("fixupPrefix")` on an empty `Checks` slice returns `false` (check not found = not disabled); so `checkFixup = !false = true`. Fixup checking is now ON by default for any repo without an explicit `invalid_commit_msg` block. Any deployment that relied on not setting the env var will silently start labeling PRs with fixup commits. This was flagged by all three reviewers and was not addressed before merge. Operators upgrading should be aware and add explicit config if they want to preserve the old opt-in behavior.
 - excerpt: |
-    // Old:
+    // Old (opt-in, defaults off):
     checkFixup := os.Getenv("ENABLE_FIXUP_CHECK") == "true"
-    // New (no config → &InvalidCommitMsg{} → IsCheckDisabled returns false):
+    // New (opt-out, defaults ON when no config):
     cfg := config.InvalidCommitMsgFor(org, repo)
     checkFixup := !cfg.IsCheckDisabled("fixupPrefix")  // = !false = true
 
 ### [nit] stale comment copied from TriggerFor
 - where: `pkg/plugins/config.go:1133`
-- concern: "triggers" is wrong noun — copied verbatim from `TriggerFor`.
+- concern: "triggers" is wrong noun — copied verbatim from `TriggerFor`. Not addressed in the merged PR.
 - excerpt: |
     // Prioritize repo level triggers over org level triggers.
 
 ### [nit] test case names still reference removed feature flag
 - where: `pkg/plugins/invalidcommitmsg/invalidcommitmsg_test.go:194,202`
-- concern: Cases named "feature flag enabled/disabled" — the env-var feature flag is gone. Should be "fixup check config enabled/disabled" or similar.
+- concern: Cases named "fixup commit detected when feature flag disabled/enabled" — the env-var feature flag is gone. Not addressed in the merged PR.
 
 ### [nit] validateRepoDupes error message hardcodes "welcome" — now user-facing
 - where: `pkg/plugins/config.go` (pre-existing)
-- concern: `validateRepoDupes(c.InvalidCommitMsg)` will produce `The repo "x/y" is duplicated in the 'welcome' plugin configuration.` for `invalid_commit_msg` duplicates. Pre-existing bug but now concretely user-facing via this PR's new call. Worth a follow-up issue.
-
-### [question] is the opt-out default for fixup checking intentional policy?
-- where: `pkg/plugins/invalidcommitmsg/invalidcommitmsg.go:92-93`
-- concern: If the flip to default-enabled is a deliberate policy decision (making Prow enforce fixup commit hygiene by default), it needs to be called out explicitly in the PR description, plugin help text, and release notes. If it's accidental, it's a bug. The PR description doesn't address it either way.
+- concern: `validateRepoDupes(c.InvalidCommitMsg)` produces `The repo "x/y" is duplicated in the 'welcome' plugin configuration.` for `invalid_commit_msg` duplicates. Pre-existing bug now exposed to users of the new config surface. Not addressed in the merged PR.
 
 ## Checked
-- Two-pass org/repo precedence lookup exactly matches `LgtmFor`/`ApproveFor` pattern; test covers the case where org entry precedes repo entry in slice
-- Loop variable `&cfg` returned from range loop is safe — variable escapes to heap on address-take; same pattern as `LgtmFor`/`DcoFor`
-- `validateRepoDupes` integration correct; `getRepos()` satisfies `ListableRepos` interface
-- `validateInvalidCommitMsg` accumulates all errors via `utilerrors.NewAggregate` (not fail-fast) — consistent with file
-- Removal of `"os"` import from `invalidcommitmsg.go` correct — no remaining usages
-- Test refactoring from `t.Setenv("ENABLE_FIXUP_CHECK", ...)` to config struct is complete and clean
-- `omitempty` on `InvalidCommitMsg` field means no existing `plugins.yaml` will fail to parse on upgrade
-- Validation is wired into `Configuration.Validate()` at load time — config errors surface at startup, not runtime
+- Two-pass org/repo precedence lookup exactly matches `LgtmFor`/`ApproveFor` pattern; test covers precedence inversion (org entry before repo entry in slice)
+- Loop variable `&cfg` returned from range loop is safe — escape analysis allocates on heap; same pattern as `LgtmFor`/`DcoFor`
+- `getRepos()` satisfies `ListableRepos` — plugs into generic `validateRepoDupes` without boilerplate
+- `validateInvalidCommitMsg` accumulates all errors via `utilerrors.NewAggregate` (not fail-fast) — consistent with file style
+- Removal of `"os"` import from `invalidcommitmsg.go` correct
+- Test refactoring from `t.Setenv("ENABLE_FIXUP_CHECK", ...)` to config struct is complete and covers all branches
+- `omitempty` on `InvalidCommitMsg` field — existing `plugins.yaml` files parse and validate without change on upgrade
+- Validation wired into `Configuration.Validate()` at load time — config errors surface at startup, not silently at runtime
+- `issueClosingKeywords` now fully wired: both `CloseIssueRegex` call sites gated, new test cases verify disabled/enabled behavior
 
 ## Open questions
-- Is the fixup checking default-on behavior intentional? If yes, document it and provide a migration note. If no, restore opt-in semantics.
-- Is `issueClosingKeywords` meant to be wired up in this PR or a future one? If future, remove it from the valid set now and add a TODO comment at the `handle()` call site.
+- The fixup checking default-on behavior was merged without documentation or migration note — should a follow-up issue or release note be filed?
 - Should `ENABLE_FIXUP_CHECK` removal include a startup log warning for deployments that still have it set in their environment manifests?

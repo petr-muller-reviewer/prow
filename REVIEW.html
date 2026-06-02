@@ -48,9 +48,9 @@
     margin-bottom: 8px;
     border-left: 4px solid;
   }
-  .verdict-request { background: #fff5f5; border-color: #cf222e; }
+  .verdict-merged { background: #f0f4ff; border-color: #8250df; }
   .verdict-label { font-weight: 700; font-size: 1rem; }
-  .verdict-label.request { color: #cf222e; }
+  .verdict-label.merged { color: #8250df; }
   .section { background: #fff; border: 1px solid #d0d7de; border-radius: 6px; padding: 18px 22px; margin-bottom: 20px; }
   .finding {
     border: 1px solid #d0d7de;
@@ -77,57 +77,62 @@
     letter-spacing: 0.04em;
     white-space: nowrap;
   }
-  .badge-blocking   { background: #cf222e; color: #fff; }
-  .badge-should-fix { background: #d97706; color: #fff; }
-  .badge-nit        { background: #6e7781; color: #fff; }
-  .badge-question   { background: #0969da; color: #fff; }
+  .badge-blocking  { background: #cf222e; color: #fff; }
+  .badge-resolved  { background: #1a7f37; color: #fff; }
+  .badge-nit       { background: #6e7781; color: #fff; }
+  .badge-question  { background: #0969da; color: #fff; }
   .badge-convergence { font-size: 10px; background: #8250df; color: #fff; padding: 1px 7px; border-radius: 10px; vertical-align: middle; }
+  .badge-unresolved { font-size: 10px; background: #cf222e; color: #fff; padding: 1px 7px; border-radius: 10px; vertical-align: middle; }
   .finding-title { font-weight: 600; font-size: 0.97rem; }
   .where { font-size: 12px; color: #555; margin-bottom: 6px; }
   .concern { margin-bottom: 8px; }
+  .resolution { margin-bottom: 8px; background: #f0fff4; border: 1px solid #b7e4c7; border-radius: 4px; padding: 8px 12px; font-size: 13px; }
   ul { margin: 6px 0; padding-left: 22px; }
   li { margin-bottom: 4px; }
   a { color: #0969da; text-decoration: none; }
   a:hover { text-decoration: underline; }
   .hl { background: #fffbe5; }
-  .advisor-box {
-    background: #f0f4ff;
-    border: 1px solid #b0c0e8;
+  .refresh-banner {
+    background: #fff8dc;
+    border: 1px solid #e0c070;
     border-radius: 6px;
-    padding: 16px 20px;
-    margin-bottom: 20px;
-  }
-  .advisor-box h3 { margin-top: 0; color: #3451b2; }
-  .comment-box {
-    background: #f6f8fa;
-    border: 1px solid #d0d7de;
-    border-left: 3px solid #6e7781;
-    border-radius: 4px;
     padding: 12px 16px;
-    font-size: 14px;
-    white-space: pre-wrap;
-    font-family: inherit;
+    margin-bottom: 20px;
+    font-size: 13px;
   }
+  .refresh-banner strong { color: #7a5c00; }
 </style>
 </head>
 <body>
 <div class="container">
 
 <div class="meta">
-  <h1><a href="https://github.com/kubernetes-sigs/prow/pull/738">kubernetes-sigs/prow#738</a></h1>
+  <h1><a href="https://github.com/kubernetes-sigs/prow/pull/738">kubernetes-sigs/prow#738</a> <span style="font-size:0.8rem; font-weight:400; color:#8250df;">MERGED</span></h1>
   <table>
     <tr><td>Title</td><td>invalidcommitmsg: add config surface for fixup commit checking</td></tr>
     <tr><td>Author</td><td>valen-mascarenhas14</td></tr>
     <tr><td>Base branch</td><td>main</td></tr>
-    <tr><td>Head SHA</td><td><code>cdf377c5a45273b181f7f6e8416f72fa7f43696c</code></td></tr>
-    <tr><td>Reviewed at</td><td>2026-06-02T09:02:10Z</td></tr>
+    <tr><td>Head SHA</td><td><code>7189547bdfc3d607ec9d4f621f1902e80f9a1347</code></td></tr>
+    <tr><td>Reviewed at</td><td>2026-06-02T23:11:46Z (refreshed)</td></tr>
     <tr><td>Method</td><td>3-reviewer maintainer panel (Code Quality · Maintainability · Deployment Risk) + advisor synthesis</td></tr>
   </table>
 </div>
 
-<div class="verdict-box verdict-request">
-  <div class="verdict-label request">Request Changes</div>
-  <p style="margin:8px 0 0">The structural direction is correct — replacing the env-var escape hatch with proper plugin config follows established Prow patterns faithfully. Two issues block merge: (1) <code>issueClosingKeywords</code> is accepted and validated in config but the runtime never reads it — a silent no-op that will mislead operators. (2) The default for fixup commit checking has been silently reversed from opt-in to opt-out, which will activate the check for all existing deployments that did not previously set <code>ENABLE_FIXUP_CHECK=true</code>. Both were independently flagged by all three reviewers.</p>
+<div class="refresh-banner">
+  <strong>Refreshed:</strong> PR was merged. One commit added since initial review (<code>7189547bd</code>): "invalidcommitmsg: make issueClosingKeywords check configurable via plugin config" — resolves the <em>issueClosingKeywords ghost</em> blocking finding. The <em>fixup-default polarity</em> blocking finding was merged unresolved.
+</div>
+
+<div class="verdict-box verdict-merged">
+  <div class="verdict-label merged">Merged — one blocking issue resolved, one merged unresolved</div>
+  <p style="margin:8px 0 0">The <code>issueClosingKeywords</code> gap was addressed before merge: both <code>CloseIssueRegex</code> call sites are now gated behind <code>checkIssueClosing</code> and two new test cases verify the behavior. The fixup-check default polarity reversal (opt-in → opt-out, silently enabling fixup checking for all unconfigured repos) was not addressed and is now in main. Operators upgrading should audit their <code>plugins.yaml</code> and add explicit <code>fixupPrefix: disabled: true</code> config if they want to preserve prior behavior.</p>
+</div>
+
+<h2>Since previous review</h2>
+<div class="section">
+<ul>
+  <li><strong>Commit <code>7189547bd</code></strong>: "invalidcommitmsg: make issueClosingKeywords check configurable via plugin config" — wires up <code>checkIssueClosing := !cfg.IsCheckDisabled("issueClosingKeywords")</code> in <code>handle()</code> and gates both <code>CloseIssueRegex</code> checks behind it. Adds <code>checkIssueClosing</code> field to test struct and two new test cases. Cleans up test config construction to always pass both checks explicitly.</li>
+  <li><strong>PR state</strong>: MERGED. No review comments or issue comments posted since the initial review timestamp.</li>
+</ul>
 </div>
 
 <h2>What this PR does</h2>
@@ -135,9 +140,9 @@
 <ul>
   <li>Introduces <code>InvalidCommitMsg</code> / <code>InvalidCommitMsgCheck</code> structs in <code>plugins.Configuration</code>, allowing per-check enable/disable control via <code>plugins.yaml</code>.</li>
   <li>Implements <code>InvalidCommitMsgFor(org, repo)</code> with two-pass repo-then-org precedence lookup, consistent with <code>LgtmFor</code>, <code>ApproveFor</code>, <code>TriggerFor</code>.</li>
-  <li>Replaces <code>os.Getenv("ENABLE_FIXUP_CHECK")</code> with <code>cfg.IsCheckDisabled("fixupPrefix")</code> in <code>handle()</code>.</li>
+  <li>Replaces <code>os.Getenv("ENABLE_FIXUP_CHECK")</code> with config-driven <code>checkFixup</code> and <code>checkIssueClosing</code> flags in <code>handle()</code>.</li>
   <li>Adds <code>validateInvalidCommitMsg()</code> with check-name allowlisting and wires it into <code>Configuration.Validate()</code>.</li>
-  <li>Refactors tests from <code>t.Setenv</code> to config struct construction; updates plugin help text.</li>
+  <li>Both <code>fixupPrefix</code> and <code>issueClosingKeywords</code> checks are now independently configurable per org/repo.</li>
 </ul>
 </div>
 
@@ -145,20 +150,13 @@
 
 <div class="finding">
   <div class="finding-header">
-    <span class="badge badge-blocking">Blocking</span>
+    <span class="badge badge-resolved">Resolved</span>
     <span class="finding-title">issueClosingKeywords registered in config but never consulted at runtime</span>
-    <span class="badge-convergence">all 3 reviewers</span>
   </div>
   <div class="finding-body">
-    <div class="where"><code>pkg/plugins/config.go:1529</code> &amp; <code>pkg/plugins/invalidcommitmsg/invalidcommitmsg.go:93,115,124</code></div>
-    <div class="concern"><code>validInvalidCommitMsgChecks</code> includes <code>"issueClosingKeywords"</code>, it passes validation, and the help text documents it as disableable — but <code>IsCheckDisabled("issueClosingKeywords")</code> is never called in <code>handle()</code>. The <code>CloseIssueRegex</code> checks at lines 115 and 124 run unconditionally. An operator who writes <code>{name: issueClosingKeywords, disabled: true}</code> gets no effect, silently. Either gate those checks behind <code>!cfg.IsCheckDisabled("issueClosingKeywords")</code>, or remove the name from the valid set (with an optional TODO comment if it's a forward declaration for a follow-up PR).</div>
-    <pre>var validInvalidCommitMsgChecks = sets.New[string]("fixupPrefix", <span class="hl">"issueClosingKeywords"</span>)
-
-// handle() only ever reads one check:
-cfg := config.InvalidCommitMsgFor(org, repo)
-checkFixup := !cfg.IsCheckDisabled("fixupPrefix")
-// IsCheckDisabled("issueClosingKeywords") is never called
-// CloseIssueRegex checks at lines 115, 124 run unconditionally</pre>
+    <div class="resolution">
+      Resolved in <code>7189547bd</code>. Added <code>checkIssueClosing := !cfg.IsCheckDisabled("issueClosingKeywords")</code> and gated both <code>CloseIssueRegex</code> call sites (commit body line 113, PR title line 122) behind it. New test cases "issue closing keywords ignored when check disabled" and "issue closing keywords detected when check enabled" verify the behavior.
+    </div>
   </div>
 </div>
 
@@ -167,18 +165,25 @@ checkFixup := !cfg.IsCheckDisabled("fixupPrefix")
     <span class="badge badge-blocking">Blocking</span>
     <span class="finding-title">Fixup check default silently flipped from opt-in to opt-out</span>
     <span class="badge-convergence">all 3 reviewers</span>
+    <span class="badge-unresolved">merged unresolved</span>
   </div>
   <div class="finding-body">
     <div class="where"><code>pkg/plugins/invalidcommitmsg/invalidcommitmsg.go:92-93</code></div>
-    <div class="concern">Old code: <code>os.Getenv("ENABLE_FIXUP_CHECK") == "true"</code> → defaults to <code>false</code> (opt-in; env var must be explicitly set). New code: when no <code>invalid_commit_msg</code> config exists for a repo, <code>InvalidCommitMsgFor</code> returns <code>&amp;InvalidCommitMsg{}</code>; <code>IsCheckDisabled("fixupPrefix")</code> on an empty <code>Checks</code> slice returns <code>false</code> (check not found = not disabled); so <code>checkFixup = !false = true</code>. Fixup checking is now <strong>on by default</strong> for any repo without explicit config. Any deployment that relied on not setting the env var will silently start labeling PRs. Must either restore opt-in semantics or explicitly commit to opt-out and document it with a migration note.</div>
+    <div class="concern">Old code: <code>os.Getenv("ENABLE_FIXUP_CHECK") == "true"</code> → defaults to <code>false</code> (opt-in). New code: when no <code>invalid_commit_msg</code> config exists for a repo, <code>InvalidCommitMsgFor</code> returns <code>&amp;InvalidCommitMsg{}</code>; <code>IsCheckDisabled("fixupPrefix")</code> on an empty <code>Checks</code> slice returns <code>false</code> (not found = not disabled); <code>checkFixup = !false = true</code>. Fixup checking is now <strong>on by default</strong> for any repo without explicit config. This was flagged by all three reviewers, was not addressed before merge, and is now in main. Operators upgrading from a deployment without <code>ENABLE_FIXUP_CHECK=true</code> will silently start labeling PRs with fixup commits.</div>
     <pre>// Old (opt-in, defaults off):
 checkFixup := os.Getenv("ENABLE_FIXUP_CHECK") == "true"
 
 // New (opt-out, defaults ON when no config):
 cfg := config.InvalidCommitMsgFor(org, repo)
 // ↑ returns &amp;InvalidCommitMsg{} when no config exists
-checkFixup := !cfg.IsCheckDisabled("fixupPrefix")
-// IsCheckDisabled on empty Checks → false → checkFixup = true</pre>
+checkFixup := !cfg.IsCheckDisabled("fixupPrefix")  // = !false = true</pre>
+    <p style="margin-top:8px; font-size:13px;"><strong>Operator action:</strong> To preserve prior opt-in behavior, add to <code>plugins.yaml</code>:</p>
+    <pre>invalid_commit_msg:
+  - repos:
+      - your-org
+    checks:
+      - name: fixupPrefix
+        disabled: true</pre>
   </div>
 </div>
 
@@ -189,9 +194,8 @@ checkFixup := !cfg.IsCheckDisabled("fixupPrefix")
   </div>
   <div class="finding-body">
     <div class="where"><code>pkg/plugins/config.go:1133</code></div>
-    <div class="concern">Copy-pasted from <code>TriggerFor</code> without updating.</div>
-    <pre>// Prioritize repo level <span class="hl">triggers</span> over org level <span class="hl">triggers</span>.
-// Should be: "Prioritize repo level config over org level config."</pre>
+    <div class="concern">Copy-pasted from <code>TriggerFor</code> without updating. Not addressed in merged PR.</div>
+    <pre>// Prioritize repo level <span class="hl">triggers</span> over org level <span class="hl">triggers</span>.</pre>
   </div>
 </div>
 
@@ -202,29 +206,18 @@ checkFixup := !cfg.IsCheckDisabled("fixupPrefix")
   </div>
   <div class="finding-body">
     <div class="where"><code>pkg/plugins/invalidcommitmsg/invalidcommitmsg_test.go:194,202</code></div>
-    <div class="concern">Cases named "fixup commit detected when feature flag disabled/enabled" — the env-var feature flag is gone. Should reference config instead.</div>
+    <div class="concern">Cases named "fixup commit detected when feature flag disabled/enabled" — the env-var feature flag is gone. Not addressed in merged PR.</div>
   </div>
 </div>
 
 <div class="finding">
   <div class="finding-header">
     <span class="badge badge-nit">Nit</span>
-    <span class="finding-title">validateRepoDupes error message hardcodes "welcome" — now user-facing for invalid_commit_msg</span>
+    <span class="finding-title">validateRepoDupes error message hardcodes "welcome" — now user-facing</span>
   </div>
   <div class="finding-body">
     <div class="where"><code>pkg/plugins/config.go</code> (pre-existing)</div>
-    <div class="concern">Pre-existing bug: <code>validateRepoDupes</code> produces <code>The repo "x/y" is duplicated in the 'welcome' plugin configuration.</code> regardless of which plugin's config triggered it. This PR adds <code>validateRepoDupes(c.InvalidCommitMsg)</code>, making the wrong error message user-facing for the first time in this config context. Not introduced here, but worth a follow-up issue.</div>
-  </div>
-</div>
-
-<div class="finding">
-  <div class="finding-header">
-    <span class="badge badge-question">Question</span>
-    <span class="finding-title">Is the opt-out default for fixup checking intentional policy?</span>
-  </div>
-  <div class="finding-body">
-    <div class="where"><code>pkg/plugins/invalidcommitmsg/invalidcommitmsg.go:92-93</code></div>
-    <div class="concern">If making Prow enforce fixup commit hygiene by default is a deliberate policy decision for this PR, it should be called out explicitly in the PR description, plugin help text, and release notes so operators know what to expect. If it's an accidental consequence of <code>IsCheckDisabled</code> returning <code>false</code> when the check is absent, it's a bug. The PR description doesn't address it either way.</div>
+    <div class="concern">Pre-existing bug: <code>validateRepoDupes</code> produces <code>The repo "x/y" is duplicated in the 'welcome' plugin configuration.</code> for <code>invalid_commit_msg</code> duplicates. Not addressed in merged PR.</div>
   </div>
 </div>
 
@@ -236,31 +229,18 @@ checkFixup := !cfg.IsCheckDisabled("fixupPrefix")
   <li><code>getRepos()</code> satisfies <code>ListableRepos</code> — plugs into generic <code>validateRepoDupes</code> without boilerplate.</li>
   <li><code>validateInvalidCommitMsg</code> accumulates all errors via <code>utilerrors.NewAggregate</code> (not fail-fast) — consistent with file style.</li>
   <li>Removal of <code>"os"</code> import from <code>invalidcommitmsg.go</code> is correct.</li>
-  <li>Test refactoring from <code>t.Setenv("ENABLE_FIXUP_CHECK", ...)</code> to config struct is complete and covers all branches.</li>
   <li><code>omitempty</code> on <code>InvalidCommitMsg</code> field — existing <code>plugins.yaml</code> files parse and validate without change on upgrade.</li>
-  <li>Validation wired into <code>Configuration.Validate()</code> at load time — config errors surface at startup, not silently at runtime.</li>
+  <li>Validation wired into <code>Configuration.Validate()</code> at load time.</li>
+  <li><code>issueClosingKeywords</code> now fully wired: both <code>CloseIssueRegex</code> call sites gated, new test cases verify disabled/enabled behavior.</li>
 </ul>
 </div>
 
-<h2>Open questions for the author</h2>
+<h2>Open questions / follow-ups</h2>
 <div class="section">
 <ul>
-  <li>Is the fixup checking default-on behavior intentional? If yes, document it and provide a migration note. If no, restore opt-in semantics (e.g., <code>IsCheckDisabled</code> returns <code>true</code> when the check is absent from config, or add an explicit default-disabled entry).</li>
-  <li>Is <code>issueClosingKeywords</code> meant to be wired up in this PR or a future one? If future: remove it from <code>validInvalidCommitMsgChecks</code> now and add a TODO comment in <code>handle()</code> where the gate would go.</li>
-  <li>The <code>ENABLE_FIXUP_CHECK</code> env var is fully removed — should there be a startup log warning for deployments that still have it set, so operators notice during rollout?</li>
+  <li>The fixup checking default-on behavior was merged without documentation or migration note — should a follow-up issue or release note be filed?</li>
+  <li>Should <code>ENABLE_FIXUP_CHECK</code> removal include a startup log warning for deployments that still have it set in environment manifests?</li>
 </ul>
-</div>
-
-<h2>Maintainer Advisor — Suggested PR Comment</h2>
-<div class="advisor-box">
-  <h3>Summary for PR Comment</h3>
-  <div class="comment-box">The structural direction here is correct — replacing the env-var escape hatch with a proper config surface follows established Prow patterns and the implementation mirrors ApproveFor/LgtmFor faithfully. However, two issues need to be resolved before merge.
-
-First, the default for fixup commit checking has been silently reversed: the old code was opt-in (env var must be explicitly true), but the new code is opt-out (fixup checking is on unless explicitly disabled in config), which will silently activate the check for all existing deployments that relied on the absence of ENABLE_FIXUP_CHECK. This needs to be either reverted to opt-in semantics or explicitly documented and communicated as a breaking behavior change.
-
-Second, issueClosingKeywords is registered as a valid config name and documented as disableable, but IsCheckDisabled("issueClosingKeywords") is never called in handle() — an operator who configures it will see no effect. Please either wire it into the implementation or remove it from the validated set.
-
-Happy to approve once those two points are addressed.</div>
 </div>
 
 </div>

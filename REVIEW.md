@@ -3,13 +3,18 @@ pr: 579
 title: "tide: add configurable GitHub merge blocks enforcement"
 head_sha: 2c14b702
 base: main
-reviewed_at: "2026-05-30T23:47:19Z"
+reviewed_at: "2026-06-03T12:17:22Z"
 verdict: approve
+merged_at: "2026-05-31T01:22:47Z"
 refresh_log:
   - from: 7f08e035
     to: 2c14b702
     date: "2026-05-30T23:47:19Z"
     summary: "Rev 2 commit addresses 5 of 8 original findings; confirmed item 10 resolved"
+  - from: 2c14b702
+    to: 2c14b702
+    date: "2026-06-03T12:17:22Z"
+    summary: "PR merged May 31; petr-muller approved May 31; no new code changes"
 gate:
   decision: merge
   gated_at: "2026-05-31T00:22:37Z"

@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Review: PR #615 - deck: drop stale non-blocking presubmit contexts</title>
+<style>
+  :root {
+    --bg: #1a1a2e;
+    --surface: #16213e;
+    --surface2: #0f3460;
+    --accent: #e94560;
+    --accent2: #00b4d8;
+    --text: #e0e0e0;
+    --text-muted: #a0a0b0;
+    --green: #2ecc71;
+    --yellow: #f39c12;
+    --red: #e74c3c;
+    --orange: #e67e22;
+    --border: #2a2a4a;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    padding: 2rem;
+  }
+  .container { max-width: 960px; margin: 0 auto; }
+  header {
+    border-bottom: 2px solid var(--accent);
+    padding-bottom: 1.5rem;
+    margin-bottom: 2rem;
+  }
+  header h1 {
+    font-size: 1.4rem;
+    color: var(--accent2);
+    font-weight: 600;
+  }
+  header .pr-meta {
+    display: flex;
+    gap: 1.5rem;
+    margin-top: 0.5rem;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    flex-wrap: wrap;
+  }
+  header .pr-meta span { display: inline-flex; align-items: center; gap: 0.3rem; }
+
+  .section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+  .section h2 {
+    font-size: 1.1rem;
+    color: var(--accent2);
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .problem-solution {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+  }
+  .problem-solution .box {
+    background: var(--surface2);
+    border-radius: 6px;
+    padding: 1.2rem;
+  }
+  .problem-solution .box h3 {
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.7rem;
+  }
+  .problem-solution .box.problem h3 { color: var(--red); }
+  .problem-solution .box.solution h3 { color: var(--green); }
+  .problem-solution .box p { font-size: 0.9rem; color: var(--text-muted); }
+
+  .behavior-change {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+    margin-top: 0.5rem;
+  }
+  .behavior-change .col {
+    padding: 1rem;
+    font-size: 0.85rem;
+  }
+  .behavior-change .col.before { background: rgba(231, 76, 60, 0.08); }
+  .behavior-change .col.after { background: rgba(46, 204, 113, 0.08); }
+  .behavior-change .col h4 {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.5rem;
+    color: var(--text-muted);
+  }
+  .behavior-change .col ul { padding-left: 1.2rem; }
+  .behavior-change .col li { margin-bottom: 0.3rem; }
+
+  .finding {
+    padding: 1rem;
+    border-left: 3px solid var(--border);
+    margin-bottom: 1rem;
+    background: var(--surface2);
+    border-radius: 0 6px 6px 0;
+  }
+  .finding:last-child { margin-bottom: 0; }
+  .finding.critical { border-left-color: var(--red); }
+  .finding.warning { border-left-color: var(--orange); }
+  .finding.info { border-left-color: var(--accent2); }
+  .finding.positive { border-left-color: var(--green); }
+
+  .finding .tag {
+    display: inline-block;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 0.15rem 0.5rem;
+    border-radius: 3px;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+  }
+  .finding.critical .tag { background: rgba(231, 76, 60, 0.2); color: var(--red); }
+  .finding.warning .tag { background: rgba(230, 126, 34, 0.2); color: var(--orange); }
+  .finding.info .tag { background: rgba(0, 180, 216, 0.15); color: var(--accent2); }
+  .finding.positive .tag { background: rgba(46, 204, 113, 0.15); color: var(--green); }
+
+  .finding h3 { font-size: 0.95rem; margin-bottom: 0.4rem; }
+  .finding p { font-size: 0.88rem; color: var(--text-muted); }
+  .finding p + p { margin-top: 0.5rem; }
+
+  code {
+    background: rgba(0, 180, 216, 0.1);
+    padding: 0.15rem 0.4rem;
+    border-radius: 3px;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 0.82rem;
+    color: var(--accent2);
+  }
+  pre {
+    background: #0d1117;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1rem;
+    overflow-x: auto;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 0.8rem;
+    line-height: 1.5;
+    margin-top: 0.7rem;
+  }
+  pre .add { color: var(--green); }
+  pre .del { color: var(--red); }
+  pre .ctx { color: var(--text-muted); }
+
+  .file-ref {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    font-family: 'JetBrains Mono', monospace;
+    margin-top: 0.3rem;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+    margin-top: 0.5rem;
+  }
+  th, td {
+    text-align: left;
+    padding: 0.6rem 0.8rem;
+    border-bottom: 1px solid var(--border);
+  }
+  th {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .verdict-box {
+    text-align: center;
+    padding: 1.5rem;
+  }
+  .verdict-box .verdict {
+    font-size: 1.3rem;
+    font-weight: 700;
+  }
+  .verdict-box .verdict.approve { color: var(--green); }
+  .verdict-box .verdict.suggestions { color: var(--yellow); }
+  .verdict-box .verdict.changes { color: var(--red); }
+  .verdict-box p {
+    color: var(--text-muted);
+    margin-top: 0.5rem;
+    font-size: 0.9rem;
+  }
+
+  .checklist { list-style: none; padding: 0; }
+  .checklist li {
+    padding: 0.4rem 0;
+    font-size: 0.88rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+  .checklist li::before {
+    content: "\25A2";
+    color: var(--text-muted);
+    font-size: 1.1rem;
+    line-height: 1.4;
+    flex-shrink: 0;
+  }
+
+  .existing-review {
+    background: var(--surface2);
+    border-radius: 6px;
+    padding: 1rem;
+    margin-top: 0.5rem;
+  }
+  .existing-review .reviewer {
+    font-weight: 600;
+    color: var(--accent2);
+    font-size: 0.85rem;
+  }
+  .existing-review p {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-top: 0.3rem;
+  }
+
+  .reviewer-panel {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+  .reviewer-card {
+    background: var(--surface2);
+    border-radius: 6px;
+    padding: 1rem;
+    text-align: center;
+  }
+  .reviewer-card h4 {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    margin-bottom: 0.5rem;
+  }
+  .reviewer-card .reviewer-verdict {
+    font-weight: 700;
+    font-size: 0.95rem;
+  }
+  .reviewer-card .reviewer-verdict.approve { color: var(--green); }
+  .reviewer-card .reviewer-detail {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-top: 0.3rem;
+  }
+
+  .convergence {
+    background: rgba(233, 69, 96, 0.08);
+    border: 1px solid rgba(233, 69, 96, 0.25);
+    border-radius: 6px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+  }
+  .convergence h4 {
+    color: var(--accent);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.5rem;
+  }
+  .convergence ul { padding-left: 1.2rem; }
+  .convergence li {
+    font-size: 0.88rem;
+    color: var(--text-muted);
+    margin-bottom: 0.4rem;
+  }
+  .convergence li strong { color: var(--text); }
+
+  .suggestion-list { padding-left: 1.2rem; }
+  .suggestion-list li {
+    font-size: 0.88rem;
+    color: var(--text-muted);
+    margin-bottom: 0.5rem;
+  }
+  .suggestion-list li strong { color: var(--text); }
+
+  .deployment-note {
+    background: var(--surface2);
+    border-radius: 6px;
+    padding: 1rem;
+    margin-top: 0.5rem;
+  }
+  .deployment-note ul { padding-left: 1.2rem; }
+  .deployment-note li {
+    font-size: 0.88rem;
+    color: var(--text-muted);
+    margin-bottom: 0.3rem;
+  }
+
+  .pr-comment-box {
+    background: #0d1117;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1.2rem;
+    font-size: 0.88rem;
+    color: var(--text-muted);
+    line-height: 1.7;
+    margin-top: 0.5rem;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+<header>
+  <h1>PR #615 &mdash; deck: drop stale non-blocking presubmit contexts from PR status</h1>
+  <div class="pr-meta">
+    <span>Author: <strong>Pnkcaht</strong> (Sam Richard)</span>
+    <span>File: <strong>cmd/deck/static/pr/pr.ts</strong></span>
+    <span>+28 / &minus;33</span>
+    <span>Labels: area/deck, size/M</span>
+    <span>Fixes: test-infra#36399</span>
+  </div>
+</header>
+
+<!-- Problem / Solution -->
+<div class="section">
+  <h2>What this PR is about</h2>
+  <div class="problem-solution">
+    <div class="box problem">
+      <h3>Problem</h3>
+      <p>When a presubmit job is renamed or removed from Prow config, its old GitHub status context persists on the PR forever (GitHub never deletes status contexts). Deck's PR status page shows these stale contexts alongside current jobs, confusing PR authors about what is actually required to merge.</p>
+    </div>
+    <div class="box solution">
+      <h3>Approach</h3>
+      <p>Make ProwJobs the sole source of truth for the context list. GitHub status contexts are used only to enrich existing ProwJob entries (detecting state mismatches). Contexts that exist only on GitHub with no corresponding ProwJob are dropped entirely.</p>
+    </div>
+  </div>
+</div>
+
+<!-- Behavior change -->
+<div class="section">
+  <h2>Behavior change</h2>
+  <div class="behavior-change">
+    <div class="col before">
+      <h4>Before</h4>
+      <ul>
+        <li>Start with <strong>all</strong> GitHub contexts</li>
+        <li>Overlay ProwJob data on matching contexts</li>
+        <li>GitHub-only contexts (stale jobs, external CI) <strong>remain visible</strong></li>
+      </ul>
+    </div>
+    <div class="col after">
+      <h4>After</h4>
+      <ul>
+        <li>Start with <strong>only</strong> current ProwJobs</li>
+        <li>Enrich with GitHub context state for mismatch detection</li>
+        <li>GitHub-only contexts are <strong>silently dropped</strong></li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- Key diff -->
+<div class="section">
+  <h2>Key diff in <code>getFullPRContext()</code></h2>
+  <div class="file-ref">cmd/deck/static/pr/pr.ts:335&ndash;376</div>
+  <pre><span class="ctx"> function getFullPRContext(builds: ProwJob[], contexts: Context[]): UnifiedContext[] {</span>
+<span class="ctx">   const contextMap: Map&lt;string, UnifiedContext&gt; = new Map();</span>
+
+<span class="add">+  // Build contexts strictly from current ProwJobs</span>
+<span class="add">+  for (const build of builds) { ... contextMap.set(context, {...}); }</span>
+
+<span class="add">+  // Enrich with GitHub contexts (no new entries allowed)</span>
+<span class="add">+  if (contexts) {</span>
+<span class="add">+    for (const ghContext of contexts) {</span>
+<span class="add">+      if (ghContext.Context === "tide") continue;</span>
+<span class="add">+      if (!contextMap.has(ghContext.Context)) continue;  // &lt;-- the key change</span>
+<span class="add">+      // detect state mismatch...</span>
+<span class="add">+    }</span>
+<span class="add">+  }</span>
+<span class="ctx">   return Array.from(contextMap.values());</span>
+<span class="ctx"> }</span></pre>
+</div>
+
+<!-- Reviewer Verdicts -->
+<div class="section">
+  <h2>Reviewer verdicts</h2>
+  <div class="reviewer-panel">
+    <div class="reviewer-card">
+      <h4>Code Quality</h4>
+      <div class="reviewer-verdict approve">APPROVE</div>
+      <div class="reviewer-detail">No critical issues. Clean inversion of logic. Pre-existing type safety gaps noted but not regressed.</div>
+    </div>
+    <div class="reviewer-card">
+      <h4>Maintainability</h4>
+      <div class="reviewer-verdict approve">APPROVE</div>
+      <div class="reviewer-detail">LOW burden. Net &minus;5 lines, clearer mental model. Missing tests and dropped TODO noted.</div>
+    </div>
+    <div class="reviewer-card">
+      <h4>Deployment Risk</h4>
+      <div class="reviewer-verdict approve">APPROVE</div>
+      <div class="reviewer-detail">LOW risk. Client-side only, instant rollback. Non-Prow context loss is the key behavioral concern.</div>
+    </div>
+  </div>
+</div>
+
+<!-- Converging Concerns -->
+<div class="section">
+  <h2>Converging concerns</h2>
+  <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:1rem;">Issues independently flagged by multiple reviewers carry the highest confidence.</p>
+
+  <div class="convergence">
+    <h4>Flagged by all 3 reviewers</h4>
+    <ul>
+      <li><strong>Drops all GitHub-only contexts, not just stale Prow ones.</strong> The title says "non-blocking presubmit contexts" but the code drops every GitHub context without a matching ProwJob &mdash; including GitHub Actions, external CI, and third-party bots. The backend (<code>pkg/prstatus/prstatus.go:337-373</code>) fetches both commit statuses and check runs. Installations using Deck as a unified CI dashboard lose visibility into non-Prow checks.</li>
+    </ul>
+  </div>
+
+  <div class="convergence">
+    <h4>Flagged by 2 reviewers (Maintainability + Deployment Risk)</h4>
+    <ul>
+      <li><strong>No unit tests for <code>getFullPRContext()</code>.</strong> Pre-existing gap, but this behavioral change makes coverage more important. The function is pure (Map in, array out) and straightforward to test.</li>
+      <li><strong>Scope broader than title suggests.</strong> Title says "non-blocking" but code drops all GitHub-only contexts indiscriminately, including blocking ones.</li>
+    </ul>
+  </div>
+</div>
+
+<!-- Detailed findings -->
+<div class="section">
+  <h2>Detailed findings</h2>
+
+  <div class="finding critical">
+    <div class="tag">Scope concern &mdash; all 3 reviewers</div>
+    <h3>Drops ALL GitHub-only contexts, not just stale Prow ones</h3>
+    <p>The title says "non-blocking presubmit contexts" but the code drops every GitHub context that lacks a matching ProwJob. This includes contexts from non-Prow CI systems (GitHub Actions, external CI, third-party bots). Deployments using external CI alongside Prow will lose visibility into those contexts in Deck's PR status view.</p>
+    <p><strong>Consider:</strong> Only drop contexts whose name matches Prow job naming conventions (e.g. <code>pull-*</code>), or explicitly document this as an intended limitation and get sign-off.</p>
+  </div>
+
+  <div class="finding warning">
+    <div class="tag">Test coverage &mdash; 2 reviewers</div>
+    <h3>No tests for <code>getFullPRContext()</code></h3>
+    <p>This function has no existing tests, and the PR does not add any. This is a meaningful behavioral change that would benefit from test cases covering: ProwJob-only contexts, GitHub enrichment (match + mismatch), GitHub-only context dropping, and <code>tide</code> filtering. Can be a follow-up PR.</p>
+  </div>
+
+  <div class="finding warning">
+    <div class="tag">Silent failure &mdash; Maintainability</div>
+    <h3>Config errors become invisible</h3>
+    <p>If a ProwJob fails to be created due to a configuration error (not intentional removal), the corresponding GitHub context vanishes from the UI with no trace. This could make debugging configuration issues harder &mdash; the operator sees fewer contexts than expected but has no indication why.</p>
+  </div>
+
+  <div class="finding info">
+    <div class="tag">Removed context &mdash; Maintainability</div>
+    <h3>TODO comment about state equivalence was dropped</h3>
+    <p>The original code had a <code>TODO (qhuynh96)</code> noting that ProwJob states and GitHub context states are not equivalent in some cases. The mismatch detection is preserved, but the caveat is lost. Consider adding a brief note near the <code>as UnifiedState</code> cast at line 367.</p>
+  </div>
+
+  <div class="finding info">
+    <div class="tag">Pre-existing &mdash; Code Quality</div>
+    <h3>Unsafe <code>as UnifiedState</code> type assertion</h3>
+    <p>The cast at line 367 (<code>ghContext.State.toLowerCase() as UnifiedState</code>) is a type assertion without runtime validation. If GitHub ever sends an unexpected state value, it would silently pass. This is pre-existing behavior, not a regression.</p>
+  </div>
+
+  <div class="finding positive">
+    <div class="tag">Positive &mdash; all reviewers</div>
+    <h3>Clean code quality improvement</h3>
+    <p>The refactored function is cleaner and easier to follow. The two-phase "ProwJobs are truth, GitHub enriches" pattern creates a clear mental model. Net &minus;5 lines. Variable renaming (<code>ghContext</code>, <code>prowContext</code>) improves readability. Discrepancy detection and tide filtering are both preserved.</p>
+  </div>
+</div>
+
+<!-- Existing review feedback -->
+<div class="section">
+  <h2>Existing review comments</h2>
+  <div class="existing-review">
+    <div class="reviewer">ivankatliarchuk</div>
+    <p>Raised the same scope concern: the PR title says "non-blocking presubmit contexts" but the change drops all GitHub-only contexts, which could affect required status checks from non-Prow CI.</p>
+  </div>
+</div>
+
+<!-- Suggestions -->
+<div class="section">
+  <h2>Suggestions for the author</h2>
+  <ul class="suggestion-list">
+    <li><strong>Consider preserving non-Prow contexts:</strong> If any installation uses Deck as a unified CI dashboard showing GitHub Actions alongside Prow, this change breaks that view. A simple check &mdash; only dropping GitHub-only contexts that match Prow naming patterns &mdash; would scope the fix more precisely.</li>
+    <li><strong>Add unit tests for <code>getFullPRContext()</code>:</strong> Even a handful of cases covering matching context, orphaned GitHub context, ProwJob without GitHub context, and tide filtering would reduce regression risk. Can be a follow-up PR.</li>
+    <li><strong>Restore the TODO about state non-equivalence:</strong> Add a brief note near the <code>as UnifiedState</code> cast at line 367 so future maintainers know ProwJob/GitHub states are not 1:1 equivalent.</li>
+    <li><strong>Clarify the PR title:</strong> A more accurate title would be something like "deck: use ProwJobs as source of truth for PR status contexts" since the change affects all context types.</li>
+  </ul>
+</div>
+
+<!-- Questions to ask -->
+<div class="section">
+  <h2>Questions for the author</h2>
+  <ul class="checklist">
+    <li>Is dropping <em>all</em> non-ProwJob contexts intentional, or should this be scoped to only Prow-style context names?</li>
+    <li>Are there known deployments of Prow that rely on non-Prow GitHub contexts appearing in Deck's PR status?</li>
+    <li>Would it be feasible to add basic tests for <code>getFullPRContext()</code> given the TypeScript test setup in this repo?</li>
+    <li>The TODO about ProwJob/GitHub state non-equivalence was removed &mdash; has that been resolved, or should the comment be preserved?</li>
+    <li>The PR description mentions follow-up work on Prow comment rebuilding &mdash; does this PR work correctly in isolation without that?</li>
+  </ul>
+</div>
+
+<!-- Deployment Notes -->
+<div class="section">
+  <h2>Deployment notes</h2>
+  <div class="deployment-note">
+    <ul>
+      <li>Client-side only change &mdash; no config migration or downtime required. Takes effect on next Deck deployment.</li>
+      <li>Rollback is instant: redeploy previous Deck image.</li>
+      <li>Operators using Deck's PR status page to view non-Prow CI signals (GitHub Actions, external CI) should be aware those will no longer appear.</li>
+    </ul>
+  </div>
+</div>
+
+<!-- Final Verdict -->
+<div class="section">
+  <div class="verdict-box">
+    <div class="verdict suggestions">APPROVE WITH SUGGESTIONS</div>
+    <p>All three reviewers approved independently. The change is clean, well-motivated, and correctly solves the stale context problem. The converging concern about non-Prow context visibility is worth discussing but is non-blocking given the practical deployment context of this project.</p>
+  </div>
+</div>
+
+<!-- PR Comment Draft -->
+<div class="section">
+  <h2>Draft PR comment</h2>
+  <div class="pr-comment-box">
+    LGTM. The logic inversion in <code>getFullPRContext</code> is clean, well-motivated, and correctly solves the stale non-blocking context problem. No critical issues found.<br><br>
+    Two suggestions worth considering: (1) the change drops all GitHub-only contexts, not just stale non-blocking ones &mdash; if any installation uses Deck to view non-Prow CI, that visibility is lost; and (2) unit tests for <code>getFullPRContext</code> would be valuable given the behavioral change, even as a follow-up.<br><br>
+    Approving as-is since these are non-blocking.
+  </div>
+</div>
+
+</div>
+</body>
+</html>

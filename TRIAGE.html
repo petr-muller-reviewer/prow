@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Triage: kubernetes-sigs/prow#736</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; line-height: 1.6; color: #1f2328; background: #fff; padding: 2rem; }
+  .container { max-width: 52rem; margin: 0 auto; }
+  h1 { font-size: 1.5rem; margin-bottom: 0.5rem; }
+  h2 { font-size: 1.25rem; margin-top: 2rem; margin-bottom: 0.75rem; border-bottom: 1px solid #d1d9e0; padding-bottom: 0.4rem; }
+  h3 { font-size: 1rem; margin-top: 1.25rem; margin-bottom: 0.4rem; }
+  p, li { margin-bottom: 0.4rem; }
+  ul, ol { padding-left: 1.5rem; }
+  a { color: #0969da; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code { font-family: ui-monospace, "SFMono-Regular", "SF Mono", Menlo, Consolas, monospace; font-size: 0.875em; background: #f6f8fa; padding: 0.15em 0.35em; border-radius: 4px; }
+  pre { background: #f6f8fa; padding: 1rem; border-radius: 6px; overflow-x: auto; margin: 0.75rem 0; }
+  pre code { background: none; padding: 0; font-size: 0.8125rem; }
+  .meta { background: #f6f8fa; border: 1px solid #d1d9e0; border-radius: 6px; padding: 1rem 1.25rem; margin-bottom: 1.5rem; }
+  .meta table { border-collapse: collapse; }
+  .meta td { padding: 0.15rem 0.75rem 0.15rem 0; vertical-align: top; }
+  .meta td:first-child { font-weight: 600; white-space: nowrap; }
+  .verdict-box { background: #dafbe1; border: 1px solid #4ac26b; border-radius: 6px; padding: 0.75rem 1.25rem; margin-bottom: 1.5rem; }
+  .verdict-box strong { color: #1a7f37; }
+  .code-ref { font-family: ui-monospace, "SFMono-Regular", "SF Mono", Menlo, Consolas, monospace; font-size: 0.875em; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>Triage: kubernetes-sigs/prow#736</h1>
+
+<div class="meta">
+<table>
+<tr><td>Issue</td><td><a href="https://github.com/kubernetes-sigs/prow/issues/736">kubernetes-sigs/prow#736</a></td></tr>
+<tr><td>Title</td><td>Tide status controller falsely reports "In merge pool." for PRs blocked by a never-triggered required context</td></tr>
+<tr><td>State</td><td>open</td></tr>
+<tr><td>Labels</td><td><em>none</em></td></tr>
+<tr><td>Triaged at</td><td>2026-06-08T19:00:57Z</td></tr>
+<tr><td>Main SHA</td><td><code>9fa65c208d31319fc1d64b01100656a8c7a52199</code></td></tr>
+<tr><td>Verdict</td><td><strong>accepted</strong></td></tr>
+<tr><td>Effort</td><td>Level 2 &mdash; Moderate (help-wanted)</td></tr>
+<tr><td>Assigned</td><td>@valen-mascarenhas14 (self-assigned 2026-06-08)</td></tr>
+</table>
+</div>
+
+<div class="verdict-box">
+<strong>Accepted.</strong> Confirmed bug in the Tide status controller. Two gaps combine to suppress the correct "Not in merge pool" status when a required presubmit is newly added and existing PRs have never triggered it. Fix is a one-line nil-guard in <code>contextCheckerGetterFactory</code>, plus a new test case.
+</div>
+
+<h2>What the issue reports</h2>
+<ul>
+<li>When a presubmit changes from optional to <code>always_run: true</code>, open PRs with all other requirements met get silently stuck: the sync loop filters them out, but the status controller shows "In merge pool."</li>
+<li><code>contextCheckerGetterFactory</code> (<code>status.go:787</code>) overwrites config-derived <code>RequiredContexts</code> with nil for PRs not in the filtered pool, neutering <code>MissingRequiredContexts</code>.</li>
+<li><code>requirementDiff</code> (<code>status.go:228-248</code>) only checks contexts already posted to the commit; a never-triggered job is invisible.</li>
+<li>Both gaps must fire together: the context is absent from the commit (Gap 1) AND the PR is filtered out (Gap 2).</li>
+<li>Observed on <a href="https://github.com/openshift/operator-framework-operator-controller/pull/737">openshift/operator-framework-operator-controller#737</a> after <a href="https://github.com/openshift/release/pull/79764">openshift/release#79764</a> made a presubmit required.</li>
+</ul>
+
+<h2>Analysis</h2>
+
+<h3>Probable cause</h3>
+
+<p>Two gaps combine to produce the false status:</p>
+
+<p><strong>Gap 2 (primary) &mdash; <code>contextCheckerGetterFactory</code> overwrites <code>RequiredContexts</code>:</strong></p>
+<ul>
+<li><code>contextCheckerGetterFactory</code> at <span class="code-ref">pkg/tide/status.go:781-789</span> calls <code>cfg.GetTideContextPolicy()</code> which correctly computes required contexts from Prow config.</li>
+<li>Line 787 then unconditionally overwrites: <code>contextPolicy.RequiredContexts = requiredContexts</code></li>
+<li><code>requiredContexts</code> comes from <code>requiredContextsMap(filteredPools)</code> at <span class="code-ref">pkg/tide/tide.go:814-826</span>, which only has entries for PRs that survived <code>filterSubpools</code>.</li>
+<li>For filtered-out PRs, <code>requiredContexts[prKey(pr)]</code> at <span class="code-ref">pkg/tide/status.go:453</span> returns nil.</li>
+<li><code>MissingRequiredContexts</code> at <span class="code-ref">pkg/config/tide.go:1025-1038</span> early-returns nil when <code>RequiredContexts</code> is empty.</li>
+</ul>
+
+<p><strong>Gap 1 (secondary) &mdash; <code>requirementDiff</code> only sees posted contexts:</strong></p>
+<ul>
+<li><code>requirementDiff</code> at <span class="code-ref">pkg/tide/status.go:228-248</span> calls <code>unsuccessfulContexts</code> which iterates <code>commit.Commit.Status.Contexts</code>.</li>
+<li>A required job that never ran has no GitHub status, so it is invisible.</li>
+<li><code>unsuccessfulContexts</code> at <span class="code-ref">pkg/tide/tide.go:878</span> does call <code>MissingRequiredContexts</code>, but Gap 2 zeroed the list.</li>
+</ul>
+
+<p><strong>Combined effect:</strong> <code>requirementDiff</code> returns <code>diffCount == 0</code>, <code>hasFulfilledQuery = true</code> at <span class="code-ref">status.go:319</span>. Falls through to the <code>MissingRequiredContexts</code> check at line 357 &mdash; still zeroed. Result: <code>StatusSuccess</code> with "In merge pool."</p>
+
+<h3>Related code</h3>
+<table>
+<tr><td><code>pkg/tide/status.go:781-789</code></td><td><code>contextCheckerGetterFactory</code> &mdash; Gap 2 overwrite</td></tr>
+<tr><td><code>pkg/tide/status.go:228-248</code></td><td><code>requirementDiff</code> &mdash; Gap 1 context enumeration</td></tr>
+<tr><td><code>pkg/tide/status.go:270-361</code></td><td><code>expectedStatus</code> &mdash; produces the wrong status</td></tr>
+<tr><td><code>pkg/tide/status.go:429-459</code></td><td><code>setStatuses</code> &mdash; passes nil requiredContexts for filtered PRs</td></tr>
+<tr><td><code>pkg/tide/tide.go:814-826</code></td><td><code>requiredContextsMap</code> &mdash; only iterates filtered-in PRs</td></tr>
+<tr><td><code>pkg/tide/tide.go:577-584</code></td><td>Sync loop &mdash; stores requiredContextsMap from filteredPools</td></tr>
+<tr><td><code>pkg/tide/tide.go:865-889</code></td><td><code>unsuccessfulContexts</code> &mdash; calls <code>MissingRequiredContexts</code></td></tr>
+<tr><td><code>pkg/config/tide.go:1025-1038</code></td><td><code>MissingRequiredContexts</code> &mdash; early-returns nil when empty</td></tr>
+<tr><td><code>pkg/config/tide.go:944-995</code></td><td><code>GetTideContextPolicy</code> &mdash; correctly computes RequiredContexts</td></tr>
+</table>
+
+<h3>Reproducibility</h3>
+<p>Triggered by adding a required presubmit to a repo with open PRs that have all other requirements met. Observed in the OpenShift ecosystem: <a href="https://github.com/openshift/operator-framework-operator-controller/pull/737">openshift/operator-framework-operator-controller#737</a> after <a href="https://github.com/openshift/release/pull/79764">openshift/release#79764</a> made <code>openshift-e2e-aws-techpreview</code> required. Sync loop logged the correct filter-out, but status controller simultaneously reported "In merge pool."</p>
+
+<h3>Test coverage</h3>
+<p>All existing <code>requiredContexts</code> test cases in <code>TestExpectedStatus</code> (<span class="code-ref">status_test.go:525-710</span>) set <code>inPool: true</code>. <code>TestSetStatusRespectsRequiredContexts</code> (<span class="code-ref">status_test.go:2009-2066</span>) also puts the PR in the pool. No test covers the bug scenario: PR not in pool with config-derived required contexts.</p>
+
+<h2>What I checked</h2>
+<ul>
+<li>Verified all code locations cited in the issue against current HEAD (<code>9fa65c2</code>): line numbers shifted (issue says 762, now 787) but code is identical.</li>
+<li>Confirmed <code>unsuccessfulContexts</code> calls <code>MissingRequiredContexts</code> (<code>tide.go:878</code>) &mdash; Gap 1 is effectively fixed once Gap 2 is fixed.</li>
+<li>Confirmed no existing test covers <code>inPool=false</code> with requiredContexts from config.</li>
+<li>Checked <code>filterPR</code> (<code>tide.go:755-793</code>) &mdash; correctly filters PRs with unsuccessful contexts using the subpool's own context checker, not the overwritten one.</li>
+<li>Confirmed @valen-mascarenhas14 self-assigned the issue on 2026-06-08.</li>
+</ul>
+
+<h2>Recommended next steps</h2>
+<ol>
+<li>Apply labels: <code>kind/bug</code>, <code>area/tide</code>, <code>help-wanted</code>.</li>
+<li>Reply to @valen-mascarenhas14 with contributor guidance:
+  <ul>
+  <li>Fix Gap 2 with a nil-guard in <code>contextCheckerGetterFactory</code>: <code>if requiredContexts != nil { contextPolicy.RequiredContexts = requiredContexts }</code></li>
+  <li>Add a <code>TestExpectedStatus</code> case with <code>inPool: false</code> and config-derived required contexts that currently produces "In merge pool." and should produce a "Not in merge pool" status showing the missing context.</li>
+  </ul>
+</li>
+<li>Decide whether Gap 1 defense-in-depth belongs in the same PR or a follow-up.</li>
+</ol>
+
+<h2>Open questions</h2>
+<ul>
+<li>Should the fix use a nil-guard (<code>if requiredContexts != nil</code>) or merge (<code>append</code>)? Nil-guard is simpler, preserves override semantics for in-pool PRs. Merge is more defensive but may produce duplicates.</li>
+<li>Is Gap 1 defense-in-depth worth pursuing separately, or is fixing Gap 2 sufficient since <code>unsuccessfulContexts</code> already calls <code>MissingRequiredContexts</code>?</li>
+</ul>
+
+</div>
+</body>
+</html>

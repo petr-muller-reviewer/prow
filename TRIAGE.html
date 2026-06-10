@@ -31,9 +31,9 @@
   <dl>
     <dt>Issue:</dt><dd><a href="https://github.com/kubernetes-sigs/prow/issues/194">kubernetes-sigs/prow#194</a></dd>
     <dt>Title:</dt><dd>Allow <code>ok-to-test</code> label to approve GitHub workflow runs for new contributors</dd><br>
-    <dt>State:</dt><dd>closed</dd>
+    <dt>State:</dt><dd>open</dd>
     <dt>Labels:</dt><dd>kind/feature, help wanted, sig/contributor-experience, area/plugins</dd><br>
-    <dt>Triaged at:</dt><dd>2026-05-15T10:12:49Z</dd>
+    <dt>Triaged at:</dt><dd>2026-06-10T11:47:52Z</dd>
     <dt>Main SHA:</dt><dd><code>3e578e4f0ad16bb4435dcbf4c52434d9ec34667b</code></dd><br>
     <dt>Verdict:</dt><dd><strong>accepted</strong></dd>
   </dl>
@@ -42,10 +42,10 @@
 <h2>Verdict</h2>
 
 <div class="verdict-box">
-  <strong>Accepted.</strong> The issue is partially implemented. PR #612 added workflow approval on <code>/ok-to-test</code> comment only. Workflow approval does not persist when new commits are pushed to trusted fork PRs. The issue should be reopened.
+  <strong>Accepted.</strong> The issue is partially implemented and now open. PR #612 added workflow approval on <code>/ok-to-test</code> comment only. Workflow approval does not persist when new commits are pushed to trusted fork PRs. Issue reopened by @sbueringer on 2026-06-10.
 </div>
 
-<p>PR <a href="https://github.com/kubernetes-sigs/prow/pull/612">#612</a> merged a one-shot approval mechanism that fires exclusively on the <code>/ok-to-test</code> comment. The trigger plugin's PR event handlers (synchronize, label-added, reopen) start Prow presubmit jobs for trusted PRs but never call <code>approveGitHubActionsWorkflowRuns()</code>. This leaves GitHub Actions workflow runs unapproved when new commits are pushed to fork PRs that already carry the <code>ok-to-test</code> label. Two maintainers (@sbueringer, @stevehipwell) confirmed the gap on 2026-05-13/15 and asked to reopen.</p>
+<p>PR <a href="https://github.com/kubernetes-sigs/prow/pull/612">#612</a> merged a one-shot approval mechanism that fires exclusively on the <code>/ok-to-test</code> comment. The trigger plugin's PR event handlers (synchronize, label-added, reopen) start Prow presubmit jobs for trusted PRs but never call <code>approveGitHubActionsWorkflowRuns()</code>. This leaves GitHub Actions workflow runs unapproved when new commits are pushed to fork PRs that already carry the <code>ok-to-test</code> label. @sbueringer reopened the issue on 2026-06-10T07:58:25Z after confirming the gap persists in production.</p>
 
 <h2>What the issue reports</h2>
 
@@ -55,6 +55,12 @@
   <li>PR #612 implemented approval on the <code>/ok-to-test</code> comment, but the approval does not persist across new commits pushed to the PR.</li>
   <li>Multiple communities (Kubernetes, Volcano, Kubeflow) rely on workarounds (separate GitHub Actions to auto-approve) because the built-in support is incomplete.</li>
   <li>@sbueringer confirmed on 2026-05-13 that he still had to approve actions manually after new commits were pushed on ok-to-test'd PRs.</li>
+</ul>
+
+<p><strong>Since previous triage (2026-05-15):</strong></p>
+<ul>
+  <li>@sbueringer issued <code>/reopen</code> on 2026-06-10T07:58:25Z, citing the earlier comment where the gap was confirmed.</li>
+  <li>Issue state is now <strong>open</strong>; no new labels added.</li>
 </ul>
 
 <h2>Analysis</h2>
@@ -117,8 +123,8 @@
 <h2>Recommended next steps</h2>
 
 <ul>
-  <li>Reopen issue #194 with a comment clarifying the remaining gap: workflow approval must fire on synchronize and label events, not only on the <code>/ok-to-test</code> comment.</li>
-  <li>Wire <code>approveGitHubActionsWorkflowRuns()</code> into <code>buildAllIfTrusted()</code> (covers synchronize, reopen, edit, ready-for-review) and the <code>ok-to-test</code> label handler in <code>pull-request.go</code>.</li>
+  <li>Issue is now open (reopened by @sbueringer on 2026-06-10). Wire <code>approveGitHubActionsWorkflowRuns()</code> into <code>buildAllIfTrusted()</code> (covers synchronize, reopen, edit, ready-for-review) and the <code>ok-to-test</code> label handler in <code>pull-request.go</code>.</li>
+  <li>Leave a comment on the issue documenting the specific gap so contributors know what to implement.</li>
   <li>Decide whether to assign @AaruniAggarwal (PR #612 author) or open for other contributors. Effort level 2 (moderate).</li>
   <li>Investigate timing: <code>GetPendingApprovalActionRuns()</code> may return empty if called before GitHub has created the workflow runs after a push.</li>
 </ul>
@@ -128,7 +134,6 @@
 <ul>
   <li>Should there be a retry/delay mechanism for workflow approval after push events, given that GitHub may not create workflow runs immediately?</li>
   <li>Does <code>GetPendingApprovalActionRuns()</code> need to handle <code>pull_request_target</code> events differently from <code>pull_request</code> events for the push case?</li>
-  <li>Should the issue be reopened or should a new, more specific follow-up issue be filed?</li>
 </ul>
 
 </body>

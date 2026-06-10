@@ -1,11 +1,16 @@
 ---
 issue: kubernetes-sigs/prow#194
 title: "Allow `ok-to-test` label to approve GitHub workflow runs for new contributors #25210"
-state: closed
+state: open
 labels: kind/feature, help wanted, sig/contributor-experience, area/plugins
 main_sha: 3e578e4f0ad16bb4435dcbf4c52434d9ec34667b
-triaged_at: 2026-05-15T10:12:49Z
+triaged_at: 2026-06-10T11:47:52Z
 verdict: accepted
+refresh_log:
+  - at: 2026-05-15T10:12:49Z
+    summary: Initial triage. Issue was closed; identified partial implementation gap in PR #612.
+  - at: 2026-06-10T11:47:52Z
+    summary: Issue reopened by @sbueringer on 2026-06-10T07:58:25Z via /reopen command.
 ---
 
 ## Findings
@@ -97,8 +102,8 @@ verdict: accepted
 
 ## Next steps
 
-- Reopen issue #194 with a comment clarifying the remaining gap: approval must fire on synchronize and label events, not only on `/ok-to-test` comment
-- Wire `approveGitHubActionsWorkflowRuns()` into `buildAllIfTrusted()` (covers synchronize, reopen, edit, ready-for-review) and the `ok-to-test` label handler in `pull-request.go`
+- Issue is now open (reopened by @sbueringer on 2026-06-10). Wire `approveGitHubActionsWorkflowRuns()` into `buildAllIfTrusted()` (covers synchronize, reopen, edit, ready-for-review) and the `ok-to-test` label handler in `pull-request.go`
+- Leave a comment on the issue documenting the specific gap so contributors know what to implement
 - Decide whether to assign @AaruniAggarwal (PR #612 author) or open for other contributors
 - Investigate timing: `GetPendingApprovalActionRuns()` may return empty if called before GitHub creates the workflow runs after a push
 
@@ -106,4 +111,3 @@ verdict: accepted
 
 - Should there be a retry/delay mechanism for workflow approval after push events, given that GitHub may not create workflow runs immediately?
 - Does `GetPendingApprovalActionRuns()` need to handle `pull_request_target` events differently from `pull_request` events for the push case?
-- Should the issue be reopened or should a new, more specific follow-up issue be filed?

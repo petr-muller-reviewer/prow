@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Review: kubernetes-sigs/prow#748</title>
+<style>
+  body { font-family: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+         line-height: 1.55; color: #1f2328; margin: 0; background: #f6f8fa; }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+  header { background: #fff; border: 1px solid #d1d9e0; border-radius: 8px; padding: 1.2rem 1.5rem; margin-bottom: 1.5rem; }
+  header h1 { font-size: 1.25rem; margin: 0 0 .6rem; }
+  header table { border-collapse: collapse; font-size: .9rem; }
+  header td { padding: .1rem .8rem .1rem 0; vertical-align: top; }
+  header td.k { color: #59636e; white-space: nowrap; }
+  code, pre { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace; }
+  code { background: #eff1f3; padding: .1em .35em; border-radius: 4px; font-size: .88em; }
+  pre { background: #f0f3f6; border: 1px solid #d1d9e0; border-radius: 6px; padding: .8rem 1rem;
+        overflow-x: auto; font-size: .82rem; line-height: 1.45; }
+  pre code { background: none; padding: 0; font-size: inherit; }
+  section { background: #fff; border: 1px solid #d1d9e0; border-radius: 8px; padding: 1.2rem 1.5rem; margin-bottom: 1.5rem; }
+  h2 { font-size: 1.1rem; margin: 0 0 .8rem; padding-bottom: .4rem; border-bottom: 1px solid #d1d9e0; }
+  h3 { font-size: .98rem; margin: 1.2rem 0 .4rem; }
+  .verdict { font-size: 1.05rem; font-weight: 600; }
+  .verdict .badge { display: inline-block; background: #d1242f; color: #fff; border-radius: 999px;
+                    padding: .15em .9em; font-size: .85rem; vertical-align: middle; margin-right: .6em; }
+  .sev { display: inline-block; border-radius: 4px; padding: .05em .5em; font-size: .75rem;
+         font-weight: 700; text-transform: uppercase; letter-spacing: .03em; vertical-align: middle; margin-right: .5em; }
+  .sev-blocking { background: #ffebe9; color: #d1242f; border: 1px solid #d1242f; }
+  .sev-nit { background: #fff8c5; color: #7d4e00; border: 1px solid #d4a72c; }
+  .sev-question { background: #ddf4ff; color: #0969da; border: 1px solid #0969da; }
+  .hl { background: #fff2b3; border-radius: 3px; }
+  ul { margin: .4rem 0 .8rem; padding-left: 1.4rem; }
+  li { margin: .25rem 0; }
+  a { color: #0969da; }
+  .muted { color: #59636e; font-size: .9rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>Review: kubernetes-sigs/prow#748 — Fix malformed pagination URL when resp.Request.URL differs from paged Path</h1>
+  <table>
+    <tr><td class="k">PR</td><td><a href="https://github.com/kubernetes-sigs/prow/pull/748">kubernetes-sigs/prow#748</a> (author: jmguzik)</td></tr>
+    <tr><td class="k">Head SHA</td><td><code>75a124c10beae7c575276b7b757b5910f8f526f5</code></td></tr>
+    <tr><td class="k">Base</td><td><code>main</code></td></tr>
+    <tr><td class="k">Reviewed at</td><td><code>2026-06-10T17:05:07Z</code></td></tr>
+    <tr><td class="k">Pending review</td><td><a href="https://github.com/kubernetes-sigs/prow/pull/748#pullrequestreview-4469867265">pullrequestreview-4469867265</a> (draft on GitHub, ready to edit &amp; submit)</td></tr>
+  </table>
+</header>
+
+<section>
+  <h2>Verdict</h2>
+  <p class="verdict"><span class="badge">request changes</span> Fix is correct; the redirect test must be made a real reproducer.</p>
+  <p>The production change in <code>pkg/github/client.go</code> is correct and an improvement in every
+  case I could construct — traced and tested. But the headline regression test,
+  <code>TestReadPaginatedResultsWithRedirect</code>, <strong>passes against the pre-fix code</strong>
+  (verified empirically), so it would not catch a regression of the exact bug this PR fixes.
+  A one-line change to the test's Link header (echo <code>r.URL.RawQuery</code>) makes it
+  fail-before/pass-after — verified both ways.</p>
+</section>
+
+<section>
+  <h2>What this PR does</h2>
+  <ul>
+    <li>In <code>readPaginatedResultsWithValuesWithContext</code> (<code>pkg/github/client.go:1960</code>), the GHE base-path prefix (e.g. <code>/api/v3</code>) was computed as <code>TrimSuffix(resp.Request.URL.RequestURI(), pagedPath)</code>. After an HTTP redirect (repo rename/transfer), <code>resp.Request.URL</code> is the <em>final</em> URL, the suffix doesn't match, <code>prefix</code> becomes the entire response URI, and the subsequent <code>TrimPrefix</code> mangles the next-page Link into e.g. <code>&amp;page=2</code>.</li>
+    <li>That mangled path is concatenated as <code>c.bases[hostIndex]+path</code> (<code>client.go:981</code>), producing <code>https://api.github.com&amp;page=2</code> — a fatal URL-parse/DNS error.</li>
+    <li>Fix: compute the prefix from <strong>paths only</strong> (<code>resp.Request.URL.Path</code> vs. query-stripped <code>pagedPath</code>), making it immune to query-string differences.</li>
+    <li>Adds a safety fallback: if the trimmed next path doesn't start with <code>/</code>, use the Link header's full <code>RequestURI()</code>.</li>
+    <li>Known, documented limitation: GHE <em>plus</em> redirect falls into the fallback and doubles <code>/api/v3</code> → 404 instead of a crash. Acceptable trade; note the 404 also burns <code>max404Retries</code> with backoff before surfacing.</li>
+    <li>Adds two tests: same-path+query pagination, and pagination across a 301 redirect.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Findings</h2>
+
+  <h3><span class="sev sev-blocking">blocking</span> Redirect test passes against pre-fix code — not a regression test</h3>
+  <p><code>pkg/github/client_test.go:1446-1448</code></p>
+  <p>Verified: with <code>git checkout HEAD~1 -- pkg/github/client.go</code>, <strong>both new tests pass</strong>.
+  The old code only breaks when the next Link is a literal <em>extension</em> of the redirected response's
+  RequestURI (GitHub's real behavior: current URL + <code>&amp;page=N</code>). The test's page-1 response URI ends in
+  <code>?per_page=100&amp;protected=false</code> but the Link hardcodes <code>?per_page=100&amp;page=2</code>
+  — so the old <code>TrimPrefix</code> is a no-op and the old code accidentally works.</p>
+  <pre><code>w.Header().Set("Link", fmt.Sprintf(
+    `&lt;https://%s/repos/new-org/new-repo/branches?<span class="hl">per_page=100</span>&amp;page=2&gt;; rel="next"`,
+    r.Host))</code></pre>
+  <p>Suggested (verified: fails on pre-fix code with <code>parse "https://127.0.0.1:&lt;port&gt;&amp;page=2": invalid port</code>, passes with the fix):</p>
+  <pre><code>w.Header().Set("Link", fmt.Sprintf(
+    `&lt;https://%s/repos/new-org/new-repo/branches?<span class="hl">%s</span>&amp;page=2&gt;; rel="next"`,
+    r.Host, <span class="hl">r.URL.RawQuery</span>))</code></pre>
+
+  <h3><span class="sev sev-nit">nit</span> <code>t.Fatalf</code> called from HTTP handler goroutine</h3>
+  <p><code>pkg/github/client_test.go:1390</code> (also 1394, 1454)</p>
+  <pre><code>default:
+    <span class="hl">t.Fatalf("Unexpected request: %s", r.URL.String())</span></code></pre>
+  <p><code>FailNow</code> is only valid from the test goroutine; from an httptest handler it can hang or
+  fail to stop the test. Use <code>t.Errorf</code> — the redirect test's <code>default:</code> branch
+  (lines 1457–1459) does it right. Pre-existing tests in this file share the flaw, so not a blocker.</p>
+
+  <h3><span class="sev sev-nit">nit</span> Redirect test lacks a request-count assertion</h3>
+  <p><code>pkg/github/client_test.go:1484</code></p>
+  <p><code>TestReadPaginatedResultsWithValuesSamePathPagination</code> asserts <code>requestCount == 2</code>;
+  the redirect test could assert 3 (redirect + page1 + page2) — cheap signal that pagination neither looped nor short-circuited.</p>
+
+  <h3><span class="sev sev-nit">nit</span> Rewritten comment lost the concrete examples</h3>
+  <p><code>pkg/github/client.go:1992-2002</code></p>
+  <p>The new comment explains the mechanism well, but the old comment's worked examples
+  (<code>&lt;ghe-url&gt;/api/v3</code> doubling; the <code>api.github.com/repositories/22/...</code> next-link shape)
+  showed <em>why</em> the prefix dance exists. Worth keeping one concrete example.</p>
+
+  <h3><span class="sev sev-question">question</span> SamePathPagination test also passes on old code</h3>
+  <p><code>pkg/github/client_test.go:1376-1427</code></p>
+  <p>Fine as a guard for the previously-uncovered same-path+query case (the existing
+  <code>TestReadPaginatedResults</code> Link headers carry no query strings), but it is not a
+  reproducer of the bug either — don't mistake it for one.</p>
+</section>
+
+<section>
+  <h2>Things I checked and was fine with</h2>
+  <ul>
+    <li>Traced the new prefix logic through: github.com same-path; github.com <code>/repositories/&lt;id&gt;/...</code> next-link shape; GHE with and without query strings; redirect on plain GitHub; GHE+redirect (falls into the documented 404 limitation). All correct.</li>
+    <li>The <code>pagedPath[0] != '/'</code> fallback can't misfire on legitimate GHE links (<code>/api/v3...</code> trims to <code>/...</code>); it fires correctly on redirect-mangled prefixes.</li>
+    <li>URL construction is plain string concat <code>c.bases[hostIndex]+path</code> (<code>client.go:981</code>) — confirms the reported failure mode.</li>
+    <li>Existing pagination tests (including the <code>/api/v3</code> base-suffix case) pass with the new logic; <code>go test -run TestReadPaginated</code> green.</li>
+    <li>Decoded-vs-raw path mismatch (<code>resp.Request.URL.Path</code> is decoded, <code>pagedPath</code> is raw): checked all <code>readPaginatedResults*</code> call sites — none use percent-encoded path segments (escaping appears only in query params, <code>client.go:3651,5187</code>). Theoretical only; <code>EscapedPath()</code> would harden.</li>
+    <li><code>values.Encode()</code> sorts keys, so prefix computation stays consistent on later iterations.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Open questions for the author</h2>
+  <ul>
+    <li>None beyond the findings above — the GHE+redirect limitation is explicitly acknowledged in the PR description and the 404-instead-of-crash trade is acceptable. A pending GitHub review with all of the above (including suggestion blocks) is ready to edit and submit.</li>
+  </ul>
+</section>
+
+<p class="muted">Generated from a local review of worktree <code>748-review</code> at head <code>75a124c</code>.</p>
+
+</div>
+</body>
+</html>

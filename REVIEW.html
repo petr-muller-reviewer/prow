@@ -36,7 +36,8 @@
   <p><strong>Author:</strong> valen-mascarenhas14</p>
   <p><strong>Head SHA:</strong> <code>6770dc470923e3dc1f6a2d3999fa37d411a69daf</code></p>
   <p><strong>Base:</strong> main</p>
-  <p><strong>Reviewed:</strong> 2026-06-09T21:05:16Z</p>
+  <p><strong>Reviewed:</strong> 2026-06-09T21:05:16Z → refreshed 2026-06-12T15:45:34Z</p>
+  <p><strong>State:</strong> <strong style="color:#1a7f37">MERGED</strong> (2026-06-12)</p>
 </div>
 
 <h2>Verdict</h2>
@@ -52,6 +53,13 @@
   value affects PR-to-query ranking, and the duplicated call site creates a maintenance hazard. The factory fix alone
   may be the complete solution.
 </p>
+
+<h2>Since previous review</h2>
+<ul>
+  <li>2026-06-10 to 2026-06-12: author posted three <code>/retest</code> retriggers; no code changes to <code>pkg/tide/</code>.</li>
+  <li>2026-06-12T10:28: <strong>matthyx approved</strong> ("looks good, thanks") without flagging the blocking double-counting finding. PR merged into <code>main</code>.</li>
+  <li>All blocking findings from this review were merged unaddressed. The double-counting of missing required contexts (<code>status.go:235-242</code>) and inflated <code>diff</code> value are now in <code>main</code>.</li>
+</ul>
 
 <h2>What this PR does</h2>
 <ul>

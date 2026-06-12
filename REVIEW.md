@@ -1,11 +1,24 @@
 ---
 pr: kubernetes-sigs/prow#746
 title: "tide: fix status reporting for missing newly required contexts"
-head_sha: 6770dc470923e3dc1f6a2d3999fa37d411a69daf
+head_sha: 1b5bbbf89c719791022f7ae35b6926db186764b3
 base: main
-reviewed_at: 2026-06-09T21:05:16Z
+reviewed_at: 2026-06-12T15:45:34Z
 verdict: request-changes
+state: merged
+refresh_log:
+  - from: 6770dc470923e3dc1f6a2d3999fa37d411a69daf
+    to: 1b5bbbf89c719791022f7ae35b6926db186764b3
+    at: 2026-06-12T15:45:34Z
+    summary: PR merged after matthyx APPROVED (2026-06-12); no tide code changes between SHAs; blocking double-counting finding was not addressed before merge
 ---
+
+## Since previous review
+
+- 2026-06-10 to 2026-06-12: author posted three `/retest` retriggers (CI); no code changes.
+- 2026-06-12T10:18: author pinged @matthyx and @cjwagner for review.
+- 2026-06-12T10:28: matthyx **APPROVED** ("looks good, thanks") without flagging the blocking double-counting finding. The `[APPROVALNOTIFIER]` bot marked the PR approved.
+- PR **merged** into `main` at `1b5bbbf89c719791022f7ae35b6926db186764b3`. No substantive code changes to `pkg/tide/` between the reviewed SHA and merge.
 
 ## Findings
 

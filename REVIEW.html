@@ -121,11 +121,12 @@
 <div class="page">
   <div class="header">
     <h1>Review: <a href="https://github.com/kubernetes-sigs/prow/pull/530">kubernetes-sigs/prow#530</a></h1>
-    <div style="font-size:14px; margin-top:6px; opacity:0.9;">`Peribolos`: enable dry-run mode for GitHub Apps</div>
+    <div style="font-size:14px; margin-top:6px; opacity:0.9;">github: enable dry-run mode when using apps auth</div>
     <div class="meta">
       <span>Head: <code style="background:rgba(255,255,255,0.15); border:none; color:white;">37d005f2</code></span>
       <span>Base: <code style="background:rgba(255,255,255,0.15); border:none; color:white;">main</code></span>
-      <span>Reviewed: 2026-05-26T15:53:09Z</span>
+      <span>Reviewed: 2026-06-15T12:16:44Z</span>
+      <span style="opacity:0.7;">(refreshed; no code changes)</span>
     </div>
   </div>
 
@@ -150,15 +151,18 @@
 
     <h2>Findings</h2>
 
-    <div class="finding">
-      <div class="finding-header">
-        <span class="badge should-fix">should-fix</span>
+    <div class="finding" style="opacity:0.6; border-color:#999;">
+      <div class="finding-header" style="background:#f0f0f0;">
+        <span class="badge" style="background:#ddd; color:#555; border-color:#bbb;">resolved</span>
         <span class="finding-title">Title and description misstate scope of change</span>
       </div>
       <div class="finding-body">
         <div class="finding-where">pkg/github/client.go — shared infrastructure, not Peribolos code</div>
         <div class="finding-concern">
           The change lives in the shared GitHub client used by every Prow component. Any component running <code>--dry-run</code> with GitHub Apps auth is affected — not just Peribolos. The PR title ("Peribolos: enable dry-run mode…") and description do not disclose this. The description should explicitly state that this is a client-layer change with system-wide effect.
+        </div>
+        <div style="margin-top:10px; padding:8px; background:#f0f9f0; border-left:3px solid #28a745; font-size:13px;">
+          <strong>Resolved:</strong> PR title updated to "github: enable dry-run mode when using apps auth" reflecting the pkg/github scope.
         </div>
       </div>
     </div>
@@ -226,8 +230,16 @@
 
     <h2>Open questions for the author</h2>
     <ul class="question-list">
-      <li>Can the PR description be updated to explicitly state that this is a <code>pkg/github</code> client-layer change affecting all Prow components, not just Peribolos? Other component owners may want to know their component's behavior changed.</li>
+      <li>Can the PR description be updated to explicitly state that this is a <code>pkg/github</code> client-layer change affecting all Prow components, not just Peribolos? Other component owners may want to know their component's behavior changed. <em>(Title now updated to reflect pkg/github scope; description update less critical.)</em></li>
       <li>Have components other than Peribolos been considered or tested when running <code>--dry-run</code> with GH Apps auth? What happens in Tide, Sinker, Crier, etc. between successful token acquisition and the first blocked mutation — any reads or side effects that were previously short-circuited by the auth failure?</li>
+    </ul>
+
+    <h2>Activity since first review (2026-05-26)</h2>
+    <ul>
+      <li><strong>2026-05-27:</strong> kaovilai reviewed and commented "Works for me."</li>
+      <li><strong>2026-06-15:</strong> petr-muller approved the PR.</li>
+      <li><strong>2026-06-15:</strong> PR title updated from "<code>Peribolos</code>: enable dry-run mode for GitHub Apps" to "github: enable dry-run mode when using apps auth" — addresses the scope concern.</li>
+      <li><strong>2026-06-15:</strong> petr-muller commented "Let's move forward with this one".</li>
     </ul>
 
   </div>

@@ -1,10 +1,14 @@
 ---
 pr: kubernetes-sigs/prow#530
-title: "`Peribolos`: enable dry-run mode for GitHub Apps"
+title: "github: enable dry-run mode when using apps auth"
 head_sha: 37d005f253997a71541cce48faaf7dbe8272601c
 base: main
-reviewed_at: 2026-05-26T15:53:09Z
+reviewed_at: 2026-06-15T12:16:44Z
 verdict: approve
+refresh_log:
+  - from_sha: 37d005f253997a71541cce48faaf7dbe8272601c
+    to_sha: 37d005f253997a71541cce48faaf7dbe8272601c
+    summary: "No code changes. Title updated to reflect pkg/github scope. Approved by kaovilai (2026-05-27) and petr-muller (2026-06-15)."
 ---
 
 # Review: kubernetes-sigs/prow#530
@@ -19,9 +23,10 @@ verdict: approve
 
 ## Findings
 
-### [should-fix] Title and description misstate scope of change
+### [resolved] Title and description misstate scope of change
 - where: `pkg/github/client.go` (shared infrastructure, not Peribolos code)
 - concern: The change lives in the shared GitHub client used by every Prow component. Any component running `--dry-run` with GitHub Apps auth is affected, not just Peribolos. The PR title and description do not disclose this. Reviewers and future readers will underestimate the blast radius.
+- resolution: PR title updated from "`Peribolos`: enable dry-run mode for GitHub Apps" to "github: enable dry-run mode when using apps auth" reflecting the pkg/github scope.
 
 ### [question] Behavioral change for non-Peribolos components in dry-run + GH Apps
 - where: `pkg/github/client.go:932-950` (request execution path)
@@ -49,5 +54,12 @@ verdict: approve
 
 ## Open questions
 
-- Does the PR description need to state explicitly that this affects all Prow components, not just Peribolos? Other maintainers own those components and may want to know.
+- Does the PR description need to state explicitly that this affects all Prow components, not just Peribolos? Other maintainers own those components and may want to know. *(Title now updated to reflect pkg/github scope; description update less critical.)*
 - Have components other than Peribolos been tested or considered when running `--dry-run` with GH Apps auth? What happens between successful token acquisition and the first blocked mutation in e.g. Tide, Sinker, or Crier?
+
+## Activity since first review
+
+- 2026-05-27: kaovilai reviewed and commented "Works for me."
+- 2026-06-15: petr-muller approved
+- 2026-06-15: PR title updated from "`Peribolos`: enable dry-run mode for GitHub Apps" to "github: enable dry-run mode when using apps auth" (addresses scope concern)
+- 2026-06-15: petr-muller comment "Let's move forward with this one"

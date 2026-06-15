@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Review: kubernetes-sigs/prow#733</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; line-height: 1.6; color: #24292e; max-width: 860px; margin: 40px auto; padding: 0 20px; }
+  h1 { font-size: 1.4em; margin-bottom: 4px; }
+  h2 { font-size: 1.1em; border-bottom: 1px solid #e1e4e8; padding-bottom: 6px; margin-top: 32px; }
+  h3 { font-size: 1em; margin: 16px 0 4px; }
+  code, pre { font-family: "SFMono-Regular", Consolas, monospace; font-size: 0.88em; background: #f6f8fa; border-radius: 3px; }
+  code { padding: 2px 5px; }
+  pre { padding: 12px 16px; overflow-x: auto; border: 1px solid #e1e4e8; }
+  .meta { background: #f6f8fa; border: 1px solid #e1e4e8; border-radius: 6px; padding: 14px 18px; margin-bottom: 24px; font-size: 0.9em; }
+  .meta a { color: #0366d6; text-decoration: none; }
+  .meta a:hover { text-decoration: underline; }
+  .meta table { border-collapse: collapse; }
+  .meta td { padding: 2px 12px 2px 0; vertical-align: top; }
+  .meta td:first-child { font-weight: 600; color: #586069; white-space: nowrap; }
+  .verdict { border-left: 4px solid #28a745; background: #f0fff4; padding: 14px 18px; border-radius: 0 6px 6px 0; margin: 16px 0; }
+  .verdict-label { font-weight: 700; font-size: 1.1em; color: #22863a; }
+  .finding { margin: 16px 0; border: 1px solid #e1e4e8; border-radius: 6px; overflow: hidden; }
+  .finding-header { padding: 8px 14px; font-weight: 600; font-size: 0.9em; }
+  .finding-body { padding: 10px 14px; font-size: 0.92em; }
+  .finding-body p { margin: 4px 0; }
+  .sev-nit { background: #f6f8fa; border-color: #959da5; }
+  .sev-nit .finding-header { background: #6a737d; color: #fff; }
+  .sev-question { background: #f1f8ff; border-color: #0366d6; }
+  .sev-question .finding-header { background: #0366d6; color: #fff; }
+  .convergence { background: #fff8c5; border: 1px solid #d4a017; border-radius: 6px; padding: 10px 14px; margin: 8px 0; font-size: 0.9em; }
+  .convergence strong { color: #8a6914; }
+  ul { margin: 6px 0; padding-left: 22px; }
+  li { margin: 4px 0; }
+  .file-ref { font-family: "SFMono-Regular", Consolas, monospace; font-size: 0.85em; background: #f6f8fa; padding: 1px 5px; border: 1px solid #e1e4e8; border-radius: 3px; }
+  .hl { background: #fffbdd; }
+</style>
+</head>
+<body>
+
+<div class="meta">
+  <table>
+    <tr><td>PR</td><td><a href="https://github.com/kubernetes-sigs/prow/pull/733">kubernetes-sigs/prow#733</a></td></tr>
+    <tr><td>Title</td><td><strong>auxiliary extra_refs</strong></td></tr>
+    <tr><td>Author</td><td>@pohly (Patrick Ohly)</td></tr>
+    <tr><td>Base</td><td><code>main</code></td></tr>
+    <tr><td>Head SHA</td><td><code>5f29693a9de3c261031aee93a1079edd8415317d</code></td></tr>
+    <tr><td>Reviewed at</td><td>2026-06-02T23:41:37Z <span style="color:#586069;font-size:0.9em">(refreshed from 2026-05-28T23:19:12Z)</span></td></tr>
+    <tr><td>Method</td><td>Multi-perspective maintainer review (Code Quality + Maintainability + Deployment Risk)</td></tr>
+  </table>
+</div>
+
+<h2>Verdict</h2>
+<div class="verdict">
+  <div class="verdict-label">APPROVE WITH SUGGESTIONS</div>
+  <p>All three reviewer perspectives independently approved. The change is minimal, correct, and strictly backward-compatible. Two converging concerns — an untested all-auxiliary edge case and a missing <code>SpecToStarted</code>-level test — are worth addressing as follow-ups but do not block merge. No critical issues, no breaking changes, risk level LOW.</p>
+</div>
+
+<h2>Activity since previous review</h2>
+<ul>
+  <li><strong>No code changes</strong> — SHA unchanged (<code>5f29693a</code>).</li>
+  <li>2026-06-01: @petr-muller posted <code>/cc</code> (reviewer assignment bot command). No substantive discussion.</li>
+  <li>No new reviews or inline comments.</li>
+</ul>
+
+<h2>What this PR does</h2>
+<ul>
+  <li>Adds <code>Auxiliary bool</code> (with <code>omitempty</code>) to the <code>Refs</code> struct so job authors can tag <code>extra_refs</code> entries that only provide tooling/helper files rather than the thing being tested.</li>
+  <li>Changes <code>mainRefs()</code> in <code>downwardapi/jobspec.go</code> from returning <code>&amp;extra[0]</code> unconditionally to iterating and skipping auxiliary entries, so the version recorded in <code>started.json</code> reflects the actual test target.</li>
+  <li>Updates the CRD YAML in both locations where <code>Refs</code> appears, with identical field descriptions.</li>
+  <li>Adds two new test cases: a regression guard for first-of-many behavior, and a direct test of auxiliary skipping.</li>
+  <li>Zero breaking change: the bool zero value (<code>false</code>) means all existing jobs behave identically.</li>
+</ul>
+
+<h2>Findings</h2>
+
+<h3>Nits</h3>
+
+<div class="finding sev-nit">
+  <div class="finding-header">NIT — All-auxiliary edge case is untested and silent <span style="font-weight:normal;font-size:0.85em">(converging: all 3 reviewers)</span></div>
+  <div class="finding-body">
+    <div class="convergence"><strong>Converging concern</strong> — flagged independently by Code Quality, Maintainability, and Deployment Risk reviewers.</div>
+    <p><span class="file-ref">pkg/pod-utils/downwardapi/jobspec.go:232-241</span></p>
+    <pre>for i := range extra {
+    if !extra[i].Auxiliary {
+        return &amp;extra[i]
+    }
+}
+return nil   <span class="hl">// no warning, no log</span></pre>
+    <p>When all <code>ExtraRefs</code> have <code>Auxiliary: true</code> and <code>ProwJobSpec.Refs</code> is nil, <code>mainRefs()</code> returns nil → version becomes <code>""</code> → <code>started.json</code> gets an empty version. This misconfiguration is now much easier to accidentally reach with the new field, but there's no test documenting the behavior and no log warning. Suggested fix: add a test case with expected <code>""</code>, and optionally a debug-level log in <code>refsToStarted</code> when version remains empty.</p>
+  </div>
+</div>
+
+<div class="finding sev-nit">
+  <div class="finding-header">NIT — Missing SpecToStarted-level test for auxiliary skipping <span style="font-weight:normal;font-size:0.85em">(converging: Code Quality + Maintainability)</span></div>
+  <div class="finding-body">
+    <div class="convergence"><strong>Converging concern</strong> — flagged by Code Quality and Maintainability reviewers.</div>
+    <p><span class="file-ref">pkg/pod-utils/downwardapi/jobspec_test.go</span></p>
+    <p>The feature's stated purpose is what ends up in <code>started.json</code>, but tests only exercise <code>GetRevisionFromSpec</code>. The <code>refsToStarted</code> path (called by <code>SpecToStarted</code>/<code>PjToStarted</code>) calls <code>mainRefs</code> directly and is not tested with an auxiliary first extra_ref and non-auxiliary second extra_ref. An explicit <code>SpecToStarted</code> test case would document the intended behavior at the serialization boundary.</p>
+  </div>
+</div>
+
+<div class="finding sev-nit">
+  <div class="finding-header">NIT — Auxiliary on primary Refs is silently a no-op, undocumented</div>
+  <div class="finding-body">
+    <p><span class="file-ref">pkg/apis/prowjobs/v1/types.go:1225-1236</span> &amp; <span class="file-ref">pkg/pod-utils/downwardapi/jobspec.go:232-234</span></p>
+    <pre>func mainRefs(refs *prowapi.Refs, extra []prowapi.Refs) *prowapi.Refs {
+    if refs != nil {
+        return refs   <span class="hl">// Auxiliary on primary refs is never checked</span>
+    }</pre>
+    <p>Setting <code>auxiliary: true</code> on <code>pj.spec.refs</code> (the primary ref) has no effect — <code>mainRefs</code> short-circuits before checking the flag. The field doc comment says "first repository where Auxiliary is false or unset is considered the main repository" but doesn't clarify this only applies to <code>ExtraRefs</code> elements. A sentence like "This field has no effect when set on <code>ProwJobSpec.Refs</code>; it is only meaningful on elements of <code>ExtraRefs</code>" would prevent operator confusion.</p>
+  </div>
+</div>
+
+<div class="finding sev-nit">
+  <div class="finding-header">NIT — "Refs from many extra_refs" test name is ambiguous</div>
+  <div class="finding-body">
+    <p><span class="file-ref">pkg/pod-utils/downwardapi/jobspec_test.go:327-338</span></p>
+    <p>This test case validates pre-existing behavior (first of multiple non-auxiliary extra_refs is chosen), not new behavior introduced by this PR. The name doesn't signal it's a regression guard. A one-line comment — <code>// pre-existing behavior: first non-auxiliary extra_ref wins</code> — would help future readers distinguish it from the actual new-behavior test.</p>
+  </div>
+</div>
+
+<h3>Questions</h3>
+
+<div class="finding sev-question">
+  <div class="finding-header">QUESTION — Should config validation reject Auxiliary on primary refs?</div>
+  <div class="finding-body">
+    <p><span class="file-ref">pkg/config/</span> (not changed in this PR)</p>
+    <p>The Maintainability reviewer suggested adding a validation warning when <code>auxiliary: true</code> is set on <code>ProwJobSpec.Refs</code> directly. This would catch the misconfiguration at config load time rather than silently doing nothing. Follow-up issue or this PR?</p>
+  </div>
+</div>
+
+<div class="finding sev-question">
+  <div class="finding-header">QUESTION — GCS reporter path not exercised with auxiliary refs</div>
+  <div class="finding-body">
+    <p><span class="file-ref">pkg/crier/reporters/gcs/reporter.go:118</span></p>
+    <pre>staticRevision := downwardapi.GetRevisionFromRefs(pj.Spec.Refs, pj.Spec.ExtraRefs)</pre>
+    <p>Logically covered via the shared function, but the GCS reporter's test suite doesn't exercise this call site with auxiliary extra_refs set. Low risk; worth a follow-up test.</p>
+  </div>
+</div>
+
+<h2>Things I checked and was fine with</h2>
+<ul>
+  <li><strong><code>shaForRefs</code> + <code>reflect.DeepEqual</code></strong>: <code>clone.Record.Refs</code> is populated from the same <code>prowapi.Refs</code> struct, so <code>Auxiliary</code> will be consistent on both sides of the comparison — no phantom mismatch.</li>
+  <li><strong>Auxiliary refs still in <code>started.Repos</code></strong>: <code>refsToStarted</code> includes all extra_refs in the repos map regardless of <code>Auxiliary</code>. Correct — those repos were cloned; only version selection is affected.</li>
+  <li><strong>Both CRD YAML locations updated</strong>: extra_refs array items and top-level refs field, identical descriptions, no drift.</li>
+  <li><strong>Loop uses <code>&amp;extra[i]</code></strong>: correctly takes the address of the slice element, not a loop variable copy — avoids the classic Go address-of-loop-variable bug.</li>
+  <li><strong><code>omitempty</code> backward compatibility</strong>: false (zero value) is never serialized; existing configs round-trip identically.</li>
+  <li><strong><code>bool</code> field (not pointer)</strong>: no changes needed to generated <code>DeepCopy</code> code.</li>
+  <li><strong>CRD updated in the same PR</strong>: avoids API server rejecting the new field in the Go type.</li>
+  <li><strong>Field only affects version reporting, not cloning</strong>: <code>clonerefs</code> does not read <code>Auxiliary</code>; auxiliary repos are still fully cloned.</li>
+  <li><strong>Both <code>mainRefs</code> call sites covered</strong>: <code>GetRevisionFromRefs</code> and <code>refsToStarted</code> both go through the updated function.</li>
+</ul>
+
+<h2>Open questions for the author</h2>
+<ul>
+  <li>When all extra_refs are auxiliary and no primary <code>Refs</code> exists, <code>started.json</code> gets an empty version string. Is this acceptable for the use cases described (kubetest2 always overwrites via <code>metadata.json</code>), or should Prow log a warning?</li>
+  <li>Should <code>Auxiliary: true</code> on <code>ProwJobSpec.Refs</code> (the primary ref, not extra_refs) be explicitly rejected at config validation time, or is a doc comment clarification sufficient?</li>
+  <li>Is there an issue or follow-up planned to document this field in Prow's job configuration docs for operators writing YAML who don't read source?</li>
+</ul>
+
+</body>
+</html>

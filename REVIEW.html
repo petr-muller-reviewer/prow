@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PR #573 Review — Backend HTTPS for Prow Ingress</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --border: #30363d;
+    --text: #c9d1d9;
+    --text-muted: #8b949e;
+    --accent: #58a6ff;
+    --red: #f85149;
+    --orange: #d29922;
+    --green: #3fb950;
+    --purple: #bc8cff;
+    --cyan: #39d2c0;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    padding: 2rem;
+    max-width: 960px;
+    margin: 0 auto;
+  }
+  h1 {
+    font-size: 1.6rem;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0.75rem;
+    margin-bottom: 0.5rem;
+  }
+  .pr-meta {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    margin-bottom: 2rem;
+  }
+  .pr-meta a { color: var(--accent); text-decoration: none; }
+  .pr-meta a:hover { text-decoration: underline; }
+
+  h2 {
+    font-size: 1.15rem;
+    margin-top: 2rem;
+    margin-bottom: 0.75rem;
+    color: var(--accent);
+  }
+  h3 {
+    font-size: 1rem;
+    margin-top: 1.25rem;
+    margin-bottom: 0.5rem;
+    color: var(--text);
+  }
+
+  .recommendation-box {
+    background: rgba(248,81,73,0.1);
+    border: 2px solid var(--red);
+    border-radius: 8px;
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+  .recommendation-box h2 {
+    color: var(--red);
+    margin-top: 0;
+    font-size: 1.25rem;
+  }
+  .recommendation-box .rationale {
+    margin-top: 0.5rem;
+    font-size: 0.92rem;
+  }
+
+  .convergence-box {
+    background: rgba(248,81,73,0.06);
+    border: 1px solid rgba(248,81,73,0.3);
+    border-radius: 6px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+  }
+  .convergence-box strong { color: var(--red); }
+  .convergence-box ul { margin-left: 1.25rem; margin-top: 0.4rem; }
+  .convergence-box li { margin-bottom: 0.4rem; }
+  .reviewer-tags {
+    display: inline;
+    font-size: 0.7rem;
+    font-weight: 600;
+  }
+  .reviewer-tag {
+    display: inline-block;
+    font-size: 0.65rem;
+    font-weight: 600;
+    padding: 0.1em 0.45em;
+    border-radius: 8px;
+    margin-left: 0.25rem;
+    vertical-align: middle;
+  }
+  .reviewer-tag-cq  { background: #1f6feb; color: #fff; }
+  .reviewer-tag-mt  { background: #8957e5; color: #fff; }
+  .reviewer-tag-dr  { background: #da3633; color: #fff; }
+
+  .issue {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1rem;
+    position: relative;
+  }
+  .issue summary {
+    cursor: pointer;
+    list-style: none;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+  }
+  .issue summary::-webkit-details-marker { display: none; }
+  .issue summary::before {
+    content: '\25B6';
+    font-size: 0.65rem;
+    margin-top: 0.35rem;
+    transition: transform 0.15s;
+    flex-shrink: 0;
+  }
+  .issue[open] summary::before { transform: rotate(90deg); }
+
+  .issue-title {
+    font-weight: 600;
+    font-size: 0.95rem;
+  }
+  .badge {
+    display: inline-block;
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 0.15em 0.55em;
+    border-radius: 10px;
+    margin-left: 0.5rem;
+    vertical-align: middle;
+    position: relative;
+    top: -1px;
+  }
+  .badge-blocker  { background: var(--red);    color: #fff; }
+  .badge-major    { background: var(--orange);  color: #000; }
+  .badge-minor    { background: var(--purple);  color: #fff; }
+  .badge-nit      { background: var(--border);  color: var(--text); }
+  .badge-good     { background: var(--green);   color: #000; }
+
+  .issue-body {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border);
+    font-size: 0.9rem;
+  }
+  .issue-body p { margin-bottom: 0.6rem; }
+
+  .file-ref {
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    font-size: 0.82rem;
+    color: var(--cyan);
+  }
+
+  pre {
+    background: #0d1117;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 0.75rem 1rem;
+    overflow-x: auto;
+    font-size: 0.82rem;
+    margin: 0.5rem 0 0.75rem;
+  }
+  code {
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    font-size: 0.85em;
+    background: rgba(110,118,129,0.15);
+    padding: 0.15em 0.35em;
+    border-radius: 3px;
+  }
+  pre code { background: none; padding: 0; }
+
+  .checklist {
+    list-style: none;
+    margin: 0.5rem 0;
+  }
+  .checklist li {
+    position: relative;
+    padding-left: 1.75rem;
+    margin-bottom: 0.35rem;
+    font-size: 0.9rem;
+  }
+  .checklist li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0.3rem;
+    width: 1rem;
+    height: 1rem;
+    border: 1.5px solid var(--border);
+    border-radius: 3px;
+    background: var(--surface);
+  }
+  .checklist li input[type="checkbox"] {
+    position: absolute;
+    left: 0;
+    top: 0.3rem;
+    width: 1rem;
+    height: 1rem;
+    opacity: 0;
+    cursor: pointer;
+    z-index: 1;
+  }
+  .checklist li input[type="checkbox"]:checked + span {
+    text-decoration: line-through;
+    color: var(--text-muted);
+  }
+  .checklist li input[type="checkbox"]:checked ~ .badge { opacity: 0.4; }
+  .checklist li input[type="checkbox"]:checked ~ .reviewer-tags .reviewer-tag { opacity: 0.4; }
+  .checklist li:has(input:checked)::before {
+    background: var(--green);
+    border-color: var(--green);
+  }
+  .checklist li:has(input:checked)::after {
+    content: '\2713';
+    position: absolute;
+    left: 0.2rem;
+    top: 0.15rem;
+    font-size: 0.75rem;
+    color: #000;
+    font-weight: bold;
+  }
+
+  .positives {
+    background: rgba(63,185,80,0.08);
+    border: 1px solid rgba(63,185,80,0.25);
+    border-radius: 6px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1rem;
+  }
+  .positives ul { margin-left: 1.25rem; margin-top: 0.4rem; }
+  .positives li { margin-bottom: 0.3rem; font-size: 0.9rem; }
+
+  .prior-reviews {
+    background: rgba(88,166,255,0.08);
+    border: 1px solid rgba(88,166,255,0.25);
+    border-radius: 6px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+  }
+  .prior-reviews ul { margin-left: 1.25rem; margin-top: 0.4rem; }
+  .prior-reviews li { margin-bottom: 0.3rem; }
+
+  .perspective-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+  }
+  .perspective-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.85rem 1rem;
+  }
+  .perspective-card h4 {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-bottom: 0.35rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .perspective-card .verdict {
+    font-weight: 700;
+    font-size: 0.9rem;
+    margin-bottom: 0.25rem;
+  }
+  .verdict-rc { color: var(--red); }
+  .verdict-approve { color: var(--green); }
+  .perspective-card .detail {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+  }
+
+  .deploy-notes {
+    background: rgba(210,153,34,0.08);
+    border: 1px solid rgba(210,153,34,0.25);
+    border-radius: 6px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+  }
+  .deploy-notes ul { margin-left: 1.25rem; margin-top: 0.4rem; }
+  .deploy-notes li { margin-bottom: 0.3rem; }
+
+  .pr-comment-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1rem;
+    font-size: 0.88rem;
+    position: relative;
+  }
+  .pr-comment-box::before {
+    content: 'PR Comment Draft';
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    margin-bottom: 0.6rem;
+  }
+  .pr-comment-box .copy-btn {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    background: var(--border);
+    color: var(--text);
+    border: none;
+    border-radius: 4px;
+    padding: 0.3em 0.6em;
+    font-size: 0.72rem;
+    cursor: pointer;
+  }
+  .pr-comment-box .copy-btn:hover { background: var(--text-muted); color: var(--bg); }
+
+  footer {
+    margin-top: 3rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+    color: var(--text-muted);
+    font-size: 0.8rem;
+  }
+</style>
+</head>
+<body>
+
+<h1>PR #573 &mdash; Adding option to enable Back End HTTPS for Prow Ingress</h1>
+<div class="pr-meta">
+  <a href="https://github.com/kubernetes-sigs/prow/pull/573">kubernetes-sigs/prow#573</a>
+  &middot; Author: <strong>NiJuFirenzia</strong>
+  &middot; +479 / -13
+  &middot; Addresses <a href="https://github.com/kubernetes-sigs/prow/issues/328">#328</a>
+  &middot; Files: <code>cmd/deck/</code>, <code>cmd/hook/</code>, <code>pkg/flagutil/ssl.go</code>
+</div>
+
+<!-- ============================================================ -->
+<div class="recommendation-box">
+  <h2>Recommendation: REQUEST_CHANGES</h2>
+  <p class="rationale">
+    All three independent reviewers converge on the same core issues: the <code>--client-cert-file</code> flag is semantically misleading (it's a CA cert, not a client cert for mTLS), and the <code>AppendCertsFromPEM</code> return value is silently ignored, producing cryptic failures in production. While deployment risk is low (purely opt-in), this PR introduces TLS infrastructure that operators will rely on for security-critical paths &mdash; naming precision and fail-fast behavior are essential. The required changes are straightforward and should not need significant rework.
+  </p>
+</div>
+
+<!-- ============================================================ -->
+<h2>Reviewer Perspectives</h2>
+<div class="perspective-grid">
+  <div class="perspective-card">
+    <h4>Code Quality</h4>
+    <div class="verdict verdict-rc">REQUEST_CHANGES</div>
+    <div class="detail">Unchecked <code>AppendCertsFromPEM</code> return, misleading flag naming, incorrect error messages</div>
+  </div>
+  <div class="perspective-card">
+    <h4>Maintainability</h4>
+    <div class="verdict verdict-rc">REQUEST_CHANGES</div>
+    <div class="detail">MEDIUM burden &mdash; naming confusion will cause ongoing support costs; TLS client logic trapped in cmd/deck</div>
+  </div>
+  <div class="perspective-card">
+    <h4>Deployment Risk</h4>
+    <div class="verdict verdict-approve">LOW RISK</div>
+    <div class="detail">Purely opt-in via new flags. Zero behavioral change for existing deployments.</div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<h2>Converging Concerns</h2>
+<div class="convergence-box">
+  <p><strong>Issues flagged independently by 2+ reviewers carry the highest confidence:</strong></p>
+  <ul>
+    <li>
+      <code>--client-cert-file</code> is misnamed &mdash; it's a CA cert, not a client cert
+      <span class="reviewer-tags">
+        <span class="reviewer-tag reviewer-tag-cq">Code Quality</span>
+        <span class="reviewer-tag reviewer-tag-mt">Maintainability</span>
+        <span class="reviewer-tag reviewer-tag-dr">Deployment Risk</span>
+      </span>
+    </li>
+    <li>
+      <code>AppendCertsFromPEM</code> return value silently ignored &mdash; cryptic runtime failures
+      <span class="reviewer-tags">
+        <span class="reviewer-tag reviewer-tag-cq">Code Quality</span>
+        <span class="reviewer-tag reviewer-tag-mt">Maintainability</span>
+      </span>
+    </li>
+    <li>
+      Validation over-couples server TLS and hook CA cert; error message is incorrect
+      <span class="reviewer-tags">
+        <span class="reviewer-tag reviewer-tag-cq">Code Quality</span>
+        <span class="reviewer-tag reviewer-tag-mt">Maintainability</span>
+        <span class="reviewer-tag reviewer-tag-dr">Deployment Risk</span>
+      </span>
+    </li>
+    <li>
+      No <code>os.Stat</code> file existence check in <code>SSLOptions.Validate</code>
+      <span class="reviewer-tags">
+        <span class="reviewer-tag reviewer-tag-cq">Code Quality</span>
+        <span class="reviewer-tag reviewer-tag-mt">Maintainability</span>
+      </span>
+    </li>
+    <li>
+      <code>sslEnabledSchema</code> should be <code>sslEnabledScheme</code>
+      <span class="reviewer-tags">
+        <span class="reviewer-tag reviewer-tag-cq">Code Quality</span>
+        <span class="reviewer-tag reviewer-tag-mt">Maintainability</span>
+      </span>
+    </li>
+  </ul>
+</div>
+
+<!-- ============================================================ -->
+<h2>Activity Since Previous Review</h2>
+<div class="deploy-notes">
+  <p>Since previous review (2026-06-01):</p>
+  <ul>
+    <li><strong>Force-push (rebase)</strong>: PR rebased onto newer main (<code>53a81071b</code> &rarr; <code>814fb94b8</code>). The PR-specific code in <code>cmd/deck/</code>, <code>cmd/hook/</code>, and <code>pkg/flagutil/ssl.go</code> is unchanged &mdash; same 2 commits.</li>
+    <li><strong>Author comment (2026-06-12)</strong>: @NiJuFirenzia explained the motivation &mdash; Fidelity Investments has a corporate policy requiring backend HTTPS on all ingresses. Without this feature, the ingress cannot connect to deck/hook pods over HTTP. Author agreed to make changes and add documentation.</li>
+    <li>No new reviews or inline comments since the review.</li>
+    <li>All prior findings remain unaddressed in code.</li>
+  </ul>
+</div>
+
+<!-- ============================================================ -->
+<h2>Prior Review Context</h2>
+<div class="prior-reviews">
+  <p>Reviews from <strong>@ivankatliarchuk</strong> (changes requested) and <strong>@petr-muller</strong> (commented). Key points already raised:</p>
+  <ul>
+    <li><code>--client-cert-file</code> naming confusion (CA cert vs. client cert / mTLS)</li>
+    <li>Dead <code>cert</code> field on <code>helpAgent</code></li>
+    <li>Coupling between <code>--server-cert-file</code> and <code>--client-cert-file</code></li>
+    <li>Renamed <code>SSLEnablementOptions</code> &rarr; <code>SSLOptions</code>, removed <code>--enable-ssl</code> boolean (done in latest push)</li>
+    <li><code>sslEnabledSchema</code> &rarr; should be <code>Scheme</code></li>
+    <li>Missing file existence checks in <code>Validate</code></li>
+  </ul>
+</div>
+
+<!-- ============================================================ -->
+<h2>Review Checklist</h2>
+
+<h3>Required Changes</h3>
+<ul class="checklist">
+  <li>
+    <input type="checkbox"><span>Rename <code>--client-cert-file</code> to <code>--hook-ca-cert-file</code></span>
+    <span class="badge badge-blocker">blocker</span>
+    <span class="reviewer-tags">
+      <span class="reviewer-tag reviewer-tag-cq">CQ</span>
+      <span class="reviewer-tag reviewer-tag-mt">MT</span>
+      <span class="reviewer-tag reviewer-tag-dr">DR</span>
+    </span>
+  </li>
+  <li>
+    <input type="checkbox"><span>Check <code>AppendCertsFromPEM</code> return value; fail if no certs parsed</span>
+    <span class="badge badge-blocker">blocker</span>
+    <span class="reviewer-tags">
+      <span class="reviewer-tag reviewer-tag-cq">CQ</span>
+      <span class="reviewer-tag reviewer-tag-mt">MT</span>
+    </span>
+  </li>
+  <li>
+    <input type="checkbox"><span>Decouple server TLS from hook CA cert validation; fix error message</span>
+    <span class="badge badge-blocker">blocker</span>
+    <span class="reviewer-tags">
+      <span class="reviewer-tag reviewer-tag-cq">CQ</span>
+      <span class="reviewer-tag reviewer-tag-mt">MT</span>
+      <span class="reviewer-tag reviewer-tag-dr">DR</span>
+    </span>
+  </li>
+  <li>
+    <input type="checkbox"><span>Add <code>os.Stat</code> file existence checks in <code>SSLOptions.Validate</code></span>
+    <span class="badge badge-major">major</span>
+    <span class="reviewer-tags">
+      <span class="reviewer-tag reviewer-tag-cq">CQ</span>
+      <span class="reviewer-tag reviewer-tag-mt">MT</span>
+    </span>
+  </li>
+  <li>
+    <input type="checkbox"><span>Fix <code>sslEnabledSchema</code> &rarr; <code>sslEnabledScheme</code></span>
+    <span class="badge badge-major">major</span>
+    <span class="reviewer-tags">
+      <span class="reviewer-tag reviewer-tag-cq">CQ</span>
+      <span class="reviewer-tag reviewer-tag-mt">MT</span>
+    </span>
+  </li>
+</ul>
+
+<h3>Additional Issues</h3>
+<ul class="checklist">
+  <li>
+    <input type="checkbox"><span>Dead <code>cert</code> field on <code>helpAgent</code> &mdash; set but never read</span>
+    <span class="badge badge-major">major</span>
+  </li>
+  <li>
+    <input type="checkbox"><span>Test uses <code>"dummy cert content"</code> (not valid PEM) &mdash; fragile once return check is added</span>
+    <span class="badge badge-major">major</span>
+    <span class="reviewer-tags">
+      <span class="reviewer-tag reviewer-tag-cq">CQ</span>
+    </span>
+  </li>
+  <li>
+    <input type="checkbox"><span>Rename <code>isHttpsPath</code> &rarr; <code>isHTTPSPath</code> (Go initialism convention)</span>
+    <span class="badge badge-minor">minor</span>
+    <span class="reviewer-tags">
+      <span class="reviewer-tag reviewer-tag-cq">CQ</span>
+      <span class="reviewer-tag reviewer-tag-mt">MT</span>
+    </span>
+  </li>
+  <li>
+    <input type="checkbox"><span>Use <code>&amp;http.Client{}</code> instead of <code>http.DefaultClient</code></span>
+    <span class="badge badge-minor">minor</span>
+  </li>
+  <li>
+    <input type="checkbox"><span>Direct unit tests for <code>isHttpsPath</code> (edge cases)</span>
+    <span class="badge badge-minor">minor</span>
+  </li>
+  <li>
+    <input type="checkbox"><span>Comment style: <code>//Set</code> &rarr; <code>// Set</code></span>
+    <span class="badge badge-nit">nit</span>
+  </li>
+  <li>
+    <input type="checkbox"><span>Import grouping in <code>pluginhelp_test.go</code></span>
+    <span class="badge badge-nit">nit</span>
+  </li>
+  <li>
+    <input type="checkbox"><span>Test naming convention (underscored PascalCase vs. repo style)</span>
+    <span class="badge badge-nit">nit</span>
+  </li>
+  <li>
+    <input type="checkbox"><span>Unrelated blank line removal in <code>cmd/hook/main.go</code></span>
+    <span class="badge badge-nit">nit</span>
+  </li>
+  <li>
+    <input type="checkbox"><span><code>Status_Code_Error</code> test sets both resp and err (unusual mock state)</span>
+    <span class="badge badge-nit">nit</span>
+  </li>
+</ul>
+
+<!-- ============================================================ -->
+<h2>Detailed Findings</h2>
+
+<!-- Issue 1 -->
+<details class="issue" open>
+  <summary>
+    <span class="issue-title"><code>--client-cert-file</code> is misleading &mdash; it's a CA cert, not a client cert</span>
+    <span class="badge badge-blocker">blocker</span>
+    <span class="reviewer-tags">
+      <span class="reviewer-tag reviewer-tag-cq">CQ</span>
+      <span class="reviewer-tag reviewer-tag-mt">MT</span>
+      <span class="reviewer-tag reviewer-tag-dr">DR</span>
+    </span>
+  </summary>
+  <div class="issue-body">
+    <p class="file-ref">cmd/deck/pluginhelp.go:55-65</p>
+    <p>The cert loaded from <code>--client-cert-file</code> is used as a <code>RootCAs</code> entry to verify hook's server certificate. This is one-way TLS (deck trusts hook), <strong>not</strong> mutual TLS (deck authenticating itself to hook).</p>
+    <pre><code>caCertPool := x509.NewCertPool()
+caCertPool.AppendCertsFromPEM(caCert)
+client = &amp;http.Client{
+    Transport: &amp;http.Transport{
+        TLSClientConfig: &amp;tls.Config{
+            RootCAs: caCertPool,  // this is a CA trust pool
+        },
+    },
+}</code></pre>
+    <p>An operator reading <code>--client-cert-file</code> would expect mTLS. Rename to <code>--hook-ca-cert-file</code> or <code>--hook-tls-ca-file</code>.</p>
+  </div>
+</details>
+
+<!-- Issue 2 -->
+<details class="issue" open>
+  <summary>
+    <span class="issue-title"><code>AppendCertsFromPEM</code> return value silently ignored</span>
+    <span class="badge badge-blocker">blocker</span>
+    <span class="reviewer-tags">
+      <span class="reviewer-tag reviewer-tag-cq">CQ</span>
+      <span class="reviewer-tag reviewer-tag-mt">MT</span>
+    </span>
+  </summary>
+  <div class="issue-body">
+    <p class="file-ref">cmd/deck/pluginhelp.go:61</p>
+    <p><code>x509.CertPool.AppendCertsFromPEM()</code> returns a <code>bool</code> indicating whether any certificates were parsed. If the file content is not valid PEM (corrupted, wrong format), the cert pool is silently empty and all TLS connections to hook fail with a cryptic handshake error.</p>
+    <pre><code>if !caCertPool.AppendCertsFromPEM(caCert) {
+    return nil, fmt.Errorf("failed to parse any certificates from %s", cert)
+}</code></pre>
+    <p>The test at <code>pluginhelp_test.go:89</code> using <code>"dummy cert content"</code> will also need to use valid PEM once this check is added.</p>
+  </div>
+</details>
+
+<!-- Issue 3 -->
+<details class="issue" open>
+  <summary>
+    <span class="issue-title">Validation over-couples server TLS and hook CA cert</span>
+    <span class="badge badge-blocker">blocker</span>
+    <span class="reviewer-tags">
+      <span class="reviewer-tag reviewer-tag-cq">CQ</span>
+      <span class="reviewer-tag reviewer-tag-mt">MT</span>
+      <span class="reviewer-tag reviewer-tag-dr">DR</span>
+    </span>
+  </summary>
+  <div class="issue-body">
+    <p class="file-ref">cmd/deck/main.go:177-179</p>
+    <pre><code>if o.ssl.CertFile != "" &amp;&amp; o.clientCertFile == "" {
+    return errors.New("flag --server-cert-file and --server-key-file was set to true but required flag --client-cert-file was not set")
+}</code></pre>
+    <p><strong>Two problems:</strong></p>
+    <p>1. <strong>Logically wrong</strong>: Deck serving HTTPS to ingress is independent of whether deck calls hook over HTTPS. An operator may want TLS on deck without configuring the hook CA cert (hook behind a separate proxy, or <code>--hook-url</code> not set). The check on lines 167-174 (triggered when <code>--hook-url</code> is HTTPS) already handles the real requirement.</p>
+    <p>2. <strong>Error message is incorrect</strong>: Says "was set to true" but these are string flags, not booleans. Should be "were set" and drop "to true". (Moot if the check is removed.)</p>
+  </div>
+</details>
+
+<!-- Issue 4 -->
+<details class="issue">
+  <summary>
+    <span class="issue-title">No file existence check in <code>SSLOptions.Validate</code></span>
+    <span class="badge badge-major">major</span>
+    <span class="reviewer-tags">
+      <span class="reviewer-tag reviewer-tag-cq">CQ</span>
+      <span class="reviewer-tag reviewer-tag-mt">MT</span>
+    </span>
+  </summary>
+  <div class="issue-body">
+    <p class="file-ref">pkg/flagutil/ssl.go:39-48</p>
+    <p>Other validators in this codebase (e.g. <code>kubernetes_cluster_clients.go</code>) check file existence at startup via <code>os.Stat</code>. Without it, the operator gets a cryptic TLS failure from <code>ListenAndServeTLS</code> instead of a clear message.</p>
+    <pre><code>if _, err := os.Stat(o.CertFile); err != nil {
+    return fmt.Errorf("--server-cert-file: %w", err)
+}
+if _, err := os.Stat(o.KeyFile); err != nil {
+    return fmt.Errorf("--server-key-file: %w", err)
+}</code></pre>
+  </div>
+</details>
+
+<!-- Issue 5 -->
+<details class="issue">
+  <summary>
+    <span class="issue-title">Dead <code>cert</code> field on <code>helpAgent</code></span>
+    <span class="badge badge-major">major</span>
+  </summary>
+  <div class="issue-body">
+    <p class="file-ref">cmd/deck/pluginhelp.go:40</p>
+    <p>The <code>cert</code> field is assigned in <code>newHelpAgent</code> but never read afterward &mdash; the TLS client is fully constructed during initialization. Remove it to avoid confusion about whether cert rotation is supported (it isn't).</p>
+  </div>
+</details>
+
+<!-- Issue 6 -->
+<details class="issue">
+  <summary>
+    <span class="issue-title">Go naming: <code>isHttpsPath</code> and <code>sslEnabledSchema</code></span>
+    <span class="badge badge-minor">minor</span>
+    <span class="reviewer-tags">
+      <span class="reviewer-tag reviewer-tag-cq">CQ</span>
+      <span class="reviewer-tag reviewer-tag-mt">MT</span>
+    </span>
+  </summary>
+  <div class="issue-body">
+    <p class="file-ref">cmd/deck/pluginhelp.go:36, 105</p>
+    <p>Go convention for initialisms is all-caps: <code>isHTTPSPath</code>. The constant <code>sslEnabledSchema</code> should be <code>sslEnabledScheme</code> &mdash; a URL has a <em>scheme</em>, not a <em>schema</em>.</p>
+  </div>
+</details>
+
+<!-- Issue 7 -->
+<details class="issue">
+  <summary>
+    <span class="issue-title"><code>http.DefaultClient</code> shared reference</span>
+    <span class="badge badge-minor">minor</span>
+  </summary>
+  <div class="issue-body">
+    <p class="file-ref">cmd/deck/pluginhelp.go:69</p>
+    <p>Assigning <code>http.DefaultClient</code> directly means any future modification to the agent's client (timeouts, middleware) would mutate the global default. Use <code>&amp;http.Client{}</code> instead.</p>
+  </div>
+</details>
+
+<!-- Issue 8 -->
+<details class="issue">
+  <summary>
+    <span class="issue-title">Missing direct tests for <code>isHttpsPath</code></span>
+    <span class="badge badge-minor">minor</span>
+  </summary>
+  <div class="issue-body">
+    <p class="file-ref">cmd/deck/pluginhelp.go:105-111</p>
+    <p>The function is tested indirectly. A direct table-driven test would cover edge cases: empty string, uppercase <code>HTTPS</code>, non-HTTP schemes (<code>ftp://</code>), bare paths without scheme.</p>
+  </div>
+</details>
+
+<!-- Issue 9 -->
+<details class="issue">
+  <summary>
+    <span class="issue-title">Comment style: missing space after <code>//</code></span>
+    <span class="badge badge-nit">nit</span>
+  </summary>
+  <div class="issue-body">
+    <p class="file-ref">cmd/deck/pluginhelp.go:49</p>
+    <pre><code>//Set custom http client if ssl is enabled</code></pre>
+    <p>Should be <code>// Set custom http client if ssl is enabled</code> per Go style.</p>
+  </div>
+</details>
+
+<!-- Issue 10 -->
+<details class="issue">
+  <summary>
+    <span class="issue-title">Import grouping in <code>pluginhelp_test.go</code></span>
+    <span class="badge badge-nit">nit</span>
+  </summary>
+  <div class="issue-body">
+    <p class="file-ref">cmd/deck/pluginhelp_test.go:24-31</p>
+    <p><code>sigs.k8s.io/prow/pkg/pluginhelp</code> is mixed in with stdlib imports. Convention is stdlib, then a blank line, then external imports.</p>
+  </div>
+</details>
+
+<!-- Issue 11 -->
+<details class="issue">
+  <summary>
+    <span class="issue-title">Test naming convention</span>
+    <span class="badge badge-nit">nit</span>
+  </summary>
+  <div class="issue-body">
+    <p class="file-ref">cmd/deck/pluginhelp_test.go</p>
+    <p>Test case names use <code>PascalCase_With_Underscores</code> (e.g. <code>Invalid_Url_Returns_Error</code>). Existing tests in this repo use lowercase with spaces. Consider following the existing convention for consistency.</p>
+  </div>
+</details>
+
+<!-- Issue 12 -->
+<details class="issue">
+  <summary>
+    <span class="issue-title">Unrelated formatting change in <code>cmd/hook/main.go</code></span>
+    <span class="badge badge-nit">nit</span>
+  </summary>
+  <div class="issue-body">
+    <p class="file-ref">cmd/hook/main.go:97</p>
+    <p>A blank line between the <code>AddFlags</code> loop and the <code>webhookSecretFile</code> registration was removed. This is unrelated to the feature and adds noise to the diff.</p>
+  </div>
+</details>
+
+<!-- Issue 13 -->
+<details class="issue">
+  <summary>
+    <span class="issue-title"><code>Status_Code_Error</code> test has unusual mock state</span>
+    <span class="badge badge-nit">nit</span>
+  </summary>
+  <div class="issue-body">
+    <p class="file-ref">cmd/deck/pluginhelp_test.go:171-173</p>
+    <p>The test sets both <code>mockResp</code> (with status 500) and <code>mockErr</code>. In real HTTP, when <code>RoundTrip</code> returns an error the response is typically nil. This creates an impossible state.</p>
+  </div>
+</details>
+
+<!-- ============================================================ -->
+<h2>Deployment Notes</h2>
+<div class="deploy-notes">
+  <ul>
+    <li>When enabling TLS on deck or hook, operators <strong>must</strong> update readiness/liveness probe configurations to use HTTPS simultaneously.</li>
+    <li>If <code>--hook-url</code> uses an HTTPS scheme, the (renamed) <code>--hook-ca-cert-file</code> flag becomes required for deck to communicate with hook.</li>
+    <li>No action required for operators who do not set any of the new flags &mdash; behavior is identical to the current release.</li>
+    <li><code>newHelpAgent</code> failure is fatal &mdash; a bad cert file prevents deck from starting entirely, not just degrading the plugin-help endpoint.</li>
+  </ul>
+</div>
+
+<!-- ============================================================ -->
+<h2>What Looks Good</h2>
+<div class="positives">
+  <ul>
+    <li><code>SSLOptions</code> flagutil is a clean, reusable <code>OptionGroup</code> abstraction following existing patterns (<code>BugzillaOptions</code>, <code>GitHubOptions</code>)</li>
+    <li>Conditional <code>ListenAndServeTLS</code> / <code>ListenAndServe</code> branching follows existing patterns (<code>fakegitserver</code>, <code>webhook-server</code>)</li>
+    <li>Good test coverage for the new flagutil, <code>newHelpAgent</code>, and <code>getHelp</code> including cache behavior</li>
+    <li>The removed <code>--enable-ssl</code> boolean (latest commit) simplifies the interface &mdash; presence of cert/key files implies intent</li>
+    <li><code>newHelpAgent</code> returning an error instead of hiding failure improves debuggability</li>
+    <li>Caching logic with proper mutex locking was correctly preserved when adding the custom HTTP client</li>
+  </ul>
+</div>
+
+<!-- ============================================================ -->
+<h2>PR Comment Draft</h2>
+<div class="pr-comment-box">
+  <button class="copy-btn" onclick="navigator.clipboard.writeText(document.getElementById('pr-comment-text').innerText)">Copy</button>
+  <div id="pr-comment-text">Thanks for adding TLS support to deck and hook &mdash; the overall approach using <code>SSLOptions</code> as a reusable flagutil is clean, and the opt-in design keeps deployment risk low. However, I'm requesting changes before merge. The <code>--client-cert-file</code> flag is misleadingly named &mdash; it's actually a CA certificate for verifying hook's server cert, not a client cert for mTLS. This needs to be renamed (e.g., <code>--hook-ca-cert-file</code>). Additionally, the <code>AppendCertsFromPEM</code> return value must be checked to avoid cryptic runtime failures, the validation logic in <code>main.go</code> has an incorrect error message and unnecessarily couples server TLS with hook CA config, and <code>SSLOptions.Validate</code> should verify file existence at startup. These are all targeted fixes that shouldn't require major rework. Happy to re-review once addressed.</div>
+</div>
+
+<footer>
+  Review prepared for <strong>petr-muller</strong> &middot; PR kubernetes-sigs/prow#573
+  &middot; Multi-perspective review: Code Quality, Maintainability, Deployment Risk &middot; 2026-04-11
+  &middot; Last refreshed: 2026-06-15
+</footer>
+
+</body>
+</html>

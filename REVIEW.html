@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PR #622 Review: sinker docs</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text-muted: #8b949e;
+    --accent: #58a6ff;
+    --green: #3fb950;
+    --red: #f85149;
+    --yellow: #d29922;
+    --green-bg: #12261e;
+    --red-bg: #2d1214;
+    --yellow-bg: #2a2011;
+    --blue-bg: #121d2f;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    padding: 2rem;
+    max-width: 960px;
+    margin: 0 auto;
+  }
+  h1 { font-size: 1.5rem; margin-bottom: 0.25rem; }
+  h2 {
+    font-size: 1.15rem;
+    margin-top: 2rem;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.3rem;
+    border-bottom: 1px solid var(--border);
+  }
+  h3 { font-size: 1rem; margin-top: 1.25rem; margin-bottom: 0.5rem; }
+  .meta { color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1.5rem; }
+  .meta a { color: var(--accent); text-decoration: none; }
+  .meta a:hover { text-decoration: underline; }
+
+  .badge {
+    display: inline-block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.15em 0.5em;
+    border-radius: 1rem;
+    vertical-align: middle;
+  }
+  .badge-ok   { background: var(--green-bg); color: var(--green); border: 1px solid #1a4428; }
+  .badge-warn { background: var(--yellow-bg); color: var(--yellow); border: 1px solid #3d3013; }
+  .badge-err  { background: var(--red-bg); color: var(--red); border: 1px solid #4a1c1e; }
+  .badge-info { background: var(--blue-bg); color: var(--accent); border: 1px solid #1a3350; }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 0.75rem;
+  }
+  .card-title {
+    font-weight: 600;
+    margin-bottom: 0.35rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .card p, .card ul { color: var(--text-muted); font-size: 0.9rem; }
+  .card ul { padding-left: 1.25rem; margin-top: 0.35rem; }
+  .card li { margin-bottom: 0.2rem; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+    margin-top: 0.5rem;
+  }
+  th, td {
+    text-align: left;
+    padding: 0.45rem 0.75rem;
+    border: 1px solid var(--border);
+  }
+  th { background: var(--surface); color: var(--text-muted); font-weight: 600; }
+  td { background: var(--bg); }
+  code {
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    font-size: 0.85em;
+    background: var(--surface);
+    padding: 0.15em 0.35em;
+    border-radius: 3px;
+  }
+  .source-ref {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-top: 0.25rem;
+  }
+  .source-ref code { color: var(--accent); background: none; padding: 0; }
+
+  .verdict-box {
+    background: var(--green-bg);
+    border: 1px solid #1a4428;
+    border-radius: 6px;
+    padding: 1rem 1.25rem;
+    margin-top: 1.5rem;
+    font-weight: 600;
+    color: var(--green);
+  }
+
+  .reviewer-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.75rem;
+    margin-top: 0.75rem;
+  }
+  .reviewer-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.85rem 1rem;
+  }
+  .reviewer-card h4 {
+    font-size: 0.85rem;
+    margin-bottom: 0.35rem;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .reviewer-card p { color: var(--text-muted); font-size: 0.8rem; }
+
+  .converging {
+    background: var(--yellow-bg);
+    border: 1px solid #3d3013;
+    border-radius: 6px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 0.75rem;
+  }
+  .converging .card-title { color: var(--yellow); }
+  .converging p { color: var(--text-muted); font-size: 0.9rem; }
+
+  .comment-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: 6px;
+    padding: 1rem 1.25rem;
+    margin-top: 0.75rem;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    font-style: italic;
+  }
+</style>
+</head>
+<body>
+
+<h1>PR #622 &mdash; docs: replace sinker placeholder page with real component docs</h1>
+<p class="meta">
+  Author: <strong>abdallhMoukdad</strong> &middot;
+  <a href="https://github.com/kubernetes-sigs/prow/pull/622">github.com/kubernetes-sigs/prow/pull/622</a> &middot;
+  +85 / &minus;2 &middot; Fixes #495
+</p>
+
+<!-- ───────────────────────── REVIEWER VERDICTS ───────────────────────── -->
+<h2>Reviewer Verdicts</h2>
+
+<div class="reviewer-grid">
+  <div class="reviewer-card">
+    <h4><span class="badge badge-ok">APPROVE</span> Code Quality</h4>
+    <p>Documentation-only PR. No Go code, logic, or tests changed. Standard code quality criteria do not apply.</p>
+  </div>
+  <div class="reviewer-card">
+    <h4><span class="badge badge-ok">APPROVE</span> Maintainability</h4>
+    <p>Maintenance burden: <strong>LOW</strong>. Eliminates documentation debt with accurate content. Shared flag duplication is the only forward-looking concern.</p>
+  </div>
+  <div class="reviewer-card">
+    <h4><span class="badge badge-ok">APPROVE</span> Deployment Risk</h4>
+    <p>Risk level: <strong>LOW</strong>. Zero operational impact. No code, config schemas, or deployment manifests touched.</p>
+  </div>
+</div>
+
+<!-- ───────────────────────── ACCURACY AUDIT ───────────────────────── -->
+<h2>Accuracy Audit</h2>
+<p style="color:var(--text-muted); font-size:0.9rem; margin-bottom:0.75rem;">
+  Every factual claim in the PR was checked against the source. Results below.
+</p>
+
+<h3>Config defaults (<code>sinker</code> block in <code>config.yaml</code>)</h3>
+<table>
+  <tr><th>Key</th><th>Documented default</th><th>Source default</th><th>Status</th></tr>
+  <tr><td><code>resync_period</code></td><td><code>1h</code></td><td><code>time.Hour</code></td><td><span class="badge badge-ok">OK</span></td></tr>
+  <tr><td><code>max_prowjob_age</code></td><td><code>168h</code> (7d)</td><td><code>7 * 24 * time.Hour</code></td><td><span class="badge badge-ok">OK</span></td></tr>
+  <tr><td><code>max_pod_age</code></td><td><code>24h</code></td><td><code>24 * time.Hour</code></td><td><span class="badge badge-ok">OK</span></td></tr>
+  <tr><td><code>terminated_pod_ttl</code></td><td>same as <code>max_pod_age</code></td><td>copies <code>MaxPodAge.Duration</code></td><td><span class="badge badge-ok">OK</span></td></tr>
+  <tr><td><code>exclude_clusters</code></td><td>empty</td><td>zero-value slice</td><td><span class="badge badge-ok">OK</span></td></tr>
+</table>
+<p class="source-ref">Source: <code>pkg/config/config.go:2687-2701</code> (defaults), <code>:1097-1113</code> (struct)</p>
+
+<h3>Sinker behaviour claims</h3>
+<table>
+  <tr><th>Claim</th><th>Status</th><th>Source location</th></tr>
+  <tr>
+    <td>Deletes completed non-periodic ProwJobs older than <code>max_prowjob_age</code></td>
+    <td><span class="badge badge-ok">OK</span></td>
+    <td><code>cmd/sinker/main.go:354-375</code></td>
+  </tr>
+  <tr>
+    <td>Keeps latest run for active periodic jobs</td>
+    <td><span class="badge badge-ok">OK</span></td>
+    <td><code>cmd/sinker/main.go:377-411</code></td>
+  </tr>
+  <tr>
+    <td>Deletes pods with label <code>created-by-prow=true</code></td>
+    <td><span class="badge badge-ok">OK</span></td>
+    <td><code>cmd/sinker/main.go:428</code>, <code>pkg/kube/prowjob.go:25</code></td>
+  </tr>
+  <tr>
+    <td>Deletes orphaned pods (no matching ProwJob)</td>
+    <td><span class="badge badge-ok">OK</span></td>
+    <td><code>cmd/sinker/main.go:474-478, 535-553</code></td>
+  </tr>
+  <tr>
+    <td>Uses <code>terminated_pod_ttl</code> after ProwJob completion</td>
+    <td><span class="badge badge-ok">OK</span></td>
+    <td><code>cmd/sinker/main.go:449-465</code></td>
+  </tr>
+  <tr>
+    <td>Respects <code>exclude_clusters</code></td>
+    <td><span class="badge badge-ok">OK</span></td>
+    <td><code>cmd/sinker/main.go:417-426</code></td>
+  </tr>
+</table>
+
+<h3>CLI flag defaults</h3>
+<table>
+  <tr><th>Flag</th><th>Documented</th><th>Source</th><th>Status</th></tr>
+  <tr><td><code>--run-once</code></td><td><code>false</code></td><td><code>false</code></td><td><span class="badge badge-ok">OK</span></td></tr>
+  <tr><td><code>--dry-run</code></td><td><code>true</code></td><td><code>true</code></td><td><span class="badge badge-ok">OK</span></td></tr>
+  <tr><td><code>--metrics-port</code></td><td><code>9090</code></td><td><code>9090</code></td><td><span class="badge badge-ok">OK</span></td></tr>
+  <tr><td><code>--pprof-port</code></td><td><code>6060</code></td><td><code>6060</code></td><td><span class="badge badge-ok">OK</span></td></tr>
+  <tr><td><code>--health-port</code></td><td><code>8081</code></td><td><code>8081</code></td><td><span class="badge badge-ok">OK</span></td></tr>
+  <tr><td><code>--profile-memory-usage</code></td><td><code>false</code></td><td><code>false</code></td><td><span class="badge badge-ok">OK</span></td></tr>
+  <tr><td><code>--memory-profile-interval</code></td><td><code>30s</code></td><td><code>30s</code></td><td><span class="badge badge-ok">OK</span></td></tr>
+</table>
+<p class="source-ref">
+  Source: <code>cmd/sinker/main.go:77-79</code>,
+  <code>pkg/flagutil/instrumentation.go:25-29, 53-64</code>
+</p>
+
+<!-- ───────────────────────── CONVERGING CONCERNS ───────────────────────── -->
+<h2>Converging Concerns</h2>
+<p style="color:var(--text-muted); font-size:0.9rem; margin-bottom:0.75rem;">
+  Issues flagged independently by two or more reviewers.
+</p>
+
+<div class="converging">
+  <div class="card-title">
+    <span class="badge badge-warn">2 REVIEWERS</span>
+    Hardcoded defaults may silently drift from source code
+  </div>
+  <p>
+    Flagged by: <strong>Maintainability</strong> and <strong>Deployment Risk</strong>.
+    Both verified the documented defaults are currently accurate, but noted there is no
+    automated mechanism to detect divergence if the code defaults change in the future.
+    This is inherent to hand-written docs and not actionable within this PR.
+  </p>
+</div>
+
+<!-- ───────────────────────── FINDINGS ───────────────────────── -->
+<h2>Findings</h2>
+
+<div class="card">
+  <div class="card-title">
+    <span class="badge badge-warn">SUGGESTION</span>
+    Extract shared flag tables into a reusable partial
+  </div>
+  <p>
+    The config loading, Kubernetes client, and instrumentation flag tables are common
+    across most Prow components (from <code>flagutil.KubernetesOptions</code>,
+    <code>flagutil.InstrumentationOptions</code>, <code>configflagutil.ConfigOptions</code>).
+    As more placeholder pages get replaced following this template, duplicating these tables
+    creates an N-way update burden.
+  </p>
+  <p style="margin-top:0.5rem;">
+    Consider creating a shared include or reference page before filling in the next
+    component doc. Non-blocking for this PR since sinker is the first real component page.
+  </p>
+  <p class="source-ref">Flagged by: Maintainability reviewer</p>
+</div>
+
+<div class="card">
+  <div class="card-title">
+    <span class="badge badge-warn">SUGGESTION</span>
+    Config-loading flags registered but unused by sinker
+  </div>
+  <p>
+    The flags <code>--moonraker-address</code>, <code>--cache-dir-base</code>, and
+    <code>--in-repo-config-cache-size</code> are inherited from the shared
+    <code>ConfigOptions</code> flagset. Sinker calls <code>ConfigAgent()</code>
+    which passes <code>nil</code> additionals, so these flags are accepted by the
+    binary but have no effect.
+  </p>
+  <p style="margin-top:0.5rem;">
+    Documenting them is not <em>wrong</em> (they do appear in <code>--help</code>),
+    but may mislead operators. Options:
+  </p>
+  <ul>
+    <li>Drop these three rows from the table, or</li>
+    <li>Add a note like <em>"inherited from shared config loading; not used by sinker"</em></li>
+  </ul>
+  <p class="source-ref">Source: <code>pkg/flagutil/config/config.go:82-96</code></p>
+</div>
+
+<div class="card">
+  <div class="card-title">
+    <span class="badge badge-warn">SUGGESTION</span>
+    <code>--config-path</code> default shown as <code>""</code> but it is required
+  </div>
+  <p>
+    The table says default is <code>""</code>, and the description says "(required)".
+    Since validation rejects an empty value, showing <code>""</code> as the default
+    is slightly misleading. Consider changing the default column to
+    <em>none (required)</em> to avoid ambiguity.
+  </p>
+  <p class="source-ref">Source: <code>pkg/flagutil/config/config.go:68-71</code></p>
+</div>
+
+<div class="card">
+  <div class="card-title">
+    <span class="badge badge-info">NIT</span>
+    <code>--dry-run</code> description wording
+  </div>
+  <p>
+    The doc says "Do not perform mutating Kubernetes API calls" but the source says
+    "Whether or not to make mutating API calls to Kubernetes". The doc's phrasing is
+    clearer for operators, but could be read as "<code>--dry-run</code> always prevents
+    mutations" without making it obvious that the default is <code>true</code>
+    (mutations suppressed by default).
+  </p>
+  <p class="source-ref">Source: <code>cmd/sinker/main.go:79</code></p>
+</div>
+
+<!-- ───────────────────────── STRENGTHS ───────────────────────── -->
+<h2>Strengths</h2>
+
+<div class="card">
+  <div class="card-title"><span class="badge badge-ok">GOOD</span> All factual claims verified correct</div>
+  <p>Config defaults, controller behaviour, flag defaults, and label selectors all match the source code exactly.</p>
+</div>
+
+<div class="card">
+  <div class="card-title"><span class="badge badge-ok">GOOD</span> Documents non-obvious behaviour</div>
+  <p>
+    The detail about keeping the latest periodic run, the <code>terminated_pod_ttl</code>
+    distinction from <code>max_pod_age</code>, and the <code>--dry-run=true</code>
+    production gotcha are all things an operator would struggle to learn from the code alone.
+  </p>
+</div>
+
+<div class="card">
+  <div class="card-title"><span class="badge badge-ok">GOOD</span> Well-structured flag tables</div>
+  <p>Grouping flags by category (sinker, config, kubernetes, instrumentation) makes the page scannable.</p>
+</div>
+
+<div class="card">
+  <div class="card-title"><span class="badge badge-ok">GOOD</span> Source code link aids traceability</div>
+  <p>The link to <code>cmd/sinker</code> helps future maintainers trace from docs to implementation.</p>
+</div>
+
+<div class="card">
+  <div class="card-title"><span class="badge badge-ok">GOOD</span> Operational safety callout</div>
+  <p>
+    The <code>--dry-run=false</code> production note and required RBAC permissions reduce
+    the likelihood of misconfiguration incidents for new deployments.
+  </p>
+</div>
+
+<!-- ───────────────────────── VERDICT ───────────────────────── -->
+<div class="verdict-box">
+  Verdict: APPROVE WITH SUGGESTIONS &mdash; All three reviewers approve unanimously.
+  Content is accurate and well-organized. Suggestions are non-blocking polish
+  and a forward-looking concern about shared flag table duplication as more
+  component pages are written.
+</div>
+
+<!-- ───────────────────────── REFRESH LOG ───────────────────────── -->
+<h2>Refresh Log</h2>
+
+<div class="card">
+  <div class="card-title">
+    <span class="badge badge-info">2026-06-15</span>
+    No code changes
+  </div>
+  <p>
+    PR head unchanged at <code>6a695980</code>. No human reviews, no inline comments,
+    no author pushes since the original review.
+  </p>
+  <p style="margin-top:0.5rem;">
+    <strong>Lifecycle:</strong> <code>k8s-triage-robot</code> applied
+    <code>lifecycle/rotten</code> on 2026-06-14 (previously <code>lifecycle/stale</code>
+    applied 2026-05-15). The PR will be auto-closed in ~30 days unless someone
+    comments <code>/remove-lifecycle rotten</code>.
+  </p>
+</div>
+
+<div class="comment-box">
+  <strong>Suggested PR comment:</strong><br><br>
+  This is a clean documentation-only PR that replaces a placeholder with accurate,
+  well-structured sinker component docs. All reviewed defaults and flag values match
+  the current source code. No code, configuration, or deployment changes are involved.
+  I'd suggest considering a shared partial for the common flag tables (config loading,
+  kubernetes, instrumentation) before filling in more component pages, to avoid N-way
+  duplication down the road. Approved &mdash; nice contribution to reducing the docs debt.
+</div>
+
+</body>
+</html>

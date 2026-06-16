@@ -88,6 +88,18 @@ Removal requests are sent to `p.updates` before the normal `UpdateBranch` loop. 
 
 ## Deployment Risk -- The Key Concern
 
+### Historical context: what `exclude` was designed for
+
+`Exclude` was introduced in June 2019 ([test-infra#13016](https://github.com/kubernetes/test-infra/pull/13016), by adshmh) to solve [issue #12954](https://github.com/kubernetes/test-infra/issues/12954) (filed by cblecker): when `protect: true` is set at org/repo level, every branch gets protection -- including junk branches created accidentally via GitHub's edit UI or by bots like dependabot. Protected branches can't be deleted from the GitHub UI, making cleanup painful.
+
+The original motivation was explicitly about **preventing protection from being applied in the first place** -- not about removing existing protection. The commit message says "avoid adding protection to excluded branches." The implementation `continue`s past matching branches, never adding them to the processing list. The feature was designed for branches that don't exist yet or haven't been protected yet (future dependabot branches, accidental branches).
+
+`Unmanaged` was added later (April 2021, by alvaroaleman, [test-infra#21999](https://github.com/kubernetes/test-infra/pull/21999)) specifically because `protect: false` semantics were confusing -- it means "don't touch this at all, skip all API calls." `Include` followed in August 2021 ([test-infra#22667](https://github.com/kubernetes/test-infra/pull/22667)) as the mirror of `Exclude`, explicitly made mutually exclusive with it.
+
+The original design intent of `Exclude` is clearly in the same family as `Unmanaged` -- "don't touch" -- just pattern-based. This PR changes it to behave like the `protect: false` family -- "actively remove."
+
+### The semantic change
+
 This PR changes the meaning of the `exclude` directive:
 
 |  | Before | After |
@@ -149,7 +161,9 @@ When both `Include` and `Exclude` are configured, exclusions are never checked (
 
 ## Draft PR Comment
 
-The implementation is clean and follows existing codebase patterns, but it introduces a breaking semantic change to the `exclude` directive: from "do not manage this branch" to "actively remove protection from this branch." Operators relying on `exclude` to preserve existing manual protection will have it silently stripped on the next `--confirm` run.
+The implementation is clean and follows existing codebase patterns, but it introduces a breaking semantic change to the `exclude` directive.
+
+`Exclude` was added in [test-infra#13016](https://github.com/kubernetes/test-infra/pull/13016) (2019) to solve [#12954](https://github.com/kubernetes/test-infra/issues/12954): prevent protection from being applied to junk/bot branches in the first place. The commit message says "avoid adding protection to excluded branches" -- the design intent is "don't touch," in the same family as `unmanaged`. This PR changes it to "actively remove protection," which is the `protect: false` family. Operators relying on `exclude` to preserve existing manual protection will have it silently stripped on the next `--confirm` run.
 
 I would like to see this gated behind an opt-in mechanism (a flag or explicit config) rather than changing the default behavior of `exclude`. Additionally, the test suite needs a case for an excluded branch that is not currently protected, and WARNING-level logging should accompany any protection removal.
 

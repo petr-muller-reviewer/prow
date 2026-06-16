@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PR #697 Review: fix(clonerefs): remove cloneDepth=1 from sparseCheckout</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text-muted: #8b949e;
+    --accent: #58a6ff;
+    --green: #3fb950;
+    --red: #f85149;
+    --yellow: #d29922;
+    --green-bg: #12261e;
+    --red-bg: #2d1215;
+    --code-bg: #1c2128;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    padding: 2rem;
+    max-width: 960px;
+    margin: 0 auto;
+  }
+  h1 { font-size: 1.5rem; margin-bottom: 0.25rem; }
+  h2 { font-size: 1.15rem; margin-top: 1.5rem; margin-bottom: 0.5rem; color: var(--accent); border-bottom: 1px solid var(--border); padding-bottom: 0.3rem; }
+  h3 { font-size: 1rem; margin-top: 1rem; margin-bottom: 0.3rem; }
+  .meta { color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1.5rem; }
+  .meta a { color: var(--accent); text-decoration: none; }
+  .meta a:hover { text-decoration: underline; }
+  .badge {
+    display: inline-block; padding: 0.15rem 0.5rem; border-radius: 1rem;
+    font-size: 0.75rem; font-weight: 600; margin-right: 0.4rem;
+  }
+  .badge-green { background: var(--green-bg); color: var(--green); border: 1px solid var(--green); }
+  .badge-yellow { background: #2d2a10; color: var(--yellow); border: 1px solid var(--yellow); }
+  .badge-red { background: var(--red-bg); color: var(--red); border: 1px solid var(--red); }
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 6px; padding: 1rem; margin: 0.75rem 0;
+  }
+  .verdict-card {
+    border-left: 4px solid var(--green);
+  }
+  .note-card {
+    border-left: 4px solid var(--yellow);
+  }
+  code {
+    background: var(--code-bg); padding: 0.15rem 0.35rem;
+    border-radius: 3px; font-size: 0.9em; font-family: 'SFMono-Regular', Consolas, monospace;
+  }
+  pre {
+    background: var(--code-bg); border: 1px solid var(--border);
+    border-radius: 6px; padding: 1rem; overflow-x: auto;
+    font-size: 0.85rem; line-height: 1.5; margin: 0.5rem 0;
+    font-family: 'SFMono-Regular', Consolas, monospace;
+  }
+  .diff-del { color: var(--red); }
+  .diff-add { color: var(--green); }
+  .diff-ctx { color: var(--text-muted); }
+  .diff-hdr { color: var(--accent); }
+  ul { padding-left: 1.25rem; margin: 0.3rem 0; }
+  li { margin: 0.25rem 0; }
+  .flow { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin: 0.5rem 0; }
+  .flow-step {
+    background: var(--code-bg); border: 1px solid var(--border);
+    border-radius: 4px; padding: 0.3rem 0.6rem; font-size: 0.85rem;
+  }
+  .flow-arrow { color: var(--text-muted); font-size: 1.2rem; }
+  .checklist label { display: block; padding: 0.3rem 0; cursor: pointer; font-size: 0.95rem; }
+  .checklist input[type="checkbox"] { margin-right: 0.5rem; accent-color: var(--green); }
+  table { border-collapse: collapse; width: 100%; margin: 0.5rem 0; font-size: 0.9rem; }
+  th, td { padding: 0.4rem 0.75rem; border: 1px solid var(--border); text-align: left; }
+  th { background: var(--code-bg); color: var(--text-muted); font-weight: 600; }
+  .footer { margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--border); color: var(--text-muted); font-size: 0.8rem; }
+</style>
+</head>
+<body>
+
+<h1>PR #697: fix(clonerefs): remove cloneDepth=1 from sparseCheckout</h1>
+<div class="meta">
+  Author: <a href="https://github.com/Prucek">@Prucek</a> |
+  Branch: <code>fix-sparse-checkout-depth</code> &rarr; <code>main</code> |
+  Files: 2 | +3 / &minus;6 |
+  <a href="https://github.com/kubernetes-sigs/prow/pull/697">View on GitHub</a>
+</div>
+
+<h2>Bug Description</h2>
+<div class="card">
+  <p>Sparse checkout with <code>--depth 1 --filter=blob:none</code> creates a shallow clone with only the sparse files.
+  When it then tries to <code>git merge</code> the PR head commit, git sees unrelated histories because
+  the shallow sparse clone doesn't have enough history to find a common ancestor.</p>
+  <p style="margin-top:0.5rem; font-size:0.85rem; color:var(--text-muted);">
+    Example failure:
+    <a href="https://prow.ci.openshift.org/view/gs/test-platform-results/pr-logs/pull/openshift_openshift-mcp-server/281/pull-ci-openshift-openshift-mcp-server-release-0.3-images/2049471679767252992">prow.ci.openshift.org/&hellip;</a>
+  </p>
+</div>
+
+<h2>Execution Flow</h2>
+<p style="font-size:0.9rem; color:var(--text-muted); margin-bottom:0.5rem;">How sparse checkout + PR merge works in clonerefs:</p>
+<div class="flow">
+  <span class="flow-step"><code>git init</code></span>
+  <span class="flow-arrow">&rarr;</span>
+  <span class="flow-step"><code>git sparse-checkout init</code></span>
+  <span class="flow-arrow">&rarr;</span>
+  <span class="flow-step"><code>git fetch <s style="color:var(--red)">--depth 1</s> --filter=blob:none &hellip; baseRef</code></span>
+  <span class="flow-arrow">&rarr;</span>
+  <span class="flow-step"><code>git sparse-checkout set &hellip;</code></span>
+</div>
+<div class="flow">
+  <span class="flow-step"><code>git checkout</code> + <code>branch --force</code></span>
+  <span class="flow-arrow">&rarr;</span>
+  <span class="flow-step"><code>git fetch --filter=blob:none &hellip; PR SHA</code></span>
+  <span class="flow-arrow">&rarr;</span>
+  <span class="flow-step" style="border-color:var(--red);"><code>git merge --no-ff</code> &mdash; fails here</span>
+</div>
+<div class="card note-card" style="margin-top:0.75rem; font-size:0.9rem;">
+  With <code>--depth 1</code>, the base fetch retrieves a single commit with no parents. When the PR commit is fetched,
+  git cannot find a common ancestor &rarr; "unrelated histories" error.
+  Removing <code>--depth 1</code> fetches the full commit graph (but still no blobs), so merge works.
+</div>
+
+<h2>Diff</h2>
+
+<h3>pkg/pod-utils/clone/clone.go</h3>
+<pre><span class="diff-hdr">@@ -245,9 +245,6 @@ func (g *gitCtx) commandsForBaseRef(...)</span>
+
+<span class="diff-ctx"> 	cloneDepth := refs.CloneDepth</span>
+<span class="diff-del">-	if sparseCheckoutSet && cloneDepth == 0 {</span>
+<span class="diff-del">-		cloneDepth = 1</span>
+<span class="diff-del">-	}</span>
+<span class="diff-ctx"> 	var depthArgs []string</span>
+<span class="diff-ctx"> 	if cloneDepth > 0 {</span>
+<span class="diff-ctx"> 		depthArgs = append(depthArgs, "--depth", strconv.Itoa(cloneDepth))</span></pre>
+
+<h3>pkg/pod-utils/clone/clone_test.go</h3>
+<pre><span class="diff-hdr">// Three test cases updated: sparse checkout fetch args no longer include --depth 1</span>
+<span class="diff-del">-  {"fetch", "--depth", "1", "--filter=blob:none", "--no-tags", ...}</span>
+<span class="diff-add">+  {"fetch", "--filter=blob:none", "--no-tags", ...}</span></pre>
+
+<h2>Review Assessment</h2>
+
+<table>
+  <tr><th>Aspect</th><th>Rating</th><th>Notes</th></tr>
+  <tr>
+    <td>Correctness</td>
+    <td><span class="badge badge-green">Good</span></td>
+    <td>Correctly identifies and fixes the root cause. <code>--filter=blob:none</code> remains for performance.</td>
+  </tr>
+  <tr>
+    <td>Scope</td>
+    <td><span class="badge badge-green">Good</span></td>
+    <td>Minimal, targeted fix. Only removes the problematic default; explicit <code>cloneDepth</code> still works.</td>
+  </tr>
+  <tr>
+    <td>Tests</td>
+    <td><span class="badge badge-green">Good</span></td>
+    <td>All 3 sparse-checkout test cases updated consistently.</td>
+  </tr>
+  <tr>
+    <td>Risk</td>
+    <td><span class="badge badge-green">Low</span></td>
+    <td>Only affects sparse checkout with default depth. Users with explicit <code>cloneDepth</code> are unaffected.</td>
+  </tr>
+  <tr>
+    <td>Performance</td>
+    <td><span class="badge badge-yellow">Minor note</span></td>
+    <td>Full commit graph fetched instead of depth=1. Mitigated by <code>--filter=blob:none</code> still being present.</td>
+  </tr>
+</table>
+
+<h2>Key Points for Review</h2>
+
+<div class="card">
+  <div class="checklist">
+    <label><input type="checkbox"> The removed code only triggered when <code>sparseCheckoutSet && cloneDepth == 0</code> (line 247-249 of old code)</label>
+    <label><input type="checkbox"> <code>--filter=blob:none</code> is still applied for sparse checkout (line 253), preserving network savings</label>
+    <label><input type="checkbox"> <code>commandsForPullRefs</code> (line 355) does <code>git merge --no-ff</code> which requires common ancestors in history</label>
+    <label><input type="checkbox"> PR fetch in <code>commandsForPullRefs</code> does NOT use <code>--depth</code> either, so only the base was shallow</label>
+    <label><input type="checkbox"> Users can still explicitly set <code>cloneDepth</code> in their Refs config if they want shallow clones</label>
+    <label><input type="checkbox"> All 3 test cases with sparse checkout are updated (lines 624, 650, 680)</label>
+  </div>
+</div>
+
+<h2>Performance Consideration</h2>
+<div class="card note-card">
+  <p>Without <code>--depth 1</code>, the initial fetch downloads the full commit graph (but no blobs, thanks to
+  <code>--filter=blob:none</code>). For repos with very long histories, this is more data than before.</p>
+  <p style="margin-top:0.5rem;">However, this is the correct tradeoff: a clone that can't merge is broken regardless of how fast it clones.
+  Users who need to limit history can still set <code>cloneDepth</code> explicitly.</p>
+</div>
+
+<h2>Multi-Perspective Maintainer Review</h2>
+
+<h3>Code Quality</h3>
+<div class="card verdict-card">
+  <p><span class="badge badge-green">Approve</span></p>
+  <ul>
+    <li>No critical issues. Fix is surgically precise: removes only the problematic default while preserving explicit <code>CloneDepth</code> support.</li>
+    <li><code>--filter=blob:none</code> correctly retained &mdash; bandwidth savings preserved without shallow history problem.</li>
+    <li>All 3 sparse-checkout test cases updated consistently.</li>
+    <li>PR description includes concrete failure link.</li>
+  </ul>
+</div>
+
+<h3>Maintainability</h3>
+<div class="card verdict-card">
+  <p><span class="badge badge-green">Approve</span> &nbsp; <span class="badge badge-green">Burden: LOW</span></p>
+  <ul>
+    <li>Strict simplification: 3 lines removed, no new abstractions or code paths.</li>
+    <li>Trivially revertible if issues arise.</li>
+  </ul>
+  <p style="margin-top:0.5rem; font-size:0.9rem;"><strong>Suggestion:</strong> The original <code>cloneDepth=1</code> was introduced intentionally as a performance optimization (<code>43e2154a6</code>). Without a comment explaining why it was removed, a future contributor could re-introduce it. Consider adding:</p>
+  <pre style="font-size:0.8rem;">// Note: we intentionally do not set a default cloneDepth for sparse checkouts.
+// Shallow clones (--depth=1) combined with sparse checkout break git merge
+// because there is insufficient history to find a common ancestor.
+// The --filter=blob:none flag provides fetch efficiency without this limitation.</pre>
+  <p style="margin-top:0.5rem; font-size:0.9rem;"><strong>Test gap:</strong> No test for <code>SparseCheckoutFiles</code> + explicit <code>CloneDepth &gt; 0</code>. That combination still passes <code>--depth N</code> and might also break merges. Pre-existing gap, not a regression.</p>
+</div>
+
+<h3>Deployment Risk</h3>
+<div class="card verdict-card">
+  <p><span class="badge badge-green">Risk: LOW</span></p>
+  <ul>
+    <li>No breaking changes. No config schema, API, CLI, or serialization changes.</li>
+    <li>Existing configs parse and work identically.</li>
+    <li>Behavioral change: sparse checkout fetches download full commit graph instead of depth=1. This is a correctness fix &mdash; previous behavior caused merge failures.</li>
+    <li>Network impact modest (commits/trees only, no blobs). Operators can set explicit <code>clone_depth</code> if needed.</li>
+    <li>No operator action required. No config migration. Safe to rollback (re-introduces the bug).</li>
+  </ul>
+</div>
+
+<h2>Final Recommendation</h2>
+<div class="card verdict-card">
+  <p><span class="badge badge-green">Approve with Suggestions</span></p>
+  <p>All three reviewers independently approve. No converging concerns. The fix is correct, minimal, and low-risk.</p>
+  <p style="margin-top:0.5rem;"><strong>Non-blocking suggestions:</strong></p>
+  <ol style="padding-left:1.25rem; margin-top:0.3rem;">
+    <li>Add a comment near line 247 explaining why <code>cloneDepth</code> is not defaulted for sparse checkouts, to prevent future re-introduction of the removed optimization.</li>
+    <li>Consider adding a test for sparse checkout with explicit <code>CloneDepth &gt; 0</code> (pre-existing gap, good follow-up).</li>
+  </ol>
+</div>
+
+<h2>Draft PR Comment</h2>
+<div class="card" style="font-size:0.9rem; font-style:italic; border-left: 4px solid var(--accent);">
+  <p>This looks good to me. The fix is correct (shallow depth 1 breaks merge by preventing common ancestor discovery), the scope is minimal, <code>--filter=blob:none</code> is preserved for bandwidth efficiency, and tests are updated consistently. Two optional suggestions: (1) consider adding a brief comment explaining why we intentionally do not default <code>cloneDepth</code> for sparse checkouts, to prevent a future contributor from re-introducing this "optimization"; (2) a test covering sparse checkout with an explicit <code>CloneDepth &gt; 0</code> would close a pre-existing gap. Neither blocks merge.</p>
+</div>
+
+<div class="footer">
+  Review prepared 2026-04-30 | kubernetes-sigs/prow#697
+</div>
+
+</body>
+</html>

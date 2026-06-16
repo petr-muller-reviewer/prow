@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PR Reviews — 2026-04-30</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text-muted: #8b949e;
+    --accent-green: #3fb950;
+    --accent-yellow: #d29922;
+    --accent-red: #f85149;
+    --accent-blue: #58a6ff;
+    --accent-purple: #bc8cff;
+    --accent-cyan: #39d2c0;
+    --tag-bg: #1f2937;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    padding: 2rem;
+    max-width: 960px;
+    margin: 0 auto;
+  }
+  a { color: var(--accent-blue); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* Tab navigation */
+  .tab-bar {
+    display: flex;
+    gap: 0.25rem;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 2rem;
+  }
+  .tab-btn {
+    padding: 0.625rem 1.25rem;
+    background: none;
+    border: 1px solid transparent;
+    border-bottom: none;
+    color: var(--text-muted);
+    font-size: 0.875rem;
+    font-family: inherit;
+    cursor: pointer;
+    border-radius: 6px 6px 0 0;
+    position: relative;
+    bottom: -1px;
+  }
+  .tab-btn:hover { color: var(--text); background: var(--surface); }
+  .tab-btn.active {
+    color: var(--text);
+    background: var(--surface);
+    border-color: var(--border);
+    border-bottom-color: var(--surface);
+  }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  header {
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 1.5rem;
+    margin-bottom: 2rem;
+  }
+  header h1 { font-size: 1.5rem; font-weight: 600; margin-bottom: 0.5rem; }
+  header .meta { color: var(--text-muted); font-size: 0.875rem; }
+  header .meta span { margin-right: 1.25rem; }
+
+  .verdict-banner {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 2rem;
+    font-weight: 600;
+    font-size: 1.1rem;
+  }
+  .verdict-banner.approve {
+    background: #122117;
+    border: 1px solid #23842a;
+  }
+  .verdict-banner .icon { font-size: 1.4rem; }
+
+  .gate-banner {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background: #0f1d2e;
+    border: 1px solid #1f4e79;
+    border-radius: 8px;
+    padding: 0.875rem 1.25rem;
+    margin-bottom: 1.5rem;
+    font-size: 0.9rem;
+  }
+  .gate-banner .gate-label {
+    font-weight: 700;
+    color: var(--accent-blue);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-size: 0.75rem;
+  }
+  .gate-banner .gate-result {
+    font-weight: 600;
+    color: var(--accent-green);
+  }
+
+  .section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+    overflow: hidden;
+  }
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.875rem 1.25rem;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    user-select: none;
+  }
+  .section-header:hover { background: rgba(255,255,255,0.03); }
+  .section-header h2 { font-size: 1rem; font-weight: 600; }
+  .section-body { padding: 1.25rem; }
+  .section-body.collapsed { display: none; }
+
+  .tag {
+    display: inline-block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.15rem 0.5rem;
+    border-radius: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+  .tag-approve { background: #122117; color: var(--accent-green); border: 1px solid #23842a; }
+  .tag-low { background: #122117; color: var(--accent-green); border: 1px solid #23842a; }
+  .tag-comment { background: #1c1a0e; color: var(--accent-yellow); border: 1px solid #5c4b12; }
+  .tag-bug { background: #2a1215; color: var(--accent-red); border: 1px solid #6e2b2b; }
+
+  .finding {
+    border-left: 3px solid var(--border);
+    padding: 0.75rem 1rem;
+    margin-bottom: 0.75rem;
+    border-radius: 0 6px 6px 0;
+    background: rgba(255,255,255,0.02);
+  }
+  .finding:last-child { margin-bottom: 0; }
+  .finding.converging { border-left-color: var(--accent-yellow); background: rgba(210,153,34,0.06); }
+  .finding.positive { border-left-color: var(--accent-green); }
+  .finding.suggestion { border-left-color: var(--accent-blue); }
+  .finding h4 {
+    font-size: 0.875rem;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+  }
+  .finding p, .finding li {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+  }
+  .finding ul { padding-left: 1.25rem; margin-top: 0.25rem; }
+  .finding code {
+    background: var(--tag-bg);
+    padding: 0.1rem 0.35rem;
+    border-radius: 4px;
+    font-size: 0.8125rem;
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  }
+
+  .file-list {
+    list-style: none;
+    margin-top: 0.5rem;
+  }
+  .file-list li {
+    font-size: 0.8125rem;
+    font-family: 'SFMono-Regular', Consolas, monospace;
+    padding: 0.25rem 0;
+    color: var(--text-muted);
+  }
+  .file-list .additions { color: var(--accent-green); }
+  .file-list .deletions { color: var(--accent-red); }
+
+  .comment-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.25rem;
+    margin-top: 2rem;
+    font-size: 0.875rem;
+    line-height: 1.7;
+    color: var(--text-muted);
+  }
+  .comment-box h3 {
+    font-size: 0.9rem;
+    color: var(--text);
+    margin-bottom: 0.75rem;
+  }
+
+  .chevron {
+    transition: transform 0.2s;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+  }
+  .chevron.open { transform: rotate(90deg); }
+
+  footer {
+    margin-top: 2rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<!-- Tab navigation -->
+<div class="tab-bar">
+  <button class="tab-btn active" onclick="showTab('pr696')">PR #696 &mdash; secret agent tokens</button>
+  <button class="tab-btn" onclick="showTab('pr697')">PR #697 &mdash; sparse checkout fix</button>
+</div>
+
+<!-- ========== PR #696 ========== -->
+<div id="pr696" class="tab-content active">
+
+<header>
+  <h1>PR #696 &mdash; register expiring tokens values in the secret agent</h1>
+  <div class="meta">
+    <span>Author: <strong>droslean</strong> (Nikolaos Moraitis)</span>
+    <span>Base: <strong>main</strong></span>
+    <span>Branch: <strong>gh-app-token</strong></span>
+    <span>+102 / &minus;3</span>
+  </div>
+  <ul class="file-list">
+    <li>pkg/config/secret/agent.go <span class="additions">+31</span> <span class="deletions">&minus;3</span></li>
+    <li>pkg/config/secret/agent_test.go <span class="additions">+68</span></li>
+    <li>pkg/github/app_auth_roundtripper.go <span class="additions">+3</span></li>
+  </ul>
+</header>
+
+<!-- Gate Decision -->
+<div class="gate-banner">
+  <span class="gate-label">Merge Gate</span>
+  <span class="gate-result">&#10003; MERGE</span>
+  <span style="color:var(--text-muted); font-size:0.8125rem; margin-left:0.5rem;">All three reviewers approve. No show-stoppers found.</span>
+</div>
+
+<div class="verdict-banner approve">
+  <span class="icon">&#10003;</span>
+  APPROVE WITH SUGGESTIONS
+</div>
+
+<!-- Overview -->
+<div class="section">
+  <div class="section-header" onclick="toggle(this)">
+    <h2>Overview</h2>
+    <span class="chevron open">&#9654;</span>
+  </div>
+  <div class="section-body">
+    <p>The secret agent was built to censor file-based tokens. GitHub App tokens (JWTs, installation access tokens) are short-lived and minted at runtime, so they were never registered with the censorer and could leak in logs &mdash; for example in git fetch URLs.</p>
+    <p style="margin-top:0.75rem;">This PR adds an <code>expiringTokens</code> map to the secret agent that stores token values keyed by expiry time. <code>refreshCensorer</code> prunes expired entries and includes live entries in the censor pattern list. Two call sites in <code>app_auth_roundtripper.go</code> wire JWT and installation token registration.</p>
+  </div>
+</div>
+
+<!-- Converging Concerns -->
+<div class="section">
+  <div class="section-header" onclick="toggle(this)">
+    <h2>Converging Concerns <span class="tag tag-comment">2 items</span></h2>
+    <span class="chevron open">&#9654;</span>
+  </div>
+  <div class="section-body">
+    <p style="font-size:0.8125rem; color:var(--text-muted); margin-bottom:1rem;">Issues flagged independently by multiple reviewers carry the highest confidence.</p>
+
+    <div class="finding converging">
+      <h4><code>refreshCensorer</code> lock upgrade needs a comment</h4>
+      <p>Flagged by: Code Quality, Maintainability</p>
+      <p>The method changed from <code>RLock</code> to <code>Lock</code> because it now mutates <code>expiringTokens</code> via <code>delete</code> during pruning. Correct, but non-obvious &mdash; a future maintainer could regress it back to <code>RLock</code>. A one-line comment explaining why would prevent that.</p>
+    </div>
+
+    <div class="finding converging">
+      <h4><code>expiringTokens</code> not reinitialized in <code>Start</code></h4>
+      <p>Flagged by: Code Quality, Maintainability</p>
+      <p><code>Start</code> resets <code>secretsMap</code> and <code>ReloadingCensorer</code> but leaves <code>expiringTokens</code> intact. If <code>Start</code> were ever called after tokens were registered, stale entries would survive the reset. Adding <code>expiringTokens = make(map[string]time.Time)</code> in <code>Start</code> would make it consistent.</p>
+    </div>
+  </div>
+</div>
+
+<!-- Code Quality -->
+<div class="section">
+  <div class="section-header" onclick="toggle(this)">
+    <h2>
+      <span style="color:var(--accent-cyan);">1/3</span> Code Quality
+      <span class="tag tag-approve">Approve</span>
+    </h2>
+    <span class="chevron">&#9654;</span>
+  </div>
+  <div class="section-body collapsed">
+    <div class="finding positive">
+      <h4>Concurrency model is sound</h4>
+      <p>The two-phase lock pattern in <code>addExpiringToken</code> (lock &rarr; add &rarr; unlock &rarr; <code>refreshCensorer</code>) mirrors the existing <code>setSecret</code> method. The lock upgrade from <code>RLock</code> to <code>Lock</code> in <code>refreshCensorer</code> is correct.</p>
+    </div>
+    <div class="finding suggestion">
+      <h4>Narrow censoring gap</h4>
+      <p>Between adding a token to the map and <code>refreshCensorer</code> rebuilding the censorer, a log line could theoretically leak the token. Practically negligible and consistent with how <code>setSecret</code> already works.</p>
+    </div>
+    <div class="finding suggestion">
+      <h4>Missing end-to-end censoring test</h4>
+      <p>Tests assert map state but don't verify the censorer was actually updated with the token value. A test calling <code>Censor</code> on a string containing the token would provide stronger coverage of the security-critical behavior.</p>
+    </div>
+    <div class="finding positive">
+      <h4>Good test coverage</h4>
+      <p>Table-driven tests cover: empty value, zero time, past expiry, and pruning of stale entries on add.</p>
+    </div>
+    <div class="finding positive">
+      <h4>Clean integration points</h4>
+      <p>Two one-liner additions in <code>app_auth_roundtripper.go</code> at exactly the right places &mdash; right after token creation, before use.</p>
+    </div>
+  </div>
+</div>
+
+<!-- Maintainability -->
+<div class="section">
+  <div class="section-header" onclick="toggle(this)">
+    <h2>
+      <span style="color:var(--accent-cyan);">2/3</span> Maintainability
+      <span class="tag tag-approve">Approve</span>
+      <span class="tag tag-low" style="margin-left:0.25rem;">Low burden</span>
+    </h2>
+    <span class="chevron">&#9654;</span>
+  </div>
+  <div class="section-body collapsed">
+    <div class="finding positive">
+      <h4>Follows established patterns</h4>
+      <p>The <code>addExpiringToken</code> &rarr; <code>refreshCensorer</code> flow mirrors the existing <code>setSecret</code> &rarr; <code>refreshCensorer</code> pattern exactly. A future maintainer will immediately recognize it.</p>
+    </div>
+    <div class="finding positive">
+      <h4>Minimal public API surface</h4>
+      <p>One new exported function (<code>AddExpiringToken</code>), consistent with the package&rsquo;s style of thin wrappers around the singleton.</p>
+    </div>
+    <div class="finding suggestion">
+      <h4>Stale tokens only pruned on refresh</h4>
+      <p>Expired tokens linger until <code>refreshCensorer</code> runs again. Given GitHub token lifetimes (~10 min JWT, ~1 hr installation) and typical API call frequency, this is unlikely to matter in practice.</p>
+    </div>
+    <div class="finding">
+      <h4>Global singleton coupling</h4>
+      <p>The call to <code>secret.AddExpiringToken</code> uses the package-level singleton, making <code>appsRoundTripper</code> harder to test in isolation. This is a pre-existing pattern, not new debt from this PR.</p>
+    </div>
+  </div>
+</div>
+
+<!-- Deployment Risk -->
+<div class="section">
+  <div class="section-header" onclick="toggle(this)">
+    <h2>
+      <span style="color:var(--accent-cyan);">3/3</span> Deployment Risk
+      <span class="tag tag-low">Low risk</span>
+    </h2>
+    <span class="chevron">&#9654;</span>
+  </div>
+  <div class="section-body collapsed">
+    <div class="finding positive">
+      <h4>No breaking changes</h4>
+      <p>No configuration schema changes, no CLI flags, no API surface changes. Purely internal implementation.</p>
+    </div>
+    <div class="finding positive">
+      <h4>Zero operator action required</h4>
+      <p>Rolling upgrades fully supported. Old and new instances coexist safely. Rollback is trivial.</p>
+    </div>
+    <div class="finding positive">
+      <h4>Only observable effect is improved security</h4>
+      <p>Tokens that previously leaked in plain text in logs will now be censored.</p>
+    </div>
+    <div class="finding">
+      <h4>Lock contention negligible</h4>
+      <p>The <code>RLock</code> &rarr; <code>Lock</code> promotion adds minor contention, but the critical section is short (map iteration + deletion).</p>
+    </div>
+    <div class="finding">
+      <h4>Memory bounded naturally</h4>
+      <p>Map size bounded by number of active (non-expired) tokens, proportional to distinct installations. Pruned on every <code>refreshCensorer</code> call.</p>
+    </div>
+  </div>
+</div>
+
+<!-- Gate Non-Blocking Observations -->
+<div class="section">
+  <div class="section-header" onclick="toggle(this)">
+    <h2>Gate: Non-Blocking Observations</h2>
+    <span class="chevron open">&#9654;</span>
+  </div>
+  <div class="section-body">
+    <div class="finding">
+      <h4>Double-lock pattern in <code>addExpiringToken</code></h4>
+      <p>Theoretically allows a pruning goroutine to remove a just-inserted expired token between the two lock acquisitions. Benign &mdash; expired tokens should not be censored anyway.</p>
+    </div>
+    <div class="finding">
+      <h4>Lock upgrade from <code>RLock</code> to <code>Lock</code> in <code>refreshCensorer</code></h4>
+      <p>Changes contention profile for all callers. Practical impact negligible given frequency and duration of these operations.</p>
+    </div>
+  </div>
+</div>
+
+<!-- Suggestions -->
+<div class="section">
+  <div class="section-header" onclick="toggle(this)">
+    <h2>Suggestions (non-blocking)</h2>
+    <span class="chevron open">&#9654;</span>
+  </div>
+  <div class="section-body">
+    <div class="finding suggestion">
+      <h4>1. Comment on <code>refreshCensorer</code> lock upgrade</h4>
+      <p>Add a brief comment explaining that the full write lock is required because the method now prunes expired entries from <code>expiringTokens</code>. Protects against a future &ldquo;optimization&rdquo; that downgrades it back to <code>RLock</code>.</p>
+    </div>
+    <div class="finding suggestion">
+      <h4>2. Initialize <code>expiringTokens</code> in <code>Start</code></h4>
+      <p>Add <code>s.expiringTokens = make(map[string]time.Time)</code> alongside the existing field resets for consistency and correctness.</p>
+    </div>
+    <div class="finding suggestion">
+      <h4>3. End-to-end censoring test</h4>
+      <p>Add a test that calls <code>Censor</code> on a string containing the registered token and asserts it gets redacted. Current tests verify map state but not the actual censoring behavior.</p>
+    </div>
+  </div>
+</div>
+
+<!-- PR Comment -->
+<div class="comment-box">
+  <h3>Ready-to-post PR comment</h3>
+  <p>This looks good to me. All aspects &mdash; code quality, maintainability, and deployment risk &mdash; check out. The concurrency model is correct, the tests cover the important edge cases, and the change closes a real security gap with minimal complexity. Two minor suggestions for future maintainability: (1) add a comment explaining why <code>refreshCensorer</code> needs a full write lock now that it prunes <code>expiringTokens</code>, and (2) initialize <code>expiringTokens</code> in <code>Start</code> for consistency with the other field resets. Neither is blocking.</p>
+</div>
+
+</div><!-- end pr696 -->
+
+<!-- ========== PR #697 ========== -->
+<div id="pr697" class="tab-content">
+
+<header>
+  <h1>PR #697 &mdash; fix(clonerefs): remove cloneDepth=1 from sparseCheckout</h1>
+  <div class="meta">
+    <span>Author: <strong>Prucek</strong> (Peter R&uacute;&#269;ek)</span>
+    <span>Base: <strong>main</strong></span>
+    <span>Branch: <strong>fix-sparse-checkout-depth</strong></span>
+    <span>+3 / &minus;6</span>
+    <span><span class="tag tag-bug" style="vertical-align:middle;">Bug Fix</span></span>
+  </div>
+  <ul class="file-list">
+    <li>pkg/pod-utils/clone/clone.go <span class="deletions">&minus;3</span></li>
+    <li>pkg/pod-utils/clone/clone_test.go <span class="additions">+3</span> <span class="deletions">&minus;3</span></li>
+  </ul>
+</header>
+
+<div class="verdict-banner approve">
+  <span class="icon">&#10003;</span>
+  APPROVE
+</div>
+
+<!-- Overview -->
+<div class="section">
+  <div class="section-header" onclick="toggle(this)">
+    <h2>Overview</h2>
+    <span class="chevron open">&#9654;</span>
+  </div>
+  <div class="section-body">
+    <p>Sparse checkout with <code>--depth 1 --filter=blob:none</code> creates a shallow clone that lacks enough history to find a common ancestor when merging the PR head commit, causing &ldquo;unrelated histories&rdquo; failures.</p>
+    <p style="margin-top:0.75rem;">This PR removes the automatic <code>cloneDepth = 1</code> default that was forced when sparse checkout was enabled and <code>CloneDepth</code> was not explicitly set. The <code>--filter=blob:none</code> flag is preserved, so blob fetching remains optimized.</p>
+  </div>
+</div>
+
+<!-- Findings -->
+<div class="section">
+  <div class="section-header" onclick="toggle(this)">
+    <h2>Findings</h2>
+    <span class="chevron open">&#9654;</span>
+  </div>
+  <div class="section-body">
+    <div class="finding positive">
+      <h4>Root cause is clear and fix is correct</h4>
+      <p><code>--depth 1</code> + <code>--filter=blob:none</code> + sparse checkout = no common ancestor for merge. Removing the forced shallow depth lets git fetch enough history.</p>
+    </div>
+    <div class="finding positive">
+      <h4>Minimal, safe change</h4>
+      <p>3 lines removed from production code, 3 test lines updated to match. Users who explicitly set <code>CloneDepth &gt; 0</code> still get <code>--depth N</code> as before.</p>
+    </div>
+    <div class="finding positive">
+      <h4>Tests updated correctly</h4>
+      <p>All three sparse checkout test cases now expect <code>fetch</code> without <code>--depth 1</code>, consistent with the code change.</p>
+    </div>
+    <div class="finding">
+      <h4>Performance tradeoff</h4>
+      <p>Without <code>--depth 1</code>, sparse checkout fetches will download more commit history. For repos with very long histories this could be slower, but correctness trumps speed &mdash; a clone that can&rsquo;t merge is useless. <code>--filter=blob:none</code> still avoids blob downloads.</p>
+    </div>
+  </div>
+</div>
+
+<!-- PR Comment -->
+<div class="comment-box">
+  <h3>Ready-to-post PR comment</h3>
+  <p>Clean bug fix. The root cause is well-understood &mdash; <code>--depth 1</code> with sparse checkout prevents git from finding a common ancestor for the merge. Removing the forced shallow depth is the right fix, and <code>--filter=blob:none</code> is preserved to keep blob fetching optimized. Tests updated correctly. LGTM.</p>
+</div>
+
+</div><!-- end pr697 -->
+
+<!-- ========== Followups ========== -->
+<div style="margin-top:2rem; border-top:2px solid var(--border); padding-top:2rem;">
+
+<h1 style="font-size:1.5rem; font-weight:600; margin-bottom:1.5rem;">Followups (PR #696)</h1>
+
+<div class="section">
+  <div class="section-header" onclick="toggle(this)">
+    <h2>
+      1. Initialize <code>expiringTokens</code> in <code>Start</code>
+      <span class="tag tag-comment">deferred-review</span>
+      <span class="tag tag-low" style="margin-left:0.25rem;">should</span>
+    </h2>
+    <span class="chevron open">&#9654;</span>
+  </div>
+  <div class="section-body">
+    <p style="font-size:0.8125rem; color:var(--text-muted); margin-bottom:0.5rem;"><code>pkg/config/secret/agent.go:48</code></p>
+    <p style="font-size:0.875rem; margin-bottom:1rem;"><code>Start</code> resets <code>secretsMap</code> and <code>ReloadingCensorer</code> but leaves <code>expiringTokens</code> intact. Converging concern from two review perspectives.</p>
+    <pre style="background:var(--tag-bg); padding:1rem; border-radius:6px; font-size:0.8125rem; line-height:1.6; white-space:pre-wrap; overflow-x:auto;">In `kubernetes-sigs/prow`, following the merge of PR #696 ("register expiring tokens values in the secret agent", merge commit 7dfdc18c180f0f6ba26d905b10b110ca3c8ae343):
+
+The `Start` method in `pkg/config/secret/agent.go` resets `secretsMap` and `ReloadingCensorer` but does not reinitialize `expiringTokens`. Add `a.expiringTokens = make(map[string]time.Time)` in `Start` alongside the existing field resets (currently around line 48).
+
+Also add a test in `pkg/config/secret/agent_test.go` that:
+1. Creates an agent with a pre-populated `expiringTokens` map.
+2. Calls `Start` on it.
+3. Asserts `expiringTokens` is empty after the reset.
+
+Acceptance criteria: the new line is present in `Start`, the test passes, and `go test ./pkg/config/secret/...` passes with the race detector (`-race`).
+
+Out of scope: any other changes to the secret agent, refactoring the `Start` method, or changing how `expiringTokens` works.</pre>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-header" onclick="toggle(this)">
+    <h2>
+      2. End-to-end censoring test for expiring tokens
+      <span class="tag tag-comment">tests</span>
+      <span class="tag tag-low" style="margin-left:0.25rem;">should</span>
+    </h2>
+    <span class="chevron open">&#9654;</span>
+  </div>
+  <div class="section-body">
+    <p style="font-size:0.8125rem; color:var(--text-muted); margin-bottom:0.5rem;"><code>pkg/config/secret/agent_test.go</code></p>
+    <p style="font-size:0.875rem; margin-bottom:1rem;">The existing <code>TestAddExpiringToken</code> tests verify map state but never call <code>Censor</code> to confirm the token is actually redacted. The security-critical behavior is untested at the integration level.</p>
+    <pre style="background:var(--tag-bg); padding:1rem; border-radius:6px; font-size:0.8125rem; line-height:1.6; white-space:pre-wrap; overflow-x:auto;">In `kubernetes-sigs/prow`, following the merge of PR #696 ("register expiring tokens values in the secret agent", merge commit 7dfdc18c180f0f6ba26d905b10b110ca3c8ae343):
+
+Add an integration-level test in `pkg/config/secret/agent_test.go` that verifies the censorer actually redacts expiring tokens. The test should:
+
+1. Create an `agent` with an initialized `expiringTokens` map and `ReloadingCensorer` (same setup as the existing `TestAddExpiringToken` tests).
+2. Call `addExpiringToken` with a known token value and a future expiry.
+3. Call `Censor` on a byte slice containing the token value (e.g., `[]byte("https://x-access-token:ghs_secret@github.com/org/repo")`).
+4. Assert the token value is replaced with the censoring placeholder (check `secretutil` for the placeholder pattern &mdash; it uses `XXXXXX` repeated to match the original length).
+5. Also test that after simulating expiry (register a token with a past expiry, call `refreshCensorer`), `Censor` no longer redacts the expired token value.
+
+Follow the existing table-driven test style in the file.
+
+Acceptance criteria: the new test passes, and `go test ./pkg/config/secret/... -race` passes.
+
+Out of scope: changes to production code, changes to the censoring mechanism itself, or tests for the `app_auth_roundtripper.go` call sites.</pre>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-header" onclick="toggle(this)">
+    <h2>
+      3. <code>getSecrets()</code> doesn&rsquo;t include expiring tokens
+      <span class="tag tag-comment">consistency</span>
+      <span class="tag" style="background:#1c1a0e; color:var(--accent-yellow); border:1px solid #5c4b12; margin-left:0.25rem;">could</span>
+    </h2>
+    <span class="chevron open">&#9654;</span>
+  </div>
+  <div class="section-body">
+    <p style="font-size:0.8125rem; color:var(--text-muted); margin-bottom:0.5rem;"><code>pkg/config/secret/agent.go:193</code></p>
+    <p style="font-size:0.875rem; margin-bottom:1rem;"><code>getSecrets()</code> iterates only <code>secretsMap</code>. Expiring tokens are excluded, creating an inconsistency with <code>refreshCensorer</code> which includes both sources. No current caller is affected, but the gap is a trap for future callers.</p>
+    <pre style="background:var(--tag-bg); padding:1rem; border-radius:6px; font-size:0.8125rem; line-height:1.6; white-space:pre-wrap; overflow-x:auto;">In `kubernetes-sigs/prow`, following the merge of PR #696 ("register expiring tokens values in the secret agent", merge commit 7dfdc18c180f0f6ba26d905b10b110ca3c8ae343):
+
+The `getSecrets()` method in `pkg/config/secret/agent.go` (around line 193) iterates only `secretsMap` and returns file-based secrets as a `sets.Set[string]`. It does not include values from the `expiringTokens` map. This creates an inconsistency: `refreshCensorer` includes both sources when rebuilding the censor pattern list, but `getSecrets()` only returns one.
+
+Fix `getSecrets()` to also iterate `expiringTokens` and insert those values into the returned set. The method already holds `RLock`, which is sufficient since it only reads the map.
+
+Add a test case in `pkg/config/secret/agent_test.go` that:
+1. Creates an agent with both a file-based secret in `secretsMap` and a token in `expiringTokens`.
+2. Calls `getSecrets()`.
+3. Asserts the returned set contains both the file-based secret value and the expiring token value.
+
+Acceptance criteria: `getSecrets()` returns both sources, the test passes, and `go test ./pkg/config/secret/... -race` passes.
+
+Out of scope: changing `NewCensoringFormatter`, modifying `clone.go`, or any refactoring of the censoring architecture.</pre>
+  </div>
+</div>
+
+</div><!-- end followups -->
+
+<footer>
+  Reviews generated 2026-04-30 &middot; Followups 2026-06-16 &middot;
+  <a href="https://github.com/kubernetes-sigs/prow/pull/696">#696</a> &middot;
+  <a href="https://github.com/kubernetes-sigs/prow/pull/697">#697</a>
+</footer>
+
+<script>
+function toggle(header) {
+  const body = header.nextElementSibling;
+  const chevron = header.querySelector('.chevron');
+  body.classList.toggle('collapsed');
+  chevron.classList.toggle('open');
+}
+function showTab(id) {
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  event.target.classList.add('active');
+}
+</script>
+
+</body>
+</html>

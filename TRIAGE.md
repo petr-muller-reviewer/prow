@@ -4,11 +4,13 @@ title: "alert prow plugin for no cla PR merges"
 state: open
 labels: kind/feature, help wanted, lifecycle/frozen, area/plugins
 main_sha: 71428b9c282ee8c9e7e9512068fccce86e7915da
-triaged_at: 2026-06-15T16:38:01Z
+triaged_at: 2026-06-16T16:17:29Z
 verdict: accepted
 refresh_log:
   - prev: 2026-06-01T14:19:36Z
     summary: "petr-muller replied to AaruniAggarwal confirming contribution and choosing to extend slackevents; area/plugins label added"
+  - prev: 2026-06-15T16:38:01Z
+    summary: "AaruniAggarwal self-assigned the issue"
 ---
 
 ## Findings
@@ -95,6 +97,7 @@ refresh_log:
 - ~~Reply to AaruniAggarwal confirming the issue is open for contribution~~ Done (petr-muller, 2026-06-15)
 - ~~Decide and communicate: extend `slackevents` or create a standalone plugin~~ Decided: extend `slackevents` (petr-muller, 2026-06-15)
 - ~~Apply `area/plugins` label~~ Done (petr-muller, 2026-06-15)
+- ~~Await assignment from AaruniAggarwal~~ Done (self-assigned, 2026-06-16)
 - Define v1 scope: check `Head.SHA` status from `PullRequestEvent`, document squash/rebase limitation, defer handling to follow-up
 - Await PR from AaruniAggarwal
 

@@ -56,6 +56,33 @@
   <p>All three reviewer perspectives independently approved. The change is minimal, correct, and strictly backward-compatible. Two converging concerns — an untested all-auxiliary edge case and a missing <code>SpecToStarted</code>-level test — are worth addressing as follow-ups but do not block merge. No critical issues, no breaking changes, risk level LOW.</p>
 </div>
 
+<h2>Merge Gate</h2>
+<div class="verdict" style="border-color: #28a745; background: #f0fff4;">
+  <div class="verdict-label" style="color: #22863a;">MERGE</div>
+  <p>No code changes since review (SHA unchanged). All six review findings are nits/questions — none blocking. The PR has <code>reviewDecision: APPROVED</code> on GitHub (@petr-muller APPROVED on 2026-06-15). The author acknowledged in an inline comment on <code>types.go:1236</code> that <code>Auxiliary</code> may also affect pod labeling, but explicitly deferred that to a future PR.</p>
+</div>
+
+<h3>Area 1 — Prior findings disposition</h3>
+<p>All findings are nits/questions. None were addressed in code (SHA unchanged), but none are blocking:</p>
+<ul>
+  <li><strong>All-auxiliary edge case untested</strong> — not addressed; follow-up quality.</li>
+  <li><strong>Missing SpecToStarted-level test</strong> — not addressed; follow-up quality.</li>
+  <li><strong>Auxiliary on primary Refs is a no-op</strong> — not addressed; doc improvement, non-blocking.</li>
+  <li><strong>Test name ambiguous</strong> — not addressed; cosmetic.</li>
+  <li><strong>Config validation / GCS reporter test</strong> — questions, not gating.</li>
+</ul>
+
+<h3>Area 2 — Independent merge risk</h3>
+<ul>
+  <li><strong>API surface:</strong> Adds <code>Auxiliary bool</code> to exported <code>Refs</code> struct — purely additive. <code>json:"auxiliary,omitempty"</code> means no serialization change for existing objects.</li>
+  <li><strong>CRD:</strong> New optional boolean field. No validation webhook or defaulting changes. Existing CRs unaffected.</li>
+  <li><strong>Behavior:</strong> Only changes version selection in <code>started.json</code> for jobs that explicitly opt in. No behavioral change for any existing job.</li>
+  <li><strong>Blast radius:</strong> None for existing deployments.</li>
+</ul>
+
+<h3>Process note</h3>
+<p>The PR still needs the <code>lgtm</code> label and an OWNERS approval from @droslean (or equivalent) per the repo's merge bot. That is a process gate, not a code gate.</p>
+
 <h2>Activity since previous review</h2>
 <ul>
   <li><strong>No code changes</strong> — SHA unchanged (<code>5f29693a</code>).</li>
@@ -158,6 +185,64 @@ return nil   <span class="hl">// no warning, no log</span></pre>
   <li>Should <code>Auxiliary: true</code> on <code>ProwJobSpec.Refs</code> (the primary ref, not extra_refs) be explicitly rejected at config validation time, or is a doc comment clarification sufficient?</li>
   <li>Is there an issue or follow-up planned to document this field in Prow's job configuration docs for operators writing YAML who don't read source?</li>
 </ul>
+
+<h2>Followups</h2>
+
+<div class="finding sev-nit">
+  <div class="finding-header" style="background: #6f42c1;">docs / should &mdash; Clarify that Auxiliary is a no-op on primary Refs</div>
+  <div class="finding-body">
+    <p><span class="file-ref">pkg/apis/prowjobs/v1/types.go:1225-1236</span>, CRD YAML (two locations)</p>
+    <pre>In kubernetes-sigs/prow, following PR #733 ("auxiliary extra_refs"), the new
+`Auxiliary` bool field on the `Refs` struct has a doc comment that says "the
+first repository where Auxiliary is false or unset is considered the main
+repository and determines the version." This is misleading: `mainRefs()` in
+`pkg/pod-utils/downwardapi/jobspec.go` unconditionally returns
+`ProwJobSpec.Refs` when non-nil, before checking `Auxiliary`. Setting
+`auxiliary: true` on the primary `spec.refs` does nothing.
+
+Task: Add one sentence to the `Auxiliary` field's Go doc comment in
+`pkg/apis/prowjobs/v1/types.go` (around line 1225) clarifying: "This field
+has no effect when set on ProwJobSpec.Refs; it is only meaningful on elements
+of ExtraRefs." Then mirror the same sentence into the two CRD YAML description
+blocks in `config/prow/cluster/prowjob-crd/prowjob_customresourcedefinition.yaml`
+(search for "Auxiliary indicates" — it appears twice, once under `extra_refs`
+items and once under the top-level `refs`).
+
+Acceptance criteria: the three description texts (Go comment, two CRD YAML
+blocks) all contain the clarification. Run `go build ./...` to confirm the
+change compiles. No other files should be modified.
+
+Out of scope: adding config validation to reject `Auxiliary: true` on primary
+refs, adding tests, changing behavior.</pre>
+  </div>
+</div>
+
+<div class="finding sev-nit">
+  <div class="finding-header" style="background: #6f42c1;">docs / should &mdash; Mention auxiliary field in jobs.md</div>
+  <div class="finding-body">
+    <p><span class="file-ref">site/content/en/docs/jobs.md:48</span></p>
+    <pre>In kubernetes-sigs/prow, following PR #733 ("auxiliary extra_refs"), a new
+`auxiliary: true` field can be set on `extra_refs` entries to tell Prow that
+the repo is only providing tooling/helper files and should be skipped when
+determining the version for started.json. The job configuration guide at
+`site/content/en/docs/jobs.md` shows a periodic job example with `extra_refs`
+(around line 48) but doesn't mention this field.
+
+Task: In the periodic job YAML example in `jobs.md`, add a second `extra_refs`
+entry with `auxiliary: true` set, and add a short inline YAML comment
+(e.g. `# auxiliary: not used for version in started.json`) or a single
+sentence immediately after the code block noting that `auxiliary: true` tells
+Prow to skip the ref for version selection. Keep it minimal — one line of
+explanation, not a paragraph.
+
+Acceptance criteria: the example shows a concrete use of `auxiliary: true`
+and a reader can understand what it does without leaving the page. No other
+docs files should be modified.
+
+Out of scope: creating a new docs section, adding detailed explanation of
+TestGrid version semantics, modifying any Go code.</pre>
+  </div>
+</div>
 
 </body>
 </html>

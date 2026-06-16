@@ -5,12 +5,35 @@ head_sha: 5f29693a9de3c261031aee93a1079edd8415317d
 base: main
 reviewed_at: 2026-06-02T23:41:37Z
 verdict: approve
+gate:
+  decision: merge
+  gated_at: 2026-06-15T16:00:42Z
+  gated_head_sha: 5f29693a9de3c261031aee93a1079edd8415317d
+  reviewed_head_sha: 5f29693a9de3c261031aee93a1079edd8415317d
 refresh_log:
   - from_sha: 5f29693a9de3c261031aee93a1079edd8415317d
     to_sha: 5f29693a9de3c261031aee93a1079edd8415317d
     at: 2026-06-02T23:41:37Z
     summary: "No code change. One /cc comment from petr-muller (2026-06-01). No new reviews or inline comments."
 ---
+
+## Gate
+
+**Decision: MERGE**
+
+No code changes since the review. All findings were nits and questions — none blocking. The PR has `reviewDecision: APPROVED` on GitHub (@petr-muller APPROVED on 2026-06-15). It is missing the `lgtm` and `approved` Prow labels (bot says "NOT APPROVED" pending an OWNERS approver — currently suggesting @droslean). The author (@pohly) left one inline comment on `types.go:1236` acknowledging that `Auxiliary` may also affect pod labeling but explicitly deferring that to a future PR.
+
+**Area 1 — Prior findings disposition:** All six findings from REVIEW.md are nits/questions. None were addressed in code (SHA unchanged), but none are blocking. The author's inline comment about pod labeling is a new scope note, not a concern about this PR's correctness.
+
+**Area 2 — Independent merge risk:**
+- **API surface:** Adds `Auxiliary bool` to the exported `Refs` struct — purely additive, no removals or renames. `json:"auxiliary,omitempty"` means no serialization change for existing objects.
+- **CRD:** New optional boolean field, no validation webhook changes, no defaulting changes. Existing CRs unaffected.
+- **Behavior:** Only changes version selection in `started.json` for jobs that explicitly opt in via `auxiliary: true`. No behavioral change for any existing job.
+- **Blast radius:** None for existing deployments. The field is inert until set.
+
+**Gating list:** Nothing gates. All findings are follow-up quality.
+
+**Note:** The PR still needs the `lgtm` label and an OWNERS approval from @droslean (or equivalent) per the repo's merge bot. That is a process gate, not a code gate.
 
 ## Summary
 
@@ -75,3 +98,65 @@ Since previous review (2026-05-28T23:19:12Z):
 
 - When all extra_refs are auxiliary and no primary Refs exist, is an empty version string in `started.json` acceptable (kubetest2 always overwrites via metadata.json in those cases), or should there be a log warning?
 - Should `Auxiliary: true` on `ProwJobSpec.Refs` be explicitly rejected at config validation time, or is a doc comment clarification sufficient?
+
+## Followups
+
+### docs: Clarify that Auxiliary is a no-op on primary Refs
+- category: docs
+- necessity: should
+- where: `pkg/apis/prowjobs/v1/types.go:1225-1236`, CRD YAML (two locations)
+- prompt:
+
+```
+In kubernetes-sigs/prow, following PR #733 ("auxiliary extra_refs"), the new
+`Auxiliary` bool field on the `Refs` struct has a doc comment that says "the
+first repository where Auxiliary is false or unset is considered the main
+repository and determines the version." This is misleading: `mainRefs()` in
+`pkg/pod-utils/downwardapi/jobspec.go` unconditionally returns
+`ProwJobSpec.Refs` when non-nil, before checking `Auxiliary`. Setting
+`auxiliary: true` on the primary `spec.refs` does nothing.
+
+Task: Add one sentence to the `Auxiliary` field's Go doc comment in
+`pkg/apis/prowjobs/v1/types.go` (around line 1225) clarifying: "This field
+has no effect when set on ProwJobSpec.Refs; it is only meaningful on elements
+of ExtraRefs." Then mirror the same sentence into the two CRD YAML description
+blocks in `config/prow/cluster/prowjob-crd/prowjob_customresourcedefinition.yaml`
+(search for "Auxiliary indicates" — it appears twice, once under `extra_refs`
+items and once under the top-level `refs`).
+
+Acceptance criteria: the three description texts (Go comment, two CRD YAML
+blocks) all contain the clarification. Run `go build ./...` to confirm the
+change compiles. No other files should be modified.
+
+Out of scope: adding config validation to reject `Auxiliary: true` on primary
+refs, adding tests, changing behavior.
+```
+
+### docs: Mention auxiliary field in jobs.md
+- category: docs
+- necessity: should
+- where: `site/content/en/docs/jobs.md:48`
+- prompt:
+
+```
+In kubernetes-sigs/prow, following PR #733 ("auxiliary extra_refs"), a new
+`auxiliary: true` field can be set on `extra_refs` entries to tell Prow that
+the repo is only providing tooling/helper files and should be skipped when
+determining the version for started.json. The job configuration guide at
+`site/content/en/docs/jobs.md` shows a periodic job example with `extra_refs`
+(around line 48) but doesn't mention this field.
+
+Task: In the periodic job YAML example in `jobs.md`, add a second `extra_refs`
+entry with `auxiliary: true` set, and add a short inline YAML comment
+(e.g. `# auxiliary: not used for version in started.json`) or a single
+sentence immediately after the code block noting that `auxiliary: true` tells
+Prow to skip the ref for version selection. Keep it minimal — one line of
+explanation, not a paragraph.
+
+Acceptance criteria: the example shows a concrete use of `auxiliary: true`
+and a reader can understand what it does without leaving the page. No other
+docs files should be modified.
+
+Out of scope: creating a new docs section, adding detailed explanation of
+TestGrid version semantics, modifying any Go code.
+```

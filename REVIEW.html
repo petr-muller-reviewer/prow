@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PR #577 Review: updateconfig ACL support</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text-muted: #8b949e;
+    --accent: #58a6ff;
+    --green: #3fb950;
+    --red: #f85149;
+    --yellow: #d29922;
+    --orange: #db6d28;
+    --purple: #bc8cff;
+    --cyan: #39d2c0;
+    --code-bg: #1c2129;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    padding: 2rem;
+    max-width: 1060px;
+    margin: 0 auto;
+  }
+  header {
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 1.5rem;
+    margin-bottom: 2rem;
+  }
+  header h1 {
+    font-size: 1.75rem;
+    font-weight: 600;
+    color: var(--text);
+  }
+  header h1 a { color: var(--accent); text-decoration: none; }
+  header h1 a:hover { text-decoration: underline; }
+  .meta {
+    display: flex;
+    gap: 1rem;
+    margin-top: 0.5rem;
+    flex-wrap: wrap;
+  }
+  .meta-item { font-size: 0.85rem; color: var(--text-muted); }
+  .meta-item strong { color: var(--text); font-weight: 500; }
+  .badge {
+    display: inline-block;
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+  }
+  .badge-merged { background: var(--purple); color: #fff; }
+  .badge-xl { background: var(--orange); color: #fff; }
+
+  section { margin-bottom: 2rem; }
+  section > h2 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid var(--border);
+  }
+  h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 1rem 0 0.4rem;
+    color: var(--cyan);
+  }
+  p, li { color: var(--text); font-size: 0.95rem; }
+  ul, ol { padding-left: 1.5rem; margin: 0.4rem 0; }
+  li { margin-bottom: 0.3rem; }
+
+  .verdict-box {
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface);
+    padding: 1.25rem;
+    margin-top: 0.5rem;
+  }
+  .verdict-box.request-changes { border-color: var(--red); }
+  .verdict-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+  }
+
+  .finding {
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface);
+    padding: 1rem 1.25rem;
+    margin-bottom: 1rem;
+    border-left: 3px solid var(--border);
+  }
+  .finding.blocking   { border-left-color: var(--red); }
+  .finding.should-fix { border-left-color: var(--yellow); }
+  .finding.nit        { border-left-color: var(--accent); }
+  .finding.question   { border-left-color: var(--purple); }
+  .finding.good       { border-left-color: var(--green); }
+
+  .finding-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+  .severity {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0.15rem 0.45rem;
+    border-radius: 4px;
+  }
+  .severity-blocking  { background: var(--red);    color: #fff; }
+  .severity-shouldfix { background: var(--yellow); color: #000; }
+  .severity-nit       { background: var(--accent); color: #000; }
+  .severity-question  { background: var(--purple); color: #fff; }
+  .severity-good      { background: var(--green);  color: #000; }
+  .finding-title      { font-weight: 600; font-size: 0.95rem; }
+
+  .file-ref {
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    font-size: 0.82rem;
+    color: var(--accent);
+    background: var(--code-bg);
+    padding: 0.1rem 0.35rem;
+    border-radius: 3px;
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.75rem 1rem;
+    overflow-x: auto;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    margin: 0.5rem 0;
+  }
+  code {
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    font-size: 0.85rem;
+  }
+  :not(pre) > code {
+    background: var(--code-bg);
+    padding: 0.15rem 0.35rem;
+    border-radius: 3px;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0.75rem 0;
+    font-size: 0.9rem;
+  }
+  th, td {
+    text-align: left;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--border);
+  }
+  th {
+    background: var(--surface);
+    font-weight: 600;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1><a href="https://github.com/kubernetes-sigs/prow/pull/577">#577</a> updateconfig: Add ACL support for ConfigMap updates</h1>
+  <div class="meta">
+    <span class="meta-item"><strong>Author:</strong> midnightconman</span>
+    <span class="meta-item"><strong>Base:</strong> main</span>
+    <span class="meta-item"><strong>Head:</strong> <code>63cbfe64</code></span>
+    <span class="meta-item"><strong>Reviewed:</strong> 2026-06-22T16:51:14Z</span>
+    <span class="badge badge-merged">Merged</span>
+    <span class="badge badge-xl">size/XL</span>
+  </div>
+</header>
+
+<!-- ============================================================ -->
+<!-- VERDICT                                                       -->
+<!-- ============================================================ -->
+
+<section>
+  <h2>Verdict</h2>
+  <div class="verdict-box request-changes">
+    <div class="verdict-title" style="color: var(--red);">Request Changes (post-merge)</div>
+    <p>The core ACL feature is well-designed and well-tested. The blocking issue is a silent operational trap: <code>config-bootstrapper</code> will be unable to update any ConfigMap that has <code>allowed_repos</code> configured, with no warning. This warrants a follow-up fix since the PR is already merged.</p>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- WHAT THIS PR DOES                                             -->
+<!-- ============================================================ -->
+
+<section>
+  <h2>What this PR does</h2>
+  <ul>
+    <li>Adds <code>allowed_repos</code> and <code>denied_repos</code> fields to <code>ConfigMapSpec</code>, letting admins control which orgs/repos can trigger ConfigMap updates via the <code>config_updater</code> plugin.</li>
+    <li>Implements deny-before-allow precedence: deny list is checked first, then allow list if present, then default-allow if no allow list exists.</li>
+    <li>Supports both org-level (<code>"kubernetes"</code>) and repo-level (<code>"kubernetes/test-infra"</code>) entries in both lists.</li>
+    <li>Adds <code>checkconfig</code> validation for the new fields (registered as a default warning) and updates generated config documentation.</li>
+    <li>Updates <code>config-bootstrapper</code> to pass an empty repo string, intended to bypass ACL checks for local-file bootstrapping.</li>
+  </ul>
+</section>
+
+<!-- ============================================================ -->
+<!-- FINDINGS                                                      -->
+<!-- ============================================================ -->
+
+<section>
+  <h2>Findings</h2>
+
+  <h3>Blocking</h3>
+
+  <div class="finding blocking">
+    <div class="finding-header">
+      <span class="severity severity-blocking">Blocking</span>
+      <span class="finding-title">Config-bootstrapper silently blocked by <code>allowed_repos</code></span>
+    </div>
+    <p><span class="file-ref">cmd/config-bootstrapper/main.go:149</span> + <span class="file-ref">pkg/plugins/config.go:603-631</span></p>
+    <p>The config-bootstrapper passes <code>""</code> as the repo argument to <code>FilterChanges</code>. When a ConfigMapSpec has <code>allowed_repos</code> configured, <code>IsAllowed("")</code> returns <code>false</code> because the empty string doesn't match any entry in the allow list. The bootstrapper silently skips that ConfigMap with only a Debug-level log.</p>
+    <p>The comment on line 148 says <em>"ACL restrictions won't apply in this mode unless explicitly configured"</em> &mdash; this is misleading. The natural reading is that the bootstrapper bypasses ACLs, but in fact adding <code>allowed_repos</code> to any ConfigMapSpec will break the bootstrapper for that entry.</p>
+    <p>This is an operational trap: an admin adds ACLs and the bootstrapper silently stops updating those ConfigMaps. There's no warning, no error &mdash; just stale data.</p>
+    <pre><code>// Fix: add early return in IsAllowed
+func (cm ConfigMapSpec) IsAllowed(repo string) bool {
+    if repo == "" {
+        return true
+    }
+    // ... rest of ACL logic
+}</code></pre>
+  </div>
+
+  <h3>Should fix</h3>
+
+  <div class="finding should-fix">
+    <div class="finding-header">
+      <span class="severity severity-shouldfix">Should fix</span>
+      <span class="finding-title">Trailing-slash entries pass validation but silently never match</span>
+    </div>
+    <p><span class="file-ref">cmd/checkconfig/main.go:1552-1566</span></p>
+    <p><code>validateRepoName("kubernetes/")</code> passes: <code>SplitN</code> yields <code>["kubernetes", ""]</code>, which satisfies all checks (<code>len &lt;= 2</code>, <code>s[0] != ""</code>). At runtime, <code>NewOrgRepo("kubernetes/")</code> sets <code>Org: "kubernetes", Repo: ""</code>, and the ACL check treats it as org-level. So <code>"kubernetes/"</code> silently behaves as <code>"kubernetes"</code> in deny lists, but in allow lists it could cause subtle mismatch if someone expects repo-level semantics.</p>
+    <pre><code>// Add after the len(s) > 2 check:
+if len(s) == 2 && s[1] == "" {
+    return errors.New("repo name cannot be empty after org")
+}</code></pre>
+  </div>
+
+  <div class="finding should-fix">
+    <div class="finding-header">
+      <span class="severity severity-shouldfix">Should fix</span>
+      <span class="finding-title">Non-deterministic test due to map iteration order</span>
+    </div>
+    <p><span class="file-ref">cmd/checkconfig/main_test.go</span> &mdash; <code>"multiple maps with errors"</code> test case</p>
+    <p>The test asserts an exact error string containing errors from two map keys (<code>"config.yaml"</code> and <code>"plugins.yaml"</code>). Go map iteration is non-deterministic, so the error order can vary between runs. This test will flake.</p>
+    <p>Fix: assert each error substring independently, or sort the aggregated error list before comparing.</p>
+  </div>
+
+  <h3>Nits</h3>
+
+  <div class="finding nit">
+    <div class="finding-header">
+      <span class="severity severity-nit">Nit</span>
+      <span class="finding-title">ACL denials logged at Debug level only</span>
+    </div>
+    <p><span class="file-ref">pkg/plugins/updateconfig/updateconfig.go:314-320</span></p>
+    <p>ACL-denied updates are logged at <code>Debug</code>. Operators won't see these unless debug logging is enabled. During initial ACL rollout or when diagnosing "why did my ConfigMap stop updating", an Info or Warn-level message would surface the issue faster.</p>
+  </div>
+
+  <div class="finding nit">
+    <div class="finding-header">
+      <span class="severity severity-nit">Nit</span>
+      <span class="finding-title">Whitespace in ACL entries not validated</span>
+    </div>
+    <p><span class="file-ref">cmd/checkconfig/main.go:1552-1566</span></p>
+    <p>Entries like <code>" kubernetes"</code> or <code>"kubernetes/ test-infra"</code> pass validation but will never match at runtime. A <code>strings.TrimSpace</code> or explicit check would catch accidental whitespace from YAML copy-paste errors.</p>
+  </div>
+
+  <div class="finding nit">
+    <div class="finding-header">
+      <span class="severity severity-nit">Nit</span>
+      <span class="finding-title">Value receiver copies full struct on each call</span>
+    </div>
+    <p><span class="file-ref">pkg/plugins/config.go:603</span></p>
+    <p><code>IsAllowed</code> uses a value receiver, copying the entire <code>ConfigMapSpec</code> on each call. The slice/map fields are reference types so data isn't deep-copied, but a pointer receiver would be cleaner and consistent with methods on larger structs.</p>
+  </div>
+
+  <div class="finding nit">
+    <div class="finding-header">
+      <span class="severity severity-nit">Nit</span>
+      <span class="finding-title"><code>FilterChanges</code> now has 6 positional parameters</span>
+    </div>
+    <p><span class="file-ref">pkg/plugins/updateconfig/updateconfig.go:284</span></p>
+    <p>Adding <code>repo string</code> as the 6th positional argument makes call sites harder to read. Not worth changing now, but if another parameter is added, an options struct would help.</p>
+  </div>
+
+  <div class="finding nit">
+    <div class="finding-header">
+      <span class="severity severity-nit">Nit</span>
+      <span class="finding-title">No test for trailing-slash entry behavior</span>
+    </div>
+    <p>Neither <code>TestConfigMapSpecIsAllowed</code> nor <code>TestValidateConfigUpdaterACLs</code> includes an entry like <code>"kubernetes/"</code>. Adding a case would document the intended behavior (or catch the proposed validation fix).</p>
+  </div>
+
+  <h3>Questions</h3>
+
+  <div class="finding question">
+    <div class="finding-header">
+      <span class="severity severity-question">Question</span>
+      <span class="finding-title">Are there external consumers of <code>FilterChanges</code>?</span>
+    </div>
+    <p><span class="file-ref">pkg/plugins/updateconfig/updateconfig.go:284</span></p>
+    <p>Adding the <code>repo</code> parameter is a breaking change to an exported function. Both in-tree call sites are updated. External consumers (if any) will get a compile error. This is the right failure mode, but worth confirming whether any known downstream tools import this package directly.</p>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- CHECKED                                                       -->
+<!-- ============================================================ -->
+
+<section>
+  <h2>Things I checked and was fine with</h2>
+  <ul>
+    <li>Deny-before-allow precedence order is the correct default-safe approach for a security control.</li>
+    <li>Thorough test coverage: 29 test cases across <code>IsAllowed</code> (14), <code>FilterChangesWithACLs</code> (7), and <code>validateConfigUpdaterACLs</code> (8).</li>
+    <li>Fully backwards-compatible: new fields use <code>omitempty</code>, zero-value defaults preserve existing "allow all" behavior. No config migration required.</li>
+    <li>Clean integration with existing infrastructure: reuses <code>config.NewOrgRepo</code> for org extraction, registers checkconfig validation as a default warning, updates generated config docs.</li>
+    <li><code>IsAllowed</code> as a method on <code>ConfigMapSpec</code> is idiomatic Go and well-placed.</li>
+    <li>Rollback is safe: removing ACL fields from YAML and deploying the prior binary works without issues.</li>
+  </ul>
+</section>
+
+<!-- ============================================================ -->
+<!-- OPEN QUESTIONS                                                -->
+<!-- ============================================================ -->
+
+<section>
+  <h2>Open questions for the author</h2>
+  <ul>
+    <li>Was the config-bootstrapper behavior with <code>allowed_repos</code> intentional? If so, should there be a warning in the docs that the bootstrapper won't update ACL-protected ConfigMaps?</li>
+    <li>Are there known external consumers of <code>FilterChanges</code> that would be affected by the signature change?</li>
+  </ul>
+</section>
+
+<!-- ============================================================ -->
+<!-- FOLLOWUPS                                                     -->
+<!-- ============================================================ -->
+
+<section>
+  <h2>Followups</h2>
+  <p style="color: var(--text-muted); margin-bottom: 1rem;">Post-merge followup work identified after PR #577 landed (merge commit <code>e821f0db</code>). Each includes a self-contained agent handoff prompt.</p>
+
+  <div class="finding blocking">
+    <div class="finding-header">
+      <span class="severity severity-blocking">Must</span>
+      <span class="severity severity-nit" style="background: var(--cyan); color: #000;">bug-fix</span>
+      <span class="finding-title">Make IsAllowed bypass ACLs for empty repo (config-bootstrapper)</span>
+    </div>
+    <p><span class="file-ref">pkg/plugins/config.go:603</span>, <span class="file-ref">cmd/config-bootstrapper/main.go:149-150</span>, <span class="file-ref">pkg/plugins/config_test.go</span></p>
+    <pre><code>In kubernetes-sigs/prow, following the merge of PR #577 ("updateconfig: Add ACL support
+for ConfigMap updates", merge commit e821f0db6d3151be5dc9bf950cfc63446043e72f), there is
+a bug in the new ACL logic.
+
+The config-bootstrapper (cmd/config-bootstrapper/main.go) passes "" as the repo argument
+to FilterChanges. The IsAllowed method on ConfigMapSpec (pkg/plugins/config.go) returns
+false when AllowedRepos is non-empty and repo is "", because the empty string matches no
+entry. This silently blocks the bootstrapper from updating ConfigMaps that have
+allowed_repos configured.
+
+Fix this:
+1. In pkg/plugins/config.go, in the IsAllowed method, add an early return at the top:
+   if repo == "" { return true }. This treats empty repo as a non-PR context that
+   bypasses ACL checks.
+2. In cmd/config-bootstrapper/main.go around line 149-150, update the misleading comment.
+   The current comment says "ACL restrictions won't apply in this mode unless explicitly
+   configured" — replace it with something accurate like "Pass empty repo to bypass ACL
+   checks, since config-bootstrapper works with local files, not PRs."
+3. In pkg/plugins/config_test.go, in TestConfigMapSpecIsAllowed: update the existing test
+   case "empty repo with allowed repos - denied" to expect true instead of false, and
+   rename it to reflect the new behavior (e.g., "empty repo with allowed repos - allowed
+   (bypass)"). Keep the "empty repo with no ACLs - allowed" case as-is.
+
+Acceptance criteria: go test ./pkg/plugins/... and go test ./cmd/config-bootstrapper/...
+pass. The IsAllowed method returns true for empty repo regardless of ACL configuration.
+
+Out of scope: changing the FilterChanges signature, adding a skipACL parameter, modifying
+log levels, or any other ACL behavioral changes.</code></pre>
+  </div>
+
+  <div class="finding should-fix">
+    <div class="finding-header">
+      <span class="severity severity-shouldfix">Should</span>
+      <span class="severity severity-nit" style="background: var(--cyan); color: #000;">tests</span>
+      <span class="finding-title">Fix non-deterministic checkconfig ACL validation test</span>
+    </div>
+    <p><span class="file-ref">cmd/checkconfig/main_test.go</span> &mdash; <code>"multiple maps with errors"</code> test case</p>
+    <pre><code>In kubernetes-sigs/prow, following the merge of PR #577 ("updateconfig: Add ACL support
+for ConfigMap updates", merge commit e821f0db6d3151be5dc9bf950cfc63446043e72f), there is
+a flaky test in cmd/checkconfig/main_test.go.
+
+The test case "multiple maps with errors" in TestValidateConfigUpdaterACLs asserts an
+exact error string that contains errors from iterating a Go map (pcfg.ConfigUpdater.Maps
+with keys "config.yaml" and "plugins.yaml"). Go map iteration order is non-deterministic,
+so the two error substrings can appear in either order, making the test flake.
+
+Fix this by changing the assertion approach. Instead of comparing the full aggregated
+error string, assert that each expected error substring is present independently. For
+example, check that the error string contains both
+`config_updater.maps["config.yaml"].allowed_repos: org/repo cannot be empty` and
+`config_updater.maps["plugins.yaml"].denied_repos: you cannot set a repo without an org`
+as substrings, regardless of order. Alternatively, split the error string and sort before
+comparing.
+
+Keep the test's coverage intent intact — it should still verify that errors from multiple
+map entries are all reported.
+
+Acceptance criteria: go test ./cmd/checkconfig/... passes reliably (run it multiple times
+to confirm no flake). The test still catches the same validation errors.
+
+Out of scope: changing the validation logic itself, modifying other test cases, or any
+functional changes.</code></pre>
+  </div>
+
+  <div class="finding should-fix">
+    <div class="finding-header">
+      <span class="severity severity-shouldfix">Should</span>
+      <span class="severity severity-nit" style="background: var(--cyan); color: #000;">validation</span>
+      <span class="finding-title">Reject trailing-slash and whitespace entries in validateRepoName</span>
+    </div>
+    <p><span class="file-ref">cmd/checkconfig/main.go:1552-1566</span>, <span class="file-ref">cmd/checkconfig/main_test.go</span>, <span class="file-ref">pkg/plugins/config_test.go</span></p>
+    <pre><code>In kubernetes-sigs/prow, following the merge of PR #577 ("updateconfig: Add ACL support
+for ConfigMap updates", merge commit e821f0db6d3151be5dc9bf950cfc63446043e72f), the
+validateRepoName function in cmd/checkconfig/main.go accepts entries that will silently
+misbehave at runtime.
+
+Two gaps:
+1. Trailing-slash entries like "kubernetes/" pass validation (SplitN yields
+   ["kubernetes", ""], which satisfies all current checks). At runtime, this silently
+   behaves as an org-level entry, which is confusing.
+2. Entries with leading/trailing whitespace like " kubernetes" or "kubernetes/ test-infra"
+   pass validation but will never match anything at runtime, because IsAllowed does exact
+   string comparison.
+
+Fix this in validateRepoName (cmd/checkconfig/main.go):
+1. After the existing `len(s) > 2` check, add: if len(s) == 2 && s[1] == "" {
+   return errors.New("repo name cannot be empty after org") } — this catches
+   trailing-slash entries.
+2. Add a whitespace check: if strings.TrimSpace(repo) != repo {
+   return errors.New("org/repo must not contain leading or trailing whitespace") } — put
+   this near the top, before the split.
+
+Then add test cases:
+- In TestValidateConfigUpdaterACLs (cmd/checkconfig/main_test.go): add cases for
+  "kubernetes/" in allowed_repos (expect error about empty repo after org) and
+  " kubernetes" in denied_repos (expect error about whitespace).
+- In TestConfigMapSpecIsAllowed (pkg/plugins/config_test.go): add a case for
+  "kubernetes/" in AllowedRepos with repo "kubernetes/test-infra" to document runtime
+  behavior (it would match via org, but the point is that checkconfig now rejects it
+  before it gets to runtime).
+
+Acceptance criteria: go test ./cmd/checkconfig/... and go test ./pkg/plugins/... pass.
+validateRepoName rejects "kubernetes/", " kubernetes", and "kubernetes " with clear
+error messages.
+
+Out of scope: changing IsAllowed logic, normalizing inputs at runtime (e.g., trimming
+whitespace in IsAllowed), or modifying any other validation functions.</code></pre>
+  </div>
+
+</section>
+
+</body>
+</html>

@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Review: kubernetes-sigs/prow#761</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; line-height: 1.6; max-width: 820px; margin: 2rem auto; padding: 0 1rem; color: #1a1a1a; }
+  h1 { font-size: 1.4rem; border-bottom: 2px solid #0969da; padding-bottom: 0.4rem; }
+  h2 { font-size: 1.15rem; margin-top: 2rem; border-bottom: 1px solid #d0d7de; padding-bottom: 0.3rem; }
+  h3 { font-size: 1rem; margin-top: 1.2rem; }
+  code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; font-size: 0.9em; background: #f6f8fa; padding: 0.15em 0.35em; border-radius: 3px; }
+  pre { background: #f6f8fa; padding: 0.8rem 1rem; border-radius: 6px; overflow-x: auto; font-size: 0.85em; line-height: 1.5; }
+  .header-meta { background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 6px; padding: 0.8rem 1rem; margin-bottom: 1.5rem; font-size: 0.9em; }
+  .header-meta td:first-child { font-weight: 600; padding-right: 1rem; white-space: nowrap; }
+  .verdict { padding: 0.8rem 1rem; border-radius: 6px; margin: 1rem 0; }
+  .verdict-approve { background: #dafbe1; border: 1px solid #82e596; }
+  .dep-box { background: #fff8e1; border: 1px solid #ffe082; border-radius: 6px; padding: 0.8rem 1rem; margin: 1rem 0; }
+  .dep-box h3 { margin-top: 0.5rem; }
+  .dep-box dl { margin: 0.3rem 0; }
+  .dep-box dt { font-weight: 600; display: inline; }
+  .dep-box dd { display: inline; margin-left: 0.3rem; }
+  .gate { padding: 0.8rem 1rem; border-radius: 6px; margin: 1rem 0; }
+  .gate-merge { background: #dafbe1; border: 1px solid #82e596; }
+  .gate-hold { background: #fff8e1; border: 1px solid #ffe082; }
+  .gate-dnm { background: #ffebe9; border: 1px solid #ff8182; }
+  ul { padding-left: 1.4rem; }
+  li { margin-bottom: 0.3rem; }
+  a { color: #0969da; }
+</style>
+</head>
+<body>
+
+<h1>Review: kubernetes-sigs/prow#761</h1>
+
+<div class="header-meta">
+<table>
+  <tr><td>PR</td><td><a href="https://github.com/kubernetes-sigs/prow/pull/761">kubernetes-sigs/prow#761</a></td></tr>
+  <tr><td>Title</td><td>Migrate gopkg.in/yaml.v3 to go.yaml.in/yaml/v3</td></tr>
+  <tr><td>Author</td><td>chimanjain</td></tr>
+  <tr><td>Base</td><td>main</td></tr>
+  <tr><td>Head SHA</td><td><code>47f1063a233c8ed7267b6d5052b10aecc68a7562</code></td></tr>
+  <tr><td>Reviewed at</td><td>2026-06-22T13:46:46Z</td></tr>
+</table>
+</div>
+
+<h2>Verdict</h2>
+
+<div class="verdict verdict-approve">
+  <strong>APPROVE</strong>
+</div>
+
+<p>Clean, mechanical import-path migration from the archived <code>gopkg.in/yaml.v3</code> to its new canonical path <code>go.yaml.in/yaml/v3</code>. The API is identical (same library, new module path), the migration covers all direct imports, and the <code>go.mod</code> structure is correct. No behavioral, configuration, or deployment-facing changes. Safe to merge.</p>
+
+<h2>Merge Gate</h2>
+
+<div class="gate gate-merge">
+  <strong>MERGE</strong> &mdash; gated 2026-06-22T14:35:17Z at <code>47f1063a2</code>
+</div>
+
+<p>No prior gating findings to resolve (only a nit on mixed whitespace changes). PR head unchanged since review. No API, configuration, or behavioral changes &mdash; purely a compile-time import-path swap. @saschagrunert approved, <code>lgtm</code> label applied by @stmcginnis. Missing <code>approved</code> label &mdash; requires <code>/approve</code> from a root OWNERS approver (@petr-muller is assigned). No hold labels present.</p>
+
+<p><strong>Findings disposition:</strong> The only finding was a nit (whitespace cleanup mixed into diff). Not a gating concern.</p>
+
+<p><strong>Merge risk:</strong> No notable merge risk. No exported API changes, no config schema changes, no behavioral changes. Compile-time only.</p>
+
+<h2>Dependency bump analysis</h2>
+
+<div class="dep-box">
+<h3><code>gopkg.in/yaml.v3 v3.0.1</code> &rarr; <code>go.yaml.in/yaml/v3 v3.0.4</code></h3>
+<p>Module-path migration (not just a version bump). The <code>gopkg.in</code> path is archived; <code>go.yaml.in</code> is the new canonical home under the <a href="https://github.com/yaml/go-yaml">yaml/go-yaml</a> GitHub org.</p>
+
+<p><strong>Freshness:</strong> v3.0.4 released 2025-06-29 (~12 months old). Well past soak period. Tagged release, good provenance.</p>
+
+<p><strong>Usage:</strong> Direct dependency. Imported in 4 files across 3 packages:</p>
+<ul>
+  <li><code>hack/ts-rollup/main.go</code> &mdash; tooling binary, YAML marshaling</li>
+  <li><code>pkg/genyaml/genyaml.go</code> + test &mdash; YAML generation from Go structs (<code>Node</code>, <code>Encoder</code>, <code>NewEncoder</code>, <code>Marshal</code>)</li>
+  <li><code>pkg/plugins/testfreeze/checker/checker.go</code> &mdash; YAML unmarshaling of schedule configs from <code>kubernetes/sig-release</code></li>
+</ul>
+<p>Moderate exposure, but not on sensitive paths. The unmarshaled input in <code>checker.go</code> comes from a trusted Git repo.</p>
+
+<p><strong>What changed (v3.0.1 &rarr; v3.0.4, 16 commits):</strong> Entirely organizational/housekeeping. Sync with <code>sigs.k8s.io/yaml/goyaml.v3</code>, formalize new module path, <code>go fmt</code>/<code>go vet</code> fixes, CI/README updates, <code>go.mod</code> version downgrade for broader compat. <strong>No bug fixes, no security fixes, no API changes, no behavior changes.</strong> The YAML parsing/serialization logic is untouched.</p>
+
+<p><strong>Exposure verdict:</strong> Light. None of the changed code in the upstream library affects functions we call. Safe to take now &mdash; the archived <code>gopkg.in</code> path is a liability (no future patches).</p>
+</div>
+
+<h2>What this PR does</h2>
+
+<ul>
+  <li>Replaces the direct dependency on <code>gopkg.in/yaml.v3</code> (archived) with <code>go.yaml.in/yaml/v3</code> (the official continuation under the yaml org).</li>
+  <li>Updates import paths in four Go source files: <code>hack/ts-rollup/main.go</code>, <code>pkg/genyaml/genyaml.go</code>, <code>pkg/genyaml/genyaml_test.go</code>, <code>pkg/plugins/testfreeze/checker/checker.go</code>.</li>
+  <li>Retains <code>gopkg.in/yaml.v3 v3.0.1</code> as an indirect dependency because transitive deps still require it.</li>
+  <li>Picks up a patch-level version bump to v3.0.4 of the new module.</li>
+  <li>Removes three unrelated blank lines in <code>genyaml_test.go</code> (cosmetic cleanup).</li>
+</ul>
+
+<h2>Findings</h2>
+
+<h3>Blocking</h3>
+<p>None.</p>
+
+<h3>Should fix</h3>
+<p>None.</p>
+
+<h3>Nits</h3>
+
+<p><strong>Mixed concerns in diff</strong> &mdash; <code>pkg/genyaml/genyaml_test.go:259,271,468</code></p>
+<p>Three blank-line removals are unrelated to the import migration. In a larger PR this would hurt reviewability (muddies <code>git log -p</code>). In a 6-file, 8-line PR it doesn't matter much, but worth noting for the author's future contributions: keep formatting changes in separate commits.</p>
+
+<h3>Questions</h3>
+<p>None.</p>
+
+<h2>Things I checked and was fine with</h2>
+
+<ul>
+  <li>All direct <code>gopkg.in/yaml.v3</code> imports are gone (confirmed by grep &mdash; zero remaining references in <code>.go</code> files).</li>
+  <li>The <code>yaml3</code> import alias in <code>pkg/genyaml/</code> is preserved, so no call-site changes needed.</li>
+  <li>The <code>go.mod</code> correctly lists the new module as direct and the old one as indirect.</li>
+  <li>The API surface used (<code>Marshal</code>, <code>Unmarshal</code>, <code>NewEncoder</code>, <code>Node</code>, <code>Encoder</code>, node-kind constants) is identical between old and new modules.</li>
+  <li>No configuration structs, struct tags, CLI flags, or behavioral logic changed.</li>
+  <li>No deployment risk: purely a compile-time change, no operator action needed.</li>
+  <li>Test logic and assertions unchanged; only the import path and cosmetic whitespace differ.</li>
+  <li>v3.0.4 is ~12 months old (released 2025-06-29), well past soak period.</li>
+  <li>The 16 commits between v3.0.1 and v3.0.4 are organizational/housekeeping only &mdash; no behavioral or API changes in the upstream library.</li>
+</ul>
+
+<h2>Open questions for the author</h2>
+<p>None. The PR is straightforward and complete.</p>
+
+</body>
+</html>

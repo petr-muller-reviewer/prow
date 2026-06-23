@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Review of kubernetes-sigs/prow#765</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; line-height: 1.6; color: #24292f; max-width: 860px; margin: 2rem auto; padding: 0 1rem; }
+  h1 { font-size: 1.5rem; border-bottom: 1px solid #d0d7de; padding-bottom: 0.4rem; }
+  h2 { font-size: 1.25rem; margin-top: 2rem; border-bottom: 1px solid #d0d7de; padding-bottom: 0.3rem; }
+  h3 { font-size: 1rem; margin-top: 1.2rem; }
+  code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; font-size: 0.9em; background: #f6f8fa; padding: 0.15em 0.3em; border-radius: 3px; }
+  pre { background: #f6f8fa; padding: 1rem; border-radius: 6px; overflow-x: auto; font-size: 0.85em; line-height: 1.5; }
+  pre code { background: none; padding: 0; }
+  .meta { background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 6px; padding: 1rem; margin-bottom: 1.5rem; }
+  .meta dt { font-weight: 600; display: inline; }
+  .meta dd { display: inline; margin: 0 1.5rem 0 0; }
+  .verdict { background: #dafbe1; border: 1px solid #82e596; border-radius: 6px; padding: 1rem; margin-bottom: 1.5rem; }
+  .severity-blocking { color: #cf222e; font-weight: 600; }
+  .severity-should-fix { color: #bf8700; font-weight: 600; }
+  .severity-nit { color: #57606a; font-weight: 600; }
+  .severity-question { color: #0969da; font-weight: 600; }
+  ul { padding-left: 1.5rem; }
+  li { margin-bottom: 0.3rem; }
+  a { color: #0969da; }
+  .finding { margin-bottom: 1.5rem; border-left: 3px solid #d0d7de; padding-left: 1rem; }
+  .finding.should-fix { border-left-color: #bf8700; }
+  .finding.nit { border-left-color: #57606a; }
+  .finding.question { border-left-color: #0969da; }
+  .converging { background: #fff8c5; padding: 0.15em 0.4em; border-radius: 3px; font-size: 0.8em; font-weight: 600; }
+  .gate { border-radius: 6px; padding: 1rem; margin-bottom: 1.5rem; }
+  .gate.merge { background: #dafbe1; border: 1px solid #82e596; }
+  .gate.hold { background: #fff8c5; border: 1px solid #d4a72c; }
+  .gate.do-not-merge { background: #ffebe9; border: 1px solid #ff8182; }
+  .gate h3 { margin-top: 0; }
+  .gate dt { font-weight: 600; }
+  .gate dd { margin: 0 0 0.3rem 0; }
+</style>
+</head>
+<body>
+
+<h1>Review: fix utf-8 parsing errors with metrics</h1>
+
+<div class="meta">
+  <dl>
+    <dt>PR:</dt><dd><a href="https://github.com/kubernetes-sigs/prow/pull/765">kubernetes-sigs/prow#765</a></dd>
+    <dt>Head SHA:</dt><dd><code>0b95b4a15ccc3b8fd4a20d5b19f24045be34a0a8</code></dd>
+    <dt>Base:</dt><dd><code>main</code></dd>
+    <dt>Reviewed:</dt><dd>2026-06-23T11:47:18Z</dd>
+  </dl>
+</div>
+
+<h2>Verdict</h2>
+<div class="verdict">
+  <strong>Approve with suggestions</strong>
+  <p>The fix is correct, minimal, and addresses an active production crash where deck pods panic on invalid UTF-8 in Prometheus label values. Three independent reviewers agree the approach is sound. Two converging suggestions (missing test, inconsistent <code>r.Method</code> sanitization) are worth addressing but do not block merge of a crash fix.</p>
+</div>
+
+<div class="gate merge">
+  <h3>Gate: merge</h3>
+  <p><strong>Gated:</strong> 2026-06-23T12:12:02Z | <strong>Head SHA:</strong> <code>0b95b4a1</code> (unchanged since review)</p>
+  <p>This is a crash fix for production deck pods. The code is unchanged since review. The two should-fix suggestions (missing test, unsanitized <code>r.Method</code>) are not addressed but are genuinely non-blocking for a panic fix. No merge risk: the change is internal to an unexported function, touches no API surface, no configuration, no behavioral semantics beyond "stop panicking."</p>
+
+  <h4>Findings disposition</h4>
+  <ul>
+    <li><strong>[should-fix] No test for invalid UTF-8 handling</strong> &mdash; not-addressed. Acceptable: the fix relies on well-tested <code>strings.ToValidUTF8</code>; a test is nice-to-have, not a merge gate for a crash fix.</li>
+    <li><strong>[should-fix] <code>r.Method</code> not sanitized</strong> &mdash; not-addressed. Acceptable: Go's HTTP server rejects invalid methods before they reach handlers; theoretical risk only.</li>
+    <li><strong>[nit] / [question] items</strong> &mdash; not-addressed, not gates.</li>
+  </ul>
+
+  <h4>Merge risk</h4>
+  <p>No notable merge risk. <code>validMetricLabel</code> is unexported. No exported API surface changed. No configuration, flag, or default changes. Safe to roll back. All existing deployments benefit with zero action from operators.</p>
+
+  <h4>Process gates</h4>
+  <p>Missing <code>approved</code> label. <code>pkg/OWNERS</code> requires approval from <code>cjwagner</code>. <code>dims</code> issued <code>/approve</code> but is not listed as an approver for <code>pkg/</code>.</p>
+</div>
+
+<h2>What this PR does</h2>
+<ul>
+  <li>Adds a <code>validMetricLabel()</code> helper that strips invalid UTF-8 sequences using <code>strings.ToValidUTF8(value, "")</code>.</li>
+  <li>Wraps the <code>path</code> and <code>user_agent</code> metric label values through this helper before passing them to <code>prometheus.Labels{}</code>.</li>
+  <li>Prevents a panic in <code>prometheus.(*HistogramVec).With()</code> triggered by a JNDI/Log4Shell-style probe containing <code>\xbf</code> (invalid UTF-8) in the User-Agent header.</li>
+  <li>Reformats the label map construction from a single line to one key per line (readability improvement).</li>
+</ul>
+
+<h2>Findings</h2>
+
+<h3>Should fix</h3>
+
+<div class="finding should-fix">
+  <h3><span class="severity-should-fix">[Should fix]</span> No test for invalid UTF-8 handling <span class="converging">2/3 reviewers</span></h3>
+  <p><code>pkg/metrics/http_test.go</code></p>
+  <p>The existing <code>TestHandleWithMetricsCustomTimer</code> sets up the full tracing pipeline and could be extended with a second table entry using a User-Agent containing invalid UTF-8 bytes (e.g. <code>"bot\xbf"</code>). This would verify the fix prevents the panic, serve as a regression test, and document the failure mode for future maintainers.</p>
+</div>
+
+<div class="finding should-fix">
+  <h3><span class="severity-should-fix">[Should fix]</span> <code>r.Method</code> not sanitized <span class="converging">2/3 reviewers</span></h3>
+  <p><code>pkg/metrics/http.go:149</code></p>
+  <pre><code>"method": r.Method,</code></pre>
+  <p><code>r.Method</code> is used as a Prometheus label value without <code>validMetricLabel()</code> wrapping. Go's HTTP server rejects non-token-character methods before they reach a handler (RFC 7230 section 3.1.1), so the practical risk is very low. However, wrapping it for consistency costs nothing and eliminates the question of which labels need sanitization and which don't &mdash; uniform application is easier to maintain than per-field reasoning.</p>
+</div>
+
+<h3>Nits</h3>
+
+<div class="finding nit">
+  <h3><span class="severity-nit">[Nit]</span> Redundant <code>validMetricLabel</code> on <code>path</code></h3>
+  <p><code>pkg/metrics/http.go:147</code></p>
+  <pre><code>"path": validMetricLabel(simplifier.Simplify(r.URL.Path)),</code></pre>
+  <p><code>simplifier.Simplify()</code> returns either the constant string <code>"unmatched"</code> or concatenations of <code>Represent()</code> results from compile-time string literals &mdash; always valid UTF-8 regardless of input. The wrapping is harmless but could mislead a future maintainer into thinking <code>Simplify</code> can return arbitrary user input. Keeping it is fine if the team prefers uniform application; dropping it is also fine.</p>
+</div>
+
+<div class="finding nit">
+  <h3><span class="severity-nit">[Nit]</span> Missing comment on <code>validMetricLabel</code></h3>
+  <p><code>pkg/metrics/http.go:158-160</code></p>
+  <pre><code>func validMetricLabel(value string) string {
+	return strings.ToValidUTF8(value, "")
+}</code></pre>
+  <p>The function name is clear, but a one-liner explaining <em>why</em> this exists (Prometheus panics on invalid UTF-8 label values) would help a future maintainer understand the severity of what happens without it.</p>
+</div>
+
+<h3>Questions</h3>
+
+<div class="finding question">
+  <h3><span class="severity-question">[Question]</span> User-Agent label cardinality as a DoS vector</h3>
+  <p><code>pkg/metrics/http.go:84</code></p>
+  <p>The <code>user_agent</code> label stores the full raw User-Agent string. Every distinct UA creates a separate Prometheus time series. The crash payload in the PR description shows an attacker actively probing with crafted UAs. Even after this fix, an attacker sending many unique valid-UTF-8 UAs can cause unbounded metric storage growth. This is pre-existing and not introduced by this PR, but worth asking if there's a follow-up plan.</p>
+</div>
+
+<h2>Things I checked and was fine with</h2>
+<ul>
+  <li><code>method</code> and <code>status</code> labels correctly left unwrapped in the original code &mdash; <code>strconv.Itoa</code> always produces ASCII, and <code>r.Method</code> is validated by Go's HTTP server (though wrapping it uniformly is suggested above).</li>
+  <li><code>strings.ToValidUTF8</code> with empty replacement is the right stdlib choice &mdash; strips invalid bytes without injecting replacement characters.</li>
+  <li>No changes to metric label keys or histogram bucket definitions.</li>
+  <li>Import of <code>"strings"</code> is correctly placed in the import block.</li>
+  <li>Fix is applied at the right layer: sanitization at the boundary where user input enters the metrics system.</li>
+  <li>Change is in the shared <code>pkg/metrics/http.go</code> used via <code>TraceHandler</code>, so all components using it benefit without individual changes.</li>
+  <li>Deployment risk is LOW: no config changes, no API changes, zero upgrade friction, safe to roll back.</li>
+</ul>
+
+<h2>Open questions for the author</h2>
+<ul>
+  <li>Would you add a test case with an invalid UTF-8 User-Agent to <code>TestHandleWithMetricsCustomTimer</code>? The scaffolding is all there &mdash; just a second table entry.</li>
+  <li>Would you wrap <code>r.Method</code> in <code>validMetricLabel()</code> too? The practical risk is near-zero but it makes the sanitization uniform.</li>
+  <li>Any follow-up planned for the <code>user_agent</code> label cardinality? Varied valid-UTF-8 UAs can still cause metric storage growth.</li>
+</ul>
+
+</body>
+</html>

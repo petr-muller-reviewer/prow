@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Review: kubernetes-sigs/prow#764</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; line-height: 1.6; max-width: 820px; margin: 2rem auto; padding: 0 1rem; color: #24292f; }
+  h1 { font-size: 1.4rem; border-bottom: 1px solid #d0d7de; padding-bottom: 0.4rem; }
+  h2 { font-size: 1.15rem; margin-top: 2rem; border-bottom: 1px solid #d0d7de; padding-bottom: 0.3rem; }
+  h3 { font-size: 1rem; margin-top: 1.2rem; }
+  code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; font-size: 0.9em; background: #f6f8fa; padding: 0.15em 0.35em; border-radius: 3px; }
+  pre { background: #f6f8fa; padding: 0.8rem 1rem; border-radius: 6px; overflow-x: auto; font-size: 0.85em; line-height: 1.5; }
+  pre code { background: none; padding: 0; }
+  .meta { background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 6px; padding: 0.8rem 1rem; margin-bottom: 1.5rem; }
+  .meta td { padding: 0.15rem 0.6rem 0.15rem 0; vertical-align: top; }
+  .meta td:first-child { font-weight: 600; white-space: nowrap; }
+  .verdict { background: #dafbe1; border: 1px solid #aceebb; border-radius: 6px; padding: 0.8rem 1rem; margin-bottom: 1.5rem; }
+  .verdict strong { color: #1a7f37; }
+  ul { padding-left: 1.4rem; }
+  li { margin-bottom: 0.3rem; }
+  a { color: #0969da; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .severity { display: inline-block; font-size: 0.75rem; font-weight: 600; padding: 0.1em 0.5em; border-radius: 3px; margin-right: 0.3rem; vertical-align: middle; }
+  .sev-nit { background: #ddf4ff; color: #0969da; }
+</style>
+</head>
+<body>
+
+<h1>Review: kubernetes-sigs/prow#764</h1>
+
+<table class="meta">
+  <tr><td>PR</td><td><a href="https://github.com/kubernetes-sigs/prow/pull/764">kubernetes-sigs/prow#764</a></td></tr>
+  <tr><td>Title</td><td>fix a bug with cla and github apps auth</td></tr>
+  <tr><td>Author</td><td>upodroid</td></tr>
+  <tr><td>Head SHA</td><td><code>bf3efc64291622e53c18aabb17e83c238331c951</code></td></tr>
+  <tr><td>Base</td><td>main</td></tr>
+  <tr><td>Reviewed</td><td>2026-06-23T20:22:45Z</td></tr>
+</table>
+
+<div class="verdict">
+  <strong>Verdict: APPROVE</strong>
+  <p>A correct, minimal two-line bug fix that restores CLA label functionality for GitHub Apps auth installations. The change follows the exact same pattern already used by blunderbuss, trigger, and welcome plugins. No concerns from code quality, maintainability, or deployment risk perspectives. Should be merged promptly as it fixes a production-blocking issue.</p>
+</div>
+
+<h2>What this PR does</h2>
+<ul>
+  <li>Switches the CLA plugin from <code>FindIssues()</code> to <code>FindIssuesWithOrg()</code>, passing the org explicitly from the status event payload.</li>
+  <li>Fixes the root cause: <code>FindIssues</code> delegates to <code>FindIssuesWithOrg("", ...)</code>, and the apps auth roundtripper requires a non-empty org to look up the correct installation token.</li>
+  <li>Updates the local <code>gitHubClient</code> interface to declare <code>FindIssuesWithOrg</code> instead of <code>FindIssues</code>, preventing future accidental use of the org-less variant in this plugin.</li>
+  <li>No configuration, API surface, or behavioral changes for operators. Under OAuth auth the behavior is identical.</li>
+</ul>
+
+<h2>Findings</h2>
+
+<h3>Blocking</h3>
+<p>None.</p>
+
+<h3>Should fix</h3>
+<p>None.</p>
+
+<h3>Nits</h3>
+
+<p><span class="severity sev-nit">nit</span> <strong><code>FindIssues</code> wrapper is a footgun</strong> &mdash; <code>pkg/github/client.go:3616-3621</code></p>
+<p>The <code>FindIssues</code> method already has a comment warning it doesn't work with GitHub Apps auth, yet it still exists as a public method that silently breaks. A follow-up to deprecate or remove it would prevent this bug class from recurring in other callers. Out of scope for this PR.</p>
+
+<h3>Questions</h3>
+<p>None.</p>
+
+<h2>Things I checked and was fine with</h2>
+<ul>
+  <li><strong>Correctness of the <code>org</code> value</strong>: <code>se.Repo.Owner.Login</code> is extracted on line 98 and already used by <code>AddLabel</code>, <code>RemoveLabel</code>, <code>GetPullRequest</code>, etc. throughout the same function. Cannot be empty when the other calls succeed.</li>
+  <li><strong>Interface consistency</strong>: The local <code>gitHubClient</code> interface (line 69) and the call site (line 105) both updated to <code>FindIssuesWithOrg</code>.</li>
+  <li><strong>Test coverage</strong>: <code>fakegithub.FakeClient</code> implements both <code>FindIssues</code> and <code>FindIssuesWithOrg</code> (the former delegates to the latter). The <code>FakeClient</code> satisfies the updated interface. Tests pass without modification.</li>
+  <li><strong>Pattern consistency</strong>: Verified that blunderbuss, trigger, and welcome plugins all use <code>FindIssuesWithOrg</code> with org from event payloads in the same way.</li>
+  <li><strong><code>handleComment</code> path</strong>: Uses <code>GetCombinedStatus</code>, not <code>FindIssues</code>/<code>FindIssuesWithOrg</code>, so it is not affected by this bug class.</li>
+  <li><strong>No remaining <code>FindIssues</code> callers in plugins</strong>: Grep confirmed no other plugin uses the org-less <code>FindIssues</code>.</li>
+  <li><strong>Deployment risk</strong>: No config schema, CLI flag, API surface, or deployment manifest changes. Zero operational impact.</li>
+</ul>
+
+<h2>Open questions for the author</h2>
+<p>None. The fix is self-explanatory.</p>
+
+</body>
+</html>

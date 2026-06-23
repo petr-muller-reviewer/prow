@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Review: kubernetes-sigs/prow#731</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #1a1a1a; background: #f8f9fa; padding: 2rem 1rem; }
+  .container { max-width: 52rem; margin: 0 auto; }
+  h1 { font-size: 1.5rem; margin-bottom: 0.25rem; }
+  h2 { font-size: 1.25rem; margin-top: 2rem; margin-bottom: 0.75rem; border-bottom: 2px solid #dee2e6; padding-bottom: 0.25rem; }
+  h3 { font-size: 1rem; margin-top: 1.25rem; margin-bottom: 0.25rem; }
+  .meta { background: #fff; border: 1px solid #dee2e6; border-radius: 6px; padding: 1rem 1.25rem; margin-bottom: 1.5rem; font-size: 0.9rem; }
+  .meta p { margin: 0.15rem 0; }
+  .meta a { color: #0366d6; text-decoration: none; }
+  .meta a:hover { text-decoration: underline; }
+  code { font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; font-size: 0.85em; background: #eef0f2; padding: 0.15em 0.35em; border-radius: 3px; }
+  pre { background: #f1f3f5; border: 1px solid #dee2e6; border-radius: 4px; padding: 0.75rem 1rem; overflow-x: auto; font-size: 0.85rem; line-height: 1.5; margin: 0.5rem 0; }
+  pre code { background: none; padding: 0; }
+  .verdict { background: #fff3cd; border: 1px solid #ffc107; border-radius: 6px; padding: 1rem 1.25rem; margin-bottom: 1.5rem; }
+  .verdict strong { font-size: 1.1rem; }
+  .finding { background: #fff; border: 1px solid #dee2e6; border-radius: 6px; padding: 0.75rem 1rem; margin: 0.75rem 0; }
+  .finding-question { border-left: 4px solid #0366d6; }
+  .finding-shouldfix { border-left: 4px solid #e36209; }
+  .finding-nit { border-left: 4px solid #6a737d; }
+  .tag { display: inline-block; font-size: 0.75rem; font-weight: 600; padding: 0.1em 0.5em; border-radius: 3px; text-transform: uppercase; margin-right: 0.5em; vertical-align: middle; }
+  .tag-question { background: #dbedff; color: #0366d6; }
+  .tag-shouldfix { background: #fff1e5; color: #e36209; }
+  .tag-nit { background: #f1f3f5; color: #6a737d; }
+  ul { margin: 0.5rem 0 0.5rem 1.5rem; }
+  li { margin: 0.25rem 0; }
+  p { margin: 0.5rem 0; }
+  .section { margin-bottom: 1.5rem; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>Review: Bump Kubernetes dependencies to v0.34.x</h1>
+
+<div class="meta">
+  <p><strong>PR:</strong> <a href="https://github.com/kubernetes-sigs/prow/pull/731">kubernetes-sigs/prow#731</a></p>
+  <p><strong>Author:</strong> ameukam</p>
+  <p><strong>Head SHA:</strong> <code>8c59d6e493bd17d164fb35b1fb1ec9e85b0f6293</code></p>
+  <p><strong>Base:</strong> main</p>
+  <p><strong>Reviewed:</strong> 2026-05-28T23:35:19Z</p>
+  <p><strong>Stats:</strong> +569 / -208 across 40 files</p>
+</div>
+
+<div class="verdict">
+  <strong>Needs Discussion</strong>
+  <p>The mechanical dependency bump and test migrations look correct. However, the race detector CI is failing (likely from the sidecar test restructuring), and the large CRD diff should be confirmed as generator output rather than hand-edits. No production code changes — all Go modifications are in test files.</p>
+</div>
+
+<h2>What this PR does</h2>
+<ul>
+  <li>Bumps <code>k8s.io/api</code>, <code>k8s.io/apimachinery</code>, <code>k8s.io/client-go</code> from v0.33.11 to v0.34.7, and <code>sigs.k8s.io/controller-runtime</code> from v0.21.0 to v0.22.4</li>
+  <li>Migrates ~60 call sites from removed <code>diff.ObjectReflectDiff()</code> / <code>diff.ObjectDiff()</code> to the new <code>diff.Diff()</code> function across test files</li>
+  <li>Regenerates the ProwJob CRD to reflect upstream Kubernetes v1.34 API type changes (new fields like <code>fileKeyRef</code>, <code>restartPolicyRules</code>, <code>podCertificate</code>)</li>
+  <li>Updates YAML test fixtures to match the new serialization behavior (omits zero-value fields like <code>preferences: {}</code> and <code>creationTimestamp: null</code>)</li>
+  <li>Fixes a race condition in the sidecar <code>wait()</code> test by reordering goroutine startup</li>
+</ul>
+
+<h2>Findings</h2>
+
+<h3>Questions</h3>
+
+<div class="finding finding-question">
+  <p><span class="tag tag-question">question</span> <strong>Race detector CI failure</strong></p>
+  <p>CI job <code>pull-prow-unit-test-race-detector-nonblocking</code> is failing. The sidecar test restructuring is the most likely cause since it changes goroutine synchronization order. Needs investigation whether this is from the test fix or a pre-existing flake.</p>
+</div>
+
+<div class="finding finding-question">
+  <p><span class="tag tag-question">question</span> <strong>CRD regeneration method</strong></p>
+  <p><code>config/prow/cluster/prowjob-crd/prowjob_customresourcedefinition.yaml</code></p>
+  <p>The CRD diff is large and includes new fields, updated descriptions, and a notable semantic change in <code>podAntiAffinity</code> (from "adding weight to the sum" to "subtracting weight from the sum"). Was this produced by running the standard CRD generator (e.g. <code>make update</code> or controller-gen) against the new API types, or were parts hand-edited?</p>
+</div>
+
+<h3>Should Fix</h3>
+
+<div class="finding finding-shouldfix">
+  <p><span class="tag tag-shouldfix">should-fix</span> <strong>Sidecar test race fix may still race</strong></p>
+  <p><code>pkg/sidecar/run_test.go:243-281</code></p>
+  <p>The restructuring changes the <code>missing</code> marker test case to create markers before starting <code>wait()</code>, then starts <code>wait()</code> and cancels after a sleep. The intent is correct (eliminate race between marker creation and <code>wait()</code> startup), but the race detector is failing. Under race detector instrumentation, the <code>missingMarkerTimeout</code> sleep between <code>startWait()</code> and <code>cancel()</code> may be too short, or there may be a data race in the goroutine coordination.</p>
+  <pre><code>if tc.missing {
+    startWait()
+    time.Sleep(missingMarkerTimeout)
+    cancel()
+}</code></pre>
+</div>
+
+<h3>Nits</h3>
+
+<div class="finding finding-nit">
+  <p><span class="tag tag-nit">nit</span> <strong>Inconsistent diff package migration not documented</strong></p>
+  <p><code>pkg/git/v2/executor_test.go:27</code>, <code>pkg/plugins/retitle/retitle_test.go:24</code>, <code>pkg/simplifypath/simplify_test.go:23</code></p>
+  <p>Three files switched import from <code>k8s.io/apimachinery/pkg/util/diff</code> to <code>k8s.io/utils/diff</code> while the rest stayed on the apimachinery package. The reason is that these files use <code>StringDiff</code>/<code>ObjectReflectDiff</code> which were removed from apimachinery but exist in utils. Correct but undocumented in the PR description.</p>
+</div>
+
+<h2>Things I checked and was fine with</h2>
+<ul>
+  <li>All <code>diff.ObjectReflectDiff</code> / <code>diff.ObjectDiff</code> to <code>diff.Diff</code> migrations are correct — the new <code>Diff</code> function exists in <code>k8s.io/apimachinery/pkg/util/diff</code> v0.34</li>
+  <li>Three files switching to <code>k8s.io/utils/diff</code> use only <code>StringDiff</code> and <code>ObjectReflectDiff</code>, both available there</li>
+  <li>YAML fixture updates (<code>preferences: {}</code> removal, <code>creationTimestamp: null</code> removal) match expected v0.34 serialization behavior</li>
+  <li><code>go.mod</code> / <code>go.sum</code> changes are consistent — no stale entries, <code>structured-merge-diff</code> v4 replaced by v6</li>
+  <li>Transitive dependency bumps (fsnotify, cbor, go-restful, gnostic-models, reflect2) are reasonable</li>
+  <li>No production code changes — all Go modifications are in test files</li>
+  <li>No security concerns in the dependency updates</li>
+</ul>
+
+<h2>Open questions for the author</h2>
+<ul>
+  <li>Was the CRD file regenerated with standard tooling (e.g. <code>make update</code> or controller-gen), or were changes applied manually?</li>
+  <li>Is the race detector failure from the sidecar test fix or a pre-existing flake? Has <code>/retest</code> been attempted?</li>
+  <li>The podAntiAffinity description change from "adding weight to the sum" to "subtracting weight from the sum" is an upstream Kubernetes API change — is this an intentional behavior change or a documentation correction?</li>
+</ul>
+
+</div>
+</body>
+</html>

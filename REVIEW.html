@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PR #616 Review: SRC_BASE &amp; SRC_HOST PodUtils Env Vars</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --border: #30363d;
+    --text: #c9d1d9;
+    --text-muted: #8b949e;
+    --accent: #58a6ff;
+    --green: #3fb950;
+    --red: #f85149;
+    --orange: #d29922;
+    --yellow: #e3b341;
+    --purple: #bc8cff;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    padding: 2rem;
+    max-width: 960px;
+    margin: 0 auto;
+  }
+  h1 { font-size: 1.6rem; margin-bottom: .25rem; color: #fff; }
+  .subtitle { color: var(--text-muted); font-size: .9rem; margin-bottom: 1.5rem; }
+  .subtitle a { color: var(--accent); text-decoration: none; }
+  .subtitle a:hover { text-decoration: underline; }
+  h2 {
+    font-size: 1.1rem;
+    color: var(--accent);
+    margin: 1.5rem 0 .75rem;
+    padding-bottom: .4rem;
+    border-bottom: 1px solid var(--border);
+  }
+  h3 { font-size: .95rem; color: #fff; margin: 1rem 0 .4rem; }
+  p, li { font-size: .9rem; }
+  ul { padding-left: 1.4rem; margin: .4rem 0; }
+  li { margin: .3rem 0; }
+  code {
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    background: rgba(110,118,129,.15);
+    padding: .15em .35em;
+    border-radius: 4px;
+    font-size: .85em;
+  }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem 1.2rem;
+    margin: .75rem 0;
+  }
+  .card.issue { border-left: 3px solid var(--orange); }
+  .card.good { border-left: 3px solid var(--green); }
+  .card.info { border-left: 3px solid var(--purple); }
+  .badge {
+    display: inline-block;
+    font-size: .7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    padding: .15em .55em;
+    border-radius: 10px;
+    margin-right: .4rem;
+    vertical-align: middle;
+  }
+  .badge.minor { background: rgba(210,153,34,.2); color: var(--orange); }
+  .badge.moderate { background: rgba(248,81,73,.15); color: var(--red); }
+  .badge.note { background: rgba(188,140,255,.15); color: var(--purple); }
+  .badge.ok { background: rgba(63,185,80,.15); color: var(--green); }
+  .file-ref {
+    color: var(--text-muted);
+    font-size: .8rem;
+    font-family: 'SFMono-Regular', Consolas, monospace;
+  }
+  .summary-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: .5rem 0;
+    font-size: .85rem;
+  }
+  .summary-table td {
+    padding: .35rem .6rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .summary-table td:first-child {
+    color: var(--text-muted);
+    width: 120px;
+    white-space: nowrap;
+  }
+  .logic-diagram {
+    background: rgba(110,118,129,.08);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: .8rem 1rem;
+    font-family: 'SFMono-Regular', Consolas, monospace;
+    font-size: .8rem;
+    line-height: 1.7;
+    overflow-x: auto;
+    margin: .5rem 0;
+  }
+  .logic-diagram .kw { color: var(--purple); }
+  .logic-diagram .val { color: var(--green); }
+  .logic-diagram .cmt { color: var(--text-muted); }
+  .diff-add { color: var(--green); }
+  .diff-file { color: var(--text-muted); font-size: .8rem; }
+  .checklist { list-style: none; padding-left: .2rem; }
+  .checklist li { position: relative; padding-left: 1.6rem; margin: .4rem 0; }
+  .checklist li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: .45em;
+    width: 14px;
+    height: 14px;
+    border: 1.5px solid var(--border);
+    border-radius: 3px;
+    background: transparent;
+  }
+  .verdict-box {
+    background: var(--surface);
+    border: 2px solid var(--green);
+    border-radius: 8px;
+    padding: 1.2rem 1.4rem;
+    margin: 1rem 0;
+  }
+  .verdict-box.suggest { border-color: var(--accent); }
+  .verdict-box h3 { margin-bottom: .5rem; }
+  .reviewer-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: .75rem;
+    margin: .75rem 0;
+  }
+  .reviewer-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: .8rem 1rem;
+  }
+  .reviewer-card h4 {
+    font-size: .8rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    margin-bottom: .5rem;
+  }
+  .reviewer-card .verdict {
+    font-size: .85rem;
+    font-weight: 600;
+    margin-bottom: .4rem;
+  }
+  .reviewer-card .verdict.approve { color: var(--green); }
+  .reviewer-card .verdict.changes { color: var(--orange); }
+  .reviewer-card .verdict.low { color: var(--green); }
+  .convergence {
+    background: rgba(248,81,73,.06);
+    border: 1px solid rgba(248,81,73,.25);
+    border-radius: 8px;
+    padding: 1rem 1.2rem;
+    margin: .75rem 0;
+  }
+  .convergence h3 { color: var(--red); margin-bottom: .5rem; }
+  .pr-comment {
+    background: rgba(110,118,129,.08);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1rem 1.2rem;
+    font-size: .85rem;
+    line-height: 1.7;
+    margin: .5rem 0;
+  }
+  @media (max-width: 700px) {
+    .reviewer-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<h1>PR #616: Added SRC_BASE And SRC_HOST PodUtils Environment Variables</h1>
+<p class="subtitle">
+  <a href="https://github.com/kubernetes-sigs/prow/pull/616">#616</a> by @midnightconman
+  &middot; Fixes <a href="https://github.com/kubernetes-sigs/prow/issues/302">#302</a>
+  &middot; Merged &middot; +145 &minus;1 across 13 files
+</p>
+
+<table class="summary-table">
+  <tr><td>Status</td><td><span class="badge ok">merged</span> lgtm + approved</td></tr>
+  <tr><td>Labels</td><td>area/pod-utilities, size/L</td></tr>
+  <tr><td>Reviewers</td><td>@Prucek (approved), @matthyx (lgtm)</td></tr>
+  <tr><td>Core change</td><td><code>pkg/pod-utils/downwardapi/jobspec.go</code></td></tr>
+  <tr><td>Test changes</td><td>1 unit test file + 10 golden YAML fixtures + 1 pipeline controller test</td></tr>
+</table>
+
+<h2>What It Does</h2>
+<p>Adds two new environment variables to Prow job pods:</p>
+<ul>
+  <li><code>SRC_HOST</code> &mdash; the hosting service (e.g. <code>github.com</code>, <code>gitlab.com</code>)</li>
+  <li><code>SRC_BASE</code> &mdash; the path under the host (e.g. <code>org/repo</code>)</li>
+</ul>
+<p>These allow job scripts to construct full source paths for <code>extra_refs</code> instead of using fragile relative paths.</p>
+
+<h2>Resolution Logic</h2>
+<div class="logic-diagram">
+<span class="kw">if</span> Refs.PathAlias != "" {<br>
+&nbsp;&nbsp;<span class="cmt">// e.g. PathAlias = "k8s.io/repo-name"</span><br>
+&nbsp;&nbsp;SRC_HOST = <span class="val">PathAlias[:firstSlash]</span> &nbsp;<span class="cmt">// "k8s.io"</span><br>
+&nbsp;&nbsp;SRC_BASE = <span class="val">PathAlias[firstSlash+1:]</span> <span class="cmt">// "repo-name"</span><br>
+} <span class="kw">else if</span> Refs.RepoLink != "" {<br>
+&nbsp;&nbsp;<span class="cmt">// e.g. RepoLink = "https://gitlab.com/org/repo"</span><br>
+&nbsp;&nbsp;SRC_HOST = <span class="val">afterScheme[:firstSlash]</span> &nbsp;<span class="cmt">// "gitlab.com"</span><br>
+&nbsp;&nbsp;SRC_BASE = <span class="val">afterScheme[firstSlash+1:]</span> <span class="cmt">// "org/repo"</span><br>
+} <span class="kw">else</span> {<br>
+&nbsp;&nbsp;SRC_HOST = <span class="val">"github.com"</span><br>
+&nbsp;&nbsp;SRC_BASE = <span class="val">Refs.Org + "/" + Refs.Repo</span><br>
+}
+</div>
+<p class="file-ref">Mirrors <code>clone.PathForRefs()</code> at <code>pkg/pod-utils/clone/clone.go:139</code></p>
+
+<h2>Issues Found</h2>
+
+<div class="card issue">
+  <h3><span class="badge minor">minor</span> SRC_BASE = "/" when Org and Repo are empty</h3>
+  <p>When <code>spec.Refs.Org</code> and <code>spec.Refs.Repo</code> are both empty (no PathAlias/RepoLink),
+     <code>fmt.Sprintf("%s/%s", "", "")</code> produces <code>"/"</code>. Visible in the pipeline controller test
+     at <code>controller_test.go:1189</code>. A consumer could misinterpret this as a filesystem root.</p>
+  <p class="file-ref">jobspec.go:150</p>
+</div>
+
+<div class="card issue">
+  <h3><span class="badge moderate">moderate</span> New dependency on <code>pkg/github</code></h3>
+  <p>The <code>downwardapi</code> package previously had no dependency on <code>pkg/github</code>.
+     The import is added solely for <code>github.DefaultHost</code> (the string <code>"github.com"</code>).
+     This couples pod-utils/downwardapi to the GitHub client package, which could
+     create import cycle risks as the codebase evolves. A local constant or a
+     lighter-weight import would be preferable.</p>
+  <p class="file-ref">jobspec.go:27</p>
+</div>
+
+<div class="card issue">
+  <h3><span class="badge minor">minor</span> Naming: SRC_BASE semantics mismatch</h3>
+  <p>The PR description says SRC_BASE should be <code>GOPATH + "/src"</code>, but the implementation
+     sets it to the repo path under the host (e.g. <code>org/repo</code>). The name <code>SRC_BASE</code>
+     suggests a base directory; something like <code>SRC_PATH</code> or <code>REPO_PATH</code> would
+     better describe the actual value.</p>
+</div>
+
+<div class="card issue">
+  <h3><span class="badge note">note</span> No documentation update</h3>
+  <p>Existing env vars like <code>REPO_OWNER</code>, <code>REPO_NAME</code> are documented for job authors.
+     The new variables should be documented so users know they exist and what values to expect.</p>
+</div>
+
+<h2>Test Coverage</h2>
+
+<div class="card good">
+  <h3><span class="badge ok">good</span> What's covered</h3>
+  <ul>
+    <li>Default case (no PathAlias/RepoLink): SRC_HOST=<code>github.com</code>, SRC_BASE=<code>org/repo</code></li>
+    <li>PathAlias case (<code>"k8s.io/repo-name"</code>): SRC_HOST=<code>k8s.io</code>, SRC_BASE=<code>repo-name</code></li>
+    <li>RepoLink case (<code>"https://gitlab.com/org/repo"</code>): SRC_HOST=<code>gitlab.com</code>, SRC_BASE=<code>org/repo</code></li>
+    <li>All 10 golden YAML fixtures updated consistently</li>
+    <li>Pipeline controller test updated</li>
+  </ul>
+</div>
+
+<div class="card info">
+  <h3><span class="badge note">gaps</span> Missing test cases</h3>
+  <ul>
+    <li><code>PathAlias</code> with no <code>/</code> (e.g. <code>"k8s.io"</code>) &mdash; sets SRC_HOST to entire alias, SRC_BASE stays as default <code>org/repo</code></li>
+    <li><code>RepoLink</code> without a scheme (e.g. <code>"gitlab.com/org/repo"</code>) &mdash; works correctly but isn't explicitly tested</li>
+    <li>Empty Org+Repo with no PathAlias/RepoLink &mdash; produces <code>SRC_BASE="/"</code></li>
+  </ul>
+</div>
+
+<h2>Changed Files</h2>
+<ul>
+  <li class="diff-file"><span class="diff-add">M</span> <code>pkg/pod-utils/downwardapi/jobspec.go</code> &mdash; core logic + constants</li>
+  <li class="diff-file"><span class="diff-add">M</span> <code>pkg/pod-utils/downwardapi/jobspec_test.go</code> &mdash; 3 existing test updates + 2 new test cases</li>
+  <li class="diff-file"><span class="diff-add">M</span> <code>cmd/pipeline/controller_test.go</code> &mdash; pipeline params updated</li>
+  <li class="diff-file"><span class="diff-add">M</span> <code>pkg/pod-utils/decorate/testdata/TestProwJobToPod_{0-10}.yaml</code> &mdash; 10 golden fixtures</li>
+</ul>
+
+<h2>Maintainer Review</h2>
+
+<div class="reviewer-grid">
+  <div class="reviewer-card">
+    <h4>Code Quality</h4>
+    <p class="verdict approve">APPROVE</p>
+    <p style="font-size:.8rem">Correct for all practical cases. Good test coverage. No critical issues.</p>
+  </div>
+  <div class="reviewer-card">
+    <h4>Maintainability</h4>
+    <p class="verdict changes">REQUEST_CHANGES</p>
+    <p style="font-size:.8rem">Duplicated logic with <code>PathForRefs</code>. Naming becomes permanent API. Medium maintenance burden.</p>
+  </div>
+  <div class="reviewer-card">
+    <h4>Deployment Risk</h4>
+    <p class="verdict low">LOW RISK</p>
+    <p style="font-size:.8rem">Purely additive. No breaking changes. Clean upgrade/rollback path.</p>
+  </div>
+</div>
+
+<h3>Converging Concerns</h3>
+
+<div class="convergence">
+  <h3>Flagged by 2+ reviewers</h3>
+  <ul>
+    <li><strong>PathAlias-without-slash edge case</strong> (Code Quality + Maintainability): When <code>PathAlias</code> has no <code>/</code> (e.g. <code>"k8s.io"</code>), <code>srcHost</code> gets the whole alias but <code>srcBase</code> retains default <code>org/repo</code>, producing <code>k8s.io/org/repo</code> instead of <code>k8s.io</code> as <code>PathForRefs</code> would. A test case should be added to document this behavior.</li>
+    <li><strong>Duplicated logic with <code>clone.PathForRefs</code></strong> (Code Quality + Maintainability): The resolution logic is duplicated across two files with only a comment linking them. Both reviewers noted this as a consistency/drift risk. Extracting a shared helper like <code>clone.HostAndPathForRefs()</code> would make the relationship compiler-enforced.</li>
+  </ul>
+</div>
+
+<h3>Per-Reviewer Details</h3>
+
+<h3 style="color: var(--accent); font-size: .95rem; margin-top: 1.2rem;">Code Quality</h3>
+<div class="card good">
+  <ul>
+    <li>No critical issues found</li>
+    <li>Correctly mirrors <code>clone.PathForRefs</code> structure and precedence order</li>
+    <li>Uses <code>github.DefaultHost</code> rather than duplicating the string literal</li>
+    <li>Constants well-named and placed alongside related existing constants</li>
+    <li>Good test coverage across three main branches (default, PathAlias, RepoLink)</li>
+  </ul>
+  <p style="margin-top:.5rem; font-size:.85rem"><strong>Suggestion:</strong> Add a test for PathAlias without <code>/</code> to document the edge case behavior.</p>
+</div>
+
+<h3 style="color: var(--accent); font-size: .95rem; margin-top: 1.2rem;">Maintainability</h3>
+<div class="card issue">
+  <ul>
+    <li><strong>Duplicated logic</strong>: <code>EnvForSpec</code> and <code>PathForRefs</code> must be kept in sync manually. A shared helper would eliminate this risk.</li>
+    <li><strong><code>SRC_BASE</code> naming misleading</strong>: PR description says <code>GOPATH+"/src"</code>, code sets it to <code>org/repo</code>. The name suggests a filesystem path. Since this becomes a permanent public API, <code>SRC_PATH</code> or <code>SRC_REPO_PATH</code> would be clearer.</li>
+    <li><strong>New <code>pkg/github</code> dependency</strong> in <code>downwardapi</code> for a single constant. Increases coupling surface.</li>
+    <li><strong>PathAlias-without-slash</strong> demonstrates exactly the drift risk of duplicated logic &mdash; subtly different semantics from <code>PathForRefs</code>.</li>
+  </ul>
+  <p style="margin-top:.5rem; font-size:.85rem"><strong>Maintenance burden:</strong> MEDIUM &mdash; duplicated logic that must stay in sync + naming that becomes permanent API.</p>
+</div>
+
+<h3 style="color: var(--accent); font-size: .95rem; margin-top: 1.2rem;">Deployment Risk</h3>
+<div class="card good">
+  <ul>
+    <li>Purely additive &mdash; no existing configuration, API, or behavior modified</li>
+    <li>Every non-periodic job pod gets two new env vars; jobs not referencing them are unaffected</li>
+    <li>Potential env collision if a job already defines <code>SRC_BASE</code>/<code>SRC_HOST</code> (same pre-existing pattern as <code>REPO_OWNER</code> etc.)</li>
+    <li>Upgrade/rollback is clean: no config migration, no ordering dependencies</li>
+    <li>Should be announced in release notes</li>
+  </ul>
+</div>
+
+<h2>Final Recommendation</h2>
+
+<div class="verdict-box suggest">
+  <h3><span class="badge ok">approve with suggestions</span></h3>
+  <p>This is a small, purely additive change that adds two new environment variables following established patterns.
+     Deployment risk is low and the code is correct for all practical cases. The maintainability reviewer's
+     REQUEST_CHANGES verdict raises valid long-term concerns about duplicated logic and naming, but these are not
+     severe enough to block a change of this scope &mdash; the duplication is small (~10 lines), the naming is
+     consistent with existing <code>SRC_</code> prefix patterns, and refactoring can happen incrementally.</p>
+</div>
+
+<h3>Suggestions</h3>
+<ul>
+  <li><strong>Add a test for PathAlias without <code>/</code></strong>: Independently flagged by two reviewers; low cost, high value.</li>
+  <li><strong>Extract a shared helper in a follow-up</strong>: A function like <code>clone.HostAndPathForRefs()</code> would eliminate the sync risk between <code>EnvForSpec</code> and <code>PathForRefs</code>. Better as a separate PR.</li>
+  <li><strong>Consider <code>SRC_BASE</code> naming clarity</strong>: Could be confused with a filesystem path. Since there are no existing users yet, a rename is still cheap.</li>
+  <li><strong>Add a release note</strong>: New env vars available to all non-periodic jobs should be announced.</li>
+</ul>
+
+<h3>Draft PR Comment</h3>
+<div class="pr-comment">
+This looks good to merge. The change is purely additive, low-risk, and correctly mirrors the existing
+<code>PathForRefs</code> logic. Two reviewers independently flagged the PathAlias-without-slash edge case &mdash;
+I'd appreciate a test case covering that scenario before or shortly after merge. Longer term, extracting a shared
+helper to keep the path-resolution logic in one place would be a nice follow-up. Consider adding a release note
+for the two new environment variables.
+</div>
+
+<h2>Review Checklist</h2>
+<ul class="checklist">
+  <li>Confirm SRC_BASE="/" edge case is acceptable or needs guarding</li>
+  <li>Evaluate <code>pkg/github</code> import &mdash; could it be replaced with a local const?</li>
+  <li>Verify naming aligns with how consumers will use these vars</li>
+  <li>Check if user-facing docs need an update</li>
+  <li>Consider adding tests for PathAlias-without-slash and RepoLink-without-scheme</li>
+  <li>Consider extracting shared helper to eliminate logic duplication</li>
+  <li>Add release note for new environment variables</li>
+</ul>
+
+<h2>Followups</h2>
+
+<div class="card info">
+  <h3><span class="badge note">docs</span> <span class="badge minor">should</span> Add SRC_HOST and SRC_BASE to env var documentation</h3>
+  <p class="file-ref">site/content/en/docs/jobs.md:336</p>
+  <p>The env var table documents every other pod-utils variable but is missing the two new ones. Job authors who would benefit most from these vars will look in the docs first.</p>
+  <pre style="white-space:pre-wrap; font-size:.8rem; margin-top:.5rem; padding:.8rem; background:rgba(110,118,129,.08); border:1px solid var(--border); border-radius:6px;">In `kubernetes-sigs/prow`, following the merge of PR #616 "Added SRC_BASE And SRC_HOST PodUtils Environment Variables" (merge commit 1ec9888010fc6f9e69b44aed1121402b7bb2e0ab):
+
+The env var table in `site/content/en/docs/jobs.md` documents every pod-utils environment variable exposed to job pods (`REPO_OWNER`, `REPO_NAME`, `PULL_BASE_REF`, etc.) but the two new variables added by PR #616 are missing.
+
+Add two rows to the table (around line 337, after `REPO_NAME`) for:
+
+- `SRC_HOST` — available for postsubmit, batch, and presubmit jobs (not periodic). Description: "Hosting service for the repo source." Example: `github.com`. For PathAlias repos this is the host portion of the alias (e.g. `k8s.io`); for RepoLink repos it is the host from the link (e.g. `gitlab.com`).
+- `SRC_BASE` — same availability. Description: "Path under the host for the repo source." Example: `kubernetes/test-infra`. For PathAlias repos this is the path portion after the host; for RepoLink repos it is the path portion after the host.
+
+Follow the existing table format exactly. The descriptions should reflect the actual implementation (host/path splitting), NOT the PR description's claim about GOPATH+"/src".
+
+Acceptance criteria: the two new rows appear in the table with correct availability checkmarks (not periodic), descriptions, and examples. No other changes.
+
+Out of scope: changing variable names, adding release notes, modifying code.</pre>
+</div>
+
+<div class="card info">
+  <h3><span class="badge note">tests</span> <span class="badge minor">should</span> Add PathAlias-without-slash edge case test</h3>
+  <p class="file-ref">pkg/pod-utils/downwardapi/jobspec_test.go</p>
+  <p>When <code>PathAlias</code> has no <code>/</code>, <code>srcHost</code> gets the entire alias but <code>srcBase</code> keeps the default <code>org/repo</code>. This differs from <code>PathForRefs</code>. Two review perspectives independently flagged this. The behavior should be tested to document intent.</p>
+  <pre style="white-space:pre-wrap; font-size:.8rem; margin-top:.5rem; padding:.8rem; background:rgba(110,118,129,.08); border:1px solid var(--border); border-radius:6px;">In `kubernetes-sigs/prow`, following the merge of PR #616 "Added SRC_BASE And SRC_HOST PodUtils Environment Variables" (merge commit 1ec9888010fc6f9e69b44aed1121402b7bb2e0ab):
+
+The `EnvForSpec` function in `pkg/pod-utils/downwardapi/jobspec.go` (lines 152-157) handles `PathAlias` by splitting on the first `/` to separate host from path. When `PathAlias` has no `/` (e.g. `"k8s.io"`), `srcHost` gets the entire alias but `srcBase` retains the default `org/repo` value. This differs subtly from `clone.PathForRefs` in `pkg/pod-utils/clone/clone.go:139-151`, which uses the entire `PathAlias` as the clone path without splitting.
+
+Add one test case to `TestEnvironmentForSpec` in `pkg/pod-utils/downwardapi/jobspec_test.go` that exercises this edge case:
+- Set `PathAlias` to `"k8s.io"` (no slash), with `Org: "org-name"`, `Repo: "repo-name"`.
+- Assert that `SRC_HOST` is `"k8s.io"` and `SRC_BASE` is `"org-name/repo-name"`.
+- Name the test case something like `"postsubmit job with path alias without slash"`.
+- Follow the existing test case structure (see the `"postsubmit job with path alias"` case for the pattern).
+
+Acceptance criteria: `go test ./pkg/pod-utils/downwardapi/...` passes with the new test case. The test documents the current behavior for this edge case.
+
+Out of scope: changing the behavior, refactoring the resolution logic, modifying `PathForRefs`.</pre>
+</div>
+
+<div class="card info">
+  <h3><span class="badge note">tech-debt</span> <span class="badge minor">should</span> Extract shared host/path resolution helper</h3>
+  <p class="file-ref">pkg/pod-utils/clone/clone.go + pkg/pod-utils/downwardapi/jobspec.go</p>
+  <p><code>EnvForSpec</code> and <code>PathForRefs</code> implement the same three-branch resolution logic independently and already diverge subtly. A shared function makes the relationship compiler-enforced.</p>
+  <pre style="white-space:pre-wrap; font-size:.8rem; margin-top:.5rem; padding:.8rem; background:rgba(110,118,129,.08); border:1px solid var(--border); border-radius:6px;">In `kubernetes-sigs/prow`, following the merge of PR #616 "Added SRC_BASE And SRC_HOST PodUtils Environment Variables" (merge commit 1ec9888010fc6f9e69b44aed1121402b7bb2e0ab):
+
+Two functions implement the same three-branch resolution logic (PathAlias > RepoLink > default github.com) independently:
+- `EnvForSpec` in `pkg/pod-utils/downwardapi/jobspec.go` (lines 145-168) — splits into host and base path for SRC_HOST/SRC_BASE env vars.
+- `PathForRefs` in `pkg/pod-utils/clone/clone.go` (lines 139-151) — constructs the full clone path.
+
+They already diverge subtly: `PathForRefs` uses the entire `PathAlias` as a clone path, while `EnvForSpec` splits it on `/` to extract host vs base. Both import `github.DefaultHost` from `pkg/github` for the default.
+
+Extract a shared function in `pkg/pod-utils/clone/`:
+
+    func HostAndPathForRefs(refs prowapi.Refs) (host, basePath string)
+
+This function should implement the three-branch resolution and return the host and path components separately. Then:
+1. Refactor `PathForRefs` to call `HostAndPathForRefs` and join the results with `baseDir/src/host/basePath`.
+2. Refactor `EnvForSpec` to call `clone.HostAndPathForRefs` for the `SRC_HOST` and `SRC_BASE` values, removing its inline resolution logic.
+3. This refactor should also remove the `pkg/github` import from `downwardapi/jobspec.go` — the `DefaultHost` reference moves into `clone/` where it already exists.
+
+Decide on the correct behavior for PathAlias-without-slash: either both callers should split (current EnvForSpec behavior) or both should use the whole alias (current PathForRefs behavior). Choose whichever is more correct and make the shared function implement it consistently.
+
+Acceptance criteria: `go test ./pkg/pod-utils/...` and `go test ./cmd/pipeline/...` pass. `PathForRefs` and `EnvForSpec` both delegate to the shared function. The `pkg/github` import is removed from `downwardapi/jobspec.go`. No behavioral change for the common cases (PathAlias with `/`, RepoLink with scheme, default).
+
+Out of scope: renaming the env vars, adding new env vars, changing documentation.</pre>
+</div>
+
+<div class="card info">
+  <h3><span class="badge note">cleanup</span> <span class="badge ok">could</span> Remove pkg/github import from downwardapi</h3>
+  <p class="file-ref">pkg/pod-utils/downwardapi/jobspec.go:30</p>
+  <p>The <code>pkg/github</code> import exists solely for <code>github.DefaultHost</code> (<code>"github.com"</code>). A local constant would break the unnecessary coupling. Becomes free if followup #3 is done.</p>
+  <pre style="white-space:pre-wrap; font-size:.8rem; margin-top:.5rem; padding:.8rem; background:rgba(110,118,129,.08); border:1px solid var(--border); border-radius:6px;">In `kubernetes-sigs/prow`, following the merge of PR #616 "Added SRC_BASE And SRC_HOST PodUtils Environment Variables" (merge commit 1ec9888010fc6f9e69b44aed1121402b7bb2e0ab):
+
+NOTE: If followup #3 (extract shared helper) is being done, skip this — it resolves the import naturally.
+
+The `downwardapi` package (`pkg/pod-utils/downwardapi/jobspec.go`, line 30) imports `sigs.k8s.io/prow/pkg/github` solely for the constant `github.DefaultHost` (the string `"github.com"`, defined in `pkg/github/types.go:50`). This couples the pod-utils/downwardapi package to the GitHub client package unnecessarily.
+
+Replace the `github.DefaultHost` reference at `jobspec.go:149` with a local constant (e.g. `const defaultGitHubHost = "github.com"`) and remove the `pkg/github` import. The `pkg/pod-utils/clone` import on line 31 already exists and is unrelated — keep it.
+
+Acceptance criteria: `go test ./pkg/pod-utils/downwardapi/...` passes. The `pkg/github` import is removed. `go vet ./pkg/pod-utils/downwardapi/...` passes.
+
+Out of scope: refactoring the resolution logic, changing behavior, touching clone.go.</pre>
+</div>
+
+</body>
+</html>

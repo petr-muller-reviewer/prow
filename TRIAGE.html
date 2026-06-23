@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Triage: Issue #436 — Prevent duplicate concurrent job reruns</title>
+<style>
+  :root {
+    --bg: #fff;
+    --fg: #1a1a1a;
+    --muted: #555;
+    --border: #ddd;
+    --accent: #0969da;
+    --code-bg: #f6f8fa;
+    --badge-green: #1a7f37;
+    --badge-blue: #0550ae;
+    --badge-orange: #bc4c00;
+    --badge-red: #cf222e;
+    --card-bg: #f8f9fb;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0d1117;
+      --fg: #c9d1d9;
+      --muted: #8b949e;
+      --border: #30363d;
+      --accent: #58a6ff;
+      --code-bg: #161b22;
+      --badge-green: #3fb950;
+      --badge-blue: #58a6ff;
+      --badge-orange: #d29922;
+      --badge-red: #f85149;
+      --card-bg: #161b22;
+    }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; background: var(--bg); color: var(--fg); line-height: 1.6; max-width: 960px; margin: 0 auto; padding: 2rem 1.5rem; }
+  h1 { font-size: 1.75rem; margin-bottom: .25rem; }
+  h2 { font-size: 1.35rem; margin-top: 2rem; margin-bottom: .75rem; border-bottom: 1px solid var(--border); padding-bottom: .3rem; }
+  h3 { font-size: 1.1rem; margin-top: 1.5rem; margin-bottom: .5rem; }
+  h4 { font-size: 1rem; margin-top: 1.25rem; margin-bottom: .4rem; }
+  p, li { margin-bottom: .5rem; }
+  ul, ol { padding-left: 1.5rem; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; font-size: .875em; background: var(--code-bg); padding: .15em .35em; border-radius: 4px; }
+  pre { background: var(--code-bg); padding: 1rem; border-radius: 6px; overflow-x: auto; margin: .75rem 0; }
+  pre code { padding: 0; background: none; }
+  .meta { color: var(--muted); font-size: .9rem; margin-bottom: 1.5rem; }
+  .badge { display: inline-block; font-size: .75rem; font-weight: 600; padding: .15em .5em; border-radius: 10px; color: #fff; margin-right: .35rem; vertical-align: middle; }
+  .badge-green { background: var(--badge-green); }
+  .badge-blue { background: var(--badge-blue); }
+  .badge-orange { background: var(--badge-orange); }
+  .badge-red { background: var(--badge-red); }
+  .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 1rem 1.25rem; margin: .75rem 0; }
+  .card h4 { margin-top: 0; }
+  .flow { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; font-size: .9rem; margin: .75rem 0; }
+  .flow span { background: var(--code-bg); border: 1px solid var(--border); border-radius: 4px; padding: .2em .6em; }
+  .flow .arrow { background: none; border: none; color: var(--muted); }
+  table { border-collapse: collapse; width: 100%; margin: .75rem 0; font-size: .9rem; }
+  th, td { text-align: left; padding: .5rem .75rem; border: 1px solid var(--border); }
+  th { background: var(--code-bg); font-weight: 600; }
+  details { margin: .5rem 0; }
+  summary { cursor: pointer; font-weight: 600; padding: .3rem 0; }
+  .comment-draft { background: var(--code-bg); border-left: 3px solid var(--accent); padding: 1rem 1.25rem; border-radius: 0 6px 6px 0; margin: .75rem 0; white-space: pre-wrap; font-size: .9rem; }
+  .toc { background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 1rem 1.25rem; margin-bottom: 2rem; }
+  .toc ul { list-style: none; padding-left: 0; margin-bottom: 0; }
+  .toc li { margin-bottom: .25rem; }
+  .toc li li { padding-left: 1.25rem; }
+  hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+</style>
+</head>
+<body>
+
+<h1>Triage: Issue #436</h1>
+<p class="meta">
+  <a href="https://github.com/kubernetes-sigs/prow/issues/436">kubernetes-sigs/prow#436</a> &mdash;
+  <span class="badge badge-green">LEGITIMATE</span>
+  <span class="badge badge-blue">kind/feature</span>
+  <span class="badge badge-blue">area/deck</span>
+  <span class="badge badge-blue">area/prowcm</span>
+  <span class="badge badge-red">lifecycle/rotten</span>
+  <span class="badge badge-blue">Level 2 &mdash; Moderate</span>
+</p>
+
+<nav class="toc">
+  <strong>Contents</strong>
+  <ul>
+    <li><a href="#summary">Summary</a></li>
+    <li><a href="#root-cause">Root Cause</a></li>
+    <li><a href="#architecture">Architecture &amp; Data Flow</a></li>
+    <li><a href="#solutions">Solution Approaches</a>
+      <ul>
+        <li><a href="#sol-recommended">Recommended: Deck Deduplication</a></li>
+        <li><a href="#sol-alternatives">Alternatives Considered</a></li>
+      </ul>
+    </li>
+    <li><a href="#effort">Effort Assessment</a></li>
+    <li><a href="#labels">Labels &amp; Title</a></li>
+    <li><a href="#draft-comment">Draft GitHub Comment</a></li>
+    <li><a href="#key-files">Key Files</a></li>
+  </ul>
+</nav>
+
+<h2 id="summary">Summary</h2>
+<p>During the Kubernetes 1.33.0 release, multiple release managers independently triggered reruns of the same failed test (<em>Conformance-GCE-1.33-kubetest2</em>), resulting in 3 simultaneous runs wasting CI resources. The issue requests functionality to prevent duplicate concurrent reruns.</p>
+<p>BenTheElder noted an existing queue feature (<code>job_queue_name</code> with capacity limits) that can enforce n=1 concurrency, but it&rsquo;s opt-in and not widely configured.</p>
+<div class="card" style="border-left: 3px solid var(--badge-red);">
+  <h4>Since previous triage (2026-05-31)</h4>
+  <ul>
+    <li><strong><code>lifecycle/rotten</code> added</strong> &mdash; the issue has aged beyond stale and is at risk of automatic closure. Apply <code>/lifecycle frozen</code> or post a substantive comment to prevent it.</li>
+    <li><strong><code>area/prowcm</code> added</strong> &mdash; a maintainer flagged ProwController Manager as a relevant component alongside Deck.</li>
+    <li><strong><code>area/tide</code> removed</strong> &mdash; consistent with the triage note that Tide handles merge automation and was not the right component label.</li>
+    <li><strong><code>help-wanted</code> not yet applied</strong> &mdash; recommended label from the previous triage is still pending.</li>
+  </ul>
+</div>
+
+<h2 id="root-cause">Root Cause</h2>
+<div class="card">
+  <h4>Race condition + lack of automatic deduplication</h4>
+  <ol>
+    <li><strong>No deduplication at Deck level:</strong> Each &ldquo;Rerun&rdquo; click creates a distinct ProwJob object (<code>cmd/deck/rerun.go:326</code>), each with a unique UID.</li>
+    <li><strong>Timing-dependent concurrency check:</strong> Plank counts &ldquo;pending or older triggered&rdquo; jobs (<code>reconciler.go:1117-1139</code>). If two reruns arrive before the first transitions to PendingState, both pass the check.</li>
+    <li><strong>Queue feature not universally configured:</strong> The existing queue mechanism is opt-in; the Conformance-GCE job had no queue set.</li>
+  </ol>
+</div>
+
+<h3>Contributing Factors</h3>
+<ul>
+  <li>Multiple users with rerun permissions active simultaneously</li>
+  <li>No UI feedback about pending reruns from other users</li>
+  <li>Serialization locks only prevent same-thread races within the reconciler</li>
+  <li>Brief TriggeredState &rarr; PendingState window allows duplicates through</li>
+</ul>
+
+<h2 id="architecture">Architecture &amp; Data Flow</h2>
+
+<div class="flow">
+  <span>User clicks Rerun</span>
+  <span class="arrow">&rarr;</span>
+  <span>Deck validates auth</span>
+  <span class="arrow">&rarr;</span>
+  <span>Deck creates ProwJob</span>
+  <span class="arrow">&rarr;</span>
+  <span>K8s API (SchedulingState)</span>
+  <span class="arrow">&rarr;</span>
+  <span>Plank reconciler</span>
+  <span class="arrow">&rarr;</span>
+  <span>Concurrency check</span>
+  <span class="arrow">&rarr;</span>
+  <span>Create Pod / leave scheduling</span>
+</div>
+
+<h3>Key Components</h3>
+<table>
+  <tr><th>Component</th><th>File</th><th>Role</th></tr>
+  <tr><td>Deck (Rerun UI)</td><td><code>cmd/deck/rerun.go</code></td><td>Handles rerun button, creates ProwJob</td></tr>
+  <tr><td>Plank (Scheduler)</td><td><code>pkg/plank/reconciler.go</code></td><td>Enforces concurrency limits, schedules jobs</td></tr>
+  <tr><td>Config</td><td><code>pkg/config/config.go:722-728</code></td><td>Defines <code>JobQueueCapacities</code></td></tr>
+  <tr><td>ProwJob Spec</td><td><code>pkg/apis/prowjobs/v1/types.go:228-235</code></td><td>Defines <code>JobQueueName</code> field</td></tr>
+</table>
+
+<h3>Concurrency Control (existing)</h3>
+<ul>
+  <li><strong>Per-job:</strong> <code>MaxConcurrency</code> field limits concurrent runs of a specific job</li>
+  <li><strong>Per-queue:</strong> <code>JobQueueCapacities</code> map limits concurrent jobs sharing a named queue</li>
+  <li>Both are opt-in and require manual configuration</li>
+</ul>
+
+<h2 id="solutions">Solution Approaches</h2>
+
+<h3 id="sol-recommended">Recommended: Approach 2 &mdash; Rerun Deduplication in Deck</h3>
+<div class="card">
+  <p>Add duplicate detection in <code>handleRerun()</code> before creating new ProwJob objects. Query for existing ProwJobs with the same name in SchedulingState, TriggeredState, or PendingState within a configurable time window (5&ndash;10 min). If found, return the existing job with UI feedback.</p>
+  <h4>Why this approach?</h4>
+  <ul>
+    <li>Prevents duplicates at the source (Deck), not downstream</li>
+    <li>Immediate user feedback (&ldquo;A rerun was already triggered 3 min ago by user X&rdquo;)</li>
+    <li>Changes isolated to a single component</li>
+    <li>High backwards compatibility, can be feature-flagged</li>
+  </ul>
+  <h4>Implementation sketch</h4>
+  <ol>
+    <li>Add helper: <code>findRecentPendingRerun(ctx, jobName, within) (*ProwJob, error)</code></li>
+    <li>Call it in <code>handleRerun()</code> before line 326 (job creation)</li>
+    <li>If duplicate found &rarr; return informative HTTP response</li>
+    <li>Optional: add configurable time window + per-job opt-out</li>
+  </ol>
+</div>
+
+<h3 id="sol-alternatives">Alternatives Considered</h3>
+
+<details>
+  <summary>Approach 1: Automatic Queue Assignment with Smart Defaults</summary>
+  <div class="card">
+    <p>Auto-assign all jobs to implicit queues by job name, default capacity 1.</p>
+    <p><strong>Pros:</strong> Zero config, prevents duplicates for all jobs, uses existing infrastructure.<br>
+    <strong>Cons:</strong> Changes default behavior, may delay legitimately parallel jobs, requires opt-out mechanism.<br>
+    <strong>Complexity:</strong> Medium.</p>
+  </div>
+</details>
+
+<details>
+  <summary>Approach 3: Global Default MaxConcurrency</summary>
+  <div class="card">
+    <p>Add <code>default_max_concurrency_per_job_name: 1</code> config field applied to unconfigured jobs.</p>
+    <p><strong>Pros:</strong> Minimal code changes, simple config, uses existing checking.<br>
+    <strong>Cons:</strong> Doesn&rsquo;t prevent duplicate ProwJob creation, delayed user feedback, still creates jobs that sit in SchedulingState.<br>
+    <strong>Complexity:</strong> Low. Good as defense-in-depth alongside Approach 2.</p>
+  </div>
+</details>
+
+<details>
+  <summary>Approach 4: GUI Lock (not recommended)</summary>
+  <div class="card">
+    <p>Disable rerun button temporarily after click.</p>
+    <p><strong>Does not solve the core issue</strong> &mdash; only prevents double-clicks from the same user, not multiple users triggering reruns independently.</p>
+  </div>
+</details>
+
+<h2 id="effort">Effort Assessment</h2>
+
+<div class="card">
+  <h4>Level 2 &mdash; Moderate <span class="badge badge-orange">help-wanted</span></h4>
+  <table>
+    <tr><th>Factor</th><th>Rating</th><th>Notes</th></tr>
+    <tr><td>Scope</td><td>2&ndash;3</td><td>2&ndash;4 files, ~200&ndash;300 LOC</td></tr>
+    <tr><td>Complexity</td><td>2</td><td>Straightforward query + filter logic</td></tr>
+    <tr><td>Expertise</td><td>2&ndash;3</td><td>Go, client-go, ProwJob lifecycle</td></tr>
+    <tr><td>Clarity</td><td>1&ndash;2</td><td>Well-defined, minor config details to decide</td></tr>
+    <tr><td>Testing</td><td>2&ndash;3</td><td>Unit tests with mock K8s client</td></tr>
+    <tr><td>Backwards compat</td><td>1&ndash;2</td><td>Additive, feature-flaggable</td></tr>
+    <tr><td>Architecture fit</td><td>2&ndash;3</td><td>Natural extension of Deck rerun handler</td></tr>
+  </table>
+</div>
+
+<h3>Contributor Guidance</h3>
+<p><strong>Suitable for:</strong> Contributors with solid Go experience and familiarity with Kubernetes client-go. Not a good-first-issue due to ProwJob lifecycle requirements.</p>
+
+<h4>Preparation</h4>
+<ol>
+  <li>Read <code>cmd/deck/rerun.go</code> &mdash; current rerun handler flow</li>
+  <li>Read <code>pkg/apis/prowjobs/v1/types.go</code> &mdash; ProwJob states</li>
+  <li>Read <code>cmd/deck/rerun_test.go</code> &mdash; existing test patterns</li>
+  <li>Reference <code>pkg/plank/reconciler.go:1117-1139</code> for state filtering patterns</li>
+</ol>
+
+<h4>Open Questions for Maintainers</h4>
+<ul>
+  <li>Preferred time window default (5 min? 10 min?)</li>
+  <li>Opt-in (feature flag) vs. opt-out initially?</li>
+  <li>Add metrics for blocked duplicate reruns?</li>
+  <li>Error message format for UI display?</li>
+</ul>
+
+<h2 id="labels">Labels &amp; Title</h2>
+
+<table>
+  <tr><th>Action</th><th>Value</th><th>Rationale</th></tr>
+  <tr><td>Retitle</td><td><em>Prevent duplicate concurrent job reruns in Deck</em></td><td>Remove non-standard <code>[feature]</code> prefix; clarify component and behavior</td></tr>
+  <tr><td><code>/area deck</code></td><td>Already applied</td><td>&mdash;</td></tr>
+  <tr><td><code>/help-wanted</code></td><td>Add (pending)</td><td>Level 2 effort, suitable for skilled contributors</td></tr>
+  <tr><td><code>kind/feature</code></td><td>Already applied</td><td>&mdash;</td></tr>
+  <tr><td><code>area/prowcm</code></td><td>Already applied</td><td>Added by maintainer since initial triage</td></tr>
+  <tr><td><code>area/tide</code></td><td>Removed</td><td>Correctly removed; Tide handles merge automation, not manual reruns</td></tr>
+  <tr><td><code>lifecycle/rotten</code></td><td><strong>Currently applied &mdash; urgent</strong></td><td>Issue at auto-close risk; apply <code>/lifecycle frozen</code> or post substantive comment to prevent closure</td></tr>
+</table>
+
+<h2 id="draft-comment">Draft GitHub Comment</h2>
+
+<div class="comment-draft">/retitle Prevent duplicate concurrent job reruns in Deck
+
+## Root Cause
+
+This issue occurs due to a race condition combined with lack of automatic deduplication. When multiple users click "Rerun" within seconds of each other, Deck's rerun handler (`cmd/deck/rerun.go:245-347`) creates multiple distinct ProwJob objects, each with a unique ID. If these jobs reach Plank's scheduler before the first transitions from TriggeredState to PendingState, all pass the concurrency check and execute simultaneously. While BenTheElder mentioned the existing queue feature (`job_queue_name` with capacity limits), it's opt-in and not configured for most jobs, including the Conformance-GCE job from the incident.
+
+## Recommended Solution
+
+Add duplicate detection in Deck before creating new ProwJobs. When a rerun is requested, query for existing ProwJobs with the same name in SchedulingState, TriggeredState, or PendingState within a recent time window (5-10 minutes). If found, return the existing job instead of creating a duplicate, with UI feedback like "A rerun was already triggered 3 minutes ago by user X." This approach prevents duplicates at the source and provides immediate user feedback.
+
+## Implementation Guidance
+
+The fix should be implemented in `cmd/deck/rerun.go` by adding a helper function to query recent pending reruns before the job creation step at line 326. The implementation can reference `pkg/plank/reconciler.go:1117-1139` for ProwJob state filtering patterns. This is a moderate-complexity change affecting 2-4 files (~200-300 LOC) suitable for contributors familiar with Go and Kubernetes client-go. All triage research and detailed implementation guidance is available in the `issue-triage-436` branch.
+
+/area deck
+/help-wanted</div>
+
+<h2 id="key-files">Key Files Reference</h2>
+<table>
+  <tr><th>File</th><th>Lines</th><th>What to look at</th></tr>
+  <tr><td><code>cmd/deck/rerun.go</code></td><td>245&ndash;347</td><td><code>handleRerun()</code> &mdash; where deduplication check goes</td></tr>
+  <tr><td><code>cmd/deck/rerun.go</code></td><td>326</td><td>ProwJob creation &mdash; insert check before this</td></tr>
+  <tr><td><code>cmd/deck/rerun.go</code></td><td>151&ndash;162</td><td>Existing ProwJob query by name pattern</td></tr>
+  <tr><td><code>cmd/deck/rerun_test.go</code></td><td>&mdash;</td><td>Test patterns to follow</td></tr>
+  <tr><td><code>pkg/plank/reconciler.go</code></td><td>1117&ndash;1139</td><td>ProwJob state filtering reference</td></tr>
+  <tr><td><code>pkg/plank/reconciler.go</code></td><td>931&ndash;962</td><td><code>canExecuteConcurrentlyPerQueue()</code></td></tr>
+  <tr><td><code>pkg/plank/reconciler.go</code></td><td>909&ndash;929</td><td><code>canExecuteConcurrentlyPerJob()</code></td></tr>
+  <tr><td><code>pkg/config/config.go</code></td><td>722&ndash;728</td><td><code>JobQueueCapacities</code> definition</td></tr>
+  <tr><td><code>pkg/apis/prowjobs/v1/types.go</code></td><td>228&ndash;235</td><td><code>JobQueueName</code> field</td></tr>
+  <tr><td><code>pkg/apis/prowjobs/v1/types.go</code></td><td>174&ndash;179</td><td><code>MaxConcurrency</code> field</td></tr>
+</table>
+
+<hr>
+<p class="meta">Refreshed 2026-06-01. Labels updated: <code>lifecycle/rotten</code> and <code>area/prowcm</code> added; <code>area/tide</code> and <code>help-wanted</code> removed. No new comments or cross-references.</p>
+
+</body>
+</html>

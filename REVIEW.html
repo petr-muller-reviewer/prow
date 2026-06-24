@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Review: kubernetes-sigs/prow#754</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; line-height: 1.6; max-width: 820px; margin: 2rem auto; padding: 0 1rem; color: #24292f; }
+  h1 { font-size: 1.5rem; border-bottom: 1px solid #d0d7de; padding-bottom: 0.4rem; }
+  h2 { font-size: 1.25rem; margin-top: 2rem; border-bottom: 1px solid #d0d7de; padding-bottom: 0.3rem; }
+  h3 { font-size: 1rem; margin-top: 1.2rem; }
+  code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; font-size: 0.9em; background: #f6f8fa; padding: 0.15em 0.35em; border-radius: 4px; }
+  pre { background: #f6f8fa; padding: 1rem; overflow-x: auto; border-radius: 6px; font-size: 0.85em; line-height: 1.45; }
+  pre code { background: none; padding: 0; }
+  .meta { background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 6px; padding: 0.8rem 1rem; margin-bottom: 1.5rem; }
+  .meta dt { font-weight: 600; display: inline; }
+  .meta dd { display: inline; margin: 0 1.5rem 0 0.3rem; }
+  .verdict { background: #dafbe1; border-left: 4px solid #2da44e; padding: 0.6rem 1rem; border-radius: 4px; margin: 1rem 0; }
+  ul { padding-left: 1.5rem; }
+  li { margin-bottom: 0.3rem; }
+  a { color: #0969da; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+
+<h1>Review: kubernetes-sigs/prow#754</h1>
+
+<div class="meta">
+  <dl>
+    <dt>PR:</dt><dd><a href="https://github.com/kubernetes-sigs/prow/pull/754">kubernetes-sigs/prow#754</a></dd>
+    <dt>Title:</dt><dd>Fix pagination prefix duplication on GHE with redirect</dd>
+    <dt>Author:</dt><dd>petr-muller</dd>
+    <dt>Base:</dt><dd><code>main</code></dd>
+    <dt>Head SHA:</dt><dd><code>55cf6c6a64cb5f32d03ae849685a83076f5db4a3</code></dd>
+    <dt>Reviewed:</dt><dd>2026-06-24T12:31:41Z</dd>
+  </dl>
+</div>
+
+<h2>Verdict</h2>
+<div class="verdict">
+  <strong>Approve.</strong>
+</div>
+<p>
+  The fix is correct, well-scoped, and directly addresses the known limitation noted in #748. The new host-aware prefix lookup is strictly more robust than the old suffix-matching approach. The test exercises the exact failure scenario. Theoretical edge cases (port normalization, same-host-different-path bases) are practically impossible and are not regressions from this PR.
+</p>
+
+<h2>What this PR does</h2>
+<ul>
+  <li>Replaces the pagination prefix computation in <code>readPaginatedResultsWithValuesWithContext</code>: instead of suffix-matching <code>resp.Request.URL.Path</code> against the Link header path (fragile when redirects change the path), it matches the Link URL's host against <code>c.bases</code> and extracts the path component from the matching base entry.</li>
+  <li>This makes GHE pagination immune to redirects (e.g. repo renames) because the prefix is derived from the host, not from path arithmetic that breaks when the response path differs from the request path.</li>
+  <li>Removes 9 lines (the old <code>pathOnly</code>/<code>TrimSuffix</code> logic and outdated comments) and adds 15 lines (the host-matching loop and updated comments).</li>
+  <li>Adds <code>TestReadPaginatedResultsWithGHEAndRedirect</code>: a 63-line test that sets up a TLS server simulating a GHE instance with <code>/api/v3</code> prefix, a 301 redirect (repo rename), and two-page pagination. Verifies all three requests fire and both pages are collected.</li>
+</ul>
+
+<h2>Findings</h2>
+<p>No findings. All candidates from the review were refuted during verification.</p>
+
+<h2>Things I checked and was fine with</h2>
+<ul>
+  <li><strong>Correctness of host matching:</strong> <code>url.Parse</code> on <code>c.bases</code> entries produces the expected <code>Host</code> and <code>Path</code> fields. For github.com (<code>https://api.github.com</code>), <code>Path</code> is empty, so <code>TrimPrefix</code> is a no-op. For GHE (<code>https://ghe.com/api/v3</code>), <code>Path</code> is <code>/api/v3</code>, correctly stripped.</li>
+  <li><strong>Fallback behavior:</strong> If no base matches (prefix stays empty), <code>TrimPrefix(requestURI, "")</code> returns the full URI. The safety check on line 2050 preserves it if it starts with <code>/</code>. For github.com this is correct; for GHE it would re-duplicate, but only under a configuration error (Link host doesn't match any base). This is not a regression &mdash; the old code had the same failure mode.</li>
+  <li><strong>Error handling:</strong> <code>url.Parse</code> failures on bases are silently skipped (<code>err == nil</code> guard). This is appropriate &mdash; invalid bases would already fail on the request construction side.</li>
+  <li><strong>First-match semantics:</strong> The loop breaks on first host match. Multiple <code>c.bases</code> entries exist for failover/load-balancing across distinct hosts, not same-host-different-path, so first-match is correct.</li>
+  <li><strong>Test coverage:</strong> The existing <code>TestReadPaginatedResultsWithRedirect</code> covers non-GHE redirect. The existing <code>TestReadPaginatedResultsWithGHE</code> covers GHE without redirect. The new test covers GHE + redirect. The matrix is complete.</li>
+  <li><strong>No callers affected:</strong> The function signature and return type are unchanged. The change is internal to the pagination loop.</li>
+  <li><strong>Port normalization:</strong> Theoretically <code>api.github.com</code> vs <code>api.github.com:443</code> would not match, but GitHub never emits explicit default ports in Link headers and <code>c.bases</code> entries don't include them. Not a practical concern.</li>
+</ul>
+
+<h2>Open questions for the author</h2>
+<p>None.</p>
+
+</body>
+</html>

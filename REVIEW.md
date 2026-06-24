@@ -3,7 +3,7 @@ pr: kubernetes-sigs/prow#731
 title: "Bump Kubernetes dependencies to v0.34.x"
 head_sha: 8c59d6e493bd17d164fb35b1fb1ec9e85b0f6293
 base: main
-reviewed_at: 2026-05-28T23:35:19Z
+reviewed_at: 2026-06-23T23:56:03Z
 verdict: needs-discussion
 ---
 

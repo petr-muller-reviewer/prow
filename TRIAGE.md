@@ -4,7 +4,9 @@ title: "Restrict Prow for Users running in Environments with OPA constraints"
 url: https://github.com/kubernetes-sigs/prow/issues/51
 author: NiJuFirenzia
 created_at: 2023-04-06
-triaged_at: 2026-06-01T00:00:38Z
+triaged_at: 2026-06-24T00:04:02Z
+state: closed
+closed_at: 2026-06-22T20:20:56Z
 verdict: LEGITIMATE
 effort: 2
 labels_current:
@@ -20,6 +22,8 @@ refresh_log:
     summary: Initial triage
   - triaged_at: 2026-06-01T00:00:38Z
     summary: "Label escalated lifecycle/stale → lifecycle/rotten by k8s-triage-robot on 2026-05-23; no human activity, no linked PRs"
+  - triaged_at: 2026-06-24T00:04:02Z
+    summary: "Auto-closed by k8s-triage-robot on 2026-06-22 (lifecycle/rotten 30d expiry). No human activity. /reopen to restore."
 ---
 
 # Triage: Issue #51
@@ -28,8 +32,9 @@ refresh_log:
 **Verdict**: LEGITIMATE · **Kind**: Feature · **Effort**: Level 2 (Moderate) · **Label**: help-wanted
 
 **Since previous triage (2026-05-02)**:
-- 2026-05-23: `k8s-triage-robot` escalated `lifecycle/stale` → `lifecycle/rotten` (90d+30d inactivity). Issue will be auto-closed in ~30 days if no activity.
-- No human comments, no linked PRs. Analysis unchanged.
+- 2026-05-23: `k8s-triage-robot` escalated `lifecycle/stale` → `lifecycle/rotten`.
+- 2026-06-22: `k8s-triage-robot` auto-closed the issue as "Not Planned" (lifecycle/rotten 30d expiry). This is the third bot closure; the author reopened twice before (2025-01-02, 2026-01-09).
+- No human comments, no linked PRs. Analysis unchanged. Issue can be reopened with `/reopen` and the augmentation comment posted simultaneously.
 
 ---
 

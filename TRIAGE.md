@@ -1,11 +1,14 @@
 ---
 issue: kubernetes-sigs/prow#527
 title: "Docs: Add subsection for running Prow outside GKE (e.g., local/Kind)"
-state: open
+state: closed
 labels: lifecycle/rotten, area/documentation
 main_sha: a52d6ea9917b8de587b6858d7c28cf05e017f8e1
-triaged_at: 2026-05-19T23:30:17Z
+triaged_at: 2026-06-25T11:27:13Z
 verdict: accepted
+refresh_log:
+  - previous: 2026-05-19T23:30:17Z
+    summary: "Issue auto-closed 2026-06-18 by k8s-triage-robot (lifecycle/rotten timeout). No substantive new comments. Next steps updated to include /reopen prerequisite."
 ---
 
 ## Findings
@@ -59,9 +62,13 @@ verdict: accepted
 - hack/ scripts: dev-env.sh and phony.sh documented; tilt-apply-config.sh and tilt-build.sh undocumented
 - full issue comment thread through 2026-04-23
 
+## Since previous triage (2026-05-19)
+- 2026-06-18: k8s-triage-robot auto-closed the issue as "Not Planned" due to lifecycle/rotten 30-day inactivity timeout. No human intervention or substantive comments preceded the closure.
+
 ## Next steps
+- `/reopen` the issue first — it was auto-closed by lifecycle bot, not resolved
 - Add cross-reference note near top of `site/content/en/docs/getting-started-deploy.md` pointing to `/docs/local-dev/` — ~5 lines, Level 1 (good-first-issue)
-- Post augmentation comment: /retitle, /remove-lifecycle stale, /kind cleanup, /good-first-issue (comment text in TRIAGE.html)
+- Post augmentation comment: /reopen, /retitle, /remove-lifecycle rotten, /kind cleanup, /good-first-issue (comment text in TRIAGE.html, needs update to include /reopen)
 - Do not apply /help-wanted — too simple for that label
 - Track broader contribution-path dev guides (Tide, Deck, ProwJob controllers) in a separate issue
 

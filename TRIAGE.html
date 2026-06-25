@@ -82,10 +82,10 @@ th { color: var(--muted); font-weight: 600; font-size: 0.76rem; text-transform: 
 <div class="card" style="margin-top:.7rem">
   <div class="meta-grid">
     <span class="k">Title</span><span>Docs: Add subsection for running Prow outside GKE (e.g., local/Kind)</span>
-    <span class="k">State</span><span><span class="badge b-green">open</span></span>
+    <span class="k">State</span><span><span class="badge b-orange">closed (not planned)</span></span>
     <span class="k">Labels</span><span><code>lifecycle/rotten</code> <code>area/documentation</code></span>
     <span class="k">Verdict</span><span><span class="badge b-blue">accepted</span></span>
-    <span class="k">Triaged at</span><span>2026-05-19T23:30:17Z</span>
+    <span class="k">Triaged at</span><span>2026-06-25T11:27:13Z</span>
     <span class="k">Main SHA</span><span><code>a52d6ea9</code></span>
   </div>
 </div>
@@ -103,6 +103,13 @@ th { color: var(--muted); font-weight: 600; font-size: 0.76rem; text-transform: 
   <li>New contributors wanting to hack on hook plugins or test config changes need to stand up real cloud infrastructure or navigate undocumented workarounds.</li>
   <li>Requested: a subsection under "Deploying Prow" covering minimal Kind setup, common pitfalls, and a note that it's for exploration/learning, not production.</li>
 </ul>
+
+<h2>Since previous triage (2026-05-19)</h2>
+<div class="card">
+  <ul>
+    <li><strong>2026-06-18</strong>: <code>k8s-triage-robot</code> auto-closed the issue as "Not Planned" due to <code>lifecycle/rotten</code> 30-day inactivity timeout. No human intervention or substantive comments preceded the closure.</li>
+  </ul>
+</div>
 
 <h2>Analysis</h2>
 
@@ -162,7 +169,7 @@ cluster using in-cluster fakes...</pre>
 
 <h2>Recommended next steps</h2>
 <ol>
-  <li>Post the augmentation comment below.</li>
+  <li>Post the augmentation comment below (includes <code>/reopen</code> — the issue was auto-closed by lifecycle bot, not resolved).</li>
   <li>Contributor adds ~5 lines near the top of <code>site/content/en/docs/getting-started-deploy.md</code> pointing to <code>/docs/local-dev/</code> as the path for local exploration. Pattern: <code>getting-started-develop.md:64-66</code>.</li>
   <li>Optionally open a separate issue for contribution-path dev guides (Tide, Deck, ProwJob controllers) — Level 2-3, each needs domain expertise.</li>
 </ol>
@@ -175,8 +182,9 @@ cluster using in-cluster fakes...</pre>
 
 <h2>Proposed comment</h2>
 <div class="comment-wrap">
-  <div class="comment-box" id="comment-text"><button class="copy-btn" onclick="copyComment()">Copy</button>/retitle Docs: Add cross-reference from deploy guide to local development guide
-/remove-lifecycle stale
+  <div class="comment-box" id="comment-text"><button class="copy-btn" onclick="copyComment()">Copy</button>/reopen
+/retitle Docs: Add cross-reference from deploy guide to local development guide
+/remove-lifecycle rotten
 
 The core request in this issue — documentation for running Prow locally on Kind — has been addressed. Since this issue was filed, two new guides were added (March 2026):
 

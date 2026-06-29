@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Review: PR #117 — Revive prowjob when node is terminated</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text-muted: #8b949e;
+    --accent: #58a6ff;
+    --green: #3fb950;
+    --yellow: #d29922;
+    --red: #f85149;
+    --orange: #db6d28;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    padding: 2rem;
+    max-width: 960px;
+    margin: 0 auto;
+  }
+  h1 { font-size: 1.5rem; margin-bottom: 0.25rem; }
+  h2 { font-size: 1.25rem; margin-top: 2rem; margin-bottom: 0.75rem; color: var(--accent); border-bottom: 1px solid var(--border); padding-bottom: 0.4rem; }
+  h3 { font-size: 1.05rem; margin-top: 1.25rem; margin-bottom: 0.5rem; }
+  p, li { margin-bottom: 0.5rem; }
+  ul { padding-left: 1.5rem; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 0.15em 0.35em;
+    font-size: 0.9em;
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  }
+  pre {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1rem;
+    overflow-x: auto;
+    font-size: 0.85em;
+    margin: 0.75rem 0;
+  }
+  pre code { background: none; border: none; padding: 0; }
+  .meta {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin-bottom: 1.5rem;
+  }
+  .meta a { color: var(--accent); }
+  .badge {
+    display: inline-block;
+    padding: 0.2em 0.6em;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    font-weight: 600;
+  }
+  .badge-request-changes { background: rgba(248, 81, 73, 0.15); color: var(--red); border: 1px solid var(--red); }
+  .badge-comment { background: rgba(210, 153, 34, 0.15); color: var(--yellow); border: 1px solid var(--yellow); }
+  .badge-medium { background: rgba(219, 109, 40, 0.15); color: var(--orange); border: 1px solid var(--orange); }
+  .badge-low { background: rgba(63, 185, 80, 0.15); color: var(--green); border: 1px solid var(--green); }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.25rem;
+    margin: 1rem 0;
+  }
+  .converging {
+    border-left: 3px solid var(--red);
+  }
+  .required {
+    border-left: 3px solid var(--orange);
+  }
+  .suggestion-card {
+    border-left: 3px solid var(--accent);
+  }
+  .deployment-card {
+    border-left: 3px solid var(--yellow);
+  }
+  .reviewer-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+  }
+  .file-ref { color: var(--text-muted); font-family: monospace; font-size: 0.85em; }
+  hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+  .summary-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.25rem;
+    margin: 1.5rem 0;
+    font-style: italic;
+    color: var(--text-muted);
+  }
+</style>
+</head>
+<body>
+
+<h1>PR #117: Revive prowjob when node is terminated (enabled by default)</h1>
+<div class="meta">
+  Author: <strong>inteon</strong> (Tim Ramlot) |
+  <a href="https://github.com/kubernetes-sigs/prow/pull/117">github.com/kubernetes-sigs/prow/pull/117</a> |
+  +171 / -19 | 9 files changed |
+  Reviewed: 2026-04-29 | Refreshed: 2026-05-30
+</div>
+
+<h2>Final Recommendation</h2>
+<p><span class="badge badge-request-changes">REQUEST_CHANGES</span></p>
+<p>
+  Two of three reviewers independently identified the same correctness gap in condition matching:
+  checking <code>condition.Reason</code> without verifying <code>condition.Type == "DisruptionTarget"</code>
+  or <code>condition.Status == corev1.ConditionTrue</code>. This deviates from how Kubernetes controllers
+  are expected to consume Pod Disruption Conditions, and the configurable nature of
+  <code>TerminationConditionReasons</code> amplifies the false-positive surface. Combined with zero test
+  coverage for the condition-based detection path, this represents a real risk of silent incorrect behavior
+  that would be hard to diagnose in production.
+</p>
+
+<h2>Converging Concerns</h2>
+<p>Issues independently flagged by multiple reviewers:</p>
+
+<div class="card converging">
+  <h3>Condition matching lacks Type and Status checks</h3>
+  <p>Flagged by: <strong>Code Quality</strong> + <strong>Maintainability</strong></p>
+  <p class="file-ref">pkg/plank/reconciler.go:693-696</p>
+  <p>
+    The condition-based path in <code>getPodUnexpectedStopCause</code> matches on <code>condition.Reason</code>
+    alone. Per the Kubernetes Pod Disruption Conditions contract, it must also check
+    <code>condition.Type == "DisruptionTarget"</code> and <code>condition.Status == corev1.ConditionTrue</code>.
+    Without this, any condition of any type with a matching reason string would trigger revival.
+  </p>
+  <pre><code>// Current (too broad):
+for _, condition := range pod.Status.Conditions {
+    if slices.Contains(terminationConditionReasons, condition.Reason) {
+        return PodUnexpectedStopCauseTerminated
+    }
+}
+
+// Recommended:
+for _, condition := range pod.Status.Conditions {
+    if condition.Type == "DisruptionTarget" &amp;&amp;
+        condition.Status == corev1.ConditionTrue &amp;&amp;
+        slices.Contains(terminationConditionReasons, condition.Reason) {
+        return PodUnexpectedStopCauseTerminated
+    }
+}</code></pre>
+</div>
+
+<div class="card converging">
+  <h3>No test coverage for the condition-based detection path</h3>
+  <p>Flagged by: <strong>Code Quality</strong> + <strong>Maintainability</strong></p>
+  <p>
+    All three new test cases use <code>pod.Status.Reason = "Terminated"</code>, leaving the
+    <code>pod.Status.Conditions</code> matching path entirely unexercised. This is the primary
+    mechanism for non-graceful shutdowns (PodGC, GCP controller), yet a regression would go
+    undetected because the <code>Status.Reason</code> path would still work.
+  </p>
+</div>
+
+<h2>Required Changes</h2>
+
+<div class="card required">
+  <h3>1. Tighten condition matching</h3>
+  <p class="file-ref">pkg/plank/reconciler.go:693-696</p>
+  <p>
+    Add checks for <code>condition.Type == "DisruptionTarget"</code> and
+    <code>condition.Status == corev1.ConditionTrue</code> when matching against
+    <code>TerminationConditionReasons</code>.
+  </p>
+</div>
+
+<div class="card required">
+  <h3>2. Add tests for the condition-based detection path</h3>
+  <p class="file-ref">pkg/plank/controller_test.go</p>
+  <p>
+    At minimum: a positive test (condition with matching reason + correct Type/Status) and
+    a negative test (reason matches but Type or Status does not).
+  </p>
+</div>
+
+<hr>
+
+<h2>Individual Reviewer Assessments</h2>
+
+<!-- Code Quality -->
+<div class="card">
+  <div class="reviewer-header">
+    <h3>1/3 &mdash; Code Quality</h3>
+    <span class="badge badge-comment">COMMENT</span>
+  </div>
+  <ul>
+    <li><strong>Condition matching is too broad</strong> (critical): <code>getPodUnexpectedStopCause</code> at
+      <span class="file-ref">reconciler.go:693-696</span> matches <code>condition.Reason</code> alone &mdash;
+      doesn't check <code>condition.Type</code> or <code>condition.Status</code>.</li>
+    <li><strong>No tests for the condition-based detection path</strong>: All new test cases use
+      <code>pod.Status.Reason = "Terminated"</code>. No test exercises the <code>pod.Status.Conditions</code>
+      matching logic.</li>
+    <li><strong>No test for MaxRevivals limit after termination</strong>: Only eviction/unreachable paths
+      test the revival cap.</li>
+    <li><strong>Empty vs. omitted <code>termination_condition_reasons</code></strong>: The <code>nil</code>
+      check means <code>[]</code> disables condition matching while omitting gets defaults. Differs from
+      the <code>MaxRevivals</code> pointer pattern and isn't documented.</li>
+    <li><strong>Positive</strong>: Clean adherence to <code>ErrorOnEviction</code> pattern, good finalizer
+      cleanup, well-linked documentation comments, configurable reasons.</li>
+  </ul>
+</div>
+
+<!-- Maintainability -->
+<div class="card">
+  <div class="reviewer-header">
+    <h3>2/3 &mdash; Maintainability</h3>
+    <span class="badge badge-comment">COMMENT</span> &nbsp;
+    <span class="badge badge-low">LOW burden</span>
+  </div>
+  <ul>
+    <li><strong>Condition-based path is untested</strong> (convergent): If it breaks, the
+      <code>Status.Reason</code> path would still work, making the regression hard to notice.</li>
+    <li><strong>Missing <code>condition.Status</code> check</strong> (convergent): Could cause false
+      positives on pods with historical or inactive conditions.</li>
+    <li><strong>Config can change mid-flight</strong>: <code>TerminationConditionReasons</code> is read
+      from live config on every reconciliation. Consistent with existing patterns but worth noting.</li>
+    <li><strong>Test naming</strong>: "delete terminated pod" doesn't convey that the pod will be revived.
+      Better: "revive terminated pod by deleting it for recreation".</li>
+    <li><strong>Suggestion</strong>: Unit-test <code>getPodUnexpectedStopCause</code> directly as a pure
+      function.</li>
+    <li><strong>Positive</strong>: Follows <code>ErrorOnEviction</code> pattern across all layers, good
+      inline comments with K8s doc links, CRD/config/API types all in sync.</li>
+  </ul>
+</div>
+
+<!-- Deployment Risk -->
+<div class="card">
+  <div class="reviewer-header">
+    <h3>3/3 &mdash; Deployment Risk</h3>
+    <span class="badge badge-medium">MEDIUM risk</span>
+  </div>
+  <ul>
+    <li><strong>Silent behavioral change on upgrade</strong>: Terminated pods are now revived instead of
+      failed. Activates without operator action. Alerts/workflows triggered by terminated-pod failures
+      will stop firing.</li>
+    <li><strong>Opt-in vs. opt-on-by-default</strong>: Multiple project members (droslean, BenTheElder)
+      raised this concern in the PR discussion. Consider making revival opt-in.</li>
+    <li><strong>No way to fully disable revival via config</strong>: <code>termination_condition_reasons: []</code>
+      disables condition matching, but <code>Status.Reason == "Terminated"</code> still triggers revival.
+      Only per-job <code>error_on_termination: true</code> is a full opt-out.</li>
+    <li><strong>GCP-specific defaults</strong>: <code>DeletionByGCPControllerManager</code> is GCP-specific.
+      AWS/Azure/bare-metal may use different condition reasons.</li>
+    <li><strong>CRD ordering</strong>: Must be applied before deploying the new plank binary (additive, safe).</li>
+    <li><strong>Mitigations</strong>: <code>MaxRevivals</code> (default 3) prevents infinite loops,
+      <code>ErrorOnTermination</code> per-job opt-out exists, finalizer cleanup handled, rollback is safe.</li>
+  </ul>
+</div>
+
+<hr>
+
+<h2>Non-blocking Suggestions</h2>
+
+<div class="card suggestion-card">
+  <ul>
+    <li>Unit-test <code>getPodUnexpectedStopCause</code> directly as a pure function &mdash; covers both
+      <code>Status.Reason</code> and <code>Status.Conditions</code> paths cleanly.</li>
+    <li>Add a test case verifying behavior when <code>MaxRevivals</code> is reached through the
+      termination path specifically.</li>
+    <li>Document the semantic difference between <code>TerminationConditionReasons: nil</code> (uses defaults)
+      and <code>TerminationConditionReasons: []</code> (no condition-based matching), or normalize so empty
+      also falls back to defaults.</li>
+    <li>Consider making <code>Status.Reason == "Terminated"</code> revival also configurable/disableable
+      for operators who want full control.</li>
+    <li>Rename test case "delete terminated pod" to convey revival intent.</li>
+  </ul>
+</div>
+
+<h2>Deployment Notes</h2>
+
+<div class="card deployment-card">
+  <ul>
+    <li>Terminated pods are now revived instead of failed on upgrade &mdash; no operator action required to activate.</li>
+    <li>Operators relying on terminated-pod failures for alerts/automation will see those stop firing silently.</li>
+    <li>CRD must be updated before deploying the new plank binary.</li>
+    <li>Per-job opt-out: <code>error_on_termination: true</code>. Global cap: <code>max_revivals</code> (default 3).</li>
+    <li>Rollback is safe &mdash; no data migration involved.</li>
+  </ul>
+</div>
+
+<hr>
+
+<div class="summary-box">
+  This is a well-structured change that follows the established eviction-handling pattern closely, and
+  the operational value of surviving spot terminations is clear. However, the condition-based detection
+  path needs to check <code>condition.Type == "DisruptionTarget"</code> and
+  <code>condition.Status == corev1.ConditionTrue</code> (not just <code>condition.Reason</code>), and
+  that same path needs test coverage &mdash; currently all tests only exercise the <code>Status.Reason</code>
+  matching. Once those are addressed, this should be ready to merge.
+</div>
+
+</body>
+</html>

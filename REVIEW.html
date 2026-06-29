@@ -114,7 +114,7 @@
   Author: <strong>inteon</strong> (Tim Ramlot) |
   <a href="https://github.com/kubernetes-sigs/prow/pull/117">github.com/kubernetes-sigs/prow/pull/117</a> |
   +171 / -19 | 9 files changed |
-  Reviewed: 2026-04-29 | Refreshed: 2026-05-30
+  Reviewed: 2026-04-29 | Refreshed: 2026-06-29 | <strong style="color: var(--red)">CLOSED without merge</strong>
 </div>
 
 <h2>Final Recommendation</h2>
@@ -280,6 +280,16 @@ for _, condition := range pod.Status.Conditions {
     <li>Consider making <code>Status.Reason == "Terminated"</code> revival also configurable/disableable
       for operators who want full control.</li>
     <li>Rename test case "delete terminated pod" to convey revival intent.</li>
+  </ul>
+</div>
+
+<h2>Since Previous Review (2026-05-30 &rarr; 2026-06-29)</h2>
+
+<div class="card" style="border-left: 3px solid var(--red);">
+  <ul>
+    <li><strong>PR closed without merging</strong> on 2026-06-28. No new commits, no new comments or reviews.</li>
+    <li>No code changes &mdash; the two required findings (condition-matching correctness, missing tests) remain unaddressed.</li>
+    <li>Likely abandoned rather than actively being worked; the required changes were not made.</li>
   </ul>
 </div>
 

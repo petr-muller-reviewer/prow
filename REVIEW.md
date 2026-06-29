@@ -3,12 +3,15 @@ pr: 117
 title: "Revive prowjob when node is terminated (enabled by default)"
 head_sha: b39206f58b33a1bd5ef9c348f87c263a5837789a
 base: main
-reviewed_at: "2026-05-30T00:45:00Z"
+reviewed_at: "2026-06-29T15:13:51Z"
 verdict: REQUEST_CHANGES
 refresh_log:
   - previous_reviewed_at: "2026-04-29"
     refreshed_at: "2026-05-30T00:45:00Z"
     summary: "No code changes. Only bot activity: k8s-triage-robot lifecycle/stale comment on 2026-05-29."
+  - previous_sha: b39206f58b33a1bd5ef9c348f87c263a5837789a
+    refreshed_at: "2026-06-29T15:13:51Z"
+    summary: "No code changes, no new comments or reviews. PR was closed without merging on 2026-06-28T21:35:52Z."
 ---
 
 # PR #117: Revive prowjob when node is terminated (enabled by default)
@@ -98,6 +101,12 @@ All three new test cases use `pod.Status.Reason = "Terminated"`, leaving the `po
 - Document the semantic difference between `TerminationConditionReasons: nil` (uses defaults) and `TerminationConditionReasons: []` (no condition-based matching), or normalize so empty also falls back to defaults.
 - Consider making `Status.Reason == "Terminated"` revival also configurable/disableable for operators who want full control.
 - Rename test case "delete terminated pod" to convey revival intent.
+
+## Since Previous Review (2026-05-30 → 2026-06-29)
+
+- **PR closed without merging** on 2026-06-28T21:35:52Z. No new commits, no new comments or reviews.
+- No code changes — the two required findings (condition-matching correctness, missing tests) remain unaddressed.
+- Likely abandoned rather than actively being worked; the required changes were not made.
 
 ## Deployment Notes
 

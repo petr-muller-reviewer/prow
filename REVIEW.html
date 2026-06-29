@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Review: kubernetes-sigs/prow#730 — Add gemini-agent Prow plugin</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; line-height: 1.6; color: #1f2328; background: #fff; padding: 2rem; }
+  .container { max-width: 52rem; margin: 0 auto; }
+  h1 { font-size: 1.5rem; margin-bottom: 0.25rem; }
+  h2 { font-size: 1.25rem; margin-top: 2rem; margin-bottom: 0.75rem; border-bottom: 1px solid #d1d9e0; padding-bottom: 0.3rem; }
+  h3 { font-size: 1rem; margin-top: 1.25rem; margin-bottom: 0.25rem; }
+  p, li { margin-bottom: 0.4rem; }
+  ul { padding-left: 1.5rem; }
+  code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; font-size: 0.875em; background: #f6f8fa; padding: 0.15em 0.35em; border-radius: 3px; }
+  pre { background: #f6f8fa; padding: 0.75rem 1rem; border-radius: 6px; overflow-x: auto; font-size: 0.85rem; line-height: 1.5; margin: 0.5rem 0 1rem; }
+  pre code { background: none; padding: 0; }
+  .meta { background: #f6f8fa; border: 1px solid #d1d9e0; border-radius: 6px; padding: 1rem 1.25rem; margin-bottom: 1.5rem; font-size: 0.9rem; }
+  .meta a { color: #0969da; text-decoration: none; }
+  .meta a:hover { text-decoration: underline; }
+  .meta dt { font-weight: 600; display: inline; }
+  .meta dd { display: inline; margin-left: 0; margin-right: 1.5rem; }
+  .verdict { background: #dafbe1; border: 1px solid #4ac26b; border-radius: 6px; padding: 1rem 1.25rem; margin-bottom: 1.5rem; }
+  .verdict strong { color: #1a7f37; }
+  .note { background: #ddf4ff; border: 1px solid #54aeff; border-radius: 6px; padding: 0.75rem 1rem; margin-bottom: 1.5rem; font-size: 0.9rem; }
+  .severity { display: inline-block; font-size: 0.75rem; font-weight: 600; padding: 0.1em 0.5em; border-radius: 3px; margin-right: 0.3rem; vertical-align: middle; text-transform: uppercase; }
+  .should-fix { background: #fff3cd; color: #856404; }
+  .nit { background: #e0e0e0; color: #424242; }
+  .question { background: #bbdefb; color: #0d47a1; }
+  .finding { margin-bottom: 1.5rem; padding-left: 0.75rem; border-left: 3px solid #d1d9e0; }
+  .finding-should-fix { border-left-color: #ffb300; }
+  .finding-nit { border-left-color: #9e9e9e; }
+  .finding-question { border-left-color: #42a5f5; }
+  .where { color: #656d76; font-size: 0.875rem; margin-bottom: 0.25rem; }
+  .convergence { font-size: 0.8rem; color: #6e7781; font-style: italic; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>Review: Add gemini-agent Prow plugin (v2 &mdash; External Plugin)</h1>
+
+<div class="meta">
+  <dl>
+    <dt>PR:</dt><dd><a href="https://github.com/kubernetes-sigs/prow/pull/730">kubernetes-sigs/prow#730</a></dd>
+    <dt>Author:</dt><dd>@ameukam</dd>
+    <dt>Base:</dt><dd>main</dd>
+    <dt>Head SHA:</dt><dd><code>27bec9f35515e125802bdbd1fa5e6c5bc0f9e551</code></dd>
+    <dt>Reviewed:</dt><dd>2026-06-03T12:17:07Z</dd>
+  </dl>
+</div>
+
+<div class="note">
+  <strong>Note:</strong> Full maintainer review with three independent perspectives (Code Quality, Maintainability, Deployment Risk) synthesized by an advisor. This is the second full review; the PR was rewritten from an internal hook plugin to a standalone external plugin.
+</div>
+
+<div class="verdict">
+  <strong>Verdict: Approve with suggestions</strong>
+  <p>Well-structured, additive-only external plugin with low deployment risk and good test coverage. No showstopper bugs. The most substantive concerns &mdash; config placement in the shared struct, env-var configuration, and unbounded goroutines &mdash; are legitimate architectural feedback but appropriate as follow-up work rather than merge blockers. The <code>errors.As</code> value-vs-pointer issue and empty-response error message are the highest-value quick fixes.</p>
+</div>
+
+<h2>What this PR does</h2>
+<ul>
+  <li>Adds a standalone external plugin binary at <code>cmd/external-plugins/geminiagent/</code> that handles <code>/gemini-agent &lt;task&gt;</code> commands via GitHub webhook.</li>
+  <li>Collects GitHub context (issue/PR metadata, diffs, recent comments), sends it to Gemini on Vertex AI, and posts the response as a GitHub comment.</li>
+  <li>Access gated to org members, repo collaborators, and configurable team membership.</li>
+  <li>Proactive rate limiting (token bucket at 10 RPM) and reactive retry with exponential backoff + jitter on 429s.</li>
+  <li>Per-repo config via <code>GeminiAgentConfig</code> in <code>plugins.yaml</code> supports custom model selection and allowed teams.</li>
+</ul>
+
+<h2>Findings</h2>
+
+<h3>Should fix</h3>
+
+<div class="finding finding-should-fix">
+  <p><span class="severity should-fix">should fix</span> <strong><code>errors.As</code> with value type may silently fail against real SDK</strong></p>
+  <p class="where"><code>cmd/external-plugins/geminiagent/plugin/gemini-agent.go:125-129</code></p>
+  <p><code>var apiErr genai.APIError</code> (value type) as <code>errors.As</code> target. If the SDK returns <code>*genai.APIError</code>, the match silently fails and rate-limit retries stop working entirely. Tests pass because fakes construct value types directly. Use <code>var apiErr *genai.APIError</code> instead.</p>
+  <pre><code>var apiErr genai.APIError
+if errors.As(err, &amp;apiErr) {
+    return apiErr.Code == http.StatusTooManyRequests
+}</code></pre>
+</div>
+
+<div class="finding finding-should-fix">
+  <p><span class="severity should-fix">should fix</span> <strong>Empty response conflated with safety filter block</strong></p>
+  <p class="where"><code>cmd/external-plugins/geminiagent/plugin/gemini-agent.go:254-265</code></p>
+  <p>When <code>resp.Text()</code> returns empty, error says "response was blocked by content safety filters." But <code>Text()</code> could be empty for other reasons (empty completion, function-call-only response). Check <code>resp.Candidates</code> and <code>FinishReason</code> to distinguish.</p>
+  <pre><code>text := strings.TrimSpace(resp.Text())
+if text == "" {
+    return "", errors.New("response was blocked by content safety filters")
+}</code></pre>
+</div>
+
+<div class="finding finding-should-fix">
+  <p><span class="severity should-fix">should fix</span> <strong><code>GeminiAgentConfig</code> in shared <code>plugins.Configuration</code> struct</strong></p>
+  <p class="where"><code>pkg/plugins/config.go:66-67</code></p>
+  <p class="convergence">Flagged by Maintainability reviewer as most significant concern.</p>
+  <p>No other external plugin puts its config in the shared <code>plugins.Configuration</code> struct. Cherrypicker and needs-rebase manage their own config independently. This creates a precedent that would bloat the shared struct if followed. Plugin should own its own config file or use flags.</p>
+  <pre><code>GeminiAgents []GeminiAgentConfig `json:"gemini_agents,omitempty"`</code></pre>
+</div>
+
+<div class="finding finding-should-fix">
+  <p><span class="severity should-fix">should fix</span> <strong>Unbounded goroutine fire-and-forget with no shutdown drain</strong></p>
+  <p class="where"><code>cmd/external-plugins/geminiagent/server.go:70-74</code></p>
+  <p class="convergence">Flagged by Maintainability and Deployment Risk reviewers.</p>
+  <p><code>go func()</code> dispatches work with no WaitGroup, semaphore, or drain during shutdown. A 10-minute Gemini request could be silently killed. Also logged at <code>Info</code> level &mdash; should be <code>Error</code> for production visibility.</p>
+  <pre><code>go func() {
+    if err := s.handleIssueComment(l, ice); err != nil {
+        l.WithError(err).Info("Gemini agent failed.")
+    }
+}()</code></pre>
+</div>
+
+<div class="finding finding-should-fix">
+  <p><span class="severity should-fix">should fix</span> <strong>Duplicate import alias in main.go</strong></p>
+  <p class="where"><code>cmd/external-plugins/geminiagent/main.go:31-32</code></p>
+  <p><code>flagutil</code> and <code>prowflagutil</code> both import the same package. Drop the unaliased import and use <code>prowflagutil.OptionGroup</code>.</p>
+  <pre><code>"sigs.k8s.io/prow/pkg/flagutil"
+prowflagutil "sigs.k8s.io/prow/pkg/flagutil"</code></pre>
+</div>
+
+<div class="finding finding-should-fix">
+  <p><span class="severity should-fix">should fix</span> <strong>Credential discovery error silently swallowed</strong></p>
+  <p class="where"><code>cmd/external-plugins/geminiagent/plugin/gemini-agent.go:233-252</code></p>
+  <p>When <code>projectID</code> is empty and <code>google.FindDefaultCredentials</code> fails, the error is discarded. The genai client creation proceeds with empty project, failing later with a less informative error. At minimum log the error.</p>
+  <pre><code>if projectID == "" {
+    creds, err := google.FindDefaultCredentials(ctx, cloudPlatformScope)
+    if err == nil {
+        projectID = creds.ProjectID
+    }
+}</code></pre>
+</div>
+
+<div class="finding finding-should-fix">
+  <p><span class="severity should-fix">should fix</span> <strong>Environment variables as primary configuration</strong></p>
+  <p class="where"><code>cmd/external-plugins/geminiagent/plugin/gemini-agent.go:81, 234-235</code></p>
+  <p class="convergence">Flagged by Maintainability and Deployment Risk reviewers.</p>
+  <p>Six env vars read at call time, not startup. Not discoverable via <code>--help</code>, not loggable at startup, not documented. Diverges from Prow convention of flags and config files.</p>
+</div>
+
+<div class="finding finding-should-fix">
+  <p><span class="severity should-fix">should fix</span> <strong>Disconnected context ignores graceful shutdown</strong></p>
+  <p class="where"><code>cmd/external-plugins/geminiagent/plugin/gemini-agent.go:297</code></p>
+  <p><code>context.WithTimeout(context.Background(), requestTimeout)</code> creates a context disconnected from any parent. In-flight Gemini requests won't be cancelled during graceful shutdown &mdash; could block for up to 10 minutes.</p>
+  <pre><code>ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)</code></pre>
+</div>
+
+<div class="finding finding-should-fix">
+  <p><span class="severity should-fix">should fix</span> <strong>Client re-created per invocation with credential discovery I/O</strong></p>
+  <p class="where"><code>cmd/external-plugins/geminiagent/plugin/gemini-agent.go:372-390</code></p>
+  <p><code>newVertexGeminiClient</code> runs <code>google.FindDefaultCredentials</code> (potential file I/O) on every <code>/gemini-agent</code> comment. Cache the client or project ID with <code>sync.Once</code>.</p>
+</div>
+
+<div class="finding finding-should-fix">
+  <p><span class="severity should-fix">should fix</span> <strong>Missing test coverage for team-based authorization</strong></p>
+  <p class="where"><code>cmd/external-plugins/geminiagent/plugin/gemini-agent_test.go:725-727</code></p>
+  <p><code>TestIsAllowed</code> never tests the positive <code>AllowedTeams</code> path. Fake <code>TeamBySlugHasMember</code> always returns <code>false</code>.</p>
+  <pre><code>func (f *fakeGitHubClient) TeamBySlugHasMember(_, _ string, _ string) (bool, error) {
+    return false, nil
+}</code></pre>
+</div>
+
+<div class="finding finding-should-fix">
+  <p><span class="severity should-fix">should fix</span> <strong>Prompt injection risk from user-controlled content</strong></p>
+  <p class="where"><code>cmd/external-plugins/geminiagent/plugin/gemini-agent.go:522-523</code></p>
+  <p><code>isAllowed</code> gates who <em>triggers</em> the plugin, but the <em>content</em> fed to the model comes from anyone who can write on the issue. Should at minimum be documented.</p>
+</div>
+
+<h3>Nits</h3>
+
+<div class="finding finding-nit">
+  <p><span class="severity nit">nit</span> <strong><code>rand.Int64N</code> panic risk if backoff is zero</strong></p>
+  <p class="where"><code>cmd/external-plugins/geminiagent/plugin/gemini-agent.go:319</code></p>
+  <p>Current constants prevent zero backoff, but no guard. <code>rand.Int64N(0)</code> panics. One-line check would make it robust.</p>
+  <pre><code>jitter := time.Duration(rand.Int64N(int64(backoff) / 4))</code></pre>
+</div>
+
+<div class="finding finding-nit">
+  <p><span class="severity nit">nit</span> <strong>Magic fractions for truncation limits</strong></p>
+  <p class="where"><code>cmd/external-plugins/geminiagent/plugin/gemini-agent.go:522-523</code></p>
+  <p><code>maxPatchBytes/4</code> and <code>maxPatchBytes/8</code> not self-documenting. Named constants would clarify intent.</p>
+</div>
+
+<div class="finding finding-nit">
+  <p><span class="severity nit">nit</span> <strong>Per-request <code>os.Getenv</code> for model</strong></p>
+  <p class="where"><code>cmd/external-plugins/geminiagent/plugin/gemini-agent.go:220</code></p>
+  <p><code>resolveConfig</code> reads <code>os.Getenv("AI_AGENT_MODEL")</code> per-request. Behavior can change mid-process without logging.</p>
+</div>
+
+<div class="finding finding-nit">
+  <p><span class="severity nit">nit</span> <strong>No config validation for <code>GeminiAgentConfig</code></strong></p>
+  <p class="where"><code>pkg/plugins/config.go:105-116</code></p>
+  <p>No <code>Validate()</code> call from <code>Configuration.Validate()</code>. Other plugin configs with <code>Repos</code> fields have validation.</p>
+</div>
+
+<div class="finding finding-nit">
+  <p><span class="severity nit">nit</span> <strong>genai dependency in top-level <code>go.mod</code></strong></p>
+  <p class="where"><code>go.mod</code></p>
+  <p class="convergence">Flagged by Deployment Risk reviewer.</p>
+  <p><code>google.golang.org/genai v1.57.0</code> added to top-level <code>go.mod</code>. All Prow builds pull it even if this plugin is not deployed. A separate Go module for the plugin would isolate this.</p>
+</div>
+
+<h3>Questions</h3>
+
+<div class="finding finding-question">
+  <p><span class="severity question">question</span> <strong>Only handles <code>issue_comment</code> events</strong></p>
+  <p class="where"><code>cmd/external-plugins/geminiagent/server.go:63-77</code></p>
+  <p class="convergence">Flagged by Maintainability reviewer.</p>
+  <p>The plugin only handles <code>issue_comment</code> events. <code>/gemini-agent</code> from a PR review comment silently does nothing &mdash; no error, no log. Is this intentional, or should <code>pull_request_review_comment</code> also be handled?</p>
+</div>
+
+<div class="finding finding-question">
+  <p><span class="severity question">question</span> <strong>Default model choice</strong></p>
+  <p class="where"><code>cmd/external-plugins/geminiagent/plugin/gemini-agent.go:188</code></p>
+  <p>Default model is <code>gemma-4-26b-a4b-it</code> (Gemma). Is this intentional over a first-party Gemini model?</p>
+  <pre><code>defaultModel = "gemma-4-26b-a4b-it"</code></pre>
+</div>
+
+<div class="finding finding-question">
+  <p><span class="severity question">question</span> <strong>AI-generated response attribution</strong></p>
+  <p class="where"><code>cmd/external-plugins/geminiagent/plugin/gemini-agent.go:477</code></p>
+  <p>Responses posted as regular GitHub comments with no indication they are AI-generated. Should there be an attribution line?</p>
+</div>
+
+<h2>Things I checked and was fine with</h2>
+<ul>
+  <li>External plugin architecture: crash-isolated from hook, genai dependency not in hook binary.</li>
+  <li><code>main.go</code> follows established Prow external plugin patterns (compared needs-rebase, cherrypicker).</li>
+  <li>Webhook HMAC validation via <code>github.ValidateWebhook</code>.</li>
+  <li><code>dry-run</code> defaults to <code>true</code> (safe default).</li>
+  <li>Health checks and graceful shutdown via <code>pjutil.NewHealthOnPort</code> and <code>interrupts.ListenAndServe</code>.</li>
+  <li><code>GitHubClient</code> interface correctly exported, well-scoped to methods actually used.</li>
+  <li><code>genericCommentHandler</code> function type enables clean DI for testing.</li>
+  <li><code>server_test.go</code> covers event generalization, config forwarding, nil handler guard.</li>
+  <li><code>var _ plugin.GitHubClient = (*fakeGitHubClient)(nil)</code> interface compliance check.</li>
+  <li>Authorization flow (org member, collaborator, team checks) is correct and fail-closed.</li>
+  <li>Rate limiting: token bucket + exponential backoff with jitter is well-implemented.</li>
+  <li>Context collection handles both issue and PR paths, respects byte budgets.</li>
+  <li>Safety settings (<code>BLOCK_MEDIUM_AND_ABOVE</code>) explicitly configured.</li>
+  <li>Response truncation (60KB) prevents oversized comments.</li>
+  <li><code>markdown.DropCodeBlock</code> prevents command parsing inside code blocks.</li>
+  <li>UTF-8 boundary handling in <code>truncate</code> is correct.</li>
+  <li><code>plugin-config-documented.yaml</code> updated with new config block.</li>
+  <li><code>HelpProvider</code> signature matches external plugin pattern.</li>
+  <li>Deployment risk is LOW: purely additive, explicit opt-in, all config fields optional.</li>
+  <li>No breaking changes to existing configurations or behavior.</li>
+  <li>Safe rollback: removing deployment and config returns to prior state.</li>
+</ul>
+
+<h2>Open questions for the author</h2>
+<ul>
+  <li>Is <code>gemma-4-26b-a4b-it</code> the intended default, or should it be a first-party Gemini model?</li>
+  <li>Should <code>pull_request_review_comment</code> events also be handled, or is <code>issue_comment</code>-only intentional?</li>
+  <li>Should the plugin's response include an attribution line to make it clear the comment is AI-generated?</li>
+  <li>Is the 10-minute request timeout appropriate given it blocks graceful shutdown?</li>
+  <li>Should <code>GeminiAgentConfig</code> move out of the shared <code>plugins.Configuration</code> to match how other external plugins handle config?</li>
+</ul>
+
+</div>
+</body>
+</html>

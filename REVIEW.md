@@ -3,8 +3,13 @@ pr: kubernetes-sigs/prow#730
 title: "Add gemini-agent Prow plugin"
 head_sha: 27bec9f35515e125802bdbd1fa5e6c5bc0f9e551
 base: main
-reviewed_at: 2026-06-03T12:17:07Z
+reviewed_at: 2026-06-29T14:50:33Z
 verdict: approve-with-suggestions
+refresh_log:
+  - from_sha: 27bec9f35515e125802bdbd1fa5e6c5bc0f9e551
+    to_sha: 27bec9f35515e125802bdbd1fa5e6c5bc0f9e551
+    at: 2026-06-29T14:50:33Z
+    summary: "No code changes. kannon92 asked about token costs (2026-06-28); ameukam replied that Community Infrastructure will be used to fund tokens (2026-06-29)."
 ---
 
 ## Findings

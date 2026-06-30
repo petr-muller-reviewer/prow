@@ -2,10 +2,15 @@
 issue: kubernetes-sigs/prow#500
 title: "cherrypicker: add a flag to support `git cherry-pick -x` style commit messages"
 state: open
-labels: kind/feature, lifecycle/stale, area/plugins
+labels: kind/feature, lifecycle/rotten, area/plugins
 main_sha: 52c1eeb13bd2f1a241b2314b5ca06ed55ab17b2e
-triaged_at: 2026-06-02T23:43:12Z
+triaged_at: 2026-06-30T14:13:29Z
 verdict: accepted
+refresh_log:
+  - timestamp: 2026-06-02T23:43:12Z
+    summary: Initial triage completed
+  - timestamp: 2026-06-30T14:13:29Z
+    summary: Label changed stale→rotten (k8s-triage-robot), no substantive activity
 ---
 
 ## Findings
@@ -70,9 +75,9 @@ verdict: accepted
 - Contributor AaruniAggarwal self-assigned 2026-03-01 with no PR submitted as of triage time
 
 ## Next steps
-- Check whether AaruniAggarwal is still working on this (no activity since 2026-03-01)
-- `/remove-lifecycle stale` to keep the issue alive
-- If contributor inactive, re-label as `help-wanted`
+- `/remove-lifecycle rotten` to prevent auto-close (30 days from 2026-06-29)
+- Check whether AaruniAggarwal is still working on this (no activity since 2026-03-01, 4 months elapsed)
+- If contributor inactive, remove assignment and re-label as `help-wanted`
 - Maintainer implementation guidance in the 2026-02-23 comment is solid reference for any contributor
 - Recommended approach: modify patch file before `Am()` to inject `(cherry picked from commit <SHA>)` trailers — avoids interactor interface changes
 

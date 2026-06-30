@@ -30,8 +30,8 @@
 <div class="meta">
   <div><dt>Issue</dt><dd><a href="https://github.com/kubernetes-sigs/prow/issues/500">kubernetes-sigs/prow#500</a></dd></div>
   <div><dt>State</dt><dd>open</dd></div>
-  <div><dt>Labels</dt><dd>kind/feature, lifecycle/stale, area/plugins</dd></div>
-  <div><dt>Triaged at</dt><dd>2026-06-02T23:43:12Z</dd></div>
+  <div><dt>Labels</dt><dd>kind/feature, lifecycle/rotten, area/plugins</dd></div>
+  <div><dt>Triaged at</dt><dd>2026-06-30T14:13:29Z (refreshed from 2026-06-02T23:43:12Z)</dd></div>
   <div><dt>Main SHA</dt><dd><code>52c1eeb13bd2f1a241b2314b5ca06ed55ab17b2e</code></dd></div>
   <div><dt>Verdict</dt><dd>accepted</dd></div>
 </div>
@@ -112,9 +112,9 @@ if err := p.Push(r, newBranch, true); err != nil {</pre>
 <h2>Recommended next steps</h2>
 
 <ul>
-  <li>Check whether AaruniAggarwal is still working on this (no activity since 2026-03-01).</li>
-  <li><code>/remove-lifecycle stale</code> to keep the issue alive.</li>
-  <li>If contributor is inactive, re-label as <code>help-wanted</code> for someone else to pick up.</li>
+  <li><code>/remove-lifecycle rotten</code> to prevent auto-close (30 days from 2026-06-29).</li>
+  <li>Check whether AaruniAggarwal is still working on this (no activity since 2026-03-01, 4 months elapsed).</li>
+  <li>If contributor is inactive, remove assignment and re-label as <code>help-wanted</code> for someone else to pick up.</li>
   <li>The maintainer implementation guidance in the <a href="https://github.com/kubernetes-sigs/prow/issues/500#issuecomment-3946351613">2026-02-23 comment</a> is a solid reference for any contributor.</li>
   <li>Effort level 2 (moderate) &mdash; suitable for a skilled contributor familiar with Go and git internals.</li>
 </ul>

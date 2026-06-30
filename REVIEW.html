@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Review: kubernetes-sigs/prow#694</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; line-height: 1.6; max-width: 860px; margin: 2em auto; padding: 0 1em; color: #1a1a1a; }
+  h1 { font-size: 1.4em; border-bottom: 2px solid #333; padding-bottom: .3em; }
+  h2 { font-size: 1.15em; margin-top: 1.8em; border-bottom: 1px solid #ccc; padding-bottom: .2em; }
+  h3 { font-size: 1em; margin-top: 1.2em; }
+  code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; font-size: 0.9em; background: #f0f0f0; padding: 0.15em 0.35em; border-radius: 3px; }
+  pre { background: #f6f6f6; padding: 0.8em 1em; overflow-x: auto; border-radius: 4px; font-size: 0.85em; line-height: 1.45; }
+  pre code { background: none; padding: 0; }
+  .meta { background: #f8f8f8; border: 1px solid #ddd; border-radius: 4px; padding: 0.8em 1.2em; margin-bottom: 1.5em; }
+  .meta td { padding: 0.15em 0.8em 0.15em 0; vertical-align: top; }
+  .meta td:first-child { font-weight: 600; white-space: nowrap; }
+  .verdict { background: #e8f5e9; border-left: 4px solid #4caf50; padding: 0.8em 1.2em; margin: 1em 0; border-radius: 0 4px 4px 0; }
+  .severity-should-fix { color: #e65100; font-weight: 700; }
+  .severity-nit { color: #666; font-weight: 600; }
+  .severity-question { color: #1565c0; font-weight: 600; }
+  .finding { margin: 1em 0; padding: 0.6em 1em; background: #fafafa; border-radius: 4px; border: 1px solid #e8e8e8; }
+  ul { padding-left: 1.3em; }
+  li { margin-bottom: 0.3em; }
+  a { color: #1565c0; }
+</style>
+</head>
+<body>
+
+<h1>Review: kubernetes-sigs/prow#694</h1>
+
+<div class="meta">
+<table>
+<tr><td>PR</td><td><a href="https://github.com/kubernetes-sigs/prow/pull/694">kubernetes-sigs/prow#694</a></td></tr>
+<tr><td>Title</td><td>spyglass/junit: add configurable test grouping support</td></tr>
+<tr><td>Author</td><td>sosiouxme</td></tr>
+<tr><td>Head SHA</td><td><code>d9a45d7d93042060c7f11ac22b90fa79215d7ed2</code></td></tr>
+<tr><td>Base</td><td>main</td></tr>
+<tr><td>Reviewed</td><td>2026-06-30T16:56:09Z</td></tr>
+</table>
+</div>
+
+<h2>Verdict</h2>
+<div class="verdict">
+<strong>Approve with suggestions</strong>
+</div>
+<p>All three review perspectives (code quality, maintainability, deployment risk) converge on approval. The code is correct and well-tested, the feature is fully opt-in with zero behavioral change for existing deployments, and the <code>classifyTests</code> refactoring actually improves the pre-existing code. The only converging concern across reviewers is a missing comment on the <code>tests[0]</code> group-matching assumption. The template duplication is the main long-term maintenance cost but mirrors pre-existing patterns and is partially addressed by the sub-template extraction in the second commit.</p>
+
+<h2>What this PR does</h2>
+<ul>
+<li>Adds a <code>groups</code> config option to the JUnit Spyglass lens, letting operators segregate tests by XPath property selectors (e.g. <code>properties/property[@name='lifecycle' and @value='informing']</code>).</li>
+<li>Each group renders as a separate section below the default results, with its own pass/fail/skip/flaky breakdown and configurable collapse state.</li>
+<li>Introduces a mini XPath parser (<code>parseSelector</code> / <code>parsePropertyPredicate</code>) restricted to <code>properties/property[...]</code> predicates with <code>@name</code> and <code>@value</code> constraints.</li>
+<li>Refactors the inline test classification logic into a shared <code>classifyTests()</code> function with a <code>testBucket</code> abstraction, eliminating duplication between default and group paths.</li>
+<li>Extracts a <code>test-detail-rows</code> sub-template (second commit) to share failed/flaky row rendering between default and group sections.</li>
+</ul>
+
+<h2>Findings</h2>
+
+<h3>Blocking</h3>
+<p>None.</p>
+
+<h3><span class="severity-should-fix">Should fix</span></h3>
+
+<div class="finding">
+<h3>Empty shadow-box table when all tests match groups</h3>
+<p><code>template.html:90-145</code></p>
+<p>When groups are configured and every test matches a group, the default bucket has zero tests. All four default sections are guarded by <code>{{if gt $numX 0}}</code> and produce nothing. But the outer table is emitted unconditionally:</p>
+<pre><code>&lt;table id="junit-table" class="mdl-data-table mdl-js-data-table mdl-shadow--2dp"&gt;
+{{/* all default sections skipped */}}
+{{range $gix, $group := .Groups}}
+{{if gt $group.NumTests 0}}
+&lt;/table&gt;                    &lt;!-- closes empty table --&gt;
+&lt;h5 class="group-header"&gt;...&lt;/h5&gt;
+&lt;table class="mdl-data-table ..."&gt;</code></pre>
+<p>The empty table carries <code>mdl-shadow--2dp</code> styling, rendering a visible empty box with a drop shadow above the group content.</p>
+</div>
+
+<h3><span class="severity-nit">Nits</span></h3>
+
+<div class="finding">
+<h3>Group matching uses only tests[0] without documenting the assumption</h3>
+<p><code>lens.go:460</code> &mdash; <strong>Converging concern</strong> (flagged by Code Quality + Maintainability)</p>
+<pre><code>if compiled[i].predicate.matches(tests[0].Result) {</code></pre>
+<p>Group selector checks only the first result in a deduplicated test group. This is correct &mdash; all entries share the same <code>testIdentifier</code> and properties are test-definition metadata, not per-run data. But the assumption is not documented. A one-line comment explaining why <code>tests[0]</code> is representative would help future readers.</p>
+</div>
+
+<div class="finding">
+<h3>Comment says "interface" but type is a struct</h3>
+<p><code>lens.go:272</code></p>
+<pre><code>// testBucket is an interface for appending classified test results.
+type testBucket struct {</code></pre>
+<p>The comment describes it as an interface; the declaration is a struct with pointer fields.</p>
+</div>
+
+<div class="finding">
+<h3>Table close/reopen trick in template is subtle and uncommented</h3>
+<p><code>template.html:145-147</code></p>
+<pre><code>&lt;/table&gt;
+&lt;h5 class="group-header"&gt;{{$group.Name}}&lt;/h5&gt;
+&lt;table class="mdl-data-table mdl-js-data-table mdl-shadow--2dp"&gt;</code></pre>
+<p>Each non-empty group closes the current table and opens a new one to insert an <code>&lt;h5&gt;</code> header between them. Works correctly (guarded by <code>{{if gt $group.NumTests 0}}</code>), but the pattern is structurally fragile and easy to break during future edits. A comment explaining the intent would help.</p>
+</div>
+
+<h3><span class="severity-question">Questions</span></h3>
+
+<div class="finding">
+<h3>Template duplication for passed/skipped sections</h3>
+<p><code>template.html:170-203</code></p>
+<p>The second commit extracted a <code>test-detail-rows</code> sub-template for failed/flaky rendering, which is good. The passed and skipped sections are still duplicated between default and group blocks. These are simpler (no expand/collapse for individual tests), so the duplication is less severe &mdash; but is there interest in extracting those too, either here or as a follow-up?</p>
+</div>
+
+<div class="finding">
+<h3>Multi-predicate selectors supported but undocumented</h3>
+<p>The parser handles multiple <code>properties/property[...]</code> segments in a single selector (AND semantics), but the docs and examples only show single-predicate selectors. Worth documenting?</p>
+</div>
+
+<h2>Things I checked and was fine with</h2>
+<ul>
+<li><code>classifyTests()</code> is a faithful refactoring of the old inline classification logic &mdash; same boolean state machine, same skipped+failed duplicate accounting, same append order.</li>
+<li><code>NumTests</code> accounting via <code>prevTotal</code>/<code>newTotal</code> delta is mathematically equivalent to the old single-pass formula.</li>
+<li><code>TotalTests()</code> used only for the empty-check; individual sections use bucket-local counts for their fractions.</li>
+<li><code>getJvd</code> variadic signature works correctly for both call sites (<code>getJvd(artifacts)</code> and <code>getJvd(artifacts, cfg.Groups)</code>).</li>
+<li>Nil/empty <code>testGroups</code> passed to <code>classifyTests</code> is a no-op.</li>
+<li>Selector parsing: <code>parsePropertyPredicate</code> errors if no <code>@attr='val'</code> matches found, so empty-predicate <code>propertyPredicate</code> cannot be constructed through normal paths.</li>
+<li>CSS/TS changes correctly extend existing patterns to <code>group-*</code> classes.</li>
+<li>Test coverage: <code>TestParseSelector</code>, <code>TestSelectorMatches</code>, <code>TestGetJvdWithGroups</code>, two template test cases.</li>
+<li>Documentation accurate with worked examples.</li>
+<li>No security concerns: selector parsing is regex-based, template uses <code>html/template</code> auto-escaping, selectors come from operator config.</li>
+<li>Fully backward compatible: without <code>groups</code> in config, behavior is identical. Invalid selectors logged at WARN and skipped.</li>
+<li>Deployment risk is LOW: fully opt-in, no config migration, rollback safe in both directions, zero performance overhead when no groups configured.</li>
+</ul>
+
+<h2>Open questions for the author</h2>
+<ul>
+<li>For the empty-table visual artifact: would you prefer to gate the default <code>&lt;table&gt;</code> on <code>{{if gt .NumTests 0}}</code>, or restructure to avoid the close/reopen pattern?</li>
+<li>Is there interest in extracting the passed/skipped rendering into shared sub-templates as well, either here or as a follow-up?</li>
+<li>The parser supports AND-ing multiple <code>properties/property[...]</code> segments in one selector &mdash; worth calling out in the docs?</li>
+</ul>
+
+<h2>Followups</h2>
+
+<div class="finding">
+<h3><span class="severity-should-fix">should</span> &mdash; Fix empty table visual artifact + edge-case test</h3>
+<p><code>template.html:17-183</code>, <code>lens_test.go</code> &mdash; <span class="severity-nit">cleanup</span></p>
+<p>Gate the default <code>&lt;table&gt;</code> on <code>{{if gt .NumTests 0}}</code> so it's only emitted when the default bucket has tests. Add test cases for the all-tests-in-groups scenario.</p>
+<pre><code>In kubernetes-sigs/prow, following PR #694 ("spyglass/junit: add configurable
+test grouping support", merge commit 8f72e9c5), fix a visual artifact in the
+JUnit lens template and add test coverage for the edge case.
+
+## Problem
+
+In `pkg/spyglass/lenses/junit/template.html`, the outer
+`&lt;table id="junit-table" class="mdl-data-table mdl-js-data-table mdl-shadow--2dp"&gt;`
+is emitted unconditionally at line 17. When groups are configured and every test
+matches a group (default bucket is empty), this table has zero content rows. The
+first group's `&lt;/table&gt;` at line 183 closes it, producing an empty styled box
+with a drop shadow above the actual group content.
+
+## Task
+
+1. In `template.html`, gate the default `&lt;table id="junit-table"&gt;` so it is
+   only emitted when the default bucket has tests (`.NumTests &gt; 0`). When only
+   groups have tests, each group should emit its own standalone `&lt;table&gt;` without
+   an empty predecessor. Make sure the closing `&lt;/table&gt;` at the end of the
+   template also respects this gating.
+
+2. In `pkg/spyglass/lenses/junit/lens_test.go`, add a test case to
+   `TestGetJvdWithGroups` where ALL tests have properties matching the configured
+   group, so `expFailed` and `expPassed` for the default bucket are both 0 and
+   all tests appear in the group.
+
+3. Add a corresponding template test case (in the `TestTemplate` function) that
+   renders a `JVD` with `NumTests: 0` and all tests in a `GroupResult`, and
+   verify the HTML output does NOT contain an empty `&lt;table` before the group
+   header (i.e., no `&lt;table` tag immediately followed by `&lt;/table&gt;`).
+
+## Acceptance criteria
+- `go test ./pkg/spyglass/lenses/junit/...` passes
+- The new test case covers the all-tests-in-groups scenario
+- The template produces clean HTML (no empty styled table) when the default
+  bucket is empty
+
+## Out of scope
+- Template duplication cleanup (separate followup)
+- Changes to lens.go logic (only template and tests change)</code></pre>
+</div>
+
+<div class="finding">
+<h3><span class="severity-should-fix">should</span> &mdash; Unify failed/flaky template rendering into shared sub-templates</h3>
+<p><code>template.html</code>, <code>junit.css</code>, <code>lens.ts</code> &mdash; <span class="severity-nit">cleanup</span></p>
+<p>Extract the four near-identical copies of the expandable test result row markup into a shared sub-template. Unify the CSS classes (<code>failure-*</code> / <code>flaky-*</code> / <code>group-*</code>) into one set.</p>
+<pre><code>In kubernetes-sigs/prow, following PR #694 ("spyglass/junit: add configurable
+test grouping support", merge commit 8f72e9c5), reduce template duplication in
+the JUnit lens.
+
+## Problem
+
+`pkg/spyglass/lenses/junit/template.html` has four near-identical copies of the
+"expandable test result row" markup:
+- Default failed section (lines ~24-93)
+- Default flaky section (lines ~102-145)
+- Group failed section (lines ~196-265)
+- Group flaky section (lines ~274-317)
+
+They differ only in CSS class names: `failure-layout`/`failure-name`/`failure-text`
+vs `flaky-layout`/`flaky-name`/`flaky-text` vs `group-layout`/`group-name`/
+`group-text`. Any rendering change must be replicated in all four places.
+
+## Task
+
+1. Unify the CSS classes. The failed, flaky, and group sections use different
+   class names (`failure-*`, `flaky-*`, `group-*`) but identical styling (check
+   `junit.css` -- the selectors are comma-separated). Replace these with a single
+   set of class names (e.g., `detail-layout`, `detail-name`, `detail-text`) used
+   by all three section types. Update `junit.css` to remove the now-redundant
+   duplicate selectors. Update `lens.ts` if it references any of the old class
+   names.
+
+2. Extract the test-detail row rendering (both single-run and multi-run
+   variants) into a named sub-template using Go's `{{define "test-detail-rows"}}`
+   / `{{template "test-detail-rows" .}}`. Both default and group sections should
+   invoke this same sub-template, passing their respective test result slice.
+
+3. The passed and skipped sections are simpler (no expand/collapse for individual
+   tests) -- leave them inline; they don't carry enough duplication to justify
+   extraction.
+
+## Acceptance criteria
+- `go test ./pkg/spyglass/lenses/junit/...` passes -- all existing template tests
+  must produce equivalent output (the HTML structure is the same, only class
+  names change)
+- The template file is significantly shorter (roughly halved for the
+  failed/flaky sections)
+- `junit.css` has no redundant comma-separated selectors for the old class names
+- `lens.ts` still correctly handles expand/collapse for all sections
+
+## Out of scope
+- Changes to lens.go logic or test classification
+- Changes to the passed/skipped section rendering
+- New features or behavioral changes</code></pre>
+</div>
+
+</body>
+</html>

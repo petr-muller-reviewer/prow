@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Triage: kubernetes-sigs/prow#500</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; line-height: 1.6; max-width: 860px; margin: 2rem auto; padding: 0 1rem; color: #1a1a1a; }
+  h1 { font-size: 1.4rem; border-bottom: 2px solid #0969da; padding-bottom: 0.4rem; }
+  h2 { font-size: 1.15rem; margin-top: 2rem; border-bottom: 1px solid #d0d7de; padding-bottom: 0.3rem; }
+  h3 { font-size: 1rem; margin-top: 1.2rem; }
+  code, pre { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; font-size: 0.9em; }
+  code { background: #f0f3f6; padding: 0.15em 0.35em; border-radius: 3px; }
+  pre { background: #f6f8fa; padding: 0.8rem 1rem; border-radius: 6px; overflow-x: auto; line-height: 1.45; }
+  a { color: #0969da; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  ul { padding-left: 1.4rem; }
+  li { margin-bottom: 0.3rem; }
+  .meta { background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 6px; padding: 0.8rem 1rem; margin-bottom: 1.5rem; }
+  .meta dt { font-weight: 600; display: inline; }
+  .meta dt::after { content: ": "; }
+  .meta dd { display: inline; margin: 0; }
+  .meta div { margin-bottom: 0.25rem; }
+  .verdict { font-size: 1.05rem; font-weight: 600; color: #1a7f37; margin-bottom: 0.4rem; }
+</style>
+</head>
+<body>
+
+<h1>Triage: cherrypicker: add <code>git cherry-pick -x</code> style commit messages</h1>
+
+<div class="meta">
+  <div><dt>Issue</dt><dd><a href="https://github.com/kubernetes-sigs/prow/issues/500">kubernetes-sigs/prow#500</a></dd></div>
+  <div><dt>State</dt><dd>open</dd></div>
+  <div><dt>Labels</dt><dd>kind/feature, lifecycle/stale, area/plugins</dd></div>
+  <div><dt>Triaged at</dt><dd>2026-06-02T23:43:12Z</dd></div>
+  <div><dt>Main SHA</dt><dd><code>52c1eeb13bd2f1a241b2314b5ca06ed55ab17b2e</code></dd></div>
+  <div><dt>Verdict</dt><dd>accepted</dd></div>
+</div>
+
+<h2>Verdict</h2>
+
+<p class="verdict">Accepted — legitimate, well-specified feature request.</p>
+
+<p>The cherrypicker external plugin currently discards original commit SHAs when creating cherry-pick PRs. The request to append <code>(cherry picked from commit &lt;SHA&gt;)</code> trailers is a standard git convention (<code>git cherry-pick -x</code>), well-motivated by downstream users (KubeVirt), and straightforward to implement via patch modification before <code>git am</code>. Effort level 2 (moderate). A contributor self-assigned three months ago but has not submitted a PR.</p>
+
+<h2>What the issue reports</h2>
+
+<ul>
+  <li>Cherry-pick PRs created by the cherrypicker bot lack the original commit SHAs in their commit messages.</li>
+  <li>The author wants <code>(cherry picked from commit &lt;SHA&gt;)</code> appended to each commit message, matching <code>git cherry-pick -x</code> behavior.</li>
+  <li>Multi-commit PRs need each commit annotated with its own original SHA, not just the PR number.</li>
+  <li>Two approaches proposed: amend commits after apply, or modify the patch before apply.</li>
+  <li>Desired output demonstrated in <a href="https://github.com/kubevirt/kubevirt/pull/15073/commits">kubevirt/kubevirt#15073</a> (manual cherry-picks); current output shown in <a href="https://github.com/kubevirt/kubevirt/pull/15076/commits">kubevirt/kubevirt#15076</a> (bot-created).</li>
+</ul>
+
+<h2>Analysis</h2>
+
+<h3>How the cherrypicker works today</h3>
+
+<p>The cherry-pick flow in <code>server.go:handle()</code>:</p>
+<ol>
+  <li>Fetches the entire PR as a single patch file via GitHub API (<code>server.go:750-762</code>, <code>getPatch()</code>)</li>
+  <li>Checks out the target branch, creates a new branch (<code>server.go:562-607</code>)</li>
+  <li>Applies all commits at once with <code>r.Am(localPath)</code> (<code>server.go:616</code>) &mdash; runs <code>git am --3way</code></li>
+  <li>Pushes immediately (<code>server.go:635</code>)</li>
+  <li>Creates a PR with cherry-pick metadata in the body (<code>server.go:654</code>)</li>
+</ol>
+
+<p>There is no step between <code>Am()</code> and <code>Push()</code> where commit messages could be modified. This gap (lines 616&ndash;635) is the insertion point.</p>
+
+<h3>Probable cause</h3>
+
+<p>The feature simply was never implemented. The cherrypicker uses <code>git am</code> (not <code>git cherry-pick</code>), which does not have a <code>-x</code> equivalent. The original commit SHAs are present in the patch file's <code>From &lt;SHA&gt;</code> headers but are consumed by <code>git am</code> internally and not propagated to commit messages.</p>
+
+<h3>Related code</h3>
+
+<ul>
+  <li><code>cmd/external-plugins/cherrypicker/server.go:616-635</code> &mdash; the gap between apply and push:
+<pre>if err := r.Am(localPath); err != nil {
+    // ... error handling ...
+}
+// Push the new branch
+if err := p.Push(r, newBranch, true); err != nil {</pre>
+  </li>
+  <li><code>cmd/external-plugins/cherrypicker/server.go:750-762</code> &mdash; <code>getPatch()</code> fetches PR patch from GitHub, writes to temp file.</li>
+  <li><code>pkg/git/v2/interactor.go:425-439</code> &mdash; <code>Am()</code> runs <code>git am --3way</code>; aborts on failure.</li>
+  <li><code>pkg/git/v2/interactor.go:33-79</code> &mdash; <code>Interactor</code> interface has no commit-amend or rebase methods. Patch-modification approach avoids needing them.</li>
+  <li><code>cmd/external-plugins/cherrypicker/main.go:74</code> &mdash; <code>--create-issue-on-conflict</code> flag pattern to follow for a new CLI flag.</li>
+</ul>
+
+<h3>Recommended implementation approach</h3>
+
+<p>Modify the patch file before passing it to <code>Am()</code>. Parse each <code>From &lt;SHA&gt;</code> header, locate the corresponding commit message body in the patch, and append the <code>(cherry picked from commit &lt;SHA&gt;)</code> trailer. Write the modified patch, then <code>Am()</code> as usual. This keeps the change entirely within the cherrypicker plugin code &mdash; no interactor interface changes needed.</p>
+
+<h3>Related issues / PRs</h3>
+
+<ul>
+  <li><a href="https://github.com/kubernetes-sigs/prow/issues/113">kubernetes-sigs/prow#113</a> &mdash; Third-party cherrypicker usage tracking. Core Kubernetes doesn't use the plugin, but Kubernetes subprojects actively do.</li>
+  <li><a href="https://github.com/kubevirt/kubevirt/pull/15073">kubevirt/kubevirt#15073</a> &mdash; Author's example of desired cherry-pick commit messages (manually created).</li>
+  <li><a href="https://github.com/kubevirt/kubevirt/pull/15076">kubevirt/kubevirt#15076</a> &mdash; Author's example of current cherrypicker output (missing original SHAs).</li>
+</ul>
+
+<h2>What I checked</h2>
+
+<ul>
+  <li>The <code>Interactor</code> interface has no commit-amend or rebase methods, but the patch-modification approach avoids needing them.</li>
+  <li>No existing configuration surface for cherry-pick commit message formatting.</li>
+  <li><code>getPatch()</code> returns raw patch bytes from GitHub, suitable for pre-processing before <code>Am()</code>.</li>
+  <li>No other issues or PRs address this feature request.</li>
+  <li>Contributor AaruniAggarwal self-assigned on 2026-03-01 after receiving implementation guidance. No PR submitted as of triage time.</li>
+</ul>
+
+<h2>Recommended next steps</h2>
+
+<ul>
+  <li>Check whether AaruniAggarwal is still working on this (no activity since 2026-03-01).</li>
+  <li><code>/remove-lifecycle stale</code> to keep the issue alive.</li>
+  <li>If contributor is inactive, re-label as <code>help-wanted</code> for someone else to pick up.</li>
+  <li>The maintainer implementation guidance in the <a href="https://github.com/kubernetes-sigs/prow/issues/500#issuecomment-3946351613">2026-02-23 comment</a> is a solid reference for any contributor.</li>
+  <li>Effort level 2 (moderate) &mdash; suitable for a skilled contributor familiar with Go and git internals.</li>
+</ul>
+
+<h2>Open questions</h2>
+
+<ul>
+  <li>Should the <code>(cherry picked from commit &lt;SHA&gt;)</code> trailer be the default behavior or opt-in via flag? Maintainer leans default &mdash; worth making a formal decision before someone starts coding.</li>
+  <li>Full SHA or abbreviated? <code>git cherry-pick -x</code> uses full SHA &mdash; probably follow that convention.</li>
+  <li>For multi-commit PRs: individual commit SHAs (preferred, matches <code>-x</code>) or PR number?</li>
+</ul>
+
+</body>
+</html>

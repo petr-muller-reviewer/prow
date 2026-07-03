@@ -2,10 +2,13 @@
 issue: kubernetes-sigs/prow#400
 title: "`tide` merge queue stalls when unresolved comments exist"
 state: open
-labels: kind/bug, lifecycle/stale, area/tide
+labels: kind/bug, area/tide
 main_sha: 53a81071b1f5a432c33362a42aa7bc9837f7ed14
-triaged_at: 2026-06-03T11:33:36Z
+triaged_at: 2026-07-03T11:27:51Z
 verdict: accepted
+refresh_log:
+  - at: 2026-06-03T11:33:36Z
+    summary: "Initial triage. lifecycle/stale removed by bonsairobo; bonsairobo has fix in progress on fork (no PR yet) using per-PR failure tracking approach."
 ---
 
 ## Findings
@@ -42,19 +45,26 @@ verdict: accepted
 - ref: kubernetes-sigs/prow#269
 - relevance: PRs with "Changes Requested" review also bypass isAllowedToMerge and stall the queue identically; same fix applies to both.
 
+### [related-pr] fix in progress on bonsairobo's fork — no PR yet
+- ref: bonsairobo/prow@226a4d231faf (branch fix/tide-skip-unmergeable-prs)
+- relevance: bonsairobo implemented a per-PR failure tracking fix (different approach from mergeStateStatus recommendation). Adds `recentMergeFailures` map to `mergeChecker`, keyed by `{org,repo,number}`, storing `{headSHA, timestamp}`. On `UnmergablePRError`, records the head SHA; `isAllowedToMerge` skips the PR until head SHA changes or 1h TTL expires. Returns a user-visible status reason. Files: `pkg/tide/github.go` (+~120 lines), `pkg/tide/github_test.go` (+~192 lines, 3 new test functions). Companion regression test commit: c964ac7016e1 (referenced the issue on 2026-06-04).
+- note: no PR opened to kubernetes-sigs/prow as of 2026-07-03.
+
 ## Checked
 - `isAllowedToMerge()` in `pkg/tide/github.go:605-636` — confirmed no branch protection check
 - `pickHighestPriorityPR()` — no per-PR failure state or backoff
 - GitHub GraphQL `mergeStateStatus` field: aggregates all branch protection rules into BLOCKED/CLEAN/BEHIND/DIRTY/DRAFT/HAS_HOOKS/UNKNOWN/UNSTABLE
-- Issue comment history: two separate affected users (aevyrie, bonsairobo) have kept this alive through three stale cycles (Jul 2025, Dec 2025, Jun 2026) without maintainer action
-- No cross-referenced PRs that address this issue
+- Issue comment history: two separate affected users (aevyrie, bonsairobo) have kept this alive through four stale cycles (Jul 2025, Dec 2025, Jun 2026, Jul 2026) without maintainer action
+- bonsairobo's fix branch `fix/tide-skip-unmergeable-prs` in their fork: two commits (fix + regression test), approach differs from triage recommendation
+- bonsairobo/prow@226a4d231faf: full patch reviewed — implementation is sound (SHA-keyed, 1h TTL, prune on cache clear, user-visible status reason)
 
 ## Next steps
-- Post draft comment (in TRIAGE.html): summarizes root cause, links #269, proposes mergeStateStatus fix, issues `/remove-lifecycle stale` and `/help-wanted`
-- Apply `/remove-lifecycle stale` and `/help-wanted` bot commands
-- Verify `mergeStateStatus` field is available in the existing GraphQL query context (or confirm it needs an extra field added to the query)
-- Clarify one open question: does Tide set its own context to SUCCESS before the merge attempt, and would that cause mergeStateStatus to read CLEAN prematurely?
+- `lifecycle/stale` already removed; `/help-wanted` still appropriate — post a comment inviting bonsairobo to open a PR.
+- Review bonsairobo's approach against the mergeStateStatus alternative before they open a PR: per-PR failure tracking works without new GraphQL fields and avoids the Tide-context-timing open question entirely; tradeoff is a 1h window where a resolved blocker (e.g. dismissed review) still blocks the PR until TTL expires or a new commit is pushed.
+- If inviting the PR: suggest they consider surfacing the skip reason via `status.go`/`requirementDiff()` for Tide status visibility (their current implementation returns the reason string from `isAllowedToMerge` but it's unclear if that surfaces to the PR status check).
+- `/help-wanted` label still needs to be applied.
 
 ## Open questions
-- Does Tide set its own required context to SUCCESS before calling merge? If so, `mergeStateStatus` might report CLEAN at query time but BLOCKED when the merge is attempted — the timing of the status update matters.
-- Should BLOCKED cause a user-visible status update on the PR (via `status.go` / `requirementDiff()`) or just silent skip? Consistent with DIRTY (merge conflict) behavior would suggest a status update.
+- bonsairobo's approach: when a blocker is cleared without a new commit (e.g. reviewer dismisses "changes requested"), the PR is blocked for up to 1h by the TTL. Is that acceptable UX? The mergeStateStatus approach would unblock immediately on the next sync cycle.
+- Does bonsairobo's returned reason string from `isAllowedToMerge` actually reach the PR status check visible on GitHub? Needs tracing through `status.go`/`requirementDiff()`.
+- (Resolved: Tide-context-timing question from original triage does not apply to bonsairobo's approach since it does not use mergeStateStatus.)

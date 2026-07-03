@@ -173,12 +173,12 @@
     <span class="badge badge-green">accepted</span>
     <span class="badge badge-muted">area/tide</span>
     <span class="badge badge-muted">kind/bug</span>
-    <span class="badge badge-muted">lifecycle/stale</span>
   </small>
 </h1>
 <div class="meta-row">
   <span>State: <strong>open</strong></span>
-  <span>Triaged: <strong>2026-06-03T11:33:36Z</strong></span>
+  <span>Triaged: <strong>2026-07-03T11:27:51Z</strong></span>
+  <span style="color:var(--yellow);">Refreshed from 2026-06-03</span>
   <span>Main SHA: <code>53a81071b</code></span>
 </div>
 
@@ -203,6 +203,13 @@
   <li>The stalled PR blocks all other successful PRs in the same subpool from merging.</li>
   <li>There is no user-visible signal: the PR's Tide status shows "success" and no error is surfaced to the author.</li>
   <li>The issue has a confirmed shared root cause with <a href="https://github.com/kubernetes-sigs/prow/issues/269">#269</a> ("Changes Requested" causing the same loop).</li>
+</ul>
+
+<h3>Since previous triage (2026-06-03)</h3>
+<ul>
+  <li><strong>lifecycle/stale removed</strong> — bot applied <code>lifecycle/rotten</code> on 2026-07-01; bonsairobo removed both <code>stale</code> (2026-07-02) and <code>rotten</code> (2026-07-03), again keeping the issue alive.</li>
+  <li><strong>Fix in progress</strong> — bonsairobo has two commits on branch <code>fix/tide-skip-unmergeable-prs</code> in their fork: a fix commit (<a href="https://github.com/bonsairobo/prow/commit/226a4d231faf">226a4d231faf</a>) and a regression test commit (<a href="https://github.com/bonsairobo/prow/commit/c964ac7016e1">c964ac7016e1</a>, which referenced this issue on 2026-06-04). No PR opened to upstream yet.</li>
+  <li><strong>Different approach</strong> — bonsairobo's fix uses per-PR failure tracking rather than the triage-recommended <code>mergeStateStatus == BLOCKED</code> check. See analysis below.</li>
 </ul>
 
 <hr class="divider">
@@ -246,7 +253,36 @@
 
 <div class="card">
   <div class="card-header"><a href="https://github.com/kubernetes-sigs/prow/issues/269">#269</a> &mdash; same root cause, "Changes Requested" variant</div>
-  <p>PRs with a "Changes Requested" review also bypass <code>isAllowedToMerge()</code> and stall the queue identically. Confirmed by petr-muller (2025-08-23) and aevyrie (2025-09-02). The <code>mergeStateStatus == BLOCKED</code> fix covers both issues.</p>
+  <p>PRs with a "Changes Requested" review also bypass <code>isAllowedToMerge()</code> and stall the queue identically. Confirmed by petr-muller (2025-08-23) and aevyrie (2025-09-02). bonsairobo's fix commit explicitly covers #269 too.</p>
+</div>
+
+<h3>Fix In Progress: bonsairobo/prow — Per-PR Failure Tracking</h3>
+
+<div class="card">
+  <div class="card-header">Approach: record <code>UnmergablePRError</code>, skip PR on subsequent cycles</div>
+  <p>
+    Commits <a href="https://github.com/bonsairobo/prow/commit/226a4d231faf">226a4d231faf</a> (fix) + <a href="https://github.com/bonsairobo/prow/commit/c964ac7016e1">c964ac7016e1</a> (test) on branch <code>fix/tide-skip-unmergeable-prs</code>. No PR opened upstream as of 2026-07-03.
+  </p>
+  <p style="margin-top:0.5rem;"><strong>Mechanism:</strong> adds <code>recentMergeFailures map[{org,repo,number}]{headSHA, timestamp}</code> to <code>mergeChecker</code>. On <code>UnmergablePRError</code> in <code>mergePRs()</code>, records the PR's head SHA. <code>isAllowedToMerge()</code> checks <code>hasRecentMergeFailure()</code> — returns a user-visible skip reason if head SHA matches and TTL (1h) has not expired. Entry invalidated immediately when head SHA changes (user pushes a commit). Pruned on periodic cache clear.</p>
+  <p style="margin-top:0.5rem;"><strong>Files:</strong> <code>pkg/tide/github.go</code> (+~120 lines), <code>pkg/tide/github_test.go</code> (+~192 lines, 3 new test functions: <code>TestRecentMergeFailureCache</code>, <code>TestIsAllowedToMerge_RecentMergeFailureBlocks</code>, <code>TestMergePRs_RecordsUnmergablePRError</code>).</p>
+</div>
+
+<div class="cols">
+  <div class="card">
+    <div class="card-header" style="color:var(--green);">vs. mergeStateStatus approach</div>
+    <ul>
+      <li>No new GraphQL fields needed — works with existing query</li>
+      <li>Avoids the Tide-context-timing open question entirely</li>
+      <li>Covers all <code>UnmergablePRError</code> causes generically</li>
+    </ul>
+  </div>
+  <div class="card">
+    <div class="card-header" style="color:var(--orange);">Tradeoffs to raise in review</div>
+    <ul>
+      <li>When blocker is cleared without a new commit (e.g. dismissed review), PR stays blocked up to 1h TTL</li>
+      <li>Unclear if the skip reason string surfaces to PR status check via <code>requirementDiff()</code></li>
+    </ul>
+  </div>
 </div>
 
 <hr class="divider">
@@ -289,8 +325,9 @@
   <li><code>isAllowedToMerge()</code> at <code>pkg/tide/github.go:605-636</code> — confirmed no branch protection or <code>mergeStateStatus</code> check.</li>
   <li><code>pickHighestPriorityPR()</code> — no per-PR failure state or backoff mechanism.</li>
   <li>GitHub GraphQL docs — <code>mergeStateStatus</code> is a real field on <code>PullRequest</code>, not currently fetched by Tide's query.</li>
-  <li>Issue comment history — two affected users (aevyrie, bonsairobo) have rescued from stale three times since Jul 2025; no maintainer engagement.</li>
-  <li>Cross-references — no linked PRs exist that address this issue.</li>
+  <li>Issue comment history — two affected users (aevyrie, bonsairobo) have rescued from stale four times since Jul 2025; no maintainer engagement.</li>
+  <li>bonsairobo's fork branch <code>fix/tide-skip-unmergeable-prs</code> — full patch reviewed; implementation is sound.</li>
+  <li>Cross-references — bonsairobo/prow referenced this issue via commit on 2026-06-04; no PR to upstream opened yet.</li>
 </ul>
 
 <hr class="divider">
@@ -298,10 +335,9 @@
 <h2>Recommended Next Steps</h2>
 
 <ol>
-  <li>Post the draft comment below: summarizes root cause, links #269, proposes the fix direction.</li>
-  <li>Apply <code>/remove-lifecycle stale</code> and <code>/help-wanted</code> via bot commands in the comment.</li>
-  <li>Before implementation: verify whether Tide's own context write happens before or after the GraphQL query that would read <code>mergeStateStatus</code>.</li>
-  <li>Decide whether BLOCKED should produce a user-visible PR status update (follow-up or in-scope for the same PR).</li>
+  <li><code>lifecycle/stale</code> already removed by bonsairobo. Apply <code>/help-wanted</code> and post a comment acknowledging bonsairobo's work-in-progress and inviting them to open a PR.</li>
+  <li>When reviewing bonsairobo's PR: raise whether the 1h TTL is acceptable when a blocker is cleared without a new commit (e.g. dismissed review), and whether the skip reason surfaces to the GitHub PR status check.</li>
+  <li>Decide whether to prefer bonsairobo's approach (per-PR failure tracking) or the mergeStateStatus approach — both fix the issue; the former needs no new GraphQL fields and avoids timing ambiguity, the latter unblocks PRs immediately when the GitHub-side condition clears.</li>
 </ol>
 
 <hr class="divider">
@@ -309,8 +345,9 @@
 <h2>Open Questions</h2>
 
 <ul>
-  <li>Does Tide set its own required context to SUCCESS before calling merge? If so, <code>mergeStateStatus</code> might report <code>CLEAN</code> at query time but <code>BLOCKED</code> when the merge is actually attempted — the timing of that status write determines whether a pre-merge <code>BLOCKED</code> check is reliable.</li>
-  <li>Should <code>BLOCKED</code> cause a user-visible status update on the PR (via <code>status.go</code> / <code>requirementDiff()</code>), or just a silent skip? Consistent with <code>DIRTY</code> (merge conflict) behavior would suggest a status update is appropriate.</li>
+  <li>bonsairobo's 1h TTL: when a blocker is cleared without a new commit (e.g. reviewer dismisses "changes requested"), the PR is still blocked for up to 1h. Is that acceptable UX, or should the TTL be shorter / omitted?</li>
+  <li>Does bonsairobo's returned reason string from <code>isAllowedToMerge</code> actually reach the PR status check visible on GitHub? Needs tracing through <code>status.go</code> / <code>requirementDiff()</code>.</li>
+  <li><em>(Resolved)</em> Tide-context-timing question from original triage does not apply to bonsairobo's approach, which does not use <code>mergeStateStatus</code>.</li>
 </ul>
 
 <hr class="divider">
@@ -331,7 +368,7 @@ A potential fix would be to use GitHub's `mergeStateStatus` GraphQL field on the
 <hr class="divider">
 
 <p style="color:var(--text-muted); font-size:0.8rem; text-align:center;">
-  Triaged 2026-06-03T11:33:36Z &middot; main <code>53a81071b</code> &middot;
+  Triaged 2026-06-03T11:33:36Z &middot; Refreshed 2026-07-03T11:27:51Z &middot; main <code>53a81071b</code> &middot;
   <a href="https://github.com/kubernetes-sigs/prow/issues/400">Issue #400</a>
 </p>
 

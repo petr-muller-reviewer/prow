@@ -4,8 +4,11 @@ title: "Smart blunderbuss reviewer selection using git blame data"
 state: open
 labels:
 main_sha: ae8e2d87967f0a2b45cfed2c514f5ec91b964596
-triaged_at: 2026-06-30T15:50:17Z
+triaged_at: 2026-07-03T12:51:48Z
 verdict: needs-discussion
+refresh_log:
+  - previous: 2026-06-30T15:50:17Z
+    summary: "PR #787 submitted by smg247 implementing a separate `rifle` plugin. Author chose separate-plugin approach (option B). Still uses original scoring formula without addressing maintainer concerns."
 ---
 
 ## Findings
@@ -65,6 +68,10 @@ verdict: needs-discussion
 - where: `pkg/plugins/blunderbuss/blunderbuss_test.go`
 - excerpt: 1124 lines covering reviewer assignment from OWNERS, approver fallback, ExcludeApprovers, MaxReviewerCount, UseStatusAvailability, IgnoreDrafts, IgnoreAuthors, WaitForStatus, and required reviewers. Uses fakeGitHubClient and fakeOwnersClient.
 
+### [related-pr] rifle plugin implementation
+- ref: kubernetes-sigs/prow#787
+- relevance: Author (smg247) chose the separate-plugin approach. PR adds a new `rifle` plugin with blame-based scoring, a `GetBlame` GitHub client method (GraphQL with Apps auth), shared reviewer logic extracted to `pkg/reviewer/reviewer.go`. Touches 17 files. Still uses original scoring formula `(lines * 10) + (recency * 5) + owner_bonus` which has not been revised per maintainer feedback.
+
 ### [related-issue] advisory_approvers OWNERS field
 - ref: kubernetes-sigs/prow#784
 - relevance: Related to OWNERS-based reviewer/approver semantics — changing how people are listed and selected from OWNERS files.
@@ -75,19 +82,18 @@ verdict: needs-discussion
 - No other plugins implement smart/weighted reviewer selection
 - GitHub GraphQL client (`shurcooL/githubv4`) is available and already used by blunderbuss for availability checks (`isUserBusy()`)
 - `layeredsets.String` enforces layer-based priority (layer 0 first, then 1, then 2) — any scoring-based replacement must interact with or replace this layering
-- No related PRs exist for this feature
 
 ## Next steps
 
-- Ask the author to choose: configurable strategy within blunderbuss, or a separate plugin — and propose a revised scoring formula that addresses maintainer feedback
-- Request a lightweight design doc covering: rate limit strategy for blame queries, configuration schema, fallback behavior, scoring formula revision (reviewer-biased, not approver-biased)
+- Review PR #787 — the author chose approach B (separate plugin named `rifle`) and has a working implementation
+- During review, check whether the scoring formula has been revised to address the reviewer-vs-approver weighting concern (original `owner_bonus` of +3 approver / +2 reviewer was flagged as backwards)
+- Evaluate the shared `pkg/reviewer/reviewer.go` extraction — does it introduce coupling between blunderbuss and rifle?
+- Assess GitHub API rate limit impact of per-file blame queries on large PRs
 - Apply labels: `kind/feature`, `area/plugins`
-- Once design is aligned, implementation injection points are clear: `findReviewer()` and `getReviewers()` in `blunderbuss.go`
 
 ## Open questions
 
-- Should this be a configurable strategy within blunderbuss, or a separate plugin? The maintainer is open to either.
-- How should blame queries be rate-limited for PRs touching many files? (Sampling? Caching? Batching?)
-- The proposed `owner_bonus` (+3 approver, +2 reviewer) goes against the Kubernetes contributor ladder — should reviewers be weighted higher than approvers, or should the bonus be dropped entirely?
-- What is the acceptable latency increase for reviewer assignment when blame queries are involved?
-- Should blame data be cached across PRs to reduce API calls?
+- The scoring formula in PR #787 still uses the original `owner_bonus` values — has the maintainer concern been addressed?
+- How does the `rifle` plugin handle PRs touching many files from an API rate limit perspective?
+- Is the `pkg/reviewer/reviewer.go` shared package the right abstraction boundary?
+- Should blunderbuss and rifle be declared mutually exclusive at the config validation level?

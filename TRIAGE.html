@@ -17,6 +17,8 @@
   .header-block .label { font-weight: 600; display: inline-block; min-width: 120px; }
   .verdict-box { background: #fff8c5; border: 1px solid #d4a72c; border-radius: 6px; padding: 1rem 1.25rem; margin-bottom: 1.5rem; }
   .verdict-box .verdict-label { font-weight: 700; font-size: 1.1em; }
+  .refresh-box { background: #ddf4ff; border: 1px solid #54aeff; border-radius: 6px; padding: 1rem 1.25rem; margin-bottom: 1.5rem; }
+  .refresh-box .refresh-label { font-weight: 700; font-size: 1em; }
   ul { padding-left: 1.5rem; }
   li { margin-bottom: 0.3rem; }
   a { color: #0969da; text-decoration: none; }
@@ -34,13 +36,18 @@
   <p><span class="label">State:</span> open</p>
   <p><span class="label">Labels:</span> <em>none</em></p>
   <p><span class="label">Author:</span> smg247 (Stephen Goeddel)</p>
-  <p><span class="label">Triaged at:</span> 2026-06-30T15:50:17Z</p>
+  <p><span class="label">Triaged at:</span> 2026-07-03T12:51:48Z</p>
   <p><span class="label">Main SHA:</span> <code>ae8e2d87967f0a2b45cfed2c514f5ec91b964596</code></p>
 </div>
 
 <div class="verdict-box">
   <p><span class="verdict-label">Verdict: needs-discussion</span></p>
   <p>Legitimate feature request, but the proposed approach has fundamental tension with the Kubernetes contributor ladder model. The scoring formula and opt-in mechanism need design discussion before implementation can proceed. The maintainer is open to experimentation but not to changing the default behavior.</p>
+</div>
+
+<div class="refresh-box">
+  <p><span class="refresh-label">Refresh: 2026-07-03</span> (previous triage: 2026-06-30T15:50:17Z)</p>
+  <p>PR <a href="https://github.com/kubernetes-sigs/prow/pull/787">#787</a> submitted by smg247 implementing a separate <code>rifle</code> plugin. Author chose separate-plugin approach (option B from triage). Still uses original scoring formula without addressing maintainer concerns about reviewer-vs-approver weighting.</p>
 </div>
 
 <h2>What the issue reports</h2>
@@ -50,6 +57,13 @@
   <li>Only OWNERS-listed reviewers are eligible &mdash; blame data ranks existing candidates, does not discover new ones.</li>
   <li>Proposes smarter fallback when <code>ReviewerCount</code> cannot be met: look at reviewers/approvers elsewhere in the repo, rank by blame data, fall back to random if no blame scores available.</li>
   <li>Motivated by reviewer fatigue, slow review cycles, and reviewers ignoring assignments when they have no context on the changed code. Author has built similar tooling in OpenShift's internal ai-helpers.</li>
+</ul>
+
+<p><strong>Since previous triage:</strong></p>
+<ul>
+  <li>smg247 submitted <a href="https://github.com/kubernetes-sigs/prow/pull/787">PR #787</a> (2026-06-30) implementing this as a new <code>rifle</code> plugin &mdash; chose the separate-plugin approach. Touches 17 files including new <code>pkg/plugins/rifle/</code> package, a <code>GetBlame</code> GitHub client method, and shared reviewer logic in <code>pkg/reviewer/reviewer.go</code>.</li>
+  <li>smg247 commented (2026-06-30) proposing either org/repo config for the new algorithm or a new plugin (<code>rifle</code>) mutually exclusive with blunderbuss, potentially retiring blunderbuss if adoption is wide.</li>
+  <li>Prucek commented (2026-07-02) endorsing the <code>rifle</code> name.</li>
 </ul>
 
 <h2>Analysis</h2>
@@ -63,13 +77,14 @@
   <li>If not enough reviewers, falls back to approvers (unless <code>ExcludeApprovers</code> is set).</li>
 </ol>
 
-<h3>Proposed change &mdash; injection point</h3>
-<p>The blame-based scoring would replace <code>PopRandom()</code> inside <code>findReviewer()</code>. Instead of random selection from the candidate set, candidates would be scored by blame data for the changed file regions and the highest-scoring candidate selected. This requires:</p>
+<h3>PR #787 &mdash; the <code>rifle</code> plugin</h3>
+<p>The author chose approach B (separate plugin) from the triage options. The PR:</p>
 <ul>
-  <li>GitHub GraphQL blame API queries (one per changed file, potentially &mdash; no existing blame usage in the codebase).</li>
-  <li>A scoring function implementing the proposed formula.</li>
-  <li>New configuration in the <code>Blunderbuss</code> struct (<code>pkg/plugins/config.go:196-223</code>).</li>
-  <li>Fallback to random when blame data is unavailable or empty.</li>
+  <li>Adds a new <code>pkg/plugins/rifle/</code> package with <code>rifle.go</code>, <code>blame.go</code>, and tests.</li>
+  <li>Adds <code>GetBlame</code> to the GitHub client (<code>pkg/github/client.go</code>) using GraphQL with Apps auth support.</li>
+  <li>Extracts shared reviewer logic into <code>pkg/reviewer/reviewer.go</code>.</li>
+  <li>Still uses the original scoring formula: <code>(lines &times; 10) + (recency &times; 5) + owner_bonus</code> with +3 approver / +2 reviewer &mdash; which the maintainer flagged as backwards.</li>
+  <li>17 files changed total.</li>
 </ul>
 
 <h3>Maintainer concerns (from issue comments)</h3>
@@ -77,7 +92,7 @@
   <li><strong>Concentration of review load:</strong> Blame-based ranking assigns more reviews to prolific authors, making busy people busier instead of spreading opportunities.</li>
   <li><strong>Contributor ladder conflict:</strong> Kubernetes reviewers are expected to review areas they may not be deeply familiar with &mdash; that's how they grow. Approvers serve as the safety net. Weighting by blame history works against this.</li>
   <li><strong>Formula inversion:</strong> The proposed <code>owner_bonus</code> (+3 approver, +2 reviewer) is backwards &mdash; reviewers should be primary assignees, not approvers.</li>
-  <li><strong>Must be opt-in:</strong> Not a unilateral change to the default algorithm. Either a separate plugin or a configurable strategy within blunderbuss.</li>
+  <li><strong>Must be opt-in:</strong> Not a unilateral change to the default algorithm. The separate plugin approach satisfies this concern.</li>
 </ul>
 
 <h3>Related code</h3>
@@ -89,34 +104,11 @@
   <li><code>pkg/plugins/blunderbuss/blunderbuss_test.go</code> &mdash; 1124 lines of tests using fake clients</li>
 </ul>
 
-<h3>Related issues</h3>
+<h3>Related issues and PRs</h3>
 <ul>
+  <li><a href="https://github.com/kubernetes-sigs/prow/pull/787">kubernetes-sigs/prow#787</a> &mdash; <code>rifle</code> plugin implementation by smg247 (OPEN, 17 files)</li>
   <li><a href="https://github.com/kubernetes-sigs/prow/issues/784">kubernetes-sigs/prow#784</a> &mdash; "Add advisory_approvers field to OWNERS files" &mdash; related to OWNERS reviewer/approver semantics</li>
 </ul>
-
-<h3>Possible approaches</h3>
-<table style="border-collapse:collapse; width:100%; margin:0.5rem 0;">
-  <tr style="border-bottom:1px solid #d0d7de;">
-    <th style="text-align:left; padding:0.4rem;">Approach</th>
-    <th style="text-align:left; padding:0.4rem;">Pros</th>
-    <th style="text-align:left; padding:0.4rem;">Cons</th>
-  </tr>
-  <tr style="border-bottom:1px solid #eee;">
-    <td style="padding:0.4rem;"><strong>A. Config strategy in blunderbuss</strong></td>
-    <td style="padding:0.4rem;">Single plugin, backward compatible, opt-in per repo</td>
-    <td style="padding:0.4rem;">Adds complexity to a simple plugin, mixes strategies</td>
-  </tr>
-  <tr style="border-bottom:1px solid #eee;">
-    <td style="padding:0.4rem;"><strong>B. Separate plugin</strong></td>
-    <td style="padding:0.4rem;">Clean separation, blunderbuss stays simple, independent iteration</td>
-    <td style="padding:0.4rem;">Code duplication (OWNERS loading, filtering, availability)</td>
-  </tr>
-  <tr>
-    <td style="padding:0.4rem;"><strong>C. Pluggable interface</strong></td>
-    <td style="padding:0.4rem;">Clean architecture, enables future strategies</td>
-    <td style="padding:0.4rem;">Possibly over-engineered for two strategies</td>
-  </tr>
-</table>
 
 <h2>What I checked</h2>
 <ul>
@@ -124,24 +116,23 @@
   <li>No other plugins implement smart/weighted reviewer selection</li>
   <li>GitHub GraphQL client (<code>shurcooL/githubv4</code>) is available and already used by blunderbuss for availability checks</li>
   <li><code>layeredsets.String</code> enforces layer-based priority &mdash; any scoring replacement must interact with or replace this layering</li>
-  <li>No related PRs exist for this feature</li>
 </ul>
 
 <h2>Recommended next steps</h2>
 <ul>
-  <li>Ask the author to choose between a configurable strategy within blunderbuss or a separate plugin, and to propose a revised scoring formula that addresses the reviewer-vs-approver weighting concern.</li>
-  <li>Request a lightweight design doc covering: rate limit strategy for blame queries on large PRs, configuration schema, fallback behavior, and how opt-in works.</li>
+  <li>Review <a href="https://github.com/kubernetes-sigs/prow/pull/787">PR #787</a> &mdash; the author chose the separate-plugin approach and has a working implementation.</li>
+  <li>During review, check whether the scoring formula has been revised to address the reviewer-vs-approver weighting concern (original <code>owner_bonus</code> of +3 approver / +2 reviewer was flagged as backwards).</li>
+  <li>Evaluate the shared <code>pkg/reviewer/reviewer.go</code> extraction &mdash; does it introduce coupling between blunderbuss and rifle?</li>
+  <li>Assess GitHub API rate limit impact of per-file blame queries on large PRs.</li>
   <li>Apply labels: <span class="tag">kind/feature</span> <span class="tag">area/plugins</span></li>
-  <li>Once design is aligned, implementation injection points are clear: <code>findReviewer()</code> and <code>getReviewers()</code> in <code>blunderbuss.go</code>.</li>
 </ul>
 
 <h2>Open questions</h2>
 <ul>
-  <li>Should this be a configurable strategy within blunderbuss, or a separate plugin?</li>
-  <li>How should blame queries be rate-limited for PRs touching many files? (Sampling? Caching? Batching?)</li>
-  <li>The proposed <code>owner_bonus</code> (+3 approver, +2 reviewer) goes against the Kubernetes contributor ladder &mdash; should reviewers be weighted higher, or should the bonus be dropped entirely?</li>
-  <li>What is the acceptable latency increase for reviewer assignment when blame queries are involved?</li>
-  <li>Should blame data be cached across PRs to reduce API calls?</li>
+  <li>The scoring formula in PR #787 still uses the original <code>owner_bonus</code> values &mdash; has the maintainer concern been addressed?</li>
+  <li>How does the <code>rifle</code> plugin handle PRs touching many files from an API rate limit perspective?</li>
+  <li>Is the <code>pkg/reviewer/reviewer.go</code> shared package the right abstraction boundary?</li>
+  <li>Should blunderbuss and rifle be declared mutually exclusive at the config validation level?</li>
 </ul>
 
 </body>

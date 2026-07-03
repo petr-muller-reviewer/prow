@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Triage: kubernetes-sigs/prow#780</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; line-height: 1.6; color: #24292f; max-width: 860px; margin: 0 auto; padding: 2rem; background: #fff; }
+  h1 { font-size: 1.5rem; border-bottom: 2px solid #d0d7de; padding-bottom: 0.5rem; }
+  h2 { font-size: 1.25rem; margin-top: 2rem; border-bottom: 1px solid #d0d7de; padding-bottom: 0.3rem; }
+  h3 { font-size: 1rem; margin-top: 1.2rem; }
+  code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; font-size: 0.9em; background: #f6f8fa; padding: 0.15em 0.35em; border-radius: 3px; }
+  pre { background: #f6f8fa; padding: 1rem; border-radius: 6px; overflow-x: auto; font-size: 0.85em; line-height: 1.5; }
+  pre code { background: none; padding: 0; }
+  .header-block { background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 6px; padding: 1rem 1.25rem; margin-bottom: 1.5rem; }
+  .header-block p { margin: 0.2rem 0; }
+  .header-block .label { font-weight: 600; display: inline-block; min-width: 120px; }
+  .verdict-box { background: #fff8c5; border: 1px solid #d4a72c; border-radius: 6px; padding: 1rem 1.25rem; margin-bottom: 1.5rem; }
+  .verdict-box .verdict-label { font-weight: 700; font-size: 1.1em; }
+  ul { padding-left: 1.5rem; }
+  li { margin-bottom: 0.3rem; }
+  a { color: #0969da; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .tag { display: inline-block; background: #ddf4ff; color: #0969da; font-size: 0.8em; padding: 0.1em 0.5em; border-radius: 3px; font-weight: 500; margin-right: 0.3em; }
+</style>
+</head>
+<body>
+
+<h1>Triage: kubernetes-sigs/prow#780</h1>
+
+<div class="header-block">
+  <p><span class="label">Issue:</span> <a href="https://github.com/kubernetes-sigs/prow/issues/780">kubernetes-sigs/prow#780</a></p>
+  <p><span class="label">Title:</span> Smart blunderbuss reviewer selection using git blame data</p>
+  <p><span class="label">State:</span> open</p>
+  <p><span class="label">Labels:</span> <em>none</em></p>
+  <p><span class="label">Author:</span> smg247 (Stephen Goeddel)</p>
+  <p><span class="label">Triaged at:</span> 2026-06-30T15:50:17Z</p>
+  <p><span class="label">Main SHA:</span> <code>ae8e2d87967f0a2b45cfed2c514f5ec91b964596</code></p>
+</div>
+
+<div class="verdict-box">
+  <p><span class="verdict-label">Verdict: needs-discussion</span></p>
+  <p>Legitimate feature request, but the proposed approach has fundamental tension with the Kubernetes contributor ladder model. The scoring formula and opt-in mechanism need design discussion before implementation can proceed. The maintainer is open to experimentation but not to changing the default behavior.</p>
+</div>
+
+<h2>What the issue reports</h2>
+<ul>
+  <li>Blunderbuss currently selects reviewers randomly from OWNERS files via <code>PopRandom()</code>, ignoring who actually wrote or maintains the changed code.</li>
+  <li>Proposes a blame-based scoring formula: <code>score = (line_count &times; 10) + (recency_score &times; 5) + owner_bonus</code>, using GitHub's GraphQL blame API to rank OWNERS-listed candidates.</li>
+  <li>Only OWNERS-listed reviewers are eligible &mdash; blame data ranks existing candidates, does not discover new ones.</li>
+  <li>Proposes smarter fallback when <code>ReviewerCount</code> cannot be met: look at reviewers/approvers elsewhere in the repo, rank by blame data, fall back to random if no blame scores available.</li>
+  <li>Motivated by reviewer fatigue, slow review cycles, and reviewers ignoring assignments when they have no context on the changed code. Author has built similar tooling in OpenShift's internal ai-helpers.</li>
+</ul>
+
+<h2>Analysis</h2>
+
+<h3>Current implementation</h3>
+<p>The blunderbuss plugin (<code>pkg/plugins/blunderbuss/blunderbuss.go</code>, 477 lines) assigns reviewers on PR open, <code>/auto-cc</code> comment, or status event. The selection pipeline:</p>
+<ol>
+  <li><code>handle()</code> (line 319) loads OWNERS via <code>LoadRepoOwners()</code>, fetches changed files via <code>GetPullRequestChanges()</code>.</li>
+  <li><code>getReviewers()</code> (line 380) iterates changed files, finds OWNERS files for each, collects leaf reviewers into a <code>layeredsets.String</code> with three priority layers.</li>
+  <li><code>findReviewer()</code> (line 433) calls <code>PopRandom()</code> from the first non-empty layer. Optionally checks GitHub availability status via GraphQL.</li>
+  <li>If not enough reviewers, falls back to approvers (unless <code>ExcludeApprovers</code> is set).</li>
+</ol>
+
+<h3>Proposed change &mdash; injection point</h3>
+<p>The blame-based scoring would replace <code>PopRandom()</code> inside <code>findReviewer()</code>. Instead of random selection from the candidate set, candidates would be scored by blame data for the changed file regions and the highest-scoring candidate selected. This requires:</p>
+<ul>
+  <li>GitHub GraphQL blame API queries (one per changed file, potentially &mdash; no existing blame usage in the codebase).</li>
+  <li>A scoring function implementing the proposed formula.</li>
+  <li>New configuration in the <code>Blunderbuss</code> struct (<code>pkg/plugins/config.go:196-223</code>).</li>
+  <li>Fallback to random when blame data is unavailable or empty.</li>
+</ul>
+
+<h3>Maintainer concerns (from issue comments)</h3>
+<ul>
+  <li><strong>Concentration of review load:</strong> Blame-based ranking assigns more reviews to prolific authors, making busy people busier instead of spreading opportunities.</li>
+  <li><strong>Contributor ladder conflict:</strong> Kubernetes reviewers are expected to review areas they may not be deeply familiar with &mdash; that's how they grow. Approvers serve as the safety net. Weighting by blame history works against this.</li>
+  <li><strong>Formula inversion:</strong> The proposed <code>owner_bonus</code> (+3 approver, +2 reviewer) is backwards &mdash; reviewers should be primary assignees, not approvers.</li>
+  <li><strong>Must be opt-in:</strong> Not a unilateral change to the default algorithm. Either a separate plugin or a configurable strategy within blunderbuss.</li>
+</ul>
+
+<h3>Related code</h3>
+<ul>
+  <li><code>pkg/plugins/blunderbuss/blunderbuss.go:433-458</code> &mdash; <code>findReviewer()</code>, the selection point where strategy injection would occur</li>
+  <li><code>pkg/plugins/blunderbuss/blunderbuss.go:380-428</code> &mdash; <code>getReviewers()</code>, orchestrates multi-stage reviewer collection</li>
+  <li><code>pkg/layeredsets/string.go:99-111</code> &mdash; <code>PopRandom()</code>, the randomization primitive</li>
+  <li><code>pkg/plugins/config.go:196-223</code> &mdash; <code>Blunderbuss</code> configuration struct</li>
+  <li><code>pkg/plugins/blunderbuss/blunderbuss_test.go</code> &mdash; 1124 lines of tests using fake clients</li>
+</ul>
+
+<h3>Related issues</h3>
+<ul>
+  <li><a href="https://github.com/kubernetes-sigs/prow/issues/784">kubernetes-sigs/prow#784</a> &mdash; "Add advisory_approvers field to OWNERS files" &mdash; related to OWNERS reviewer/approver semantics</li>
+</ul>
+
+<h3>Possible approaches</h3>
+<table style="border-collapse:collapse; width:100%; margin:0.5rem 0;">
+  <tr style="border-bottom:1px solid #d0d7de;">
+    <th style="text-align:left; padding:0.4rem;">Approach</th>
+    <th style="text-align:left; padding:0.4rem;">Pros</th>
+    <th style="text-align:left; padding:0.4rem;">Cons</th>
+  </tr>
+  <tr style="border-bottom:1px solid #eee;">
+    <td style="padding:0.4rem;"><strong>A. Config strategy in blunderbuss</strong></td>
+    <td style="padding:0.4rem;">Single plugin, backward compatible, opt-in per repo</td>
+    <td style="padding:0.4rem;">Adds complexity to a simple plugin, mixes strategies</td>
+  </tr>
+  <tr style="border-bottom:1px solid #eee;">
+    <td style="padding:0.4rem;"><strong>B. Separate plugin</strong></td>
+    <td style="padding:0.4rem;">Clean separation, blunderbuss stays simple, independent iteration</td>
+    <td style="padding:0.4rem;">Code duplication (OWNERS loading, filtering, availability)</td>
+  </tr>
+  <tr>
+    <td style="padding:0.4rem;"><strong>C. Pluggable interface</strong></td>
+    <td style="padding:0.4rem;">Clean architecture, enables future strategies</td>
+    <td style="padding:0.4rem;">Possibly over-engineered for two strategies</td>
+  </tr>
+</table>
+
+<h2>What I checked</h2>
+<ul>
+  <li>No existing blame API usage anywhere in the Prow Go codebase</li>
+  <li>No other plugins implement smart/weighted reviewer selection</li>
+  <li>GitHub GraphQL client (<code>shurcooL/githubv4</code>) is available and already used by blunderbuss for availability checks</li>
+  <li><code>layeredsets.String</code> enforces layer-based priority &mdash; any scoring replacement must interact with or replace this layering</li>
+  <li>No related PRs exist for this feature</li>
+</ul>
+
+<h2>Recommended next steps</h2>
+<ul>
+  <li>Ask the author to choose between a configurable strategy within blunderbuss or a separate plugin, and to propose a revised scoring formula that addresses the reviewer-vs-approver weighting concern.</li>
+  <li>Request a lightweight design doc covering: rate limit strategy for blame queries on large PRs, configuration schema, fallback behavior, and how opt-in works.</li>
+  <li>Apply labels: <span class="tag">kind/feature</span> <span class="tag">area/plugins</span></li>
+  <li>Once design is aligned, implementation injection points are clear: <code>findReviewer()</code> and <code>getReviewers()</code> in <code>blunderbuss.go</code>.</li>
+</ul>
+
+<h2>Open questions</h2>
+<ul>
+  <li>Should this be a configurable strategy within blunderbuss, or a separate plugin?</li>
+  <li>How should blame queries be rate-limited for PRs touching many files? (Sampling? Caching? Batching?)</li>
+  <li>The proposed <code>owner_bonus</code> (+3 approver, +2 reviewer) goes against the Kubernetes contributor ladder &mdash; should reviewers be weighted higher, or should the bonus be dropped entirely?</li>
+  <li>What is the acceptable latency increase for reviewer assignment when blame queries are involved?</li>
+  <li>Should blame data be cached across PRs to reduce API calls?</li>
+</ul>
+
+</body>
+</html>

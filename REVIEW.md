@@ -3,8 +3,13 @@ pr: kubernetes-sigs/prow#719
 title: "mergecommitblocker: allow use of Git subtrees with `excluded_paths` config option"
 head_sha: 941664570326bd59dfcbbdb62cc66f6c874f203f
 base: main
-reviewed_at: 2026-05-14T00:40:03Z
+reviewed_at: 2026-07-20T14:59:39Z
 verdict: request-changes
+refresh_log:
+  - from: 941664570326bd59dfcbbdb62cc66f6c874f203f
+    to: 941664570326bd59dfcbbdb62cc66f6c874f203f
+    at: 2026-07-20T14:59:39Z
+    summary: No code changes; author asked in an issue comment (2026-07-20) whether anything else is needed. Findings unchanged.
 ---
 
 ## Findings

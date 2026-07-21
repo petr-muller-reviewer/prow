@@ -4,8 +4,11 @@ title: "peribolos: add --ignore-repos flag for team-repo reconciliation"
 state: open
 labels: ""
 main_sha: 71428b9c282ee8c9e7e9512068fccce86e7915da
-triaged_at: 2026-05-30T13:33:41Z
+triaged_at: 2026-07-21T23:36:29Z
 verdict: accepted
+refresh_log:
+  - previous_triaged_at: 2026-05-30T13:33:41Z
+    summary: Contributor volunteered to implement; another commenter suggested a companion --ignore-private-repos flag to avoid leaking private repo names via --ignore-repos values.
 ---
 
 ## Findings
@@ -58,6 +61,10 @@ verdict: accepted
 - ref: kubernetes/org#4365
 - relevance: Incomplete team-repo config caused peribolos to strip publishing bot permissions; emergency `--skip-removals` flag was added then reverted as too broad; targeted repo exclusion would have been the right fix.
 
+### [comment] Contributor volunteered; companion flag suggested
+- detail: SaaiAravindhRaja (2026-07-15) offered to implement the issue. StarMiner99 (2026-07-16) suggested a companion `--ignore-private-repos` flag, noting that passing private repo names as `--ignore-repos` values could leak them (e.g. via process args, CI logs) — cc'ing SaaiAravindhRaja.
+- ref: comments on kubernetes-sigs/prow#737
+
 ## Checked
 
 - `configureTeamRepos` does not accept an `options` struct — signature extension required; both call sites (outer loop line 1011, recursive line 1526) must be updated.
@@ -69,7 +76,7 @@ verdict: accepted
 ## Next steps
 
 - Apply labels: `kind/feature`, `area/peribolos`, `help-wanted`.
-- Comment on issue: welcome PR, ask contributor to clarify edge case — if a repo appears in both the YAML `want` map and `--ignore-repos`, should it be skipped entirely (no add/update) or only protected from removal?
+- Comment on issue: welcome SaaiAravindhRaja's offer to implement; ask them to clarify the edge case — if a repo appears in both the YAML `want` map and `--ignore-repos`, should it be skipped entirely (no add/update) or only protected from removal? Also ask whether they intend to scope in the `--ignore-private-repos` companion flag StarMiner99 suggested, or leave it for a follow-up.
 - When PR arrives: verify recursive child-team call propagates the ignore set and that `TestConfigureTeamRepos` includes cases for ignore-only, want+ignore, and child-team propagation.
 - Note as non-goal for v1: YAML-level `ignore_repos` config (per-team granularity) — valid future evolution but out of scope for initial PR.
 
@@ -77,3 +84,4 @@ verdict: accepted
 
 - When a repo is in both the YAML `want` map and `--ignore-repos`, should peribolos skip it entirely (no add/update) or only suppress removal? The issue's `have`-only filter would still *add* that repo if it's missing from GitHub — potentially surprising.
 - Should `--ignore-repos` affect `--dump` output? (Likely no, but worth confirming with contributor.)
+- Should `--ignore-private-repos` (StarMiner99's suggestion) be bundled into this same PR, or tracked as separate follow-up work? Bundling adds scope; separating risks the leak concern going unaddressed.

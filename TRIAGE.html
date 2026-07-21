@@ -97,7 +97,7 @@
     <div class="meta">
       <span class="key">State</span>       <span>open</span>
       <span class="key">Labels</span>      <span><em>(none at triage time)</em></span>
-      <span class="key">Triaged at</span> <span>2026-05-30T13:33:41Z</span>
+      <span class="key">Triaged at</span> <span>2026-07-21T23:36:29Z <em>(refreshed; previously 2026-05-30T13:33:41Z)</em></span>
       <span class="key">Main SHA</span>   <span><code>71428b9c282ee8c9e7e9512068fccce86e7915da</code></span>
       <span class="key">Author</span>     <span><a href="https://github.com/marcusburghardt">marcusburghardt</a></span>
       <span class="key">Opened</span>     <span>2026-05-29</span>
@@ -182,6 +182,13 @@ for haveRepo := range have {
     <p>Incomplete team-repo config caused peribolos to strip publishing bot permissions. An emergency <code>--skip-removals</code> flag was added (<a href="https://github.com/kubernetes/test-infra/pull/30264">test-infra#30264</a>) then reverted as too broad (<a href="https://github.com/kubernetes/test-infra/pull/30392">test-infra#30392</a>). Targeted repo exclusion would have been the right fix.</p>
   </div>
 
+  <h3>Since previous triage (refreshed 2026-07-21)</h3>
+  <div class="finding">
+    <span class="tag tag-issue">ISSUE</span>
+    <span class="finding-title">Contributor volunteered; companion flag suggested</span>
+    <p><strong>SaaiAravindhRaja</strong> (2026-07-15) offered to implement the issue. <strong>StarMiner99</strong> (2026-07-16) suggested a companion <code>--ignore-private-repos</code> flag, noting that passing private repo names as <code>--ignore-repos</code> values could leak them (e.g. via process args or CI logs).</p>
+  </div>
+
   <!-- What I checked -->
   <h2>What I checked</h2>
   <ul>
@@ -197,7 +204,7 @@ for haveRepo := range have {
   <h2>Recommended next steps</h2>
   <ol>
     <li>Apply labels: <span class="label-pill">kind/feature</span> <span class="label-pill">area/peribolos</span> <span class="label-pill">help-wanted</span></li>
-    <li>Comment on issue welcoming the PR and asking the contributor to clarify the edge case: if a repo appears in both the YAML <code>want</code> map and <code>--ignore-repos</code>, should peribolos skip it entirely (no add/update) or only suppress removal? The <code>have</code>-only filter proposed in the issue would still <em>add</em> that repo if it is missing from GitHub, which may be surprising.</li>
+    <li>Comment on issue welcoming <strong>SaaiAravindhRaja</strong>'s offer to implement; ask them to clarify the edge case: if a repo appears in both the YAML <code>want</code> map and <code>--ignore-repos</code>, should peribolos skip it entirely (no add/update) or only suppress removal? The <code>have</code>-only filter proposed in the issue would still <em>add</em> that repo if it is missing from GitHub, which may be surprising. Also ask whether they intend to scope in <strong>StarMiner99</strong>'s <code>--ignore-private-repos</code> suggestion or leave it for follow-up.</li>
     <li>Point the contributor to <code>configureTeams</code> (line 713) as the model for passing an ignore parameter through a reconciliation function.</li>
     <li>When the PR arrives, verify: (a) recursive child-team call propagates the ignore set; (b) <code>TestConfigureTeamRepos</code> includes cases for ignore-only, want+ignore, and child-team propagation.</li>
     <li>Note as non-goal for v1: YAML-level <code>ignore_repos</code> config (per-team granularity) — valid future evolution, out of scope for the initial PR.</li>
@@ -208,6 +215,7 @@ for haveRepo := range have {
   <ul>
     <li>When a repo is in both the YAML <code>want</code> map and <code>--ignore-repos</code>, should peribolos skip it entirely (no add/update/remove) or only suppress removal? The issue's proposed <code>have</code>-only filter would still add the repo if absent from GitHub. The fully-invisible behavior (filter from both <code>have</code> and <code>want</code>) seems more defensible.</li>
     <li>Should <code>--ignore-repos</code> also affect <code>--dump</code> output? (Likely no, but worth confirming with the contributor.)</li>
+    <li>Should <code>--ignore-private-repos</code> (StarMiner99's suggestion) be bundled into this same PR, or tracked as separate follow-up work? Bundling adds scope; separating risks the leak concern going unaddressed.</li>
   </ul>
 
 </div>

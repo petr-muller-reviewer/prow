@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Triage: kubernetes-sigs/prow#737</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+    color: #24292e;
+    background: #fff;
+    padding: 2rem 1rem;
+  }
+  .container { max-width: 860px; margin: 0 auto; }
+  h1 { font-size: 1.5rem; margin-bottom: 0.25rem; }
+  h2 { font-size: 1.1rem; margin: 2rem 0 0.5rem; padding-bottom: 0.25rem; border-bottom: 1px solid #e1e4e8; }
+  h3 { font-size: 0.95rem; margin: 1.2rem 0 0.3rem; color: #444; }
+  a { color: #0366d6; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  ul, ol { padding-left: 1.4rem; }
+  li { margin: 0.25rem 0; }
+  code, pre { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; font-size: 0.85em; }
+  pre {
+    background: #f6f8fa;
+    border: 1px solid #e1e4e8;
+    border-radius: 4px;
+    padding: 0.75rem 1rem;
+    overflow-x: auto;
+    margin: 0.5rem 0;
+  }
+  code { background: #f6f8fa; padding: 0.1em 0.35em; border-radius: 3px; }
+  pre code { background: none; padding: 0; }
+
+  .header-block {
+    background: #f6f8fa;
+    border: 1px solid #e1e4e8;
+    border-radius: 6px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.5rem;
+  }
+  .header-block h1 { font-size: 1.25rem; }
+  .meta { margin-top: 0.6rem; display: grid; grid-template-columns: auto 1fr; gap: 0.15rem 0.75rem; font-size: 0.88rem; color: #586069; }
+  .meta .key { font-weight: 600; color: #24292e; }
+
+  .verdict-block {
+    border-left: 4px solid #28a745;
+    padding: 0.5rem 1rem;
+    background: #f0fff4;
+    border-radius: 0 4px 4px 0;
+    margin-bottom: 0.75rem;
+  }
+  .verdict-block .verdict-label { font-size: 1rem; font-weight: 700; color: #22863a; }
+
+  .tag {
+    display: inline-block;
+    font-size: 0.72em;
+    font-weight: 600;
+    padding: 0.1em 0.45em;
+    border-radius: 3px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    margin-right: 0.3em;
+    vertical-align: middle;
+  }
+  .tag-cause      { background: #ffeef0; color: #b31d28; }
+  .tag-code       { background: #e8f4fd; color: #0366d6; }
+  .tag-issue      { background: #fff3cd; color: #856404; }
+  .tag-checked    { background: #e6ffed; color: #22863a; }
+
+  .finding { margin: 0.75rem 0; padding: 0.6rem 0.75rem; border: 1px solid #e1e4e8; border-radius: 4px; background: #fafbfc; }
+  .finding-title { font-weight: 600; font-size: 0.93rem; }
+  .finding p, .finding ul { margin-top: 0.35rem; font-size: 0.9rem; }
+
+  .label-pill {
+    display: inline-block;
+    padding: 0.2em 0.6em;
+    border-radius: 12px;
+    font-size: 0.8em;
+    font-weight: 600;
+    background: #e1e4e8;
+    color: #24292e;
+    margin: 0.1em;
+  }
+  .section-note { font-size: 0.85rem; color: #586069; font-style: italic; margin-bottom: 0.5rem; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Header -->
+  <div class="header-block">
+    <h1><a href="https://github.com/kubernetes-sigs/prow/issues/737">kubernetes-sigs/prow#737</a></h1>
+    <div style="font-size:1rem; margin-top:0.3rem; font-weight:600;">peribolos: add --ignore-repos flag for team-repo reconciliation</div>
+    <div class="meta">
+      <span class="key">State</span>       <span>open</span>
+      <span class="key">Labels</span>      <span><em>(none at triage time)</em></span>
+      <span class="key">Triaged at</span> <span>2026-05-30T13:33:41Z</span>
+      <span class="key">Main SHA</span>   <span><code>71428b9c282ee8c9e7e9512068fccce86e7915da</code></span>
+      <span class="key">Author</span>     <span><a href="https://github.com/marcusburghardt">marcusburghardt</a></span>
+      <span class="key">Opened</span>     <span>2026-05-29</span>
+    </div>
+  </div>
+
+  <!-- Verdict -->
+  <h2>Verdict</h2>
+  <div class="verdict-block">
+    <div class="verdict-label">ACCEPTED</div>
+  </div>
+  <p>
+    This is a legitimate, well-motivated feature request for peribolos. The gap is real: <code>--fix-team-repos</code> performs unconditional subtractive reconciliation with no per-repo escape hatch, making it unusable for organizations that manage some repo permissions outside peribolos. The proposed <code>--ignore-repos</code> flag mirrors the established <code>--ignore-secret-teams</code> / <code>--ignore-enterprise-teams</code> pattern exactly, requires changes to two files only, is fully backwards compatible, and has a contributor ready to implement it. Effort is moderate (Level 2 / help-wanted).
+  </p>
+
+  <!-- What the issue reports -->
+  <h2>What the issue reports</h2>
+  <ul>
+    <li><code>--fix-team-repos</code> removes any repo from a team's GitHub permissions if that repo is absent from the YAML config — there is no way to opt a repo out of this reconciliation.</li>
+    <li>Organizations managing some repo permissions outside peribolos (Terraform, manual, separate automation) cannot use <code>--fix-team-repos</code> without declaring every such repo in the config first.</li>
+    <li>The only current workaround is <code>--ignore-secret-teams</code>: make the controlling team secret so peribolos skips it. This is semantically wrong and reduces audit visibility.</li>
+    <li>The request is for a new <code>--ignore-repos</code> flag accepting a comma-separated repo list, following the <code>--ignore-*</code> naming convention already established in peribolos.</li>
+    <li>Author cites <a href="https://github.com/kubernetes/org/issues/4365">kubernetes/org#4365</a> as a real incident where missing team-repo config caused peribolos to strip publishing bot permissions; the <code>--skip-removals</code> emergency flag added then reverted would have been better served by targeted repo exclusion.</li>
+  </ul>
+
+  <!-- Analysis -->
+  <h2>Analysis</h2>
+
+  <h3>Probable cause</h3>
+  <div class="finding">
+    <span class="tag tag-cause">CAUSE</span>
+    <span class="finding-title">No per-repo escape hatch in <code>configureTeamRepos</code></span>
+    <p>The removal loop at <code>cmd/peribolos/main.go:1495-1500</code> iterates over the <code>have</code> map (repos currently on GitHub) and marks any repo absent from <code>want</code> (YAML config) for removal. There is no filtering step before this loop. The <code>--ignore-secret-teams</code> / <code>--ignore-enterprise-teams</code> pattern was never extended to repos, and <code>configureTeamRepos</code> accepts no <code>options</code> struct, so there is no natural injection point without a signature change.</p>
+    <pre>// cmd/peribolos/main.go:1495-1500
+for haveRepo := range have {
+    if _, wantRepo := want[haveRepo]; !wantRepo {
+        actions[haveRepo] = github.None  // unconditional removal — no opt-out
+    }
+}</pre>
+  </div>
+
+  <h3>Related code</h3>
+
+  <div class="finding">
+    <span class="tag tag-code">CODE</span>
+    <span class="finding-title"><code>configureTeamRepos</code> — primary function to modify</span>
+    <p>Reconciles team-repo permissions for one team and recursively for child teams. Implementation at <code>cmd/peribolos/main.go:1468-1532</code>. The fix is to delete ignored repos from <code>have</code> before the diff loop, and to extend the function signature to accept the ignore set.</p>
+  </div>
+
+  <div class="finding">
+    <span class="tag tag-code">CODE</span>
+    <span class="finding-title"><code>options</code> struct &amp; flag registration — convention to follow</span>
+    <p><code>cmd/peribolos/main.go:46-70</code> (struct) and <code>cmd/peribolos/main.go:80-103</code> (registration). The new <code>ignoreRepos flagutil.Strings</code> field mirrors <code>ignoreSecretTeams bool</code> / <code>ignoreEnterpriseTeams bool</code>. <code>requiredAdmins flagutil.Strings</code> at line 54 is the type precedent for multi-value string flags.</p>
+  </div>
+
+  <div class="finding">
+    <span class="tag tag-code">CODE</span>
+    <span class="finding-title">Call sites — both must be updated</span>
+    <ul>
+      <li>Outer loop: <code>cmd/peribolos/main.go:1011</code> — <code>configureTeamRepos(client, githubTeams, name, orgName, team)</code></li>
+      <li>Recursive child call: <code>cmd/peribolos/main.go:1526</code> — must propagate the ignore set or child teams bypass the filter entirely.</li>
+    </ul>
+  </div>
+
+  <div class="finding">
+    <span class="tag tag-code">CODE</span>
+    <span class="finding-title"><code>TestConfigureTeamRepos</code> — test infrastructure to extend</span>
+    <p><code>cmd/peribolos/main_test.go:2680-2888</code>. Comprehensive table-driven tests using a <code>fakeTeamRepoClient</code>. No ignore-repo cases exist yet. Adding them is straightforward; the existing structure makes it easy to add: ignore-only repo, repo in both want and ignore, child-team propagation.</p>
+  </div>
+
+  <div class="finding">
+    <span class="tag tag-code">CODE</span>
+    <span class="finding-title"><code>configureTeams</code> — model for passing ignore parameter</span>
+    <p><code>cmd/peribolos/main.go:713</code>. Already models the pattern of passing <code>ignoreSecretTeams</code> and <code>ignoreEnterpriseTeams</code> as explicit parameters to a reconciliation function. Implementors should follow this exact approach for <code>configureTeamRepos</code>.</p>
+  </div>
+
+  <h3>Related issues</h3>
+
+  <div class="finding">
+    <span class="tag tag-issue">ISSUE</span>
+    <span class="finding-title"><a href="https://github.com/kubernetes/org/issues/4365">kubernetes/org#4365</a> — prior incident</span>
+    <p>Incomplete team-repo config caused peribolos to strip publishing bot permissions. An emergency <code>--skip-removals</code> flag was added (<a href="https://github.com/kubernetes/test-infra/pull/30264">test-infra#30264</a>) then reverted as too broad (<a href="https://github.com/kubernetes/test-infra/pull/30392">test-infra#30392</a>). Targeted repo exclusion would have been the right fix.</p>
+  </div>
+
+  <!-- What I checked -->
+  <h2>What I checked</h2>
+  <ul>
+    <li><code>configureTeamRepos</code> does not accept an <code>options</code> struct — signature extension is required at all call sites.</li>
+    <li><code>flagutil.Strings</code> / <code>flagutil.NewStrings()</code> is the correct type for a multi-value string flag; <code>requiredAdmins</code> at line 54 is the in-repo precedent.</li>
+    <li>No existing test in <code>TestConfigureTeamRepos</code> covers an ignore-repo scenario.</li>
+    <li>No YAML schema changes to <code>pkg/config/org</code> are needed for the CLI-flag approach.</li>
+    <li><code>configureTeams</code> at line 713 already models passing an ignore parameter through a reconciliation function — a clean reference for the implementor.</li>
+    <li>Peribolos is entirely in <code>cmd/peribolos/</code>; no other packages affected by the proposed change.</li>
+  </ul>
+
+  <!-- Recommended next steps -->
+  <h2>Recommended next steps</h2>
+  <ol>
+    <li>Apply labels: <span class="label-pill">kind/feature</span> <span class="label-pill">area/peribolos</span> <span class="label-pill">help-wanted</span></li>
+    <li>Comment on issue welcoming the PR and asking the contributor to clarify the edge case: if a repo appears in both the YAML <code>want</code> map and <code>--ignore-repos</code>, should peribolos skip it entirely (no add/update) or only suppress removal? The <code>have</code>-only filter proposed in the issue would still <em>add</em> that repo if it is missing from GitHub, which may be surprising.</li>
+    <li>Point the contributor to <code>configureTeams</code> (line 713) as the model for passing an ignore parameter through a reconciliation function.</li>
+    <li>When the PR arrives, verify: (a) recursive child-team call propagates the ignore set; (b) <code>TestConfigureTeamRepos</code> includes cases for ignore-only, want+ignore, and child-team propagation.</li>
+    <li>Note as non-goal for v1: YAML-level <code>ignore_repos</code> config (per-team granularity) — valid future evolution, out of scope for the initial PR.</li>
+  </ol>
+
+  <!-- Open questions -->
+  <h2>Open questions</h2>
+  <ul>
+    <li>When a repo is in both the YAML <code>want</code> map and <code>--ignore-repos</code>, should peribolos skip it entirely (no add/update/remove) or only suppress removal? The issue's proposed <code>have</code>-only filter would still add the repo if absent from GitHub. The fully-invisible behavior (filter from both <code>have</code> and <code>want</code>) seems more defensible.</li>
+    <li>Should <code>--ignore-repos</code> also affect <code>--dump</code> output? (Likely no, but worth confirming with the contributor.)</li>
+  </ul>
+
+</div>
+</body>
+</html>

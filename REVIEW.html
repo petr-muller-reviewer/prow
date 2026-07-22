@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PR #538 Review — tide: remove PR from batch when batch fails</title>
+<style>
+  :root {
+    --bg: #0d1117; --fg: #e6edf3; --muted: #8b949e; --border: #30363d;
+    --green-bg: #0d2818; --green-fg: #3fb950; --green-border: #238636;
+    --red-bg: #2d1214; --red-fg: #f85149; --red-border: #da3633;
+    --blue: #58a6ff; --yellow: #d29922; --orange: #db6d28;
+    --card-bg: #161b22; --hover: #1f2937;
+    --severity-high: #f85149; --severity-med: #d29922; --severity-low: #58a6ff;
+    --severity-info: #8b949e;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+         background: var(--bg); color: var(--fg); line-height: 1.6; padding: 24px; max-width: 1200px; margin: 0 auto; }
+  a { color: var(--blue); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  .header { border-bottom: 1px solid var(--border); padding-bottom: 16px; margin-bottom: 24px; }
+  .header h1 { font-size: 24px; font-weight: 600; }
+  .header h1 .pr-num { color: var(--muted); font-weight: 400; }
+  .header .meta { color: var(--muted); font-size: 14px; margin-top: 4px; }
+  .header .labels { margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap; }
+  .label { font-size: 12px; padding: 2px 8px; border-radius: 12px; border: 1px solid var(--border);
+           background: var(--card-bg); font-weight: 500; }
+  .label.area { border-color: #1f6feb44; color: var(--blue); }
+  .label.hold { border-color: var(--red-border); color: var(--red-fg); }
+  .label.size { border-color: var(--yellow); color: var(--yellow); }
+
+  .description { background: var(--card-bg); border: 1px solid var(--border); border-radius: 6px;
+                  padding: 16px; margin-bottom: 24px; font-size: 14px; }
+  .description p { margin-bottom: 8px; }
+
+  .section { margin-bottom: 32px; }
+  .section h2 { font-size: 18px; font-weight: 600; margin-bottom: 12px; border-bottom: 1px solid var(--border);
+                 padding-bottom: 8px; }
+
+  /* Checklist */
+  .checklist { list-style: none; }
+  .checklist li { padding: 10px 12px; border: 1px solid var(--border); border-radius: 6px;
+                   margin-bottom: 8px; background: var(--card-bg); display: flex; align-items: flex-start; gap: 10px;
+                   cursor: pointer; user-select: none; transition: background 0.15s; }
+  .checklist li:hover { background: var(--hover); }
+  .checklist li.checked { opacity: 0.5; }
+  .checklist li.checked .check-label { text-decoration: line-through; }
+  .checklist input[type="checkbox"] { margin-top: 4px; accent-color: var(--green-fg); min-width: 16px; }
+  .check-label { flex: 1; }
+  .check-label strong { display: block; font-size: 14px; }
+  .check-label .detail { font-size: 13px; color: var(--muted); margin-top: 2px; }
+  .severity { font-size: 11px; padding: 1px 6px; border-radius: 8px; font-weight: 600;
+              white-space: nowrap; align-self: center; }
+  .severity.high { background: #f8514922; color: var(--severity-high); }
+  .severity.medium { background: #d2992222; color: var(--severity-med); }
+  .severity.low { background: #58a6ff22; color: var(--severity-low); }
+  .severity.info { background: #8b949e22; color: var(--severity-info); }
+
+  /* Diff */
+  .diff-file { margin-bottom: 24px; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+  .diff-file-header { background: var(--card-bg); padding: 8px 12px; font-size: 13px; font-weight: 600;
+                       border-bottom: 1px solid var(--border); cursor: pointer; display: flex;
+                       align-items: center; gap: 8px; }
+  .diff-file-header:hover { background: var(--hover); }
+  .diff-file-header .arrow { transition: transform 0.2s; font-size: 12px; color: var(--muted); }
+  .diff-file-header .arrow.collapsed { transform: rotate(-90deg); }
+  .diff-content { font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+                   font-size: 12px; line-height: 1.5; overflow-x: auto; }
+  .diff-content.hidden { display: none; }
+  .diff-hunk { color: var(--blue); background: #161b2299; padding: 4px 12px; font-style: italic;
+               border-top: 1px solid var(--border); }
+  .diff-line { padding: 1px 12px; white-space: pre; min-height: 20px; }
+  .diff-line.add { background: var(--green-bg); color: var(--green-fg); }
+  .diff-line.del { background: var(--red-bg); color: var(--red-fg); }
+  .diff-line.ctx { color: var(--muted); }
+
+  /* Inline annotations */
+  .annotation { background: #1c1c3a; border-left: 3px solid var(--yellow); padding: 10px 14px;
+                 margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+                 font-size: 13px; line-height: 1.5; color: var(--fg); }
+  .annotation .ann-header { font-weight: 600; font-size: 12px; color: var(--yellow); margin-bottom: 4px;
+                             display: flex; align-items: center; gap: 6px; }
+  .annotation p { margin: 4px 0; }
+
+  /* Comments section */
+  .comment { background: var(--card-bg); border: 1px solid var(--border); border-radius: 6px;
+             padding: 12px 16px; margin-bottom: 12px; }
+  .comment .author { font-weight: 600; font-size: 14px; }
+  .comment .date { color: var(--muted); font-size: 12px; margin-left: 8px; }
+  .comment .body { font-size: 13px; margin-top: 8px; white-space: pre-wrap; }
+  .comment code { background: var(--card-bg); border: 1px solid var(--border); padding: 1px 4px;
+                   border-radius: 3px; font-size: 12px; }
+  .comment pre { background: #0d1117; border: 1px solid var(--border); padding: 12px;
+                  border-radius: 4px; overflow-x: auto; margin: 8px 0; font-size: 12px; }
+
+  /* Notes area */
+  .notes-area { width: 100%; min-height: 120px; background: var(--card-bg); border: 1px solid var(--border);
+                 border-radius: 6px; color: var(--fg); font-family: inherit; font-size: 14px;
+                 padding: 12px; resize: vertical; }
+  .notes-area:focus { outline: none; border-color: var(--blue); }
+
+  /* Verdict */
+  .verdict-group { display: flex; gap: 12px; margin-top: 12px; flex-wrap: wrap; }
+  .verdict-btn { padding: 8px 20px; border-radius: 6px; border: 1px solid var(--border);
+                  background: var(--card-bg); color: var(--fg); font-size: 14px; font-weight: 500;
+                  cursor: pointer; transition: all 0.15s; }
+  .verdict-btn:hover { background: var(--hover); }
+  .verdict-btn.selected.approve { background: var(--green-bg); border-color: var(--green-border); color: var(--green-fg); }
+  .verdict-btn.selected.changes { background: var(--red-bg); border-color: var(--red-border); color: var(--red-fg); }
+  .verdict-btn.selected.comment { background: #1c1c3a; border-color: var(--blue); color: var(--blue); }
+
+  .progress-bar { height: 4px; background: var(--border); border-radius: 2px; margin-bottom: 16px; overflow: hidden; }
+  .progress-fill { height: 100%; background: var(--green-fg); transition: width 0.3s; border-radius: 2px; }
+
+  .stats { display: flex; gap: 16px; margin-top: 8px; font-size: 13px; }
+  .stat-add { color: var(--green-fg); }
+  .stat-del { color: var(--red-fg); }
+
+  .toc { margin-bottom: 24px; }
+  .toc a { display: block; padding: 4px 0; font-size: 14px; }
+
+  /* Recommendation banner */
+  .recommendation { border: 2px solid var(--green-border); border-radius: 8px; padding: 20px;
+                      margin-bottom: 24px; background: linear-gradient(135deg, #0d281822, #161b22); }
+  .recommendation h2 { border: none; padding: 0; margin: 0 0 8px 0; font-size: 20px; }
+  .recommendation .rec-verdict { font-size: 16px; color: var(--green-fg); font-weight: 600; }
+  .recommendation .rec-rationale { font-size: 14px; color: var(--fg); margin-top: 8px; }
+
+  /* Reviewer cards */
+  .reviewer-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 12px;
+                     margin-bottom: 24px; }
+  .reviewer-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 6px; padding: 16px; }
+  .reviewer-card h3 { font-size: 14px; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+  .reviewer-card .rv-verdict { font-size: 12px; padding: 2px 8px; border-radius: 8px; font-weight: 600; }
+  .reviewer-card .rv-verdict.approve { background: var(--green-bg); color: var(--green-fg); border: 1px solid var(--green-border); }
+  .reviewer-card .rv-verdict.low { background: #58a6ff22; color: var(--blue); border: 1px solid #58a6ff44; }
+  .reviewer-card ul { list-style: disc; padding-left: 18px; font-size: 13px; color: var(--muted); }
+  .reviewer-card ul li { margin-bottom: 4px; }
+
+  /* Converging concerns */
+  .convergence { background: var(--card-bg); border: 1px solid var(--yellow); border-radius: 6px;
+                   padding: 16px; margin-bottom: 24px; }
+  .convergence h3 { font-size: 15px; color: var(--yellow); margin-bottom: 10px; }
+  .convergence .conv-item { margin-bottom: 12px; }
+  .convergence .conv-item strong { font-size: 14px; color: var(--fg); }
+  .convergence .conv-item .flagged-by { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .convergence .conv-item .conv-detail { font-size: 13px; color: var(--muted); margin-top: 4px; }
+
+  /* PR comment preview */
+  .pr-comment-preview { background: var(--card-bg); border: 1px solid var(--border); border-radius: 6px;
+                          padding: 16px; margin-top: 12px; font-size: 14px; line-height: 1.6; }
+  .pr-comment-preview .preview-header { font-size: 12px; color: var(--muted); margin-bottom: 8px;
+                                          text-transform: uppercase; letter-spacing: 0.5px; }
+
+  @media (max-width: 768px) {
+    body { padding: 12px; }
+    .diff-line { font-size: 11px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>tide: remove PR from batch when batch fails <span class="pr-num">#538</span></h1>
+  <div class="meta">
+    Author: <strong>Prucek</strong> (Peter Rucek) &middot; Fixes <a href="https://github.com/kubernetes-sigs/prow/issues/474">#474</a> &middot;
+    +89 / -9 &middot; 2 files changed
+  </div>
+  <div class="labels">
+    <span class="label area">area/tide</span>
+    <span class="label hold">do-not-merge/hold</span>
+    <span class="label size">size/M</span>
+  </div>
+  <div class="stats">
+    <span class="stat-add">+89 additions</span>
+    <span class="stat-del">-9 deletions</span>
+  </div>
+</div>
+
+<div class="description">
+  <p>When a batch fails to merge, Tide previously didn't account for the possibility of CI failure &mdash; the action
+  in <code>takeAction</code> was always <code>MergeBatch</code>, regardless of the error. This sometimes led to
+  <code>/hold</code>-ing one of the PRs from the batch, and then it would merge.</p>
+  <p>Now, Tide excludes the lowest-priority PR from the failed batch and triggers a smaller batch, breaking the cycle.</p>
+</div>
+
+<!-- Maintainer Advisor Recommendation -->
+<div class="recommendation">
+  <h2>Maintainer Advisor Recommendation</h2>
+  <div class="rec-verdict">APPROVE WITH SUGGESTIONS</div>
+  <div class="rec-rationale">All three independent reviewers approved with no critical or blocking issues.
+  The change is well-scoped, low-risk, and solves a real operational problem (infinite retry of the same failing batch).
+  The converging concerns are all minor improvements that don't need to block the merge.</div>
+</div>
+
+<!-- Reviewer Verdicts -->
+<div class="section">
+  <h2>Reviewer Verdicts</h2>
+  <div class="reviewer-cards">
+    <div class="reviewer-card">
+      <h3>Code Quality <span class="rv-verdict approve">APPROVE</span></h3>
+      <ul>
+        <li>No critical issues found</li>
+        <li>Correct bisection logic, proper pre-allocation, defensive empty-input handling</li>
+        <li>Non-mutating approach via shallow copy avoids side effects</li>
+        <li>Missing direct <code>TestAccumulateBatch</code> coverage for <code>failedBatch</code></li>
+        <li>Comment on line 1056 should mention <code>failedBatch</code></li>
+      </ul>
+    </div>
+    <div class="reviewer-card">
+      <h3>Maintainability <span class="rv-verdict approve">APPROVE</span> <span class="rv-verdict low">BURDEN: LOW</span></h3>
+      <ul>
+        <li>Well-scoped fix proportional to the problem</li>
+        <li>Priority model inconsistency: <code>pickLowestPriorityPR</code> ignores label-based priority</li>
+        <li>2-PR batch edge case falls through to serial testing correctly but non-obviously</li>
+        <li>Clean pure helpers, good logging, test comments reference issue #474</li>
+      </ul>
+    </div>
+    <div class="reviewer-card">
+      <h3>Deployment Risk <span class="rv-verdict low">RISK: LOW</span></h3>
+      <ul>
+        <li>No breaking changes &mdash; no config, API, CLI, or serialization changes</li>
+        <li>Zero upgrade friction &mdash; behavior identical when no batch has failed</li>
+        <li>Safe to roll back at any time</li>
+        <li>New <code>batch-failed</code> log field for observability, negligible log volume impact</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- Converging Concerns -->
+<div class="convergence">
+  <h3>Converging Concerns (flagged by 2+ reviewers)</h3>
+
+  <div class="conv-item">
+    <strong>Missing <code>TestAccumulateBatch</code> coverage for <code>failedBatch</code></strong>
+    <div class="flagged-by">Flagged by: Code Quality, Maintainability</div>
+    <div class="conv-detail">The <code>failedBatch</code> return value is discarded with <code>_</code>.
+    The path is only tested indirectly through <code>takeAction</code>.
+    Consider adding direct test coverage in a follow-up.</div>
+  </div>
+
+  <div class="conv-item">
+    <strong><code>pickLowestPriorityPR</code> ignores label-based priority system</strong>
+    <div class="flagged-by">Flagged by: Maintainability, Deployment Risk</div>
+    <div class="conv-detail">"Priority" has two different definitions in the same file.
+    Add a clarifying comment explaining why label-based priority is intentionally not consulted for bisection.</div>
+  </div>
+
+  <div class="conv-item">
+    <strong>Comment on line 1056 should mention <code>failedBatch</code></strong>
+    <div class="flagged-by">Flagged by: Code Quality, Maintainability</div>
+    <div class="conv-detail">The existing comment about "only consider 1 pending/success batch" should be updated
+    to cover all three return values. Trivial fix.</div>
+  </div>
+</div>
+
+<!-- Suggested PR Comment -->
+<div class="section">
+  <h2>Suggested PR Comment</h2>
+  <div class="pr-comment-preview">
+    <div class="preview-header">Ready to post via <code>gh pr review</code></div>
+    This looks good to me. All three independent reviews came back clean with no blocking issues.
+    The change is well-scoped, low-risk, and correctly addresses the problem of Tide infinitely retrying
+    the same failing batch. I would appreciate a small comment addition on <code>pickLowestPriorityPR</code>
+    clarifying why it uses PR number rather than label-based priority, and updating the comment near line 1056
+    to mention <code>failedBatch</code>, but neither is blocking. Approving as-is.
+  </div>
+</div>
+
+<!-- Progress -->
+<div class="section">
+  <h2>Review Progress</h2>
+  <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+  <div id="progress-text" style="font-size:13px;color:var(--muted);">0 / 8 items checked</div>
+</div>
+
+<!-- Review Checklist -->
+<div class="section">
+  <h2>Review Checklist</h2>
+  <ul class="checklist" id="checklist">
+
+    <li onclick="toggleCheck(this)">
+      <input type="checkbox" onclick="event.stopPropagation()">
+      <div class="check-label">
+        <strong>Multiple failed batches &mdash; nondeterministic selection</strong>
+        <div class="detail"><code>accumulateBatch</code> overwrites <code>failedBatch</code> for each failed ref (map iteration order is random).
+        If multiple failed batches exist with different PR sets, a different PR could be excluded each sync cycle.
+        Should the batches be unioned, or should the most recent / largest be selected?</div>
+      </div>
+      <span class="severity medium">MEDIUM</span>
+    </li>
+
+    <li onclick="toggleCheck(this)">
+      <input type="checkbox" onclick="event.stopPropagation()">
+      <div class="check-label">
+        <strong>Priority model inconsistency</strong>
+        <div class="detail"><code>pickLowestPriorityPR</code> uses only PR number (highest = lowest priority).
+        <code>pickHighestPriorityPR</code> respects <code>config.Tide.Priority</code> labels.
+        A high-numbered PR with priority labels would still be excluded. Is this intentional?</div>
+      </div>
+      <span class="severity medium">MEDIUM</span>
+    </li>
+
+    <li onclick="toggleCheck(this)">
+      <input type="checkbox" onclick="event.stopPropagation()">
+      <div class="check-label">
+        <strong>Bisection is linear, not binary</strong>
+        <div class="detail">Only one PR excluded per cycle. If the failing PR is the highest-priority one,
+        all others are tried first across multiple sync cycles (each ~3 min). The comment says "bisecting"
+        which implies binary search. Consider if this is acceptable or if the comment is misleading.</div>
+      </div>
+      <span class="severity low">LOW</span>
+    </li>
+
+    <li onclick="toggleCheck(this)">
+      <input type="checkbox" onclick="event.stopPropagation()">
+      <div class="check-label">
+        <strong>Shallow copy of <code>subpool</code></strong>
+        <div class="detail"><code>batchSP := sp</code> is a shallow struct copy. Currently safe because
+        <code>batchSP.prs</code> is replaced with a new slice via <code>withoutPR</code>. But if <code>subpool</code>
+        gains pointer/map fields later, this could silently share mutable state.</div>
+      </div>
+      <span class="severity low">LOW</span>
+    </li>
+
+    <li onclick="toggleCheck(this)">
+      <input type="checkbox" onclick="event.stopPropagation()">
+      <div class="check-label">
+        <strong>No <code>TestAccumulateBatch</code> coverage for <code>failedBatch</code></strong>
+        <div class="detail">The third return value is discarded with <code>_</code> in existing tests.
+        There should be test cases verifying that <code>accumulateBatch</code> correctly populates <code>failedBatch</code>.</div>
+      </div>
+      <span class="severity medium">MEDIUM</span>
+    </li>
+
+    <li onclick="toggleCheck(this)">
+      <input type="checkbox" onclick="event.stopPropagation()">
+      <div class="check-label">
+        <strong>"batch merge fails" test case naming</strong>
+        <div class="detail">The test at line 1969 tests merge failure (not CI failure), but references issue #474
+        which is about CI failure loops. The two test cases could be confused. Consider if naming should be clearer.</div>
+      </div>
+      <span class="severity info">INFO</span>
+    </li>
+
+    <li onclick="toggleCheck(this)">
+      <input type="checkbox" onclick="event.stopPropagation()">
+      <div class="check-label">
+        <strong><code>batchFailed</code> constructed differently than other PR lists in tests</strong>
+        <div class="detail">In the test, <code>batchFailed</code> is built as <code>CodeReviewCommon{Number: n}</code>
+        (minimal struct) while other lists use <code>genPulls</code> (which sets HeadRefOID, Commits, etc.).
+        Verify this doesn't mask issues where the bisection logic might need fields beyond <code>Number</code>.</div>
+      </div>
+      <span class="severity low">LOW</span>
+    </li>
+
+    <li onclick="toggleCheck(this)">
+      <input type="checkbox" onclick="event.stopPropagation()">
+      <div class="check-label">
+        <strong>What happens when the excluded PR was the only failing one?</strong>
+        <div class="detail">After excluding PR N, the new batch of remaining PRs should pass. On the next cycle,
+        PR N is still in the pool and could be re-added to a new batch. Does the failed batch persist across cycles,
+        or does the new successful batch clear it? Verify this doesn't create an infinite loop with PR N.</div>
+      </div>
+      <span class="severity medium">MEDIUM</span>
+    </li>
+
+  </ul>
+</div>
+
+<!-- Diff with annotations -->
+<div class="section">
+  <h2>Diff</h2>
+
+  <!-- tide.go -->
+  <div class="diff-file">
+    <div class="diff-file-header" onclick="toggleDiff(this)">
+      <span class="arrow">&#9660;</span>
+      pkg/tide/tide.go
+      <span style="color:var(--green-fg);margin-left:auto;">+80</span>
+      <span style="color:var(--red-fg);margin-left:4px;">-9</span>
+    </div>
+    <div class="diff-content">
+
+      <div class="diff-hunk">@@ -934,6 +934,33 @@ func pickHighestPriorityPR(...)</div>
+      <div class="diff-line ctx"> 	return false, smallestPR</div>
+      <div class="diff-line ctx"> }</div>
+      <div class="diff-line ctx"> </div>
+      <div class="diff-line add">+// pickLowestPriorityPR returns the PR with the highest number (newest, lowest</div>
+      <div class="diff-line add">+// priority in Tide's ordering) from the list. Used to select which PR to</div>
+      <div class="diff-line add">+// exclude when bisecting a failed batch.</div>
+      <div class="diff-line add">+func pickLowestPriorityPR(prs []CodeReviewCommon) (bool, CodeReviewCommon) {</div>
+      <div class="diff-line add">+	if len(prs) == 0 {</div>
+      <div class="diff-line add">+		return false, CodeReviewCommon{}</div>
+      <div class="diff-line add">+	}</div>
+      <div class="diff-line add">+	result := prs[0]</div>
+      <div class="diff-line add">+	for _, pr := range prs[1:] {</div>
+      <div class="diff-line add">+		if pr.Number > result.Number {</div>
+      <div class="diff-line add">+			result = pr</div>
+      <div class="diff-line add">+		}</div>
+      <div class="diff-line add">+	}</div>
+      <div class="diff-line add">+	return true, result</div>
+      <div class="diff-line add">+}</div>
+
+      <div class="annotation">
+        <div class="ann-header">&#9888; Review point &mdash; priority model</div>
+        <p>Compare with <code>pickHighestPriorityPR</code> above: it respects <code>config.Tide.Priority</code> labels.
+        This function only uses PR number. A PR with priority labels but a high number would still be excluded first.</p>
+      </div>
+
+      <div class="diff-line add">+</div>
+      <div class="diff-line add">+// withoutPR returns a copy of prs excluding the PR with the given number.</div>
+      <div class="diff-line add">+func withoutPR(prs []CodeReviewCommon, excludeNumber int) []CodeReviewCommon {</div>
+      <div class="diff-line add">+	result := make([]CodeReviewCommon, 0, len(prs))</div>
+      <div class="diff-line add">+	for _, pr := range prs {</div>
+      <div class="diff-line add">+		if pr.Number != excludeNumber {</div>
+      <div class="diff-line add">+			result = append(result, pr)</div>
+      <div class="diff-line add">+		}</div>
+      <div class="diff-line add">+	}</div>
+      <div class="diff-line add">+	return result</div>
+      <div class="diff-line add">+}</div>
+      <div class="diff-line ctx"> </div>
+
+      <div class="diff-hunk">@@ -943,7 +970,7 @@ accumulateBatch signature change</div>
+      <div class="diff-line ctx"> // we should consider this batch as failed so that takeAction can trigger a new</div>
+      <div class="diff-line ctx"> // batch.</div>
+      <div class="diff-line del">-func (c *syncController) accumulateBatch(sp subpool) (successBatch []CodeReviewCommon, pendingBatch []CodeReviewCommon) {</div>
+      <div class="diff-line add">+func (c *syncController) accumulateBatch(sp subpool) (successBatch, pendingBatch, failedBatch []CodeReviewCommon) {</div>
+
+      <div class="diff-hunk">@@ -1032,9 +1059,11 @@ switch overallState</div>
+      <div class="diff-line ctx"> 		case pendingState:</div>
+      <div class="diff-line ctx"> 			pendingBatch = state.prs</div>
+      <div class="diff-line ctx"> 		case successState:</div>
+      <div class="diff-line ctx"> 			successBatch = state.prs</div>
+      <div class="diff-line add">+		case failureState:</div>
+      <div class="diff-line add">+			failedBatch = state.prs</div>
+      <div class="diff-line ctx"> 		}</div>
+      <div class="diff-line ctx"> 	}</div>
+      <div class="diff-line del">-	return successBatch, pendingBatch</div>
+      <div class="diff-line add">+	return successBatch, pendingBatch, failedBatch</div>
+
+      <div class="annotation">
+        <div class="ann-header">&#9888; Review point &mdash; multiple failed batches</div>
+        <p>The comment on line 1056 says "Currently we only consider 1 pending batch and 1 success batch at a time."
+        The same applies to <code>failedBatch</code> now &mdash; if multiple refs are in <code>failureState</code>,
+        each overwrites the previous. Since Go map iteration is random, this is nondeterministic.
+        Is this acceptable, or should failed batches be unioned / the largest selected?</p>
+      </div>
+
+      <div class="diff-hunk">@@ -1539,7 +1568,7 @@ takeAction signature change</div>
+      <div class="diff-line del">-func (c *syncController) takeAction(sp subpool, batchPending, successes, pendings, missings, batchMerges []CodeReviewCommon, missingSerialTests map[int][]config.Presubmit) (Action, []CodeReviewCommon, error) {</div>
+      <div class="diff-line add">+func (c *syncController) takeAction(sp subpool, batchPending, batchFailed, successes, pendings, missings, batchMerges []CodeReviewCommon, missingSerialTests map[int][]config.Presubmit) (Action, []CodeReviewCommon, error) {</div>
+
+      <div class="diff-hunk">@@ -1565,9 +1594,19 @@ batch triggering logic</div>
+      <div class="diff-line ctx"> 	if len(sp.presubmits) == 0 {</div>
+      <div class="diff-line ctx"> 		return Wait, nil, nil</div>
+      <div class="diff-line ctx"> 	}</div>
+      <div class="diff-line del">-	// If we have no batch, trigger one.</div>
+      <div class="diff-line add">+	// If we have no batch, trigger one. If a batch just failed CI, bisect by</div>
+      <div class="diff-line add">+	// excluding the lowest-priority PR from the failed set and testing a</div>
+      <div class="diff-line add">+	// smaller batch, rather than re-triggering the same failing combination.</div>
+      <div class="diff-line ctx"> 	if len(sp.prs) > 1 && len(batchPending) == 0 {</div>
+      <div class="diff-line del">-		batch, presubmits, err := c.pickBatch(sp, sp.cc, c.pickNewBatch)</div>
+      <div class="diff-line add">+		batchSP := sp</div>
+      <div class="diff-line add">+		if len(batchFailed) > 0 {</div>
+      <div class="diff-line add">+			if ok, pr := pickLowestPriorityPR(batchFailed); ok {</div>
+      <div class="diff-line add">+				sp.log.WithField("excluded_pr", pr.Number).Info(</div>
+      <div class="diff-line add">+					"Bisecting failed batch by excluding lowest-priority PR")</div>
+      <div class="diff-line add">+				batchSP.prs = withoutPR(sp.prs, pr.Number)</div>
+      <div class="diff-line add">+			}</div>
+      <div class="diff-line add">+		}</div>
+      <div class="diff-line add">+		batch, presubmits, err := c.pickBatch(batchSP, sp.cc, c.pickNewBatch)</div>
+      <div class="diff-line ctx"> 		if err != nil {</div>
+      <div class="diff-line ctx"> 			return Wait, nil, err</div>
+      <div class="diff-line ctx"> 		}</div>
+
+      <div class="annotation">
+        <div class="ann-header">&#9888; Review point &mdash; shallow copy + bisection convergence</div>
+        <p><strong>Shallow copy:</strong> <code>batchSP := sp</code> is safe today because <code>.prs</code> gets a new slice.
+        If <code>subpool</code> gains pointer/map fields, this becomes a shared-state bug.</p>
+        <p><strong>Convergence:</strong> After excluding PR N and the new batch succeeds, the old failed ProwJob
+        still exists. On the next cycle, will <code>accumulateBatch</code> still return the old failed batch?
+        If so, PR N stays excluded even after the problem is resolved. If the new success clears it
+        (because <code>successBatch</code> takes precedence in <code>takeAction</code>), then it's fine.
+        Verify which path dominates.</p>
+      </div>
+
+      <div class="diff-hunk">@@ -1778,13 +1817,14 @@ syncSubpool call site</div>
+      <div class="diff-line ctx"> 	successes, pendings, missings, missingSerialTests := c.accumulate(sp.presubmits, sp.prs, sp.pjs, sp.sha)</div>
+      <div class="diff-line del">-	batchMerge, batchPending := c.accumulateBatch(sp)</div>
+      <div class="diff-line add">+	batchMerge, batchPending, batchFailed := c.accumulateBatch(sp)</div>
+      <div class="diff-line ctx"> 	sp.log.WithFields(logrus.Fields{</div>
+      <div class="diff-line ctx"> 		"prs-passing":   prNumbers(successes),</div>
+      <div class="diff-line ctx"> 		"prs-pending":   prNumbers(pendings),</div>
+      <div class="diff-line ctx"> 		"prs-missing":   prNumbers(missings),</div>
+      <div class="diff-line ctx"> 		"batch-passing": prNumbers(batchMerge),</div>
+      <div class="diff-line ctx"> 		"batch-pending": prNumbers(batchPending),</div>
+      <div class="diff-line add">+		"batch-failed":  prNumbers(batchFailed),</div>
+      <div class="diff-line ctx"> 	}).Info("Subpool accumulated.")</div>
+
+      <div class="diff-hunk">@@ -1795,7 +1835,7 @@ takeAction call site</div>
+      <div class="diff-line del">-		act, targets, err = c.takeAction(sp, batchPending, successes, pendings, missings, batchMerge, missingSerialTests)</div>
+      <div class="diff-line add">+		act, targets, err = c.takeAction(sp, batchPending, batchFailed, successes, pendings, missings, batchMerge, missingSerialTests)</div>
+    </div>
+  </div>
+
+  <!-- tide_test.go -->
+  <div class="diff-file">
+    <div class="diff-file-header" onclick="toggleDiff(this)">
+      <span class="arrow">&#9660;</span>
+      pkg/tide/tide_test.go
+      <span style="color:var(--green-fg);margin-left:auto;">+41</span>
+      <span style="color:var(--red-fg);margin-left:4px;">-2</span>
+    </div>
+    <div class="diff-content">
+
+      <div class="diff-hunk">@@ -298,7 +298,7 @@ TestAccumulateBatch</div>
+      <div class="diff-line del">-			merges, pending := c.accumulateBatch(subpool{...})</div>
+      <div class="diff-line add">+			merges, pending, _ := c.accumulateBatch(subpool{...})</div>
+
+      <div class="annotation">
+        <div class="ann-header">&#9888; Review point &mdash; missing test coverage</div>
+        <p>The third return value (<code>failedBatch</code>) is discarded. Existing <code>TestAccumulateBatch</code>
+        test cases should be extended (or new cases added) to verify that <code>failedBatch</code> is correctly
+        populated when batch jobs have <code>failureState</code>.</p>
+      </div>
+
+      <div class="diff-hunk">@@ -1536,6 +1536,7 @@ testTakeAction struct</div>
+      <div class="diff-line ctx"> 		batchPending     bool</div>
+      <div class="diff-line add">+		batchFailed      []int</div>
+      <div class="diff-line ctx"> 		successes        []int</div>
+
+      <div class="diff-hunk">@@ -1965,6 +1966,41 @@ new test cases</div>
+      <div class="diff-line add">+		{</div>
+      <div class="diff-line add">+			name:        "batch merge fails, returns MergeBatch with error (issue #474)",</div>
+      <div class="diff-line add">+			batchMerges: []int{0, 1},</div>
+      <div class="diff-line add">+			mergeErrs: map[int]error{</div>
+      <div class="diff-line add">+				0: github.UnmergablePRError("merge conflict"),</div>
+      <div class="diff-line add">+				1: github.UnmergablePRError("merge conflict"),</div>
+      <div class="diff-line add">+			},</div>
+      <div class="diff-line add">+			merged:    0,</div>
+      <div class="diff-line add">+			triggered: 0,</div>
+      <div class="diff-line add">+			action:    MergeBatch,</div>
+      <div class="diff-line add">+			expectErr: true,</div>
+      <div class="diff-line add">+		},</div>
+
+      <div class="annotation">
+        <div class="ann-header">&#x2139; Note &mdash; test naming</div>
+        <p>This test case covers <em>merge</em> failure (GitHub rejects the merge), not <em>CI</em> failure.
+        Both reference issue #474 but test different failure modes. The existing Tide behavior
+        (returning <code>MergeBatch</code> + error) is unchanged by this PR &mdash; this case just documents it.</p>
+      </div>
+
+      <div class="diff-line add">+		{</div>
+      <div class="diff-line add">+			// When a batch CI test fails, Tide bisects by excluding the</div>
+      <div class="diff-line add">+			// lowest-priority PR (highest number) from the failed batch and</div>
+      <div class="diff-line add">+			// triggers a smaller batch from the remaining pool PRs.</div>
+      <div class="diff-line add">+			// Pool has PRs {0,1,2}, failed batch was {0,1,2}, so PR 2 is</div>
+      <div class="diff-line add">+			// excluded. The new batch is picked from {0,1}.</div>
+      <div class="diff-line add">+			name:        "batch CI fails, bisects by excluding lowest-priority PR (issue #474)",</div>
+      <div class="diff-line add">+			batchFailed: []int{0, 1, 2},</div>
+      <div class="diff-line add">+			successes:   []int{},</div>
+      <div class="diff-line add">+			pendings:    []int{},</div>
+      <div class="diff-line add">+			nones:       []int{0, 1, 2},</div>
+      <div class="diff-line add">+			batchMerges: []int{},</div>
+      <div class="diff-line add">+			presubmits: map[int][]config.Presubmit{</div>
+      <div class="diff-line add">+				100: {</div>
+      <div class="diff-line add">+					{Reporter: config.Reporter{Context: "foo"}},</div>
+      <div class="diff-line add">+					{Reporter: config.Reporter{Context: "if-changed"}},</div>
+      <div class="diff-line add">+				},</div>
+      <div class="diff-line add">+			},</div>
+      <div class="diff-line add">+			merged:           0,</div>
+      <div class="diff-line add">+			triggered:        2,</div>
+      <div class="diff-line add">+			triggeredBatches: 2,</div>
+      <div class="diff-line add">+			action:           TriggerBatch,</div>
+      <div class="diff-line add">+		},</div>
+
+      <div class="annotation">
+        <div class="ann-header">&#9888; Review point &mdash; test construction asymmetry</div>
+        <p><code>batchFailed</code> PRs are constructed as bare <code>CodeReviewCommon{Number: n}</code>,
+        while other PR lists use <code>genPulls</code> (which sets HeadRefOID, Commits, etc. and adds PRs to
+        <code>sp.prs</code>). In production, <code>batchFailed</code> comes from <code>accumulateBatch</code>
+        which builds full <code>CodeReviewCommon</code> objects. The minimal construction is fine for
+        <code>pickLowestPriorityPR</code> (only reads <code>.Number</code>), but verify no downstream code
+        needs more fields.</p>
+      </div>
+
+      <div class="diff-hunk">@@ -2109,7 +2145,11 @@ takeAction call in test</div>
+      <div class="diff-line del">-			act, _, err := c.takeAction(sp, batchPending, genPulls(tc.successes), ...)</div>
+      <div class="diff-line add">+			var batchFailed []CodeReviewCommon</div>
+      <div class="diff-line add">+			for _, n := range tc.batchFailed {</div>
+      <div class="diff-line add">+				batchFailed = append(batchFailed, CodeReviewCommon{Number: n})</div>
+      <div class="diff-line add">+			}</div>
+      <div class="diff-line add">+			act, _, err := c.takeAction(sp, batchPending, batchFailed, genPulls(tc.successes), ...)</div>
+
+    </div>
+  </div>
+</div>
+
+<!-- PR Discussion Context -->
+<div class="section">
+  <h2>PR Discussion Context</h2>
+
+  <div class="comment">
+    <span class="author">Prucek</span><span class="date">2026-02-13</span>
+    <div class="body">It happened again, and now we captured the log properly. The batch [3957, 3962, 3964] keeps cycling between WAIT and TRIGGER_BATCH with "baseimage-generator-images not passing" &mdash; the same combination retriggers endlessly.</div>
+  </div>
+
+  <div class="comment">
+    <span class="author">Prucek</span><span class="date">2026-02-13</span>
+    <div class="body">@petr-muller I think this is the place that is causing the issue: tide.go#L1028-L1037.
+The code doesn't care about the failure state. I am not sure how to handle it properly. Should I in case of batch failure, default to merging a single PR?</div>
+  </div>
+</div>
+
+<!-- Your Review -->
+<div class="section">
+  <h2>Your Review Notes</h2>
+  <textarea class="notes-area" id="review-notes" placeholder="Write your review notes here... (auto-saved to localStorage)"></textarea>
+
+  <h3 style="margin-top:16px;font-size:15px;">Verdict</h3>
+  <div class="verdict-group">
+    <button class="verdict-btn approve" onclick="setVerdict(this,'approve')">Approve</button>
+    <button class="verdict-btn changes" onclick="setVerdict(this,'changes')">Request Changes</button>
+    <button class="verdict-btn comment" onclick="setVerdict(this,'comment')">Comment</button>
+  </div>
+</div>
+
+<script>
+const STORAGE_KEY = 'pr538-review';
+
+function loadState() {
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
+  } catch { return {}; }
+}
+
+function saveState(state) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+function toggleCheck(li) {
+  const cb = li.querySelector('input[type="checkbox"]');
+  cb.checked = !cb.checked;
+  li.classList.toggle('checked', cb.checked);
+  updateProgress();
+  const state = loadState();
+  const idx = Array.from(document.querySelectorAll('.checklist li')).indexOf(li);
+  if (!state.checks) state.checks = {};
+  state.checks[idx] = cb.checked;
+  saveState(state);
+}
+
+function updateProgress() {
+  const items = document.querySelectorAll('.checklist li');
+  const checked = document.querySelectorAll('.checklist li.checked').length;
+  document.getElementById('progress-fill').style.width = (checked / items.length * 100) + '%';
+  document.getElementById('progress-text').textContent = checked + ' / ' + items.length + ' items checked';
+}
+
+function toggleDiff(header) {
+  const content = header.nextElementSibling;
+  const arrow = header.querySelector('.arrow');
+  content.classList.toggle('hidden');
+  arrow.classList.toggle('collapsed');
+}
+
+function setVerdict(btn, type) {
+  document.querySelectorAll('.verdict-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  const state = loadState();
+  state.verdict = type;
+  saveState(state);
+}
+
+// Auto-save notes
+const notes = document.getElementById('review-notes');
+notes.addEventListener('input', () => {
+  const state = loadState();
+  state.notes = notes.value;
+  saveState(state);
+});
+
+// Restore state on load
+(function restore() {
+  const state = loadState();
+  if (state.notes) notes.value = state.notes;
+  if (state.checks) {
+    document.querySelectorAll('.checklist li').forEach((li, i) => {
+      if (state.checks[i]) {
+        li.classList.add('checked');
+        li.querySelector('input[type="checkbox"]').checked = true;
+      }
+    });
+  }
+  if (state.verdict) {
+    document.querySelector('.verdict-btn.' + (state.verdict === 'changes' ? 'changes' : state.verdict))
+      ?.classList.add('selected');
+  }
+  updateProgress();
+})();
+</script>
+
+</body>
+</html>

@@ -292,6 +292,55 @@ Well-defined refactoring with a clear, TODO-endorsed solution (enum replacement)
 
 **Alternative approach**: None warranted — Approach 2 (deprecation shim) from the research phase would add cost without protecting any real external consumer.
 
+### Proposed Issue Augmentation
+
+**Title Change**:
+- **No change needed**: current title quotes the TODO comment verbatim, is specific about the component and the desired fix, and is easily searchable. Not worth the noise of a retitle.
+
+**Proposed GitHub Comment**:
+
+```markdown
+## Root Cause
+
+The current implementation uses two independent optional booleans (`UseInsecureHTTP *bool`, `UseSSH *bool`) to represent three mutually exclusive schemes — a tri-state-boolean anti-pattern. The doc comment claims `UseInsecureHTTP` is "overridden" by SSH, but this precedence is unenforced in code and untested: if both are set true, SSH silently wins (`client_factory.go:314-329`) and `UseInsecureHTTP` is never even read.
+
+## Scope Check
+
+Grepped the whole repo for `UseInsecureHTTP`/`UseSSH`/`WithInsecureHTTP`/`WithSSH`: the only production caller (`pkg/flagutil/github.go:339`) never sets either field, so it's unaffected by removing them. The only other caller in the repo is `test/integration/test/moonraker_test.go` (2 call sites, both set `UseInsecureHTTP` directly rather than via `WithInsecureHTTP`). So despite being a breaking change to a public struct, the real-world impact is essentially two lines in one test file, both fixable in the same PR.
+
+## Implementation Sketch
+
+1. Add `SchemeType` (iota: `SchemeHTTPS`=0 default, `SchemeHTTP`, `SchemeSSH`) and a `Scheme SchemeType` field on `ClientFactoryOpts`, replacing the two booleans
+2. Collapse the if/else-if/else in `NewClientFactory` (`client_factory.go:314-329`) into a switch, preserving today's SSH > Gerrit > HTTP(S) priority
+3. Update/replace `WithInsecureHTTP`/`WithSSH` and the `Apply` method's copy logic
+4. Update the 2 `moonraker_test.go` call sites
+5. Add `pkg/git/v2/client_factory_test.go` (doesn't exist today) covering all 3 schemes, plus the SSH/Gerrit priority interaction — this logic currently has zero test coverage
+6. Add an `http:true` case to `remote_test.go` — the existing tests only ever exercise the default `https` branch
+
+/area git
+/kind cleanup
+/help-wanted
+```
+
+**Rationale**:
+
+**What's being added**:
+- **Root cause framing**: names the tri-state-boolean anti-pattern and points out the unenforced/untested precedence claim — not stated in the original issue
+- **Scope check**: the caller-inventory finding (one unaffected production caller, one two-line test fixup) is new information that meaningfully de-risks what looks like a breaking API change — this is the single most useful thing triage surfaced and should be visible to whoever picks this up
+- **Concrete implementation steps with file:line references**, including the two pre-existing test-coverage gaps (untested `http:true` branch, completely untested `NewClientFactory` scheme selection) that a fix should close along the way
+
+**Why these labels**:
+- `/area git`: change is entirely within `pkg/git/v2`
+- `/kind cleanup`: refactor addressing a documented TODO, not a bug or new feature
+- `/help-wanted`: Level 2 effort — well-defined, moderate scope, suitable for a skilled contributor; not `good-first-issue` because it touches a public struct's fields and requires correctly updating call sites
+
+**What's NOT included**:
+- **The full 3-approach comparison** from research (enum, deprecation shim, pointer-to-enum) — the comment states only the recommended approach; a contributor doesn't need the rejected alternatives spelled out
+- **The detailed effort-assessment factor breakdown** — implied by the `/help-wanted` label and the concise implementation sketch
+- **A direct ping about the stale assignment** — see maintainer note below; this is a judgment call for whoever posts the comment, not something to bake into the technical augmentation itself
+
+**Maintainer note (not part of the proposed comment)**: The issue has been assigned to the reporter (`tsj-30`) since 2026-01-12 with no PR yet, and has been marked `lifecycle/stale` twice (2026-04-16, 2026-07-16 — most recently 6 days ago). Posting this comment will reset the stale timer without addressing that. Worth deciding separately whether to also ask `tsj-30` for a status update or open the assignment back up — the comment above deliberately doesn't presume that decision.
+
 ## Next Steps
 
 (Action items will be added here)

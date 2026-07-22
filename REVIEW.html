@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Review: kubernetes-sigs/prow#802</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; line-height: 1.6; color: #1a1a1a; max-width: 900px; margin: 2rem auto; padding: 0 1.5rem; background: #fff; }
+  code, pre { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; font-size: 0.9em; }
+  pre { background: #f6f8fa; padding: 0.75rem 1rem; border-radius: 6px; overflow-x: auto; }
+  .file { color: #6a737d; }
+  header { border-bottom: 2px solid #eaecef; padding-bottom: 1rem; margin-bottom: 1.5rem; }
+  header dl { display: grid; grid-template-columns: max-content 1fr; gap: 0.25rem 1rem; margin: 0.5rem 0; }
+  header dt { font-weight: 600; color: #57606a; }
+  h1 { font-size: 1.4rem; }
+  h2 { font-size: 1.2rem; border-bottom: 1px solid #eaecef; padding-bottom: 0.3rem; margin-top: 2rem; }
+  .verdict { padding: 1rem; border-radius: 6px; background: #ffeef0; border: 1px solid #d73a49; }
+  .finding { border: 1px solid #eaecef; border-radius: 6px; padding: 1rem; margin-bottom: 1rem; }
+  .finding h3 { margin-top: 0; font-size: 1.05rem; }
+  .badge { display: inline-block; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; padding: 0.15rem 0.5rem; border-radius: 4px; margin-right: 0.5rem; }
+  .badge.blocking { background: #ffdce0; color: #b31d28; }
+  .badge.should-fix { background: #ffeeba; color: #7a5b00; }
+  .badge.nit { background: #dbedff; color: #045; }
+  .badge.question { background: #e6e6fa; color: #443; }
+  ul { padding-left: 1.3rem; }
+  .hl { background: #fff3b0; }
+  .convergence { font-size: 0.85em; color: #57606a; font-style: italic; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Review: kubernetes-sigs/prow#802</h1>
+  <dl>
+    <dt>Title</dt><dd>peribolos: add --ignore-repos flag for team repo reconciliation</dd>
+    <dt>PR</dt><dd><a href="https://github.com/kubernetes-sigs/prow/pull/802">github.com/kubernetes-sigs/prow/pull/802</a></dd>
+    <dt>Head SHA</dt><dd><code>fccd7841c84dca2990f854c949f3cbb66b25d202</code></dd>
+    <dt>Base branch</dt><dd><code>main</code></dd>
+    <dt>Reviewed at</dt><dd>2026-07-22T14:34:09Z</dd>
+  </dl>
+</header>
+
+<section class="verdict">
+  <strong>Verdict: request changes.</strong>
+  The <code>--ignore-repos</code> feature (the one issue #737 actually asked for) is correct, well-tested, and matches existing conventions. But <code>--ignore-private-repos</code>/<code>--ignore-internal-repos</code> — undisclosed additions not requested by the issue — have a confirmed bug: they only protect repos a team already has, not new grants declared in config. This was independently identified by every reviewer across both a single-pass review and a 3-specialist maintainer-review (code quality, maintainability, deployment risk) plus advisor synthesis. Fix or explicitly document the gap, and disclose the scope expansion, before merge.
+</section>
+
+<h2>What this PR does</h2>
+<ul>
+  <li>Adds <code>--ignore-repos</code> (comma-separated, repeatable, case-insensitive) so named repos are skipped entirely during team-repo reconciliation — never added, updated, or removed. This is the feature #737 requested and it works correctly.</li>
+  <li>Propagates the ignore set recursively into child-team reconciliation.</li>
+  <li>Also adds <code>--ignore-private-repos</code> and <code>--ignore-internal-repos</code> (undisclosed in the PR description/issue), backed by a new <code>Visibility</code> field on <code>github.Repo</code>.</li>
+  <li>Adds unit tests for flag parsing, the <code>ignoredRepos</code> helper, and <code>configureTeamRepos</code> behavior — but no test covers the private/internal "new grant" gap below.</li>
+</ul>
+
+<h2>Findings</h2>
+
+<h3 style="border:none;color:#b31d28;">Blocking</h3>
+
+<div class="finding">
+  <h3><span class="badge blocking">Blocking</span>--ignore-private-repos/--ignore-internal-repos don't prevent new grants</h3>
+  <p class="file">cmd/peribolos/main.go:1498-1523</p>
+  <p class="convergence">Independently confirmed by all 3 maintainer-review specialists (code quality, maintainability, deployment risk).</p>
+  <p><code>privateRepos</code>/<code>internalRepos</code> are populated only from repos <code>ListTeamReposBySlug</code> currently returns for the team (the "have" side). A private/internal repo present in <code>team.Repos</code> (want) that the team does <strong>not yet</strong> have is never added to those sets — so peribolos will still <strong>add</strong> it despite the flag. Example: <code>org.yaml</code> declares <code>team-x</code> should get <code>Write</code> on private repo <code>secret-repo</code>, which <code>team-x</code> doesn't have yet — <code>--ignore-private-repos</code> will not stop that grant. This contradicts the PR's "skip ignored repos on both sides of the diff" framing for these two flags. No test exercises this case.</p>
+  <pre>for wantRepo, wantPermission := range want {
+    repoName := strings.ToLower(wantRepo)
+    if ignoreRepos.Has(repoName) || <span class="hl">privateRepos.Has(repoName) || internalRepos.Has(repoName)</span> {
+        continue
+    }</pre>
+</div>
+
+<div class="finding">
+  <h3><span class="badge blocking">Blocking</span>Undisclosed scope expansion beyond linked issue</h3>
+  <p class="file">cmd/peribolos/main.go:65-67,98-99 · pkg/github/types.go:335</p>
+  <p class="convergence">Independently flagged by all 3 maintainer-review specialists.</p>
+  <p>Issue #737 and the PR body describe only <code>--ignore-repos</code>. The diff also adds <code>--ignore-private-repos</code>, <code>--ignore-internal-repos</code>, and a new <code>Visibility</code> field on the public <code>github.Repo</code> type — none of which are disclosed. Should be split into a separate PR or the description updated to justify it, especially given the bug above.</p>
+  <pre>ignoreRepos           flagutil.Strings
+ignorePrivateRepos    bool
+ignoreInternalRepos   bool</pre>
+</div>
+
+<h3 style="border:none;color:#7a5b00;">Should fix</h3>
+
+<div class="finding">
+  <h3><span class="badge should-fix">Should fix</span>No typed constant for "internal" visibility literal</h3>
+  <p class="file">cmd/peribolos/main.go:1510</p>
+  <p><code>repo.Visibility == "internal"</code> is a bare string comparison with no constant/enum in <code>pkg/github</code>, unlike other GitHub API enums in the package. A typo or API change would silently break the feature.</p>
+</div>
+
+<div class="finding">
+  <h3><span class="badge should-fix">Should fix</span>No logging when repos are skipped by ignore flags</h3>
+  <p class="file">cmd/peribolos/main.go:1503-1516</p>
+  <p>Ignored/private/internal repos are silently excluded with no <code>logrus</code> line, unlike other reconciliation actions in this file. Reduces operator visibility when auditing dry-run (<code>--confirm=false</code>) output.</p>
+</div>
+
+<h3 style="border:none;color:#045;">Nits</h3>
+
+<div class="finding">
+  <h3><span class="badge nit">Nit</span><code>ignoredRepos</code> manual comma-splitting undocumented</h3>
+  <p class="file">cmd/peribolos/main.go:163-174</p>
+  <p><code>flagutil.Strings.Set</code> does not split on commas itself — it appends the raw argument once per <code>--flag=value</code> occurrence. <code>ignoredRepos</code> correctly splits/trims/lowercases itself, but a short comment explaining why (vs. the existing, non-splitting <code>Strings.StringSet()</code>) would help future readers.</p>
+</div>
+
+<div class="finding">
+  <h3><span class="badge nit">Nit</span><code>configureTeamRepos</code> growing to 8 parameters</h3>
+  <p class="file">cmd/peribolos/main.go:1490</p>
+  <p>3 new ignore-related params threaded through unchanged on every recursive child-team call. Consider bundling them into a small struct if more ignore knobs are added later.</p>
+</div>
+
+<div class="finding">
+  <h3><span class="badge nit">Nit</span>New <code>Visibility</code> field lacks a doc comment</h3>
+  <p class="file">pkg/github/types.go:335</p>
+  <p><code>Visibility string</code> has three-way semantics (<code>public</code>/<code>private</code>/<code>internal</code>) but no comment. Also worth noting it may be empty on older GitHub Enterprise Server versions predating this API field — in which case <code>--ignore-internal-repos</code> fails safe but silently.</p>
+</div>
+
+<div class="finding">
+  <h3><span class="badge nit">Nit</span><code>cmp.Diff</code> argument order reversed in new test</h3>
+  <p class="file">cmd/peribolos/main_test.go:196</p>
+  <p><code>cmp.Diff(actual, expected)</code> reverses the conventional <code>cmp.Diff(want, got)</code> order; harmless here but inconsistent.</p>
+</div>
+
+<h3 style="border:none;color:#443;">Questions</h3>
+
+<div class="finding">
+  <h3><span class="badge question">Question</span><code>have</code> map keying vs. case-insensitive ignore matching</h3>
+  <p class="file">cmd/peribolos/main.go:1516</p>
+  <p><code>have[repo.Name]</code> is still keyed by original case while the new ignore matching is case-insensitive. Pre-existing exact-case want/have matching predates this PR — intentional, or worth revisiting given the new case-insensitive semantics layered on top?</p>
+</div>
+
+<h2>Things I checked and was fine with</h2>
+<ul>
+  <li><code>go build ./cmd/peribolos/... ./pkg/github/...</code> succeeds.</li>
+  <li><code>go test ./cmd/peribolos/...</code> passes, including new tests for <code>ignoredRepos</code>, ignore-repos/private/internal behavior in <code>configureTeamRepos</code>, and child-team propagation.</li>
+  <li><code>--ignore-repos</code> matching is case-insensitive consistently in both the have-building and want-diffing loops.</li>
+  <li>Flag naming follows the existing <code>--ignore-*</code> convention (<code>--ignore-secret-teams</code>, <code>--ignore-enterprise-teams</code>).</li>
+  <li>No markdown docs reference these flags, so none needed updating.</li>
+  <li>New <code>Visibility</code> field is additive-only on <code>github.Repo</code>; grepped other consumers (pluginhelp/hook, plugins/blunderbuss, plugins/lgtm, plugins/project, github/fakegithub, branchprotector, checkconfig) — none reference <code>.Visibility</code>, no deserialization risk for existing payloads.</li>
+  <li>All new flags default to no-op values (empty <code>flagutil.Strings</code>, <code>false</code> booleans) — no behavior change for operators who don't pass them; safe rollback, no config migration needed.</li>
+</ul>
+
+<h2>Open questions for the author</h2>
+<ul>
+  <li>Why were <code>--ignore-private-repos</code>/<code>--ignore-internal-repos</code> added when issue #737 only requested <code>--ignore-repos</code>? Would you be open to splitting them into a follow-up PR?</li>
+  <li>Given the "want-only" private/internal repo gap, do you want to fix it (fetch/verify visibility before adding), or explicitly document it as a known limitation with a test that pins the current behavior?</li>
+</ul>
+
+</body>
+</html>

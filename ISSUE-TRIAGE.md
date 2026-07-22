@@ -1,7 +1,7 @@
 # Triage for Issue #589
 
 **Status**: In Progress
-**Created**: 2026-04-19
+**Created**: 2026-07-22
 
 ## Issue Information
 
@@ -16,27 +16,33 @@
 
 **Analysis**
 
-This issue proposes a refactoring based on an existing TODO comment in the codebase. The TODO exists at `pkg/git/v2/client_factory.go:107` and identifies a code quality issue: the current implementation uses two boolean pointer fields (`UseInsecureHTTP` and `UseSSH`) to represent three mutually exclusive schemes (HTTPS, HTTP, SSH).
+This issue proposes a refactoring based on an existing TODO comment in the codebase. The TODO exists at `pkg/git/v2/client_factory.go:107` and identifies a code quality issue: the current implementation uses two boolean pointer fields (`UseInsecureHTTP` and `UseSSH`) to represent three mutually exclusive schemes (HTTPS, HTTP, SSH). Verified against current `main` (this worktree) — the TODO comment and struct fields are unchanged since the issue was filed.
 
 **Issue Category**: Enhancement/Refactoring
 
 **Repository Scope Check**:
-- Component mentioned: git/v2 client factory
+- Component mentioned: `pkg/git/v2` client factory
 - Exists in this repo: Yes
-- Relevant code paths: 
-  - `pkg/git/v2/client_factory.go` (lines 105-110, 162-167, 210-222, 315-327)
-  - Uses scheme flags in `ClientFactoryOpts` struct and decision logic in `NewClientFactory`
+- Relevant code paths:
+  - `pkg/git/v2/client_factory.go` (struct at lines ~102-128, TODO at line 107)
 
 **Information Completeness**:
 - Sufficient detail provided: Yes
 - Missing information: None critical
-- The issue references the exact TODO location and proposes a concrete solution approach
-- Author indicates willingness to implement the change
+- The issue quotes the exact TODO comment and proposes a concrete solution (a `SchemeType` enum)
+- Author (`tsj-30`, a repo member) self-assigned via `/assign` on 2026-01-12 and confirmed intent to draft a PR
+
+**Activity Since Filing**:
+- 2026-01-12: Author self-assigned (`/assign`); maintainer `matthyx` said no specific requirements, deferred to iteration; author agreed to draft a PR
+- 2026-01-16: `petr-muller` (maintainer) also deferred, gave a green light to "take a shot at it"
+- 2026-04-16: `k8s-triage-robot` applied `lifecycle/stale` after 90 days of inactivity
+- 2026-04-17: Author removed `lifecycle/stale`
+- 2026-07-16: `k8s-triage-robot` re-applied `lifecycle/stale` after another ~90 days of inactivity — **currently stale, no PR has materialized** despite two maintainer green-lights and an assignment
 
 **Current Implementation Analysis**:
 The current design uses two optional boolean pointers to encode three states:
 - Default/both-nil/both-false → HTTPS
-- `UseInsecureHTTP = true` → HTTP (overrides UseSSH per comment)  
+- `UseInsecureHTTP = true` → HTTP (overrides UseSSH per comment)
 - `UseSSH = true` → SSH
 
 This creates ambiguity (what if both are true?) and makes the API less clear than an explicit enum would be.
@@ -45,424 +51,10 @@ This creates ambiguity (what if both are true?) and makes the API less clear tha
 
 **Suggested Action**: Keep open and continue triage
 
-This is a legitimate refactoring request addressing a documented TODO in the codebase. The proposed enum-based approach would improve code clarity and maintainability. The issue is well-written and includes:
-- Exact location of the TODO
-- Clear problem statement
-- Proposed solution approach
-- Author commitment to implement
+This is a legitimate, maintainer-approved refactoring request addressing a documented TODO. The issue is well-written, was explicitly greenlit by two maintainers, and the author self-assigned — but six months later no PR has appeared and the issue is currently `lifecycle/stale`. This is worth flagging in the augmentation/comment: either nudge the assignee for status, or open the assignment back up if they're no longer working on it.
 
 Next steps: Proceed with research phase to identify all code locations that would need updating and assess implementation effort.
 
-### Code Research
-
-**Primary Components**:
-- `ClientFactoryOpts` struct (pkg/git/v2/client_factory.go:102-128) - Configuration options for git client factory
-- `NewClientFactory` function (pkg/git/v2/client_factory.go:292-341) - Constructs client factory with scheme-based remote resolver selection
-- `httpResolverFactory` struct (pkg/git/v2/remote.go:87-94) - HTTP/HTTPS remote URL resolver
-- `sshRemoteResolverFactory` struct (pkg/git/v2/remote.go:57-60) - SSH remote URL resolver
-- Helper functions (pkg/git/v2/client_factory.go:210-222) - `WithInsecureHTTP`, `WithSSH` option setters
-
-**Architecture Overview**:
-The git v2 client factory uses a strategy pattern to select between different remote resolver implementations based on scheme configuration. The `ClientFactoryOpts` struct holds configuration, and `NewClientFactory` selects the appropriate `RemoteResolverFactory` implementation (ssh, http/https, or gerrit) based on the options.
-
-**Key Code Paths**:
-1. Option configuration: client_factory.go:102-128 - Struct holds `UseInsecureHTTP *bool` and `UseSSH *bool`
-2. Option merging: client_factory.go:158-189 - `Apply` method copies non-nil options
-3. Scheme decision logic: client_factory.go:314-329 - Selects remote resolver factory:
-   - If `UseSSH != nil && *UseSSH`: choose `sshRemoteResolverFactory`
-   - Else if `CookieFilePath != ""`: choose `gerritResolverFactory`  
-   - Else: choose `httpResolverFactory` with `http` field set by `UseInsecureHTTP != nil && *UseInsecureHTTP`
-4. URL generation: remote.go:132-150 - `httpResolverFactory.resolve` builds scheme-based URLs
-
-**Data Flow**:
-1. Caller constructs `ClientFactoryOpts` either directly or via `WithInsecureHTTP`/`WithSSH` helpers
-2. `NewClientFactory` receives options, applies defaults
-3. Based on scheme flags, instantiates appropriate `RemoteResolverFactory` (ssh vs http vs gerrit)
-4. `httpResolverFactory` uses boolean `http` field to determine "http" vs "https" scheme
-5. Resolver generates git remote URLs with correct scheme when git operations are performed
-
-**Related Code**:
-- Only 3 files reference `UseSSH` or `UseInsecureHTTP`:
-  - `pkg/git/v2/client_factory.go` - Definition and logic
-  - `test/integration/test/moonraker_test.go` - Integration test usage (sets `UseInsecureHTTP = true`)
-  - `ISSUE-TRIAGE.md` - This document
-
-**Callers**:
-- `test/integration/test/moonraker_test.go:147-151, 381-385` - Integration tests create git client with `UseInsecureHTTP=true` to talk to test server
-
-**Similar Functionality**:
-- Gerrit support uses `CookieFilePath` string (not a boolean) to trigger selection of `gerritResolverFactory`
-
-### Test Coverage
-
-**Existing Tests**:
-- `pkg/git/v2/remote_test.go` - Unit tests for remote resolver factories:
-  - `TestSSHRemoteResolverFactory` - Tests SSH URL generation (git@host:org/repo.git format)
-  - `TestHTTPResolverFactory` - Tests HTTPS URL generation with auth
-  - `TestHTTPResolverFactory_NoAuth` - Tests HTTPS URL generation without auth
-  - **Gap**: No test verifies HTTP (insecure) vs HTTPS distinction
-  - **Gap**: Tests instantiate resolver factories directly, don't exercise `NewClientFactory` scheme selection logic
-
-- `test/integration/test/moonraker_test.go` - Integration tests:
-  - Uses `WithInsecureHTTP(true)` to configure client for HTTP test server
-  - Exercises actual HTTP URL usage but doesn't verify scheme selection logic
-
-**Test Gaps**:
-- No unit test for `NewClientFactory` scheme selection logic (lines 314-329)
-- No test verifying HTTP vs HTTPS distinction in `httpResolverFactory`
-- No test verifying mutual exclusion behavior (what happens if both UseSSH and UseInsecureHTTP are set?)
-- No test for option merging with scheme fields (`Apply` method)
-
-**Test Patterns**:
-- Remote resolver tests use table-driven approach with expected URL strings
-- Mock username/token getters using index-based vendors
-- Tests verify both URL format and error handling
-
-### Root Cause Analysis
-
-**Primary Cause**:
-Suboptimal API design using two optional booleans to represent three mutually exclusive states. This is a classic "tri-state boolean" anti-pattern.
-
-**Contributing Factors**:
-1. **Ambiguity**: Comment says "UseInsecureHTTP overrides UseSSH" but this isn't enforced - both could be true
-2. **Implicit defaults**: HTTPS is the default when both are nil/false, requiring knowledge of implementation
-3. **Poor discoverability**: New users must read comments to understand the precedence rules
-4. **Difficult validation**: Cannot statically enforce mutual exclusion with the current design
-
-**Design Issues**:
-- Optional pointers (`*bool`) are used to distinguish "not set" from "set to false", but this adds complexity
-- Decision logic has 3-way branch with implicit priority (SSH > HTTP > HTTPS)
-- The `httpResolverFactory` has its own boolean `http` field, duplicating scheme state
-
-### Proposed Solutions
-
-#### Approach 1: Enum-Based Scheme Type
-
-**Description**: Replace `UseInsecureHTTP` and `UseSSH` with a single `Scheme` field of enum type `SchemeType` with values `HTTPS` (default), `HTTP`, and `SSH`.
-
-**Pros**:
-- Explicit and self-documenting - no precedence rules to remember
-- Eliminates impossible states (can't have both SSH and HTTP set)
-- Type-safe - compiler enforces valid values
-- Simpler decision logic in `NewClientFactory`
-- Matches the TODO comment's suggestion exactly
-
-**Cons**:
-- **Breaking API change** - removes `UseInsecureHTTP` and `UseSSH` fields from `ClientFactoryOpts`
-- Existing callers using `WithInsecureHTTP()` and `WithSSH()` helpers must be updated
-- Serialized configurations (if any) would break
-- Would need deprecation period or major version bump
-
-**Affected Components**:
-- `ClientFactoryOpts` struct: replace two `*bool` fields with one `Scheme SchemeType` field
-- `NewClientFactory`: simplify 3-way decision to switch on enum value
-- `WithInsecureHTTP()`, `WithSSH()`: replace with `WithScheme(SchemeType)` or remove in favor of direct field access
-- `Apply` method: update to copy scheme field
-- `test/integration/test/moonraker_test.go`: update to use new API
-- Tests: add coverage for scheme selection logic
-
-**Complexity**: Medium - Straightforward refactor but breaks backwards compatibility
-
-**Backwards Compatibility**: **Breaking change** - would require major version bump or deprecation cycle
-
-#### Approach 2: Deprecation-Based Migration
-
-**Description**: Keep existing boolean fields but add new `Scheme SchemeType` field. Deprecate old fields with compatibility shims during transition period.
-
-**Pros**:
-- Allows gradual migration - both APIs work during transition
-- No immediate breakage for existing users
-- Can provide clear migration path with deprecation warnings
-- Eventually achieves same clean API as Approach 1
-
-**Cons**:
-- More complex implementation during transition period
-- Requires maintaining compatibility code temporarily
-- Decision logic becomes more complex (check new field first, fall back to old fields)
-- Larger PR with more edge cases to handle
-- Takes longer to fully achieve the desired clean state
-
-**Affected Components**:
-- All components from Approach 1, plus:
-- Compatibility logic to convert old fields to new scheme
-- Deprecation warnings/comments
-- Migration guide documentation
-
-**Complexity**: High - All of Approach 1 plus compatibility layer
-
-**Backwards Compatibility**: **Compatible** - old API continues to work with deprecation warnings
-
-#### Approach 3: Enum with Pointer (Preserve Optional Semantics)
-
-**Description**: Use `Scheme *SchemeType` (pointer to enum) to preserve the "not set" semantics of current optional booleans, with HTTPS as default when nil.
-
-**Pros**:
-- Maintains optional field semantics (nil = use default)
-- Single field replaces two fields - cleaner than current state
-- Less disruptive than non-pointer enum (Approach 1)
-- Still eliminates impossible states
-
-**Cons**:
-- Pointer-to-enum is less idiomatic in Go than value enum
-- Still a breaking API change
-- Requires nil checks in decision logic
-- Less clear than "HTTPS is zero value" pattern
-
-**Complexity**: Medium
-
-**Backwards Compatibility**: **Breaking change** - but smaller API surface change
-
-#### Recommendation
-
-**Preferred Approach**: **Approach 1 (Enum-Based Scheme Type)**
-
-**Rationale**:
-1. **Aligns with TODO**: The TODO explicitly suggests "combine into a single enum" - this is exactly what Approach 1 does
-2. **Cleanest long-term design**: Achieves the best API without carrying technical debt
-3. **Limited impact**: Only 1 external caller (`moonraker_test.go`) would need updates, making migration straightforward
-4. **Prow versioning**: Prow doesn't appear to provide API stability guarantees for `pkg/git/v2` package (it's under `pkg/`, not a published module)
-5. **Simple implementation**: Most straightforward to implement and test
-
-**Why not Approach 2**:
-- Adds significant complexity for minimal benefit
-- The only external caller is a test in the same repo, so compatibility layer provides little value
-- Makes the PR larger and harder to review
-
-**Why not Approach 3**:
-- Pointer-to-enum is non-idiomatic and doesn't provide meaningful benefit over Approach 1
-- Still breaks compatibility but achieves a less clean final state
-
-**Key Implementation Considerations**:
-1. Define `SchemeType` as iota-based enum with values: `SchemeHTTPS` (default/zero), `SchemeHTTP`, `SchemeSSH`
-2. Keep helper function pattern but make it `WithScheme(scheme SchemeType)` instead of separate `WithSSH`/`WithInsecureHTTP`
-3. Simplify `NewClientFactory` decision logic to single switch statement
-4. Add unit tests for scheme selection covering all three schemes
-5. Update integration test to use new API: `WithScheme(SchemeHTTP)`
-6. Consider adding `String()` method to `SchemeType` for debugging/logging
-
-**Testing Requirements**:
-- Unit test for `NewClientFactory` scheme selection (all three schemes)
-- Unit test for `httpResolverFactory` with HTTP vs HTTPS
-- Update existing integration tests
-- Test that enum zero value (HTTPS) works as default
-
-**Migration/Rollout Strategy**:
-Not applicable - this is an internal refactor with minimal external impact. The change can be made atomically in a single PR with all callers updated.
-
-### Effort Assessment
-
-**Effort Level**: 2 - Moderate (help-needed)
-
-**Summary**
-
-Well-defined refactoring with clear solution approach (enum replacement). Moderate scope (~4-5 files, ~200 LOC) with straightforward implementation, but involves breaking API change requiring careful handling. Suitable for contributors familiar with Go patterns and basic Prow structure.
-
-**Factor Analysis**
-
-#### Scope of Changes
-- **Assessment**: Small to Moderate
-- **Details**: 
-  - Core changes: 2 files (client_factory.go, remote.go)
-  - Test updates: 1-2 files (moonraker_test.go, new client_factory_test.go)
-  - Estimated ~200 lines modified/added
-  - Changes localized to pkg/git/v2 package
-- **Level Indication**: 1-2 (favors lower end due to localized scope)
-
-#### Complexity
-- **Assessment**: Simple
-- **Details**:
-  - Straightforward enum definition using Go iota pattern
-  - Replace two-boolean logic with single switch statement
-  - No concurrency, algorithms, or race conditions
-  - Similar pattern exists in codebase (can learn from examples)
-  - Most complex part is ensuring all usage sites are updated
-- **Level Indication**: 1-2
-
-#### Required Expertise
-- **Assessment**: Moderate
-- **Details**:
-  - Understanding of Go enums (iota pattern) - basic Go knowledge
-  - Familiarity with factory pattern and option functions
-  - Understanding pkg/git/v2 structure (can be learned from reading code)
-  - No deep Prow architectural knowledge required
-  - No domain expertise needed (GitHub API, Kubernetes, etc.)
-  - Learnable from existing code and documentation
-- **Level Indication**: 2-3 (moderate - can learn what's needed but not trivial)
-
-#### Clarity and Certainty
-- **Assessment**: Very Well-defined
-- **Details**:
-  - TODO comment explicitly suggests the solution ("combine into a single enum")
-  - Research phase identified clear recommended approach
-  - No trade-offs or multiple viable approaches - enum is clearly best
-  - Desired behavior is unambiguous
-  - All requirements are clear
-- **Level Indication**: 1-2
-
-#### Testing Requirements
-- **Assessment**: Moderate
-- **Details**:
-  - New unit tests for `NewClientFactory` scheme selection (3 test cases for 3 schemes)
-  - New unit test for `httpResolverFactory` HTTP vs HTTPS differentiation
-  - Update integration test (simple change: `UseInsecureHTTP` → `WithScheme(SchemeHTTP)`)
-  - Can follow existing test patterns from remote_test.go
-  - No integration test infrastructure needed (already exists)
-  - Standard table-driven test approach
-- **Level Indication**: 2-3 (moderate - needs new tests but patterns are clear)
-
-#### Backwards Compatibility
-- **Assessment**: Breaking API Change (but limited impact)
-- **Details**:
-  - Removes `UseInsecureHTTP` and `UseSSH` fields from public `ClientFactoryOpts` struct
-  - Breaks existing code using these fields directly or via `WithInsecureHTTP()`/`WithSSH()` helpers
-  - **Mitigation**: Only 1 external caller found (moonraker_test.go in same repo)
-  - pkg/git/v2 doesn't appear to have API stability guarantees
-  - No serialized config concerns (fields are runtime-only)
-  - Can be done atomically in single PR
-  - **Impact**: Low due to limited usage, but technically breaking
-- **Level Indication**: 2-3 (breaking change bumps from L1 to L2, but limited scope prevents L3)
-
-#### Architectural Alignment
-- **Assessment**: Perfect fit
-- **Details**:
-  - Directly addresses documented TODO in codebase
-  - Improves existing pattern without introducing new concepts
-  - Follows Go best practices (enum for mutually exclusive states)
-  - Aligns with Prow's code quality goals
-  - No contradiction with established patterns
-  - Makes API clearer and more maintainable
-- **Level Indication**: 1-2
-
-#### External Dependencies
-- **Assessment**: None
-- **Details**:
-  - Pure internal refactoring
-  - No external API dependencies
-  - No GitHub, Kubernetes, or other external system involvement
-  - All changes contained within pkg/git/v2 package
-- **Level Indication**: 1-3
-
-**Overall Determination**: **Level 2** - The breaking API change is the primary factor elevating this from Level 1 to Level 2. While the change is well-defined and straightforward, the backwards compatibility consideration requires care and understanding. However, the limited external impact (only 1 caller) and clear migration path keep this at Level 2 rather than Level 3.
-
-### Recommended Labels
-
-Based on this assessment:
-- [x] `help-wanted`: Appropriate for skilled contributor, well-defined scope
-- [x] `kind/cleanup`: Refactoring to improve code quality (addresses TODO)
-- [x] `area/git`: Changes to git v2 package
-- [ ] `good-first-issue`: Not recommended - breaking API change requires more than beginner-level understanding
-- [ ] `priority/*`: No priority label needed - quality improvement but not urgent
-
-### Guidance for Contributors
-
-**For Level 2 (Moderate)**:
-- **Suitable for**: Contributors familiar with Go patterns and willing to learn Prow's git v2 package structure
-- **Should review before starting**:
-  - `pkg/git/v2/client_factory.go` - Current implementation and option pattern
-  - `pkg/git/v2/remote.go` - Remote resolver factories
-  - `pkg/git/v2/remote_test.go` - Test patterns to follow
-  - Go enum patterns using iota
-- **Recommended approach**:
-  1. Define `SchemeType` enum (HTTPS=0, HTTP, SSH)
-  2. Add `Scheme SchemeType` field to `ClientFactoryOpts`, remove boolean fields
-  3. Update `NewClientFactory` decision logic to switch on enum
-  4. Replace `WithInsecureHTTP`/`WithSSH` with `WithScheme` or remove helpers
-  5. Update `Apply` method to copy scheme field
-  6. Update moonraker_test.go to use new API
-  7. Add unit tests for all three schemes
-  8. Optional: Add `String()` method for debugging
-- **Key considerations**:
-  - Ensure zero value (HTTPS) is the default
-  - Update all option merging/copying logic
-  - Test all three scheme paths
-  - Consider adding scheme validation if needed
-- **Estimated time**: 2-4 hours for experienced Go developer
-
-### Caveats and Considerations
-
-**Positive factors**:
-- Very clear TODO comment makes this an "approved" refactoring
-- Limited blast radius (only 1 external caller)
-- No architectural complexity - pure API cleanup
-- Good learning opportunity for understanding Prow's git client structure
-
-**Challenges**:
-- First breaking API change for contributor might be intimidating
-- Need to find all usages (though grep shows only 3 files)
-- Should think about whether to keep old helpers with deprecation warnings (probably not needed given limited usage)
-
-**Alternative approach**: If breaking changes are a concern, could implement Approach 2 (deprecation-based) from research phase, but this seems like overkill given the limited external usage.
-
-**Recommendation for issue author**: The issue author offered to implement this - they should feel confident proceeding with Approach 1 (enum-based scheme type) as the cleanest solution.
-
-### Proposed Issue Augmentation
-
-**Title Change**:
-- **No change needed**: Current title is clear and specific. It references the TODO comment and indicates the proposed solution (enum). While it could be reworded to be slightly more descriptive (e.g., "Refactor git scheme selection to use enum instead of boolean flags"), the current title accurately reflects the issue and matches the TODO comment verbatim, which is helpful for searchability.
-
-**Proposed GitHub Comment**:
-
-```markdown
-## Root Cause
-
-The current implementation uses two optional boolean pointers (`UseInsecureHTTP` and `UseSSH`) to represent three mutually exclusive schemes (HTTPS, HTTP, SSH). This is a classic "tri-state boolean" anti-pattern that creates several issues:
-- **Ambiguity**: The comment says "UseInsecureHTTP overrides UseSSH" but this precedence isn't enforced—both could be set to true
-- **Implicit defaults**: HTTPS is the default when both are nil/false, requiring users to understand implementation details
-- **Difficult validation**: Can't statically enforce mutual exclusion with the current design
-
-## Implementation Details
-
-The core changes needed are:
-1. **Define enum**: Add `SchemeType` with values `SchemeHTTPS` (zero value), `SchemeHTTP`, and `SchemeSSH` in `pkg/git/v2/client_factory.go`
-2. **Update struct**: Replace `UseInsecureHTTP *bool` and `UseSSH *bool` with single `Scheme SchemeType` field in `ClientFactoryOpts`
-3. **Simplify logic**: Replace the 3-way branch in `NewClientFactory:314-329` with a switch on the enum
-4. **Update helpers**: Replace `WithInsecureHTTP()` and `WithSSH()` with `WithScheme(SchemeType)` or remove in favor of direct field access
-5. **Tests**: Add unit tests for scheme selection logic and update `test/integration/test/moonraker_test.go`
-
-Note: This is technically a breaking API change, but research shows only one external caller (`moonraker_test.go`), making migration straightforward.
-
-## Related Work
-
-The `httpResolverFactory.resolve()` method in `pkg/git/v2/remote.go:132-150` already has internal logic that switches between "http" and "https" schemes. The enum would make this decision path clearer throughout the codebase.
-
-/area git
-/kind cleanup
-/help-wanted
-```
-
-**Rationale**:
-
-**What's being added**:
-- **Root cause analysis**: Explains WHY the current design is problematic (tri-state boolean anti-pattern, ambiguity, validation issues) - not mentioned in original issue
-- **Technical implementation details**: Specific steps, files, and line numbers for the refactoring - original issue proposed enum but didn't specify implementation approach
-- **Breaking change mitigation**: Notes that while technically breaking, impact is minimal (1 caller) - important context for potential contributors
-- **Related code context**: Points to `httpResolverFactory.resolve()` which already has scheme-switching logic
-
-**Why these labels**:
-- `/area git`: Affects `pkg/git/v2` package exclusively - this is the git client component
-- `/kind cleanup`: This is a refactoring/code quality improvement addressing a documented TODO, not a bug fix or new feature
-- `/help-wanted`: Based on Level 2 effort assessment - well-defined refactoring suitable for contributors familiar with Go patterns. Not `good-first-issue` because it involves a breaking API change and requires understanding of the git client structure
-
-**What's NOT included**:
-- **Detailed solution approaches**: The triage research identified three possible approaches (direct enum, deprecation-based, pointer-to-enum), but the comment recommends the clear winner (direct enum) to avoid overwhelming the reader
-- **Effort assessment details**: While extensively analyzed in triage, contributors don't need the full factor-by-factor breakdown in the issue
-- **Test coverage gaps**: Research identified that scheme selection logic isn't currently tested, but this is implied by "add unit tests" in the implementation steps
-- **Alternative workarounds**: None exist - this is a code quality issue, not a blocking bug
-- **Priority label**: This is a quality improvement but not urgent - no priority label needed
-
-### Briefing Completed
-
-**Briefed maintainer on**: 2026-04-21
-
-**Key questions asked**: None - briefing accepted without questions
-
-**Maintainer decision**: Proceed to wrapup phase to post augmentation comment and apply labels
-
 ## Next Steps
 
-- ✓ Initial validation complete - issue is LEGITIMATE
-- ✓ Research: Identify all code paths using scheme selection
-- ✓ Assess effort: Determine complexity and effort level
-- ✓ Augment: Propose improvements to issue description
-- ✓ Brief: Present findings to maintainer
-- [ ] Wrapup: Post triage results
+(Action items will be added here)

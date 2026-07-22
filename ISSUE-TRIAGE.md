@@ -200,6 +200,98 @@ Caller builds `ClientFactoryOpts` (directly or via `Apply`) → `NewClientFactor
 
 **Migration/Rollout Strategy**: Atomic single PR — no phased rollout needed given the caller inventory above.
 
+### Effort Assessment
+
+**Effort Level**: 2 - Moderate (help-needed)
+
+**Summary**
+
+Well-defined refactoring with a clear, TODO-endorsed solution (enum replacement). Small-to-moderate scope (~3-4 files, ~150-200 LOC) and technically a breaking API change, but the caller inventory from research shows the actual blast radius is minimal: the only production caller never touches these fields, and the only other caller is a 2-site integration test in this same repo.
+
+**Factor Analysis**
+
+#### Scope of Changes
+- **Assessment**: Small
+- **Details**: Core changes in 2 files (`client_factory.go`, `remote.go`); 1 existing test file to update (`moonraker_test.go`, 2 call sites); 1 new test file to add (`client_factory_test.go`, doesn't exist yet); ~150-200 LOC total, entirely within `pkg/git/v2`
+- **Level Indication**: 1-2
+
+#### Complexity
+- **Assessment**: Simple
+- **Details**: Iota-based enum replacing an if/else-if/else chain; no concurrency, no algorithmic difficulty. The main work is mechanical: define the enum, collapse the branch, update the 2 test call sites, and fill the two pre-existing test gaps identified in research (untested `http:true` branch, untested `NewClientFactory` scheme selection)
+- **Level Indication**: 1-2
+
+#### Required Expertise
+- **Assessment**: Moderate
+- **Details**: Basic Go (iota enums), understanding of the functional-options pattern used throughout `pkg/git/v2`, and reading comprehension of ~250 lines across 2 files. No Prow-wide architectural knowledge needed — research confirmed this code has no wider blast radius
+- **Level Indication**: 2
+
+#### Clarity and Certainty
+- **Assessment**: Very well-defined
+- **Details**: The TODO comment states the exact desired fix ("combine into a single enum"); research found no competing valid approach — the tradeoffs among the 3 approaches considered are one-sided once the caller inventory is known (no external consumer to protect via deprecation)
+- **Level Indication**: 1
+
+#### Testing Requirements
+- **Assessment**: Moderate
+- **Details**: Needs a new `client_factory_test.go` (doesn't exist today) covering all 3 scheme branches plus the SSH/Gerrit priority interaction; needs one new case in `remote_test.go` for `http:true`; needs the 2 `moonraker_test.go` call sites updated. All follow existing table-driven patterns already present in `remote_test.go`
+- **Level Indication**: 2
+
+#### Backwards Compatibility
+- **Assessment**: Breaking, but negligible real impact
+- **Details**: Removes 2 public struct fields (`UseInsecureHTTP`, `UseSSH`) and changes/removes `WithInsecureHTTP`/`WithSSH`. Per research, the sole production caller (`pkg/flagutil/github.go:339`) never sets either field, and the only other caller in the entire repo is `test/integration/test/moonraker_test.go` (2 sites) — both are fixed in this same PR. `pkg/git/v2` has no external API stability contract (internal `pkg/`, not a versioned module)
+- **Level Indication**: 2 (breaking-change label bumps this above Level 1, but the near-zero real impact keeps it well short of Level 3)
+
+#### Architectural Alignment
+- **Assessment**: Perfect fit
+- **Details**: Directly implements the TODO author's own suggested fix; introduces no new pattern to the codebase beyond a standard Go enum (research found no existing local enum to mirror, but this is a common, idiomatic Go pattern, not a novel architectural choice)
+- **Level Indication**: 1-2
+
+#### External Dependencies
+- **Assessment**: None
+- **Details**: Pure internal refactor, no GitHub/Kubernetes API interaction changes
+- **Level Indication**: 1-3
+
+**Overall Determination**: **Level 2**. The breaking API change is the only factor keeping this off Level 1, and research substantially de-risked that factor by confirming there is effectively one caller to fix (in-tree, in the same PR). Everything else — scope, complexity, clarity, alignment — points to Level 1.
+
+### Recommended Labels
+
+- [x] `help-wanted`: Well-defined, moderate scope, suitable for a skilled contributor
+- [x] `kind/cleanup`: Refactor addressing a documented TODO, not a bug or new feature
+- [x] `area/git`: Change is entirely within `pkg/git/v2`
+- [ ] `good-first-issue`: Not recommended — touches a public struct's API surface and requires updating call sites correctly, a bit much for a first PR
+- [ ] `priority/*`: Quality improvement, not urgent — no priority label needed
+
+### Guidance for Contributors
+
+**For Level 2 (Moderate)**:
+- Suitable for contributors comfortable with Go and willing to read ~250 lines of unfamiliar code
+- Should review before starting:
+  - `pkg/git/v2/client_factory.go` (struct, `Apply`, `NewClientFactory`, lines ~102-341)
+  - `pkg/git/v2/remote.go` (`httpResolverFactory`, `sshRemoteResolverFactory`)
+  - `pkg/git/v2/remote_test.go` for the existing table-driven test style
+  - `test/integration/test/moonraker_test.go:148,382` — the two call sites that must change
+- Recommended approach:
+  1. Define `SchemeType` (iota: `SchemeHTTPS`=0, `SchemeHTTP`, `SchemeSSH`)
+  2. Replace the two `*bool` fields on `ClientFactoryOpts` with `Scheme SchemeType`
+  3. Collapse `NewClientFactory`'s if/else-if/else (lines 314-329) into a switch, preserving SSH > Gerrit > HTTP(S) priority
+  4. Update or remove `WithInsecureHTTP`/`WithSSH`; update `Apply`
+  5. Update the 2 `moonraker_test.go` call sites
+  6. Add `pkg/git/v2/client_factory_test.go` covering all 3 schemes and the Gerrit-priority interaction
+  7. Add the missing `http:true` case to `remote_test.go`
+  8. Optional: `String()` method on `SchemeType`
+- Estimated time: 2-4 hours for an experienced Go contributor
+
+### Caveats and Considerations
+
+**Positive factors**:
+- TODO comment makes this a pre-approved refactor; two separate maintainers (`matthyx`, `petr-muller`) already gave a green light on the issue in January
+- Research confirms the blast radius is as small as it gets for a "breaking change" — one production caller unaffected, one in-tree test caller fixed in the same PR
+- Fills two genuine, pre-existing test gaps (untested `http:true` branch, untested `NewClientFactory` scheme selection) as a side effect
+
+**Challenges / new finding this triage pass**:
+- The issue author (`tsj-30`) self-assigned via `/assign` on 2026-01-12 and said they'd draft a PR, but as of this triage (2026-07-22) no PR has appeared. The issue was marked `lifecycle/stale` on 2026-04-16, unstaled by the author the next day, then marked stale again on 2026-07-16 — six months of assignment with no visible progress. Worth a status check or reassignment consideration in the augmentation comment.
+
+**Alternative approach**: None warranted — Approach 2 (deprecation shim) from the research phase would add cost without protecting any real external consumer.
+
 ## Next Steps
 
 (Action items will be added here)

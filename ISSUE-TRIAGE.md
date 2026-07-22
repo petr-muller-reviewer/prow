@@ -341,6 +341,19 @@ Grepped the whole repo for `UseInsecureHTTP`/`UseSSH`/`WithInsecureHTTP`/`WithSS
 
 **Maintainer note (not part of the proposed comment)**: The issue has been assigned to the reporter (`tsj-30`) since 2026-01-12 with no PR yet, and has been marked `lifecycle/stale` twice (2026-04-16, 2026-07-16 — most recently 6 days ago). Posting this comment will reset the stale timer without addressing that. Worth deciding separately whether to also ask `tsj-30` for a status update or open the assignment back up — the comment above deliberately doesn't presume that decision.
 
+### Briefing Completed
+
+**Briefed maintainer on**: 2026-07-22
+
+**Key questions asked**: None — briefing accepted without questions
+
+**Maintainer decision**: Proceed to wrapup phase to post augmentation comment and apply labels
+
 ## Next Steps
 
-(Action items will be added here)
+- ✓ Initial validation complete - issue is LEGITIMATE
+- ✓ Research: Identify all code paths using scheme selection
+- ✓ Assess effort: Determine complexity and effort level
+- ✓ Augment: Propose improvements to issue description
+- ✓ Brief: Present findings to maintainer
+- [ ] Wrapup: Post triage results

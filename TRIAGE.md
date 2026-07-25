@@ -4,11 +4,15 @@ title: "Feature Request: exclusive label sets"
 state: open
 labels: kind/feature, help wanted, sig/contributor-experience, sig/release, priority/important-longterm
 main_sha: 0633879af8026d056e1a5dbe1e29f5a98f6acec3
-triaged_at: 2026-07-23T10:15:41Z
+triaged_at: 2026-07-25T16:56:17Z
 verdict: accepted
 legitimacy: LEGITIMATE
 effort: 3
 recommended_labels: [help wanted, kind/feature]
+refresh_log:
+  - at: 2026-07-25T16:56:17Z
+    previous_triaged_at: 2026-07-23T10:15:41Z
+    summary: "anshulchikhale30-p pinged jberkus for a status update on 2026-07-25; no new information, maintainer decision on config scope still pending."
 ---
 
 ## Findings
@@ -62,6 +66,8 @@ recommended_labels: [help wanted, kind/feature]
 ### [related-issue] Origin of this request
 - ref: kubernetes/test-infra#6095
 - relevance: This issue was originally filed there at the request of the release team before the `kubernetes-sigs/prow` repo split; no code or discussion beyond the original request is expected there.
+
+Since previous triage (2026-07-23T10:15:41Z): `anshulchikhale30-p` pinged `jberkus` for a status update on 2026-07-25T05:54:48Z ("@jberkus any update on it?"). No new technical information; the config-scope decision from `@MadhavJivrajani`/`@cblecker` is still outstanding.
 
 ## Checked
 

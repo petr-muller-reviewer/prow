@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Triage: kubernetes-sigs/prow#179</title>
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+    color: #1a1a1a;
+    max-width: 860px;
+    margin: 2rem auto;
+    padding: 0 1.5rem;
+    background: #fff;
+  }
+  code, pre {
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 0.92em;
+  }
+  pre {
+    background: #f6f8fa;
+    padding: 0.8rem 1rem;
+    border-radius: 6px;
+    overflow-x: auto;
+    border: 1px solid #e1e4e8;
+  }
+  code {
+    background: #f6f8fa;
+    padding: 0.15em 0.4em;
+    border-radius: 4px;
+  }
+  pre code { background: none; padding: 0; }
+  h1 { font-size: 1.5rem; margin-bottom: 0.2rem; }
+  h2 {
+    font-size: 1.15rem;
+    margin-top: 2.2rem;
+    border-bottom: 1px solid #e1e4e8;
+    padding-bottom: 0.3rem;
+  }
+  h3 { font-size: 1rem; margin-top: 1.4rem; }
+  a { color: #0969da; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .meta {
+    background: #f6f8fa;
+    border: 1px solid #e1e4e8;
+    border-radius: 6px;
+    padding: 1rem 1.3rem;
+    margin: 1rem 0 1.5rem;
+    font-size: 0.92em;
+  }
+  .meta table { border-collapse: collapse; width: 100%; }
+  .meta td { padding: 0.15rem 0.5rem 0.15rem 0; vertical-align: top; }
+  .meta td.k { color: #57606a; white-space: nowrap; width: 1%; }
+  .verdict {
+    display: inline-block;
+    padding: 0.2em 0.7em;
+    border-radius: 999px;
+    font-weight: 600;
+    font-size: 0.85em;
+    background: #dafbe1;
+    color: #116329;
+    border: 1px solid #b4e6bd;
+  }
+  .tag {
+    display: inline-block;
+    font-size: 0.75em;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding: 0.1em 0.5em;
+    border-radius: 4px;
+    background: #ddf4ff;
+    color: #0969da;
+    margin-right: 0.5em;
+  }
+  ul { padding-left: 1.3rem; }
+  li { margin-bottom: 0.35rem; }
+  .finding { margin-bottom: 1.6rem; }
+  .finding .where { color: #57606a; font-size: 0.9em; }
+</style>
+</head>
+<body>
+
+<h1>Triage: Feature Request: exclusive label sets</h1>
+<div class="meta">
+<table>
+<tr><td class="k">Issue</td><td><a href="https://github.com/kubernetes-sigs/prow/issues/179">kubernetes-sigs/prow#179</a></td></tr>
+<tr><td class="k">State</td><td>open</td></tr>
+<tr><td class="k">Labels</td><td><code>kind/feature</code>, <code>help wanted</code>, <code>sig/contributor-experience</code>, <code>sig/release</code>, <code>priority/important-longterm</code></td></tr>
+<tr><td class="k">Triaged at</td><td>2026-07-23T10:15:41Z</td></tr>
+<tr><td class="k">Main SHA</td><td><code>0633879af8026d056e1a5dbe1e29f5a98f6acec3</code></td></tr>
+<tr><td class="k">Verdict</td><td><span class="verdict">accepted</span></td></tr>
+</table>
+</div>
+
+<h2>Verdict</h2>
+<p><strong>Accepted — legitimate, well-motivated feature request; effort level 3 (large), gated on an open maintainer design decision rather than code complexity.</strong></p>
+<p>The label plugin has no mechanism to enforce that only one label from a conceptual prefix set (<code>priority/</code>, <code>lifecycle/</code>, <code>tracked/</code>) exists at a time, forcing manual cleanup by the Release and Enhancements teams. A working analog already exists — hardcoded since 2018 in the standalone <code>lifecycle</code> plugin — and is the natural template to generalize into the <code>label</code> plugin via new configuration. The remaining blocker isn't code; it's an unresolved config-scope question awaiting input from <code>@MadhavJivrajani</code>/<code>@cblecker</code>.</p>
+
+<h2>What the issue reports</h2>
+<ul>
+<li>Users/bots can currently attach multiple labels from the same conceptual set simultaneously — e.g. two different <code>priority/*</code> labels on one issue — which doesn't make semantic sense.</li>
+<li>The Release Team and Enhancements team spend recurring effort manually cleaning up these duplicates.</li>
+<li>Requested fix: "exclusive sets" of label prefixes (<code>priority/</code>, <code>lifecycle/</code>, <code>tracked/</code>) where adding a label from a set auto-removes any other label already in that set.</li>
+<li>Originally filed as <a href="https://github.com/kubernetes/test-infra/issues/6095">kubernetes/test-infra#6095</a> before the repo split; the reporter notes this has been a known TODO for five years because it requires touching the label handler.</li>
+<li>A contributor is actively engaging on implementation design, but a scope decision is still pending from maintainers.</li>
+</ul>
+
+<h2>Analysis</h2>
+
+<h3>Reproducibility / observed behavior</h3>
+<p>Trivially reproducible: comment <code>/priority important-soon</code> on an issue that already has <code>priority/backlog</code>. Both labels end up applied — nothing removes the prior one. Root cause is structural, not a regression.</p>
+
+<h3>Probable cause</h3>
+<p><code>handleComment</code> (<code>pkg/plugins/label/label.go:147-312</code>) computes <code>labelsToAdd</code>/<code>labelsToRemove</code> independently from regex matches and applies them in two separate loops (<code>label.go:223-259</code> and <code>label.go:261-286</code>) with no cross-checking. The only prefix-grouping concept that exists — <code>needs-*</code> category handling at <code>label.go:206-221</code>, helper <code>labelsWithCategory</code> at <code>label.go:374-383</code> — only decides whether to add a <code>needs-kind</code>/<code>needs-priority</code> label; it doesn't enforce exclusivity between labels of the same category.</p>
+
+<h3>Related code</h3>
+
+<div class="finding">
+<span class="tag">related-code</span><strong>Existing mutual-exclusion precedent (hardcoded)</strong>
+<p class="where"><code>pkg/plugins/lifecycle/lifecycle.go:32-34, 102-146</code></p>
+<pre><code>lifecycleLabels = []string{labels.LifecycleActive, labels.LifecycleFrozen, labels.LifecycleStale, labels.LifecycleRotten}
+...
+if !github.HasLabel(lbl, labels) &amp;&amp; !remove {
+    for _, label := range lifecycleLabels {
+        if label != lbl &amp;&amp; github.HasLabel(label, labels) {
+            gc.RemoveLabel(org, repo, number, label)
+        }
+    }
+    gc.AddLabel(org, repo, number, lbl)
+}</code></pre>
+<p>This is exactly the behavior the issue requests, but fixed to one hardcoded slice and one fixed regex (<code>/lifecycle &lt;x&gt;</code>), living in a separate plugin from <code>label.go</code> — not configurable, not reusable for <code>priority/</code> or <code>tracked/</code>. Introduced in commit <code>83bd40f13</code> ("prow: allow only one lifecycle label to persist", 2018) — very likely the origin of the "5-year-old TODO" the issue references.</p>
+</div>
+
+<div class="finding">
+<span class="tag">related-code</span><strong>Label plugin configuration model</strong>
+<p class="where"><code>pkg/plugins/config.go:447-495</code></p>
+<pre><code>type Label struct {
+    AdditionalLabels []string
+    RestrictedLabels map[string][]RestrictedLabel
+}</code></pre>
+<p><code>RestrictedLabels</code> is keyed by <code>"*"</code> (global) / org / <code>org/repo</code>, resolved via <code>RestrictedLabelsFor</code> — the established idiom for global/org/repo config scoping in this plugin. It governs write <em>permission</em>, not exclusivity, but its merge machinery (<code>Label.mergeFrom</code>, config.go:2378-2398) is the likely template for a new exclusivity config. Maintainer <code>jberkus</code> stated the new config should be "per Prow installation rather than per repo" — suggesting a simpler global-only shape may be preferred.</p>
+</div>
+
+<div class="finding">
+<span class="tag">related-code</span><strong>Comparable prefix/regex + scoping pattern</strong>
+<p class="where"><code>pkg/plugins/config.go:921-957</code>, plugin at <code>pkg/plugins/require-matching-label/require-matching-label.go</code></p>
+<p><code>RequireMatchingLabel</code> uses a flat, org/repo/branch-scoped list with a compiled <code>Regexp</code> field — the "require at least one matching label" analog (opposite requirement, same regexp-prefix idea). Useful structural reference.</p>
+</div>
+
+<h3>Related issues / PRs</h3>
+<ul>
+<li><a href="https://github.com/kubernetes/test-infra/issues/6095">kubernetes/test-infra#6095</a> — original filing of this request before the repo split; no additional context beyond the original ask expected there.</li>
+<li>No PR currently exists implementing this. A contributor (<code>anshulchikhale30-p</code>) is discussing design in the issue comments but hasn't opened a PR.</li>
+</ul>
+
+<h2>What I checked</h2>
+<ul>
+<li>No partial exclusivity implementation exists anywhere in the codebase beyond the hardcoded <code>lifecycle</code> plugin.</li>
+<li><code>blunderbuss</code> and <code>sigmention</code> have no prefix-based label logic at all.</li>
+<li><code>tracked/*</code> is not currently a recognized label command prefix in Prow (no regex, no constant) — only reachable via the generic <code>/label</code> path with <code>AdditionalLabels</code> configured.</li>
+<li><code>lifecycle</code> is not among the built-in prefixes in <code>label.go</code>; it's handled entirely by the separate plugin.</li>
+<li>Broader codebase search for "exclusive"/"restricted label set" concepts turned up nothing relevant beyond unrelated config-validation comments (branch protection Include/Exclude, decoration config).</li>
+</ul>
+
+<h2>Recommended next steps</h2>
+<ul>
+<li>Get <code>@MadhavJivrajani</code>/<code>@cblecker</code> to weigh in on the open config-scope question from <code>jberkus</code>'s 2026-07-15 comment: global-only vs per-org/per-repo scoping.</li>
+<li>Once scope is settled, point <code>anshulchikhale30-p</code> at <code>lifecycle.go:102-146</code> and <code>config.go:447-495</code> as concrete implementation templates.</li>
+<li>Decide (can be deferred to PR review) whether to migrate the standalone <code>lifecycle</code> plugin onto the new generic mechanism, or leave it separate.</li>
+<li>If <code>tracked/*</code> support is meant to be in scope, decide how to add it as a recognized command prefix.</li>
+<li>Labels: keep <code>help wanted</code> and <code>kind/feature</code> as-is; not a <code>good-first-issue</code> candidate given the pending design decision.</li>
+</ul>
+
+<h2>Open questions</h2>
+<ul>
+<li>"Should the exclusive-label-sets config be global-only, or does it need per-org/per-repo scoping like <code>RestrictedLabels</code>?"</li>
+<li>"Should the standalone <code>lifecycle</code> plugin be migrated onto the new generic mechanism, or remain separate?"</li>
+<li>"Is <code>tracked/*</code> support actually in scope here, given it isn't a recognized command prefix in Prow today?"</li>
+</ul>
+
+</body>
+</html>
+</content>

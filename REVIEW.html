@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PR #549 Review: Allow filtering jobs by owner, repo and org</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --border: #30363d;
+    --text: #c9d1d9;
+    --text-muted: #8b949e;
+    --accent: #58a6ff;
+    --green: #3fb950;
+    --red: #f85149;
+    --yellow: #d29922;
+    --orange: #db6d28;
+    --purple: #bc8cff;
+    --diff-add-bg: #12261e;
+    --diff-del-bg: #2d1315;
+    --diff-add-border: #1a4d2e;
+    --diff-del-border: #5c2125;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    padding: 2rem;
+    max-width: 960px;
+    margin: 0 auto;
+  }
+  header {
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 1.5rem;
+    margin-bottom: 2rem;
+  }
+  header h1 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #f0f6fc;
+  }
+  header h1 a { color: var(--accent); text-decoration: none; }
+  header h1 a:hover { text-decoration: underline; }
+  .meta {
+    display: flex;
+    gap: 1.5rem;
+    margin-top: 0.5rem;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    flex-wrap: wrap;
+  }
+  .meta span { display: inline-flex; align-items: center; gap: 0.3rem; }
+  .badge {
+    display: inline-block;
+    padding: 0.15rem 0.5rem;
+    border-radius: 2em;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+  .badge-size { background: #1f3a5f; color: var(--accent); }
+
+  .summary-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1.25rem;
+    margin-bottom: 2rem;
+  }
+  .summary-box p { margin-bottom: 0.5rem; }
+  .summary-box p:last-child { margin-bottom: 0; }
+
+  .verdict {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.4rem 0.8rem;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+  }
+  .verdict-approve { background: #1a3a2a; color: var(--green); border: 1px solid #2a5a3a; }
+  .verdict-approve-suggest { background: #1a3a2a; color: var(--green); border: 1px solid #2a5a3a; }
+  .verdict-changes { background: #3a2a1a; color: var(--orange); border: 1px solid #5a3a1a; }
+
+  h2 {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #f0f6fc;
+    margin: 2rem 0 1rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid var(--border);
+  }
+  h3 {
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: #f0f6fc;
+    margin: 1.5rem 0 0.75rem;
+  }
+
+  .perspective-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1rem;
+  }
+  .perspective-card h4 {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #f0f6fc;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .perspective-verdict {
+    font-size: 0.75rem;
+    padding: 0.1rem 0.45rem;
+    border-radius: 2em;
+    font-weight: 600;
+  }
+  .pv-approve { background: #1a3a2a; color: var(--green); }
+  .pv-comment { background: #2a2000; color: var(--yellow); }
+  .pv-low { background: #1a3a2a; color: var(--green); }
+  .perspective-card ul {
+    margin: 0.4rem 0 0 1.2rem;
+    font-size: 0.88rem;
+  }
+  .perspective-card li { margin-bottom: 0.3rem; }
+
+  .convergence {
+    background: #1a1a2e;
+    border: 1px solid #2a2a5e;
+    border-radius: 6px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.5rem;
+  }
+  .convergence h3 {
+    margin-top: 0;
+    color: var(--purple);
+  }
+  .convergence ul {
+    margin: 0.4rem 0 0 1.2rem;
+    font-size: 0.9rem;
+  }
+  .convergence li { margin-bottom: 0.5rem; }
+  .convergence .flagged-by {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    font-style: italic;
+  }
+
+  .finding {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    margin-bottom: 1rem;
+    overflow: hidden;
+  }
+  .finding-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    cursor: pointer;
+    user-select: none;
+  }
+  .finding-header:hover { background: #1c2128; }
+  .severity {
+    flex-shrink: 0;
+    padding: 0.15rem 0.55rem;
+    border-radius: 2em;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .sev-converging { background: #1a1a2e; color: var(--purple); border: 1px solid #2a2a5e; }
+  .sev-high { background: var(--diff-del-bg); color: var(--red); border: 1px solid var(--diff-del-border); }
+  .sev-medium { background: #2a2000; color: var(--yellow); border: 1px solid #4a3800; }
+  .sev-low { background: #1a1a2e; color: var(--purple); border: 1px solid #2a2a4e; }
+  .sev-nit { background: #1a1a1a; color: var(--text-muted); border: 1px solid var(--border); }
+  .finding-title { font-weight: 600; font-size: 0.95rem; }
+  .finding-location {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-left: auto;
+    flex-shrink: 0;
+    font-family: 'SFMono-Regular', Consolas, monospace;
+  }
+  .finding-body {
+    padding: 0 1rem 1rem;
+    font-size: 0.9rem;
+  }
+  .finding-body p { margin-bottom: 0.6rem; }
+  .finding-body p:last-child { margin-bottom: 0; }
+
+  pre {
+    background: #0d1117;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 0.75rem 1rem;
+    overflow-x: auto;
+    font-size: 0.82rem;
+    line-height: 1.5;
+    margin: 0.6rem 0;
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+  }
+  code {
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+    font-size: 0.85em;
+    background: #1c2128;
+    padding: 0.15rem 0.35rem;
+    border-radius: 3px;
+  }
+  pre code { background: none; padding: 0; }
+
+  .diff-add { color: var(--green); }
+  .diff-del { color: var(--red); }
+
+  .checklist {
+    list-style: none;
+    padding: 0;
+  }
+  .checklist li {
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    font-size: 0.9rem;
+  }
+  .checklist li:last-child { border-bottom: none; }
+  .checklist input[type="checkbox"] {
+    margin-top: 0.25rem;
+    accent-color: var(--green);
+    width: 1rem;
+    height: 1rem;
+    flex-shrink: 0;
+  }
+
+  .file-list {
+    list-style: none;
+    padding: 0;
+    font-family: 'SFMono-Regular', Consolas, monospace;
+    font-size: 0.85rem;
+  }
+  .file-list li {
+    padding: 0.4rem 0;
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+  }
+  .file-stat {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+  }
+  .file-stat .add { color: var(--green); }
+  .file-stat .del { color: var(--red); }
+
+  .comment-template {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1rem;
+    margin-top: 0.5rem;
+  }
+  .comment-template summary {
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--accent);
+    margin-bottom: 0.5rem;
+  }
+  .comment-template pre {
+    margin: 0.5rem 0 0;
+    white-space: pre-wrap;
+  }
+
+  .pr-comment-box {
+    background: var(--surface);
+    border: 1px solid var(--green);
+    border-radius: 6px;
+    padding: 1.25rem;
+    margin: 1.5rem 0;
+  }
+  .pr-comment-box h3 {
+    margin-top: 0;
+    color: var(--green);
+    font-size: 0.95rem;
+  }
+  .pr-comment-box p {
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+  }
+  .pr-comment-box p:last-child { margin-bottom: 0; }
+
+  footer {
+    margin-top: 3rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1><a href="https://github.com/kubernetes-sigs/prow/pull/549">#549</a> Allow filtering jobs by owner, repo and org</h1>
+  <div class="meta">
+    <span>Author: <strong>@rikatz</strong></span>
+    <span><span class="add" style="color:var(--green)">+231</span> / <span class="del" style="color:var(--red)">&minus;25</span></span>
+    <span><span class="badge badge-size">size/L</span></span>
+    <span>Files: <strong>2</strong></span>
+  </div>
+</header>
+
+<div class="summary-box">
+  <p><strong>What it does:</strong> Adds server-side filtering to the <code>/prowjobs.js</code> Deck endpoint via <code>?org=</code>, <code>?repo=</code>, and <code>?owner=</code> query parameters. Merges the filtering and omit logic into a single loop over jobs, building a <code>finalJobs</code> slice with only matching entries.</p>
+  <p><strong>Motivation:</strong> Large Prow instances return huge JSON payloads. Server-side filtering reduces response size when callers only care about a specific org, repo, or PR author.</p>
+  <p><strong>Since previous review (2026-04-12):</strong> 2026-06-09: <code>k8s-triage-robot</code> applied <code>lifecycle/stale</code>. 2026-06-16: <code>petr-muller</code> removed stale label and asked @rikatz to address the review. 2026-06-18: <code>rikatz</code> replied to all inline comments and pushed <code>3f1a6cb9f</code> ("add extrarefs to filter, address comments"), confirming all findings addressed. PR was also rebased on a newer main; PR-specific delta is in <code>cmd/deck/main.go</code> and <code>cmd/deck/main_test.go</code>.</p>
+</div>
+
+<div class="verdict verdict-approve-suggest">Approve with suggestions</div>
+
+<div class="verdict verdict-approve" style="margin-top:0.5rem;">Gate: MERGE</div>
+<div class="summary-box" style="border-color: #2a5a3a; margin-top: 0.75rem;">
+  <p><strong>Gate decision (2026-06-30):</strong> All blocking/should-fix findings addressed. Purely additive change with no backward-incompatible API, config, or behavioral risk. Nothing gates merge.</p>
+  <p><strong>Addressed:</strong> ExtraRefs handling (new <code>refsMatch</code> helper with ExtraRefs fallback + test fixtures), doc comment added, <code>sets.New[string]</code> explicit type, repo-only test case added.</p>
+  <p><strong>Not addressed (nits, not blocking):</strong> <code>t.Run</code> subtests/<code>t.Fatalf</code> not adopted, <code>ownerMatch</code> closure still shadows outer variable, stray blank line.</p>
+  <p><strong>Note:</strong> <code>resp.Body.Close()</code> is now called inline before <code>io.ReadAll</code> &mdash; logically reads from a closed body, but harmless since <code>httptest.ResponseRecorder</code> buffers the response. Not a merge gate.</p>
+</div>
+
+<!-- ==================== Reviewer Perspectives ==================== -->
+
+<h2>Reviewer Perspectives</h2>
+
+<div class="perspective-card">
+  <h4>Code Quality <span class="perspective-verdict pv-approve">APPROVE</span></h4>
+  <ul>
+    <li>No critical issues &mdash; filtering logic is correct with consistent nil-safety checks on <code>Spec.Refs</code></li>
+    <li>Clean single-loop merge of filter + omit logic avoids a second pass</li>
+    <li><code>ownerMatch</code> closure shadows outer <code>owner</code> variable &mdash; could simplify signature</li>
+    <li>Test uses <code>t.Errorf</code> where existing tests use <code>t.Fatalf</code> for setup errors</li>
+    <li><code>defer resp.Body.Close()</code> in loop accumulates until function exit</li>
+    <li>Missing test case for repo-only filter</li>
+  </ul>
+</div>
+
+<div class="perspective-card">
+  <h4>Maintainability <span class="perspective-verdict pv-comment">COMMENT</span> &nbsp; Burden: LOW</h4>
+  <ul>
+    <li><code>ExtraRefs</code> gap is the main concern &mdash; periodic jobs silently excluded when filtering by org/repo</li>
+    <li>Codebase precedent exists for <code>ExtraRefs</code> fallback in <code>cmd/deck/rerun.go:171-172</code></li>
+    <li><code>ownerMatch</code> inline per-request is untestable in isolation</li>
+    <li>New query parameters are undocumented</li>
+    <li>Change is cleanly revertible, table-driven tests are idiomatic</li>
+  </ul>
+</div>
+
+<div class="perspective-card">
+  <h4>Deployment Risk <span class="perspective-verdict pv-low">LOW RISK</span></h4>
+  <ul>
+    <li>Purely additive &mdash; no config, CLI, RBAC, or schema changes</li>
+    <li>Without filters, behavior is identical to before</li>
+    <li>No action required from operators; drop-in upgrade</li>
+    <li>Performance neutral (same linear scan as existing omit logic)</li>
+    <li>Comprehensive tests cover no-filter, single-filter, and combined-filter scenarios</li>
+  </ul>
+</div>
+
+<!-- ==================== Converging Concerns ==================== -->
+
+<div class="convergence">
+  <h3>Converging Concerns</h3>
+  <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:0.75rem;">Issues independently flagged by 2+ reviewers carry the most weight.</p>
+  <ul>
+    <li>
+      <s><strong><code>ExtraRefs</code> not considered during filtering</strong></s> &mdash; <strong>resolved in <code>3f1a6cb9f</code></strong>; verify implementation matches <code>rerun.go:171-172</code> pattern.
+      <br><span class="flagged-by">Flagged by: Maintainability, Deployment Risk</span>
+    </li>
+    <li>
+      <strong>Tests should use <code>t.Run</code> subtests and <code>t.Fatalf</code></strong> &mdash; fixes <code>defer</code> scoping, improves failure isolation, matches existing <code>TestHandleProwJobs</code> pattern.
+      <br><span class="flagged-by">Flagged by: Code Quality, Maintainability</span>
+    </li>
+    <li>
+      <strong>New API parameters undocumented</strong> &mdash; <code>org</code>, <code>repo</code>, <code>owner</code> query params have no comments or docs.
+      <br><span class="flagged-by">Flagged by: Maintainability, Deployment Risk</span>
+    </li>
+  </ul>
+</div>
+
+<!-- ==================== Detailed Findings ==================== -->
+
+<h2>Detailed Findings</h2>
+
+<!-- Finding 1 — RESOLVED -->
+<div class="finding" style="opacity:0.6">
+  <div class="finding-header">
+    <span class="severity sev-nit">resolved</span>
+    <span class="finding-title"><s><code>ExtraRefs</code> not considered in org/repo/owner filtering</s></span>
+    <span class="finding-location">3f1a6cb9f</span>
+  </div>
+  <div class="finding-body">
+    <p>Addressed in commit <code>3f1a6cb9f</code>. Author confirmed: "filtering will also use extraRefs in case refs is null (for periodic jobs)". Verify implementation matches the <code>rerun.go:171-172</code> pattern before approving.</p>
+  </div>
+</div>
+
+<!-- Finding 2 -->
+<div class="finding">
+  <div class="finding-header">
+    <span class="severity sev-converging">2/3</span>
+    <span class="finding-title">Tests should use <code>t.Run</code> subtests and <code>t.Fatalf</code></span>
+    <span class="finding-location">main_test.go:559-610</span>
+  </div>
+  <div class="finding-body">
+    <p>The test iterates over cases without <code>t.Run(tc.Name, ...)</code>. This causes three issues:</p>
+    <ul style="margin: 0.5rem 0 0.5rem 1.5rem;">
+      <li><code>defer resp.Body.Close()</code> accumulates &mdash; all response bodies stay open until function exit (resource leak)</li>
+      <li>After <code>json.Unmarshal</code> fails, <code>t.Errorf</code> continues execution against a zero-value struct</li>
+      <li>Inconsistent with the existing <code>TestHandleProwJobs</code> which uses <code>t.Run</code></li>
+    </ul>
+    <p>Wrapping in <code>t.Run</code> fixes all three. Use <code>t.Fatalf</code> for setup errors (request creation, unmarshal).</p>
+<pre><code><span class="diff-del">-   for _, tc := range testCases {
+-       // ... test body ...
+-       resp := rr.Result()
+-       defer resp.Body.Close()
+-       // ...
+-       if err != nil {
+-           t.Errorf("Error making request: %v", err)
+-       }</span>
+<span class="diff-add">+   for _, tc := range testCases {
++       t.Run(tc.Name, func(t *testing.T) {
++           // ... test body ...
++           resp := rr.Result()
++           defer resp.Body.Close()
++           // ...
++           if err != nil {
++               t.Fatalf("Error making request: %v", err)
++           }
++       })
++   }</span></code></pre>
+    <details class="comment-template">
+      <summary>Suggested review comment</summary>
+      <pre><code>Could you wrap each test case in `t.Run(tc.Name, func(t *testing.T) { ... })`?
+This matches the pattern in `TestHandleProwJobs` above and fixes the `defer`
+scoping issue. Also, setup errors (request creation, unmarshal) should use
+`t.Fatalf` since continuing past them produces misleading results.</code></pre>
+    </details>
+  </div>
+</div>
+
+<!-- Finding 3 -->
+<div class="finding">
+  <div class="finding-header">
+    <span class="severity sev-converging">2/3</span>
+    <span class="finding-title">New API parameters undocumented</span>
+    <span class="finding-location">main.go:790-792</span>
+  </div>
+  <div class="finding-body">
+    <p>The <code>org</code>, <code>repo</code>, and <code>owner</code> query parameters are undocumented. Adding a brief comment block on the handler listing supported parameters would help future maintainers and API consumers.</p>
+    <details class="comment-template">
+      <summary>Suggested review comment</summary>
+      <pre><code>nit: Consider adding a brief comment documenting the supported query parameters
+for this endpoint (org, repo, owner, omit) so future maintainers and API
+consumers can discover them.</code></pre>
+    </details>
+  </div>
+</div>
+
+<!-- Finding 4 -->
+<div class="finding">
+  <div class="finding-header">
+    <span class="severity sev-low">low</span>
+    <span class="finding-title"><code>ownerMatch</code> closure: simplify or extract</span>
+    <span class="finding-location">main.go:794-804</span>
+  </div>
+  <div class="finding-body">
+    <p>The <code>ownerMatch</code> closure takes <code>owner</code> as a parameter even though it's only ever called with the outer variable. Two options:</p>
+    <ul style="margin: 0.5rem 0 0.5rem 1.5rem;">
+      <li><strong>Simplify:</strong> remove the <code>owner</code> parameter and capture it from the closure scope &mdash; call as <code>ownerMatch(jobs[i])</code></li>
+      <li><strong>Extract:</strong> move to a package-level function (avoids per-request allocation, enables isolated testing)</li>
+    </ul>
+<pre><code><span class="diff-add">func ownerMatch(job prowapi.ProwJob, owner string) bool {
+    if job.Spec.Refs == nil {
+        return false
+    }
+    for _, pull := range job.Spec.Refs.Pulls {
+        if pull.Author == owner {
+            return true
+        }
+    }
+    return false
+}</span></code></pre>
+    <details class="comment-template">
+      <summary>Suggested review comment</summary>
+      <pre><code>nit: `ownerMatch` doesn't close over anything from the handler scope (the
+`owner` parameter shadows the outer variable). Consider either simplifying
+the signature to `func(job prowapi.ProwJob) bool` (capturing `owner` from
+the closure) or extracting it as a package-level function.</code></pre>
+    </details>
+  </div>
+</div>
+
+<!-- Finding 5 -->
+<div class="finding">
+  <div class="finding-header">
+    <span class="severity sev-low">low</span>
+    <span class="finding-title">Missing test case for repo-only filter</span>
+    <span class="finding-location">main_test.go:529-552</span>
+  </div>
+  <div class="finding-body">
+    <p>The <code>repo</code> filter is only tested in combination with <code>org</code> and <code>owner</code>. A test case with just <code>?repo=pizzacontroller</code> (no org, no owner) would verify the cross-org matching behavior and improve coverage of the independent filter paths.</p>
+    <details class="comment-template">
+      <summary>Suggested review comment</summary>
+      <pre><code>Could you add a test case for filtering by `repo` alone? It would match
+across all orgs, which is worth verifying is intentional and tested.</code></pre>
+    </details>
+  </div>
+</div>
+
+<!-- Finding 6 -->
+<div class="finding">
+  <div class="finding-header">
+    <span class="severity sev-nit">nit</span>
+    <span class="finding-title">Stray blank line after <code>for</code> statement</span>
+    <span class="finding-location">main_test.go:~562</span>
+  </div>
+  <div class="finding-body">
+<pre><code><span class="diff-del">-   for _, tc := range testCases {
+-
+-       queryS := make(url.Values)</span>
+<span class="diff-add">+   for _, tc := range testCases {
++       queryS := make(url.Values)</span></code></pre>
+  </div>
+</div>
+
+<!-- ==================== Advisor Recommendation ==================== -->
+
+<h2>Maintainer Advisor &mdash; Final Recommendation</h2>
+
+<div class="pr-comment-box">
+  <h3>Ready-to-post PR Comment</h3>
+  <p>LGTM &mdash; approving this. The filtering logic is correct, the change is fully backward compatible, and test coverage is solid. Two suggestions worth considering: (1) use <code>t.Run</code> subtests and <code>t.Fatalf</code> for setup errors in the new test to match existing test style, and (2) consider a follow-up to handle <code>ExtraRefs</code> so periodic jobs are not silently excluded when filtering by org/repo. Neither is blocking.</p>
+</div>
+
+<!-- ==================== Review Checklist ==================== -->
+
+<h2>Review Checklist</h2>
+<ul class="checklist">
+  <li><input type="checkbox"><span><strong>[converging]</strong> Discuss <code>ExtraRefs</code> handling with author &mdash; address now or file follow-up</span></li>
+  <li><input type="checkbox"><span><strong>[converging]</strong> Tests refactored to use <code>t.Run</code> subtests with <code>t.Fatalf</code> for setup errors</span></li>
+  <li><input type="checkbox"><span><strong>[converging]</strong> Document new <code>org</code>, <code>repo</code>, <code>owner</code> query parameters</span></li>
+  <li><input type="checkbox"><span><code>ownerMatch</code> simplified or extracted to package level</span></li>
+  <li><input type="checkbox"><span>Test case added for repo-only filter</span></li>
+  <li><input type="checkbox"><span>Stray blank line removed</span></li>
+  <li><input type="checkbox"><span>CI passes after changes</span></li>
+</ul>
+
+<footer>
+  Review prepared for PR #549 &middot; kubernetes-sigs/prow &middot; Originally 2026-04-12, refreshed 2026-06-25T12:52:31Z &middot; Multi-perspective maintainer review (Code Quality + Maintainability + Deployment Risk)
+</footer>
+
+</body>
+</html>

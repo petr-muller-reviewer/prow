@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Triage: kubernetes-sigs/prow#673</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; line-height: 1.6; max-width: 52em; margin: 2em auto; padding: 0 1em; color: #1a1a1a; }
+  h1 { font-size: 1.4em; border-bottom: 2px solid #333; padding-bottom: .3em; }
+  h2 { font-size: 1.15em; margin-top: 1.8em; border-bottom: 1px solid #ccc; padding-bottom: .2em; }
+  h3 { font-size: 1em; margin-top: 1.2em; }
+  code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; font-size: 0.9em; background: #f4f4f4; padding: .15em .3em; border-radius: 3px; }
+  pre { background: #f4f4f4; padding: 1em; overflow-x: auto; border-radius: 4px; font-size: 0.85em; line-height: 1.45; }
+  pre code { background: none; padding: 0; }
+  a { color: #0366d6; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  ul { padding-left: 1.5em; }
+  li { margin-bottom: .3em; }
+  .meta { background: #f8f9fa; border: 1px solid #e1e4e8; border-radius: 6px; padding: 1em 1.2em; margin-bottom: 1.5em; }
+  .meta table { border-collapse: collapse; width: 100%; }
+  .meta td { padding: .25em .5em; vertical-align: top; }
+  .meta td:first-child { font-weight: 600; white-space: nowrap; width: 10em; color: #555; }
+  .verdict-box { background: #dff0d8; border: 1px solid #b2d8a3; border-radius: 6px; padding: .8em 1.2em; margin-bottom: 1.5em; }
+  .verdict-box strong { color: #2d6a1e; }
+</style>
+</head>
+<body>
+
+<h1>Triage: kubernetes-sigs/prow#673</h1>
+
+<div class="meta">
+<table>
+<tr><td>Issue</td><td><a href="https://github.com/kubernetes-sigs/prow/issues/673">kubernetes-sigs/prow#673</a></td></tr>
+<tr><td>Title</td><td>Tide gets stuck retrying unmergeable PR instead of advancing to next candidate</td></tr>
+<tr><td>State</td><td>open</td></tr>
+<tr><td>Labels</td><td>lifecycle/stale</td></tr>
+<tr><td>Triaged at</td><td>2026-07-01T12:47:15Z</td></tr>
+<tr><td>Main SHA</td><td><code>ae8e2d87967f0a2b45cfed2c514f5ec91b964596</code></td></tr>
+<tr><td>Verdict</td><td><strong>accepted</strong></td></tr>
+</table>
+</div>
+
+<div class="verdict-box">
+<strong>Accepted.</strong> Legitimate bug in Tide's merge loop. A PR that GitHub refuses to merge (branch protection) blocks the entire merge queue indefinitely because Tide has no cross-cycle memory of merge failures. PR <a href="https://github.com/kubernetes-sigs/prow/pull/674">#674</a> proposes a well-scoped fix.
+</div>
+
+<h2>What the issue reports</h2>
+<ul>
+<li>When <code>enforce_admins: true</code> and <code>required_approving_review_count: N</code> are set in branch protection, a PR with <code>lgtm</code>+<code>approved</code> labels but fewer than N GitHub reviews fails to merge with HTTP 405 (<code>UnmergablePRError</code>).</li>
+<li>Tide retries the same PR every sync cycle because <code>accumulate()</code> only looks at CI status (which is green) and has no awareness of prior merge failures.</li>
+<li><code>pickHighestPriorityPR()</code> is deterministic (lowest PR number), so the same stuck PR wins every cycle, starving all other ready-to-merge PRs.</li>
+<li>The error is logged at Debug level only &mdash; operators may not notice the queue is stalled.</li>
+<li>A member comment confirms the same loop occurs when a PR has a "changes requested" review verdict alongside lgtm/approve labels.</li>
+</ul>
+
+<h2>Analysis</h2>
+
+<h3>Probable cause</h3>
+<p>The sync cycle (<code>Sync()</code> &rarr; <code>syncSubpool()</code> &rarr; <code>accumulate()</code> &rarr; <code>takeAction()</code>) has no state that persists across cycles. Three factors combine:</p>
+<ol>
+<li><code>accumulate()</code> (<code>pkg/tide/tide.go:1077</code>) classifies PRs purely by ProwJob/CI status. A PR with passing CI always lands in <code>successes</code>, regardless of merge history.</li>
+<li><code>tryMerge()</code> (<code>pkg/tide/tide.go:1474</code>) returns <code>keepTrying=true</code> for <code>UnmergablePRError</code>, meaning "continue to next PR in batch." For single-PR merges, the cycle just ends. Nothing records the failure.</li>
+<li><code>pickHighestPriorityPR()</code> (<code>pkg/tide/tide.go:912</code>) always picks the lowest-numbered PR from <code>successes</code>, so the same PR is selected again.</li>
+</ol>
+
+<h3>Existing partial mitigation</h3>
+<p><code>isAllowedToMerge()</code> (<code>pkg/tide/github.go:630-638</code>) checks <code>MergeStateStatus == "BLOCKED"</code> with a configurable <code>github_merge_blocks_policy</code>. Setting it to <code>"block"</code> would filter these PRs at the <code>filterSubpool</code> level. However, the default is <code>"permit"</code> (<code>pkg/config/tide.go:412</code>), so most deployments are unprotected. There may also be edge cases where GitHub hasn't updated <code>MergeStateStatus</code> yet.</p>
+
+<h3>Related code</h3>
+
+<p><code>pkg/tide/tide.go:1558-1561</code> &mdash; single-PR merge path in <code>takeAction()</code>:</p>
+<pre><code>if ok, pr := pickHighestPriorityPR(sp.log, successes, sp.cc, c.isPassingTests, c.config().Tide.Priority); ok {
+    merged, err = c.provider.mergePRs(sp, []CodeReviewCommon{pr}, c.statusUpdate.dontUpdateStatus)
+    return Merge, []CodeReviewCommon{pr}, err
+}</code></pre>
+
+<p><code>pkg/tide/github.go:281-286</code> &mdash; merge attempt in <code>mergePRs()</code>:</p>
+<pre><code>keepTrying, err := tryMerge(func() error {
+    ghMergeDetails := gi.prepareMergeDetails(commitTemplates, pr, *mergeMethod)
+    return gi.ghc.Merge(sp.org, sp.repo, pr.Number, ghMergeDetails)
+})
+if err != nil {
+    log.WithError(err).Debug("Merge failed.")</code></pre>
+
+<p><code>pkg/tide/tide.go:1474-1475</code> &mdash; <code>UnmergablePRError</code> handling in <code>tryMerge()</code>:</p>
+<pre><code>} else if _, ok = err.(github.UnmergablePRError); ok {
+    return true, fmt.Errorf("PR is unmergable. Do the Tide merge requirements match the GitHub settings for the repo? %w", err)</code></pre>
+
+<p><code>pkg/github/client.go:4211-4214</code> &mdash; error type:</p>
+<pre><code>type UnmergablePRError string
+func (e UnmergablePRError) Error() string { return string(e) }</code></pre>
+
+<h3>Related issues / PRs</h3>
+<ul>
+<li><a href="https://github.com/kubernetes-sigs/prow/issues/134">#134</a> &mdash; Complementary bug: Tide not honoring review count when <code>enforce_admins</code> is false (merges with 0 reviews). Open.</li>
+<li><a href="https://github.com/kubernetes-sigs/prow/pull/674">#674</a> &mdash; Direct fix by the issue author. Adds <code>mergeExclusions</code> map with 5-minute TTL and SHA-scoped invalidation. Open.</li>
+<li><a href="https://github.com/kubernetes-sigs/prow/pull/538">#538</a> &mdash; Related: remove PR from batch when batch fails. Open.</li>
+</ul>
+
+<h2>What I checked</h2>
+<ul>
+<li>All code references from the issue body verified against HEAD <code>ae8e2d87</code>.</li>
+<li><code>syncController</code> struct (<code>pkg/tide/tide.go:79-98</code>) has no merge failure tracking fields.</li>
+<li><code>accumulate()</code> has no merge history awareness &mdash; purely ProwJob status.</li>
+<li><code>MergeStateStatusBlocked</code> / <code>github_merge_blocks_policy</code> examined as partial mitigation &mdash; default <code>"permit"</code> does not prevent the issue.</li>
+<li>Gerrit provider (<code>pkg/tide/gerrit.go</code>) treats all merge errors as immediate failures &mdash; not affected.</li>
+<li>No existing tests verify cross-cycle advancement past stuck PRs.</li>
+<li>@tuminoid member comment confirmed the same loop with "changes requested" reviews.</li>
+</ul>
+
+<h2>Recommended next steps</h2>
+<ul>
+<li>Review <a href="https://github.com/kubernetes-sigs/prow/pull/674">PR #674</a> &mdash; it directly addresses this issue with a well-scoped, tested fix (temporary exclusion with TTL + SHA invalidation).</li>
+<li>Remove <code>lifecycle/stale</code> label and apply <code>kind/bug</code>, <code>area/tide</code>.</li>
+<li>Verify that @tuminoid's "changes requested" scenario is covered by PR #674 (it should be &mdash; any <code>UnmergablePRError</code> triggers exclusion regardless of the specific rejection reason).</li>
+<li>Consider as a follow-up whether <code>github_merge_blocks_policy</code> default should change from <code>"permit"</code> to <code>"block"</code>.</li>
+</ul>
+
+<h2>Open questions</h2>
+<ul>
+<li>Should PR #674 be adopted as-is, or does the maintainer team prefer a different approach?</li>
+<li>Is 5 minutes the right TTL for the merge exclusion? Should it be configurable via Tide config?</li>
+<li>Should the <code>github_merge_blocks_policy</code> default be reconsidered as a related follow-up?</li>
+</ul>
+
+</body>
+</html>

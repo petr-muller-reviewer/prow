@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Review: kubernetes-sigs/prow#778</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; line-height: 1.6; max-width: 860px; margin: 2rem auto; padding: 0 1rem; color: #24292f; }
+  h1 { font-size: 1.4rem; border-bottom: 1px solid #d0d7de; padding-bottom: 0.4rem; }
+  h2 { font-size: 1.15rem; margin-top: 2rem; border-bottom: 1px solid #d0d7de; padding-bottom: 0.3rem; }
+  h3 { font-size: 1rem; margin-top: 1.4rem; }
+  code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; font-size: 0.9em; background: #f6f8fa; padding: 0.15em 0.35em; border-radius: 4px; }
+  pre { background: #f6f8fa; padding: 1rem; border-radius: 6px; overflow-x: auto; font-size: 0.85em; line-height: 1.5; }
+  pre code { background: none; padding: 0; }
+  .header-meta { background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 6px; padding: 0.8rem 1rem; margin-bottom: 1.5rem; font-size: 0.9em; }
+  .header-meta dt { font-weight: 600; display: inline; }
+  .header-meta dd { display: inline; margin: 0 1.2rem 0 0; }
+  .verdict { padding: 0.8rem 1rem; border-radius: 6px; margin: 1rem 0; }
+  .verdict.approve { background: #dafbe1; border: 1px solid #2da44e; }
+  .severity { display: inline-block; font-size: 0.75em; font-weight: 600; padding: 0.15em 0.5em; border-radius: 3px; text-transform: uppercase; vertical-align: middle; margin-right: 0.4rem; }
+  .severity.should-fix { background: #fff1e5; color: #bc4c00; border: 1px solid #d4a72c; }
+  .severity.nit { background: #f6f8fa; color: #656d76; border: 1px solid #d0d7de; }
+  .severity.resolved { background: #dafbe1; color: #1a7f37; border: 1px solid #2da44e; }
+  .finding { margin: 1.2rem 0; padding: 0.8rem 1rem; border-radius: 0 6px 6px 0; }
+  .finding.should-fix { border-left: 3px solid #d4a72c; background: #fffbf0; }
+  .finding.nit { border-left: 3px solid #d0d7de; background: #f6f8fa; }
+  .finding.resolved { border-left: 3px solid #2da44e; background: #dafbe1; }
+  .followup { margin: 1.2rem 0; padding: 0.8rem 1rem; border-left: 3px solid #a371f7; background: #fbefff; border-radius: 0 6px 6px 0; }
+  .posted { font-size: 0.8em; color: #656d76; font-style: italic; }
+  .update-note { background: #ddf4ff; border: 1px solid #54aeff; border-radius: 6px; padding: 0.8rem 1rem; margin: 1rem 0; font-size: 0.9em; }
+  ul { padding-left: 1.4rem; }
+  li { margin: 0.3rem 0; }
+  a { color: #0969da; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+
+<h1>Review: Add /override-sticky command for persistent overrides</h1>
+
+<div class="header-meta">
+  <dl>
+    <dt>PR:</dt><dd><a href="https://github.com/kubernetes-sigs/prow/pull/778">kubernetes-sigs/prow#778</a></dd>
+    <dt>Head SHA:</dt><dd><code>a28708fb8055cd4b5376a84abfcec2443faecdd8</code></dd>
+    <dt>Base:</dt><dd><code>main</code></dd>
+    <dt>Reviewed:</dt><dd>2026-07-03T11:30:53Z</dd>
+    <dt>Previous SHA:</dt><dd><code>e1347598</code></dd>
+  </dl>
+</div>
+
+<h2>Verdict</h2>
+<div class="verdict approve">
+  <strong>Approve with suggestions.</strong>
+  Author addressed 6 of 8 findings in <code>a28708fb</code>. The remaining baseSHA semantic issue is the main outstanding item. Operator precedence parentheses are a minor nit. Overall the PR is in good shape.
+</div>
+
+<h2>What this PR does</h2>
+<ul>
+  <li>Adds <code>/override-sticky</code> command that embeds a <code>[prow:skip-retest]</code> sentinel in the GitHub status description, telling Tide to treat the context as permanently passing for the current HEAD SHA even when the base branch moves.</li>
+  <li>Adds <code>/override-cancel</code> command to remove overrides (both regular and sticky) by setting their statuses to failure.</li>
+  <li>Regular <code>/override</code> now embeds baseSHA in the status description via <code>ContextDescriptionWithBaseSha</code>, fixing the ~48h Sinker-reaping expiry bug.</li>
+  <li>Tide's <code>prowJobsFromContexts</code> gains an <code>IsSkipRetest</code> check alongside the existing baseSHA match &mdash; sentinel and helper live in <code>pkg/config</code>.</li>
+  <li>No config schema changes, no new dependencies, no deployment ordering requirements.</li>
+</ul>
+
+<div class="update-note">
+  <strong>Since previous review</strong> (<code>e1347598</code> &rarr; <code>a28708fb</code>):
+  <ul>
+    <li>Extracted <code>isAuthorized()</code> helper, eliminating auth duplication between <code>handle()</code> and <code>handleOverrideCancel()</code>.</li>
+    <li>Dispatch now calls all three handlers sequentially &mdash; mixed command types in one comment are all processed.</li>
+    <li><code>/override-cancel</code> broadened to work on all overrides (checks <code>"Overridden by"</code> instead of sentinel only).</li>
+    <li>Error messages now reflect actual command name via <code>cmdName</code> variable.</li>
+    <li>Added <code>TestStickyDescriptionFitsGitHubLimit</code> test for description length.</li>
+  </ul>
+</div>
+
+<h2>Findings &mdash; Still Open</h2>
+
+<h3>Should fix</h3>
+
+<div class="finding should-fix">
+  <p><span class="severity should-fix">should fix</span> <strong>Regular <code>/override</code> should reuse baseSHA from the overridden context</strong></p>
+  <p><code>pkg/plugins/override/override.go:513</code></p>
+  <pre><code>baseSHA, err := baseSHAGetter()</code></pre>
+  <p><code>baseSHAGetter()</code> fetches the <em>current</em> base branch HEAD at override time. For regular <code>/override</code>, this is semantically wrong &mdash; the override just changes the verdict from fail to success, it shouldn't claim the job ran against a different base. Should reuse the baseSHA already embedded in the overridden context's description (via <code>BaseSHAFromContextDescription</code>). Fall back to the current base SHA only if the original context has none.</p>
+  <p class="posted">Posted on PR: override.go:513 &mdash; not addressed in a28708fb</p>
+</div>
+
+<h3>Nits</h3>
+
+<div class="finding nit">
+  <p><span class="severity nit">nit</span> <strong>Operator precedence ambiguity in Tide condition</strong></p>
+  <p><code>pkg/tide/tide.go:1056</code></p>
+  <pre><code>if config.IsSkipRetest(desc) || baseSHAForContext != "" &amp;&amp; baseSHAForContext == baseSHA {</code></pre>
+  <p>Correct per Go rules but reads ambiguously. Adding explicit parentheses around the <code>&amp;&amp;</code> clause would prevent second-guessing during incidents. Not addressed in a28708fb.</p>
+</div>
+
+<h2>Findings &mdash; Resolved in <code>a28708fb</code></h2>
+
+<div class="finding resolved">
+  <p><span class="severity resolved">resolved</span> <strong>Mixed command types in one comment silently dropped</strong></p>
+  <p>Dispatch now calls all three handlers sequentially. Each returns nil if no matching regex; errors propagate.</p>
+</div>
+
+<div class="finding resolved">
+  <p><span class="severity resolved">resolved</span> <strong>Authorization logic duplicated</strong></p>
+  <p>Extracted <code>isAuthorized()</code> helper used by both <code>handle()</code> and <code>handleOverrideCancel()</code>.</p>
+</div>
+
+<div class="finding resolved">
+  <p><span class="severity resolved">resolved</span> <strong><code>/override-cancel</code> should check for "Overridden by"</strong></p>
+  <p>Cancel now checks <code>strings.Contains(status.Description, "Overridden by")</code> instead of <code>IsSkipRetest</code>.</p>
+</div>
+
+<div class="finding resolved">
+  <p><span class="severity resolved">resolved</span> <strong><code>/override-cancel</code> semantics &mdash; broadened to all overrides</strong></p>
+  <p>Now works on both regular and sticky overrides. Help text updated: "Removes overrides by setting the status back to failure."</p>
+</div>
+
+<div class="finding resolved">
+  <p><span class="severity resolved">resolved</span> <strong>Description length guard</strong></p>
+  <p>Added <code>TestStickyDescriptionFitsGitHubLimit</code> &mdash; builds max-length description and asserts it fits in 140 chars and preserves the sentinel.</p>
+</div>
+
+<div class="finding resolved">
+  <p><span class="severity resolved">resolved</span> <strong>Hardcoded error message</strong></p>
+  <p>Error messages now use <code>cmdName</code> variable (<code>"/override"</code> or <code>"/override-sticky"</code>).</p>
+</div>
+
+<h2>Followup ideas</h2>
+
+<div class="followup">
+  <ul>
+    <li><strong>Synthetic presubmit ProwJob creation</strong> (<code>override.go:540</code>) &mdash; now that statuses embed baseSHA, the synthetic ProwJob may no longer be needed. Consider removing as a followup.</li>
+    <li><strong>Documentation page</strong> &mdash; with the increased complexity of three commands, add a page at <a href="https://docs.prow.k8s.io/docs/components/plugins/">docs.prow.k8s.io/docs/components/plugins/</a> documenting command behavior, interaction with Tide, and the difference between standard and sticky overrides.</li>
+  </ul>
+</div>
+
+<h2>Things I checked and was fine with</h2>
+<ul>
+  <li><strong>Operator precedence</strong> in <code>tide.go:1056</code> &mdash; <code>&amp;&amp;</code> binds tighter, correct parse.</li>
+  <li><strong>Sentinel survives truncation</strong> &mdash; <code>ContextDescriptionWithBaseSha</code> preserves the last 43 chars; the sentinel is 18 chars.</li>
+  <li><strong>Other Tide code paths</strong> &mdash; <code>unsuccessfulContexts</code>, <code>filterPR</code>, <code>isRetestEligible</code> all operate on status state (SUCCESS). No sentinel awareness needed.</li>
+  <li><strong><code>fakeClient.CreateStatus</code> test changes</strong> &mdash; removed guards needed for <code>/override-cancel</code>. Old special case was redundant.</li>
+  <li><strong>Cross-file callers</strong> of <code>handle()</code> &mdash; only called from <code>handleGenericComment</code>. Signature change fully propagated.</li>
+  <li><strong>No config schema changes</strong> &mdash; <code>plugins.Override</code> struct untouched.</li>
+  <li><strong>Rollback is safe</strong> &mdash; graceful degradation.</li>
+  <li><strong>Regex exclusivity</strong> &mdash; <code>overrideRe</code> does NOT match <code>/override-sticky</code>.</li>
+  <li><strong>New <code>isAuthorized</code> helper</strong> &mdash; correctly covers all three auth paths (admin, team, topLevelOwner).</li>
+  <li><strong>Sequential dispatch</strong> &mdash; each handler returns nil if no matching regex; errors propagate correctly.</li>
+</ul>
+
+<h2>Open questions for the author</h2>
+<ul>
+  <li>Are synthetic presubmit ProwJobs still needed now that statuses embed baseSHA?</li>
+</ul>
+
+</body>
+</html>

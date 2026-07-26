@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Review: kubernetes-sigs/prow#772</title>
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+    color: #1f2328;
+    background: #fff;
+    max-width: 860px;
+    margin: 2rem auto;
+    padding: 0 1.5rem;
+  }
+  h1 { font-size: 1.5rem; margin-bottom: 0.25rem; }
+  h2 { font-size: 1.25rem; border-bottom: 1px solid #d1d9e0; padding-bottom: 0.3rem; margin-top: 2rem; }
+  h3 { font-size: 1rem; margin-bottom: 0.25rem; }
+  code, pre {
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 0.875rem;
+  }
+  code { background: #f0f3f6; padding: 0.15em 0.35em; border-radius: 4px; }
+  pre {
+    background: #f6f8fa;
+    border: 1px solid #d1d9e0;
+    border-radius: 6px;
+    padding: 1rem;
+    overflow-x: auto;
+    line-height: 1.45;
+  }
+  pre code { background: none; padding: 0; }
+  .header-block {
+    background: #f6f8fa;
+    border: 1px solid #d1d9e0;
+    border-radius: 6px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.5rem;
+  }
+  .header-block p { margin: 0.2rem 0; }
+  .verdict {
+    border-left: 4px solid #1a7f37;
+    padding: 0.75rem 1rem;
+    background: #dafbe1;
+    border-radius: 0 6px 6px 0;
+    margin: 1.5rem 0;
+  }
+  .finding {
+    border: 1px solid #d1d9e0;
+    border-radius: 6px;
+    padding: 1rem 1.25rem;
+    margin: 1rem 0;
+  }
+  .finding .severity {
+    display: inline-block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    padding: 0.1em 0.5em;
+    border-radius: 3px;
+    margin-right: 0.5em;
+    vertical-align: middle;
+  }
+  .severity-should-fix { background: #fff8c5; color: #735c0f; }
+  .severity-nit { background: #f0f3f6; color: #57606a; }
+  .severity-question { background: #ddf4ff; color: #0969da; }
+  .where { color: #57606a; font-size: 0.875rem; margin: 0.25rem 0 0.5rem; }
+  .convergence { font-size: 0.85rem; color: #656d76; font-style: italic; margin-top: 0.3rem; }
+  ul { padding-left: 1.5rem; }
+  li { margin: 0.3rem 0; }
+  a { color: #0969da; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .checked { background: #f6f8fa; border-radius: 6px; padding: 0.6rem 1rem; }
+</style>
+</head>
+<body>
+
+<h1>Review: git: add SSH commit signing support to the git client factory</h1>
+
+<div class="header-block">
+  <p><strong>PR:</strong> <a href="https://github.com/kubernetes-sigs/prow/pull/772">kubernetes-sigs/prow#772</a></p>
+  <p><strong>Author:</strong> Prucek (Peter R&uacute;&#269;ek)</p>
+  <p><strong>Base:</strong> main</p>
+  <p><strong>Head SHA:</strong> <code>6ac6774906e85c753c3903ceb98e8d3a691449ce</code></p>
+  <p><strong>Reviewed:</strong> 2026-06-29T15:19:47Z</p>
+</div>
+
+<h2>Verdict</h2>
+
+<div class="verdict">
+  <strong>Approve with suggestions.</strong>
+  <p>
+    Three independent review perspectives (code quality, maintainability, deployment risk) all
+    converge on approve. The implementation faithfully follows the existing
+    <code>ClientFactoryOpt</code> / <code>WithX</code> pattern, signing is correctly scoped
+    per-clone rather than globally, and the feature is entirely opt-in with no behavioral change
+    for existing deployments. Two converging suggestions (error message differentiation and
+    startup validation) are worth considering but not blocking.
+  </p>
+</div>
+
+<h2>Gate</h2>
+
+<div class="verdict" style="border-left-color: #bf8700; background: #fff8c5;">
+  <strong>Hold</strong> &mdash; <span style="font-weight: normal;">Missing <code>approved</code> label. The required approver (<code>droslean</code> per <code>pkg/OWNERS</code>) requested architectural changes via <code>/hold</code>, those changes were made (signing moved from cherrypicker into the git client factory), and <code>/unhold</code> was applied by <code>jmguzik</code> with <code>/lgtm</code>. But <code>droslean</code> has not re-engaged to confirm the rework or to <code>/approve</code>.</span>
+  <p style="font-size: 0.9rem; margin-top: 0.75rem;"><strong>Gated:</strong> 2026-06-29T15:22:12Z &mdash; <strong>Head SHA:</strong> <code>6ac6774906e85c753c3903ceb98e8d3a691449ce</code> (unchanged since review)</p>
+</div>
+
+<h3>Prior findings disposition</h3>
+<p>No commits since review &mdash; all findings from the review are <strong>not addressed</strong> in the current head:</p>
+<ul>
+  <li><strong>[should-fix] ClientFromDir bypasses signing</strong> (<code>client_factory.go:435-438</code>) &mdash; still returns <code>c.bootstrapClients(...)</code> without signing config. Latent gap, no production callers. Does not gate merge on its own.</li>
+  <li><strong>[should-fix] Generic error message</strong> (<code>client_factory.go:504</code>) &mdash; still wraps all three config calls with the same message. Polish, does not gate merge.</li>
+  <li><strong>[nit] No startup validation, no log line, placement debt</strong> &mdash; unchanged. None gate merge.</li>
+</ul>
+<p><strong>droslean's hold concern</strong> (move signing from cherrypicker into git client factory) &mdash; <strong>addressed</strong> by the current architecture. <code>jmguzik</code> confirmed with <code>/lgtm</code> + <code>/unhold</code>.</p>
+
+<h3>Merge risk</h3>
+<p>No notable merge risk. All changes are additive and opt-in:</p>
+<ul>
+  <li><code>NewLocalClientFactory</code> signature adds <code>...ClientFactoryOpt</code> &mdash; backwards compatible (variadic).</li>
+  <li>New exported fields and func are purely additive, no json/yaml tags.</li>
+  <li>Feature is opt-in via <code>--git-signing-key-path</code>, empty default preserves current behavior.</li>
+</ul>
+
+<h3>Gating list</h3>
+<ol>
+  <li>Missing <code>approved</code> label &mdash; <code>droslean</code> is the required approver per <code>pkg/OWNERS</code> and has not <code>/approve</code>d after the rework.</li>
+</ol>
+
+<h2>What this PR does</h2>
+<ul>
+  <li>Adds a <code>--git-signing-key-path</code> flag to <code>GitHubOptions</code> accepting a path to an SSH private key.</li>
+  <li>Threads the path through <code>ClientFactoryOpts</code> into the <code>clientFactory</code> struct.</li>
+  <li>In <code>ClientForWithRepoOpts</code>, after each secondary clone, configures <code>gpg.format=ssh</code>, <code>user.signingkey</code>, and <code>commit.gpgsign=true</code> on the repo.</li>
+  <li>Extends <code>NewLocalClientFactory</code> with variadic <code>...ClientFactoryOpt</code> for testability (backwards-compatible change).</li>
+  <li>Adds an integration test that generates an ed25519 key, creates a local repo, applies a patch via <code>git am</code>, and verifies the commit contains an SSH signature.</li>
+</ul>
+
+<h2>Findings</h2>
+
+<h3>Should fix</h3>
+
+<div class="finding">
+  <span class="severity severity-should-fix">Should fix</span>
+  <strong>ClientFromDir does not apply signing configuration</strong>
+  <div class="where"><code>pkg/git/v2/client_factory.go:435-438</code></div>
+  <p>
+    <code>ClientFromDir</code> is part of the public <code>ClientFactory</code> interface but returns a
+    client without applying signing config, unlike <code>ClientForWithRepoOpts</code>. There are no
+    production callers today, so this is a latent gap rather than an active bug. A future caller
+    expecting signed commits would silently get unsigned ones.
+  </p>
+  <pre><code>func (c *clientFactory) ClientFromDir(org, repo, dir string) (RepoClient, error) {
+    return c.bootstrapClients(org, repo, dir)
+}</code></pre>
+</div>
+
+<div class="finding">
+  <span class="severity severity-should-fix">Should fix</span>
+  <strong>Generic error message for three distinct git config calls</strong>
+  <div class="where"><code>pkg/git/v2/client_factory.go:497-506</code></div>
+  <p class="convergence">Converging concern: flagged independently by code quality and maintainability reviewers.</p>
+  <p>
+    All three config calls (<code>gpg.format</code>, <code>user.signingkey</code>,
+    <code>commit.gpgsign</code>) wrap errors with the same message
+    <code>"failed to configure commit signing"</code>. When the error fires, the operator cannot
+    tell which config key failed without examining the inner error text. Include the config key:
+  </p>
+  <pre><code>fmt.Errorf("failed to configure commit signing (%s): %w", args[0], err)</code></pre>
+</div>
+
+<h3>Nits</h3>
+
+<div class="finding">
+  <span class="severity severity-nit">Nit</span>
+  <strong>No early validation of signing key path</strong>
+  <div class="where"><code>pkg/flagutil/github.go:151</code></div>
+  <p class="convergence">Converging concern: flagged independently by all three reviewers.</p>
+  <p>
+    <code>SigningKeyPath</code> is not checked in <code>Validate()</code>. A typo like
+    <code>--git-signing-key-path=/ect/keys/bot</code> lets the component start successfully.
+    The failure surfaces only at commit time with a cryptic git/ssh error. An <code>os.Stat</code>
+    check would surface misconfiguration at startup. Consistent with how <code>AppPrivateKeyPath</code>
+    is handled (also no stat check), so not blocking.
+  </p>
+  <pre><code>fs.StringVar(&amp;o.SigningKeyPath, "git-signing-key-path", "",
+    "Path to an SSH private key for signing git commits.")</code></pre>
+</div>
+
+<div class="finding">
+  <span class="severity severity-nit">Nit</span>
+  <strong>No log line when signing is enabled</strong>
+  <div class="where"><code>pkg/git/v2/client_factory.go:494</code></div>
+  <p>
+    Other factory-level configurations produce log output. A debug-level log when
+    <code>signingKeyPath</code> is non-empty would help operators confirm signing is active
+    without inspecting individual repo configs.
+  </p>
+</div>
+
+<div class="finding">
+  <span class="severity severity-nit">Nit</span>
+  <strong>Signing support deepens existing GitClientFactory placement debt</strong>
+  <div class="where"><code>pkg/flagutil/github.go:51</code>, <code>pkg/flagutil/github.go:338-339</code></div>
+  <p>
+    There is an existing <code>TODO(chaodaiG)</code> acknowledging <code>GitClientFactory</code>
+    belongs outside <code>github.go</code>. The Gerrit adapter already instantiates an empty
+    <code>GitHubOptions{}</code> just to get a git client factory. Adding <code>SigningKeyPath</code>
+    here is pragmatic given current architecture but further entangles git concerns with
+    GitHub-specific types. Not blocking &mdash; noting for the eventual refactor.
+  </p>
+  <pre><code>// TODO(chaodaiG): move this logic to somewhere more appropriate instead of in
+// github.go.</code></pre>
+</div>
+
+<h3>Questions</h3>
+
+<div class="finding">
+  <span class="severity severity-question">Question</span>
+  <strong>Should ClientFromDir also apply signing config?</strong>
+  <div class="where"><code>pkg/git/v2/client_factory.go:435</code></div>
+  <p>
+    Is <code>ClientFromDir</code> intentionally a "raw" client that skips factory-level
+    config, or should it apply signing for interface completeness?
+  </p>
+</div>
+
+<div class="finding">
+  <span class="severity severity-question">Question</span>
+  <strong>Key format validation</strong>
+  <div class="where"><code>pkg/git/v2/client_factory.go:499</code></div>
+  <p>
+    Passing a GPG key path while <code>gpg.format=ssh</code> is hardcoded would fail at commit
+    time with a confusing error. Worth a doc note or comment?
+  </p>
+</div>
+
+<h2>Things I checked and found fine</h2>
+<div class="checked">
+<ul>
+  <li><code>NewLocalClientFactory</code> signature change is backwards-compatible (variadic opts; existing callers unaffected).</li>
+  <li><code>ClientFor</code> delegates to <code>ClientForWithRepoOpts</code>, so signing config applies for both entry points.</li>
+  <li><code>Apply</code> method handles <code>SigningKeyPath</code> consistently with other string fields (<code>Host</code>, <code>CookieFilePath</code>).</li>
+  <li>Flag naming (<code>--git-signing-key-path</code>) is appropriate &mdash; distinguished from <code>--github-*</code> flags since this is a git concern, not a GitHub API concern.</li>
+  <li>Test correctly exercises <code>git am</code> path matching cherrypicker's production usage.</li>
+  <li>Signing config applied to secondary clone only (correct; cache is bare/mirror for fetching).</li>
+  <li>No interface breakage from the <code>NewLocalClientFactory</code> signature change.</li>
+  <li>Feature is entirely opt-in; zero behavioral change without the flag.</li>
+  <li>Per-clone config &mdash; no global git config side effects.</li>
+</ul>
+</div>
+
+<h2>Open questions for the author</h2>
+<ul>
+  <li>Should <code>ClientFromDir</code> also apply signing config for interface completeness, or is it intentionally a "raw" client?</li>
+  <li>Would an <code>os.Stat</code> check on the key path at <code>Validate()</code> time be welcome, or is deferred validation preferred here?</li>
+  <li>Is a GPG-vs-SSH key format mismatch worth guarding against or documenting?</li>
+</ul>
+
+</body>
+</html>

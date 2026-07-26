@@ -132,7 +132,7 @@
   .design-decisions { margin-top: 0.75rem; }
   .design-decisions dt { font-size: 0.85rem; font-weight: 600; color: var(--text); margin-top: 0.6rem; }
   .design-decisions dd { font-size: 0.85rem; color: var(--text-muted); margin-left: 0; margin-bottom: 0.3rem; }
-  footer {
+    footer {
     text-align: center; color: var(--text-muted); font-size: 0.78rem;
     margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--border);
   }
@@ -158,8 +158,10 @@
   <h2>Overview</h2>
   <p>When a new PR is opened, the <strong>blunderbuss</strong> plugin automatically assigns reviewers from OWNERS files. Once a reviewer gives LGTM, there is no equivalent mechanism to automatically assign <strong>approvers</strong>. Approvers must manually discover LGTM'd PRs, adding friction to the merge workflow.</p>
 
-  <h3>Since previous triage (2026-05-12)</h3>
-  <p><strong><a href="https://github.com/BenTheElder">BenTheElder</a></strong> (maintainer) responded that the approve plugin already posts clear instructions for the PR author to assign an approver, with a <a href="https://github.com/kubernetes-sigs/prow/pull/716#issuecomment-4421792093">screenshot example from PR #716</a>. This signals the maintainer considers the current advisory-text approach sufficient and may not see a need for automatic assignment.</p>
+  <h3>Since previous triage</h3>
+  <p><strong><a href="https://github.com/BenTheElder">BenTheElder</a></strong> (maintainer, 2026-05-12) responded that the approve plugin already posts clear instructions for the PR author to assign an approver, with a <a href="https://github.com/kubernetes-sigs/prow/pull/716#issuecomment-4421792093">screenshot example from PR #716</a>.</p>
+  <p><strong><a href="https://github.com/NiJuFirenzia">NiJuFirenzia</a></strong> (reporter, 2026-06-16) asked BenTheElder to reconsider, arguing automation would let the PR author be more hands-off and save reviewer time.</p>
+  <p>BenTheElder (2026-06-17) pushed back further: reviewer time, not author time, is the actual bottleneck, and it's unclear that "making it easier to put no effort into PRs" is net-helpful. He also flagged a new risk: <em>"occasionally people just randomly LGTM out of nowhere"</em> &mdash; i.e. auto-assignment on the <code>lgtm</code> label could fire on spurious/premature LGTMs. This reinforces the maintainer's skepticism and adds a design risk not previously captured.</p>
 </section>
 
 <section>
@@ -247,6 +249,8 @@
     <dd>Blunderbuss layered random selection vs approve plugin's set-cover algorithm (<code>GetSuggestedApprovers</code>)</dd>
     <dt>3. Review-based LGTM</dt>
     <dd>Should this also trigger when LGTM is added via GitHub review approval (<code>ReviewActsAsLgtm</code>)?</dd>
+    <dt>4. Spurious/premature LGTM</dt>
+    <dd>Raised by BenTheElder (2026-06-17): the <code>lgtm</code> label can be applied outside a genuine ready-to-merge sign-off. Any implementation should consider debouncing or another guard against noisy triggers.</dd>
   </dl>
 </section>
 
@@ -311,8 +315,17 @@
   </ul>
 </section>
 
+<section>
+  <h2>Recommended Next Steps</h2>
+  <ol class="steps-list">
+    <li>BenTheElder has now pushed back twice (2026-05-12, 2026-06-17), the second time with a substantive objection (reviewer time is the real bottleneck, not author time) plus a concrete technical risk (spurious/premature <code>lgtm</code> labels). Posting the augmentation comment as currently drafted is not recommended.</li>
+    <li>If pursuing this further, address the spurious-LGTM concern explicitly (e.g. propose a guard/debounce) rather than re-treading the original pitch.</li>
+    <li>Given two rounds of maintainer skepticism and no third-party support, the likely outcome is the issue stays open without traction, or is closed as wontfix. Weigh this before investing further triage effort.</li>
+  </ol>
+</section>
+
 <footer>
-  Triage completed 2026-04-20 &middot; Refreshed 2026-05-14 &middot; Comment not yet posted &middot; Maintainer pushed back &middot;
+  Triage completed 2026-04-20 &middot; Refreshed 2026-05-14, 2026-07-26 &middot; Comment not yet posted &middot; Maintainer pushed back twice &middot;
   <a href="https://github.com/petr-muller/prow/blob/issue-triage-686/ISSUE-TRIAGE.md">Full triage document</a>
 </footer>
 

@@ -7,13 +7,15 @@ labels: []
 verdict: legitimate
 category: feature
 effort: 2
-triaged_at: "2026-05-14T17:20:26Z"
+triaged_at: "2026-07-26T23:35:44Z"
 main_sha: 3e578e4f0ad16bb4435dcbf4c52434d9ec34667b
 refresh_log:
   - timestamp: "2026-04-20T00:00:00Z"
     summary: "Initial triage"
   - timestamp: "2026-05-14T17:20:26Z"
     summary: "Maintainer BenTheElder responded: considers existing approve plugin instructions sufficient"
+  - timestamp: "2026-07-26T23:35:44Z"
+    summary: "Reporter asked BenTheElder to reconsider; BenTheElder pushed back further, citing reviewer-time (not author-time) as the real bottleneck and flagging spurious/premature LGTMs as a risk of auto-assignment"
 ---
 
 # Issue #686: Assigning Approvers after PR receives LGTM
@@ -31,6 +33,8 @@ When a new PR is opened, the **blunderbuss** plugin automatically assigns review
 ### Since previous triage:
 
 - **Maintainer response** (2026-05-12): [BenTheElder](https://github.com/BenTheElder) commented that the approve plugin already posts clear instructions for the PR author to assign an approver themselves, with a [screenshot example from PR #716](https://github.com/kubernetes-sigs/prow/pull/716#issuecomment-4421792093). This signals the maintainer considers the current advisory-text approach sufficient and may not see a need for automatic assignment.
+- **Reporter follow-up** (2026-06-16): [NiJuFirenzia](https://github.com/NiJuFirenzia) asked BenTheElder to reconsider, arguing automation would let the PR author be "more hands off" and save reviewer time.
+- **Maintainer pushback, reinforced** (2026-06-17): BenTheElder [replied](https://github.com/kubernetes-sigs/prow/issues/686) that reviewer time, not PR-author time, is the actual bottleneck, and questioned whether "making it easier to put no effort into PRs" is net-helpful. He also raised a new concrete concern: "occasionally people just randomly LGTM out of nowhere" -- i.e. an automatic-assignment trigger on the `lgtm` label risks firing on spurious/premature LGTMs, not just genuine review sign-off. This strengthens (rather than reverses) the maintainer's prior skepticism and adds a design risk not previously captured under Open Design Decisions.
 
 ## The Gap
 
@@ -98,6 +102,7 @@ Add approver assignment directly in LGTM plugin after label addition.
 1. **Assignment mechanism**: `RequestReview()` (review requests, more visible in GitHub UI) vs `AssignIssue()` (assignees)
 2. **Selection algorithm**: Blunderbuss layered random selection vs approve plugin's set-cover algorithm (`GetSuggestedApprovers`)
 3. **Review-based LGTM**: Should this also trigger when LGTM is added via GitHub review approval (`ReviewActsAsLgtm`)?
+4. **Spurious/premature LGTM** (raised by BenTheElder, 2026-06-17): the `lgtm` label can be applied outside a genuine "ready to merge" review sign-off. Auto-assigning approvers on every label event could page an approver prematurely; any implementation should consider debouncing, requiring label persistence, or another guard against noisy triggers.
 
 ## Effort Assessment
 
@@ -138,6 +143,6 @@ Key design decisions for the implementation: (1) whether to use `RequestReview()
 
 ## Recommended next steps
 
-1. Maintainer BenTheElder's response (2026-05-12) suggests the current advisory approach is considered sufficient. The augmentation comment as drafted may not align with maintainer sentiment -- reconsider whether to post it or adjust its framing.
-2. If proceeding, tone down the comment to acknowledge the existing instructions and frame auto-assignment as an optional convenience rather than filling a gap.
-3. Alternatively, wait for the reporter to respond to BenTheElder's pushback before taking further action.
+1. BenTheElder has now pushed back twice (2026-05-12, 2026-06-17), the second time with a substantive objection (reviewer time is the real bottleneck, not author time) plus a concrete technical risk (spurious/premature `lgtm` labels triggering assignment). This is stronger signal than the initial response that the maintainer does not want this feature built as proposed -- posting the augmentation comment as currently drafted is not recommended.
+2. If pursuing this further, any comment or PR should explicitly address the spurious-LGTM concern (e.g. propose a guard/debounce) rather than just reiterate the original pitch -- otherwise it re-treads ground BenTheElder has already objected to.
+3. Given two rounds of maintainer skepticism and no third-party support, the more likely outcome is this issue stays open as `help-wanted` without traction, or is closed as wontfix if BenTheElder chooses to. Consider this when deciding whether to invest further triage effort here.

@@ -41,7 +41,7 @@
 <tr><td>Author</td><td>Prucek (Peter Rucek)</td></tr>
 <tr><td>Head SHA</td><td><code>892e2930e347a01055d180247b348aa2d46cbc82</code></td></tr>
 <tr><td>Base</td><td>main</td></tr>
-<tr><td>Reviewed</td><td>2026-06-24T11:27:43Z</td></tr>
+<tr><td>Reviewed</td><td>2026-07-26T23:34:21Z</td></tr>
 <tr><td>Size</td><td>+252 / -17, 6 files</td></tr>
 </table>
 </div>
@@ -52,15 +52,15 @@
 </div>
 
 <h2>Gate</h2>
-<div class="verdict" style="border-left-color: #bf8700; background: #fff8e1;">
-<strong>Hold.</strong> No code changes since review, no reviewer activity on GitHub. The two should-fix findings are unaddressed, and the PR lacks <code>lgtm</code> and <code>approved</code> labels. <code>mergeStateStatus: UNSTABLE</code>.
+<div class="verdict" style="border-left-color: #2da44e; background: #dafbe1;">
+<strong>Merged.</strong> PR merged 2026-06-24T12:28:24Z (merge commit <code>2b5fea27a177c767160452ba75dba978a88d8d63</code>) after petr-muller approved with &ldquo;lgtm, thanks!&rdquo; and the bot applied <code>lgtm</code>+<code>approved</code> labels. No code changes occurred between the prior hold and merge &mdash; the two should-fix findings below were <strong>not</strong> addressed before merge; the reviewer accepted them as-is.
 <p style="font-size: 0.88em; color: #57606a; margin-bottom: 0;">Gated: 2026-06-24T12:25:33Z &middot; SHA: <code>892e2930e3</code></p>
 </div>
 
-<h3>Unaddressed findings</h3>
+<h3>Unaddressed findings (merged as-is)</h3>
 <ul>
-<li><strong>[should-fix] applySeparateRequests fires after UpdateBranchProtection failure</strong> (<code>protect.go:204-210</code>): unchanged. Recommend adding <code>continue</code> after the error.</li>
-<li><strong>[should-fix] TestConfigureBranches lacks coverage for applySeparateRequests path</strong>: no new test cases added.</li>
+<li><strong>[should-fix] applySeparateRequests fires after UpdateBranchProtection failure</strong> (<code>protect.go:204-210</code>): unchanged at merge. Recommend adding <code>continue</code> after the error as a followup.</li>
+<li><strong>[should-fix] TestConfigureBranches lacks coverage for applySeparateRequests path</strong>: no new test cases added at merge; tracked as a followup below.</li>
 </ul>
 
 <h3>Merge risk</h3>
@@ -71,10 +71,7 @@
 </ul>
 
 <h3>What unblocks</h3>
-<ol>
-<li>Author addresses the two should-fix findings (or a maintainer explicitly accepts them as-is).</li>
-<li>PR obtains <code>lgtm</code> and <code>approved</code> labels per project process.</li>
-</ol>
+<p>Merged &mdash; no longer applicable. The two should-fix findings were accepted as-is at merge; see the Followups section for post-merge cleanup prompts.</p>
 
 <h2>What this PR does</h2>
 <ul>

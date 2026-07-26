@@ -3,24 +3,29 @@ pr: kubernetes-sigs/prow#771
 title: "branchprotector: add require_signed_commits config"
 head_sha: 892e2930e347a01055d180247b348aa2d46cbc82
 base: main
-reviewed_at: 2026-06-24T11:27:43Z
+reviewed_at: 2026-07-26T23:34:21Z
 verdict: approve
 gate:
-  decision: hold
+  decision: merged
   gated_at: 2026-06-24T12:25:33Z
   gated_head_sha: 892e2930e347a01055d180247b348aa2d46cbc82
   reviewed_head_sha: 892e2930e347a01055d180247b348aa2d46cbc82
+refresh_log:
+  - from_head_sha: 892e2930e347a01055d180247b348aa2d46cbc82
+    to_head_sha: 892e2930e347a01055d180247b348aa2d46cbc82
+    at: 2026-07-26T23:34:21Z
+    summary: No code changes. petr-muller approved ("lgtm, thanks!") on 2026-06-24T12:27:42Z; PR labeled lgtm+approved and merged by kubernetes-prow bot at 2026-06-24T12:28:24Z (merge commit 2b5fea27a177c767160452ba75dba978a88d8d63) without the should-fix findings being addressed.
 ---
 
 ## Gate
 
-**Decision: hold**
+**Decision: merged**
 
-No code changes since review, no reviewer activity on GitHub. The two should-fix findings are unaddressed, and the PR lacks `lgtm` and `approved` labels required by Kubernetes project process. `mergeStateStatus: UNSTABLE`.
+PR merged 2026-06-24T12:28:24Z (merge commit `2b5fea27a177c767160452ba75dba978a88d8d63`) after petr-muller approved with "lgtm, thanks!" and the bot applied `lgtm`+`approved` labels. No code changes occurred between the prior hold and merge — the two should-fix findings below were **not** addressed before merge; the reviewer accepted them as-is.
 
-### Unaddressed findings
-- **[should-fix] applySeparateRequests fires after UpdateBranchProtection failure** (`protect.go:204-210`): unchanged. Recommend adding `continue` after the error.
-- **[should-fix] TestConfigureBranches lacks coverage for applySeparateRequests path**: no new test cases added.
+### Unaddressed findings (merged as-is)
+- **[should-fix] applySeparateRequests fires after UpdateBranchProtection failure** (`protect.go:204-210`): unchanged at merge. Recommend adding `continue` after the error as a followup.
+- **[should-fix] TestConfigureBranches lacks coverage for applySeparateRequests path**: no new test cases added at merge; tracked as a followup below.
 
 ### Merge risk (Area 2)
 - **`RepositoryClient` interface widened** (`pkg/github/client.go:174-175`): two new exported methods added. Technically backward-incompatible for external implementors. In practice, `RepositoryClient` is not referenced by name outside `pkg/github/client.go` in production code — it's embedded into the aggregate `Client` interface. Risk is low; this follows the standard pattern for provider-side interfaces in this codebase.
@@ -28,8 +33,7 @@ No code changes since review, no reviewer activity on GitHub. The two should-fix
 - **Behavioral change**: opt-in only — no effect on existing deployments that don't set `require_signed_commits`.
 
 ### What unblocks
-1. Author addresses the two should-fix findings (or a maintainer explicitly accepts them as-is).
-2. PR obtains `lgtm` and `approved` labels per project process.
+Merged — no longer applicable. The two should-fix findings were accepted as-is at merge; see the Followups section for post-merge cleanup prompts.
 
 ## Findings
 

@@ -318,6 +318,7 @@
     <span><span class="add" style="color:var(--green)">+231</span> / <span class="del" style="color:var(--red)">&minus;25</span></span>
     <span><span class="badge badge-size">size/L</span></span>
     <span>Files: <strong>2</strong></span>
+    <span class="badge" style="background:#2a5a3a;color:#eaffea;">MERGED</span>
   </div>
 </header>
 
@@ -335,6 +336,7 @@
   <p><strong>Addressed:</strong> ExtraRefs handling (new <code>refsMatch</code> helper with ExtraRefs fallback + test fixtures), doc comment added, <code>sets.New[string]</code> explicit type, repo-only test case added.</p>
   <p><strong>Not addressed (nits, not blocking):</strong> <code>t.Run</code> subtests/<code>t.Fatalf</code> not adopted, <code>ownerMatch</code> closure still shadows outer variable, stray blank line.</p>
   <p><strong>Note:</strong> <code>resp.Body.Close()</code> is now called inline before <code>io.ReadAll</code> &mdash; logically reads from a closed body, but harmless since <code>httptest.ResponseRecorder</code> buffers the response. Not a merge gate.</p>
+  <p><strong>Merged:</strong> petr-muller approved (2026-06-30T12:01:25Z) and the PR was merged by <code>app/kubernetes-prow</code> at 2026-06-30T12:34:11Z. No code changes or new activity since the gate decision.</p>
 </div>
 
 <!-- ==================== Reviewer Perspectives ==================== -->

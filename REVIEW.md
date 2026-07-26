@@ -4,14 +4,19 @@ title: "Allow filtering jobs by owner, repo and org"
 head_sha: c8dcb67a645da3c36355bb97c8c1490198a82e18
 base: main
 head_sha: 3f1a6cb9f78ed401aea530aefa8634a91a27559e
-reviewed_at: "2026-06-25T12:52:31Z"
+reviewed_at: "2026-07-26T23:33:22Z"
 verdict: approve-with-suggestions
+state: merged
 gate:
   decision: merge
   gated_at: "2026-06-30T11:57:44Z"
   gated_head_sha: 3f1a6cb9f78ed401aea530aefa8634a91a27559e
   reviewed_head_sha: c8dcb67a645da3c36355bb97c8c1490198a82e18
 refresh_log:
+  - from_sha: 3f1a6cb9f78ed401aea530aefa8634a91a27559e
+    to_sha: 3f1a6cb9f78ed401aea530aefa8634a91a27559e
+    at: "2026-07-26T23:33:22Z"
+    summary: "No code changes. petr-muller approved (2026-06-30T12:01:25Z) and the PR merged (2026-06-30T12:34:11Z) by kubernetes-prow bot; no activity beyond the gate decision already recorded."
   - from_sha: c8dcb67a645da3c36355bb97c8c1490198a82e18
     to_sha: c8dcb67a645da3c36355bb97c8c1490198a82e18
     at: "2026-06-16T16:37:41Z"
@@ -27,6 +32,8 @@ refresh_log:
 ---
 
 # PR #549 — Allow filtering jobs by owner, repo and org
+
+**Status: MERGED** (2026-06-30T12:34:11Z, by `app/kubernetes-prow`)
 
 ## Gate
 

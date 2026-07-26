@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Review: kubernetes-sigs/prow#756</title>
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+    max-width: 52em;
+    margin: 2em auto;
+    padding: 0 1em;
+    color: #1a1a1a;
+    background: #fff;
+  }
+  h1 { font-size: 1.4em; border-bottom: 2px solid #0969da; padding-bottom: 0.3em; }
+  h2 { font-size: 1.15em; margin-top: 1.8em; border-bottom: 1px solid #d0d7de; padding-bottom: 0.2em; }
+  h3 { font-size: 1em; margin-top: 1.2em; }
+  code, pre { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; font-size: 0.9em; }
+  code { background: #f6f8fa; padding: 0.15em 0.35em; border-radius: 4px; }
+  pre { background: #f6f8fa; padding: 1em; border-radius: 6px; overflow-x: auto; line-height: 1.45; }
+  .meta { background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 6px; padding: 0.8em 1em; margin-bottom: 1.5em; font-size: 0.92em; }
+  .meta dt { font-weight: 600; display: inline; }
+  .meta dd { display: inline; margin: 0 1.5em 0 0; }
+  .verdict { background: #dafbe1; border-left: 4px solid #1a7f37; padding: 0.6em 1em; border-radius: 4px; margin: 1em 0; }
+  .severity { display: inline-block; font-size: 0.8em; font-weight: 600; padding: 0.1em 0.5em; border-radius: 3px; margin-right: 0.4em; text-transform: uppercase; }
+  .sev-nit { background: #ddf4ff; color: #0550ae; }
+  .resolved { opacity: 0.6; }
+  .resolved h3::after { content: " (resolved)"; font-style: italic; font-weight: normal; font-size: 0.85em; }
+  ul { padding-left: 1.4em; }
+  li { margin-bottom: 0.3em; }
+  a { color: #0969da; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+
+<h1>Review: kubernetes-sigs/prow#756</h1>
+
+<div class="meta">
+  <dl>
+    <dt>PR:</dt><dd><a href="https://github.com/kubernetes-sigs/prow/pull/756">kubernetes-sigs/prow#756</a></dd>
+    <dt>Title:</dt><dd>github: centralize dry-run bypass logic in isDryRunAllowed</dd>
+    <dt>Head SHA:</dt><dd><code>3a7df92a71e2cef2f3224cf0e8b1ffc3afbb6e8a</code></dd>
+    <dt>Base:</dt><dd>main</dd>
+    <dt>Reviewed:</dt><dd>2026-06-15T13:59:42Z</dd>
+  </dl>
+</div>
+
+<h2>Verdict</h2>
+<div class="verdict">
+  <strong>Approve.</strong>
+  Clean, behavior-preserving refactoring that consolidates dry-run bypass logic into a single function. The removed guard in <code>IsAppInstalled</code> was provably redundant. Test coverage added for the changed path.
+</div>
+
+<h2>What this PR does</h2>
+<ul>
+  <li>Moves the <code>r.method == http.MethodGet</code> check from the inline condition in <code>requestRawWithContext</code> into <code>isDryRunAllowed</code>, making it the single source of truth for what passes in dry-run mode.</li>
+  <li>Removes a stale <code>c.dry</code> guard from <code>IsAppInstalled</code> &mdash; it uses a GET request that was never blocked by <code>requestRawWithContext</code> anyway.</li>
+  <li>Adds a dry-run subtest to <code>TestIsAppInstalled</code> that verifies GET requests actually reach the test server (not short-circuited to defaults).</li>
+  <li>Updates the <code>isDryRunAllowed</code> doc comment to reflect the new GET-first logic.</li>
+</ul>
+<p><strong>Since previous review:</strong> author pushed one commit (<code>3a7df92</code>) removing the stale comment in <code>requestRawWithContext</code> that the nit identified.</p>
+
+<h2>Findings</h2>
+<p>No open findings.</p>
+
+<h2>Resolved findings</h2>
+
+<div class="resolved">
+<h3><span class="severity sev-nit">Nit</span> Stale comment in requestRawWithContext</h3>
+<p><code>pkg/github/client.go:967</code></p>
+<p>The comment described the GET-vs-non-GET distinction, but that logic had moved inside <code>isDryRunAllowed</code>. Author deleted the comment entirely in <code>3a7df92</code>.</p>
+</div>
+
+<h2>Things I checked and was fine with</h2>
+<ul>
+  <li>Behavioral equivalence for all request-method / <code>allowInDryRun</code> / allowlist combinations: GET (allowed before and after), non-GET with <code>allowInDryRun=false</code> (blocked), non-GET matching allowlist (allowed), non-GET with flag set but not matching allowlist (logged + blocked).</li>
+  <li><code>IsAppInstalled</code> at line 5134 constructs a <code>http.MethodGet</code> request, confirming the removed guard was redundant.</li>
+  <li>New dry-run test reuses existing test cases and test server, verifying requests actually hit the server in dry-run mode.</li>
+  <li><code>isDryRunAllowed</code> comment updated to reflect the new GET-first logic.</li>
+</ul>
+
+<h2>Open questions for the author</h2>
+<p>None. The refactoring is straightforward and behavior-preserving.</p>
+
+</body>
+</html>

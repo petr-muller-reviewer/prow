@@ -3,12 +3,16 @@ pr: kubernetes-sigs/prow#756
 title: "github: centralize dry-run bypass logic in isDryRunAllowed"
 head_sha: 3a7df92a71e2cef2f3224cf0e8b1ffc3afbb6e8a
 base: main
-reviewed_at: 2026-06-15T13:59:42Z
+reviewed_at: 2026-07-26T23:34:54Z
 verdict: approve
+state: merged
 refresh_log:
   - from: 31c8ed5d879e752dc84954a7002135fdade69f00
     to: 3a7df92a71e2cef2f3224cf0e8b1ffc3afbb6e8a
     summary: "Author removed the stale comment in requestRawWithContext (1 line deletion), addressing the nit."
+  - from: 3a7df92a71e2cef2f3224cf0e8b1ffc3afbb6e8a
+    to: 3a7df92a71e2cef2f3224cf0e8b1ffc3afbb6e8a
+    summary: "No code changes. droslean approved 2026-06-16; PR merged."
 ---
 
 ## What this PR does
@@ -17,7 +21,7 @@ refresh_log:
 - Removes a stale `c.dry` guard from `IsAppInstalled` that was overly conservative — the function uses GET, which was never blocked by `requestRawWithContext`.
 - Adds a dry-run subtest to `TestIsAppInstalled` verifying GET requests reach the server in dry-run mode.
 
-Since previous review: author pushed one commit (`3a7df92`) removing the stale comment in `requestRawWithContext` that the nit identified.
+Since previous review: author pushed one commit (`3a7df92`) removing the stale comment in `requestRawWithContext` that the nit identified. Since then, no further code changes; `droslean` approved the PR (2026-06-16), and it has since merged.
 
 ## Findings
 

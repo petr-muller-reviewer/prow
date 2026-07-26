@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Review: kubernetes-sigs/prow#785</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; line-height: 1.6; color: #1f2328; max-width: 820px; margin: 2rem auto; padding: 0 1rem; }
+  h1 { font-size: 1.4rem; border-bottom: 1px solid #d1d9e0; padding-bottom: .4rem; }
+  h2 { font-size: 1.15rem; margin-top: 2rem; border-bottom: 1px solid #d1d9e0; padding-bottom: .3rem; }
+  code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; font-size: 0.9em; background: #f0f3f6; padding: 0.15em 0.35em; border-radius: 4px; }
+  a { color: #0969da; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .meta { background: #f6f8fa; border: 1px solid #d1d9e0; border-radius: 6px; padding: 0.8rem 1rem; margin-bottom: 1.5rem; font-size: 0.92rem; }
+  .meta td { padding: 0.15rem 0.6rem 0.15rem 0; vertical-align: top; }
+  .meta td:first-child { font-weight: 600; white-space: nowrap; }
+  .verdict { background: #dafbe1; border: 1px solid #aceebb; border-radius: 6px; padding: 0.7rem 1rem; margin-bottom: 1.5rem; }
+  .verdict strong { font-size: 1.05rem; }
+  ul { padding-left: 1.4rem; }
+  li { margin-bottom: 0.3rem; }
+  .checked { color: #57606a; }
+</style>
+</head>
+<body>
+
+<h1>Review: spyglass/junit: deduplicate test detail row rendering</h1>
+
+<div class="meta">
+<table>
+  <tr><td>PR</td><td><a href="https://github.com/kubernetes-sigs/prow/pull/785">kubernetes-sigs/prow#785</a></td></tr>
+  <tr><td>Author</td><td>petr-muller</td></tr>
+  <tr><td>Base</td><td>main</td></tr>
+  <tr><td>Head SHA</td><td><code>88ef2524d460e6ae9ee700246be31c3c3a8735bf</code></td></tr>
+  <tr><td>Reviewed at</td><td>2026-06-30T17:32:00Z</td></tr>
+  <tr><td>Changed files</td><td>4 (+85 / -243)</td></tr>
+</table>
+</div>
+
+<div class="verdict">
+  <strong>Approve</strong> &mdash; Clean mechanical deduplication with no behavioral change. All class renames are consistently propagated across HTML, CSS, TypeScript, and tests.
+</div>
+
+<h2>What this PR does</h2>
+<ul>
+  <li>Extracts a shared <code>{{define "test-detail-rows"}}</code> Go sub-template for the expandable test result rows that were duplicated four times: top-level failed, top-level flaky, group-level failed, group-level flaky.</li>
+  <li>Replaces four inline copies with <code>{{template "test-detail-rows" .Failed}}</code> / <code>.Flaky</code> / <code>$group.Failed</code> / <code>$group.Flaky</code> calls.</li>
+  <li>Unifies CSS class names from section-specific (<code>failure-*</code>, <code>flaky-*</code>, <code>group-*</code>) to a single <code>detail-*</code> namespace, collapsing redundant selectors in <code>junit.css</code>.</li>
+  <li>Updates the TypeScript event binding selector in <code>lens.ts</code> and the test expectation in <code>lens_test.go</code> to match the new class names.</li>
+  <li>Net reduction of ~158 lines of duplicated template markup.</li>
+</ul>
+
+<h2>Findings</h2>
+<p>No findings. Nothing survived verification.</p>
+
+<h2>Things I checked and was fine with</h2>
+<ul class="checked">
+  <li>The unified template introduces an <code>{{if eq $numTest 1}}</code> branch to flaky code paths that previously always used the multi-run layout. Verified in <code>lens.go:303-321</code> that flaky classification requires &ge; 2 test runs (mixed pass/fail status), so the single-run branch is dead code for <code>.Flaky</code> data. No behavioral change.</li>
+  <li>Grepped the entire repository for old CSS class names (<code>failed-layout</code>, <code>flaky-layout</code>, <code>group-layout</code>, <code>failure-name</code>, <code>flaky-name</code>, <code>group-name</code>, <code>failure-text</code>, <code>flaky-text</code>, <code>group-text</code>). No dangling references remain.</li>
+  <li>The <code>lens_test.go</code> expectation is updated from <code>group-layout</code> to <code>detail-layout</code>, consistent with the rename.</li>
+  <li>The TypeScript selector in <code>lens.ts</code> is correctly simplified from <code>.failure-name,.group-name,.flaky-name</code> to <code>.detail-name</code>.</li>
+  <li>Section-level identifiers (<code>failed-tbody</code>, <code>flaky-tbody</code>, <code>group-tbody</code>, <code>group-header</code>) are intentionally unchanged &mdash; they organize the page sections, not the detail rows.</li>
+</ul>
+
+<h2>Open questions for the author</h2>
+<p>None.</p>
+
+</body>
+</html>

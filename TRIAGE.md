@@ -2,13 +2,16 @@
 issue: kubernetes-sigs/prow#585
 title: "Remove unneeded prow plugins/cmds"
 state: open
-labels: lifecycle/stale
+labels: lifecycle/rotten
 main_sha: 351e8cfd58915657bd36a50e7e86bbe972bc0739
-triaged_at: 2026-06-16T15:48:18Z
+triaged_at: 2026-07-26T00:00:00Z
 verdict: accepted
 legitimacy: LEGITIMATE
 effort: 3
 recommended_labels: [kind/cleanup, area/plugins, help-wanted]
+refresh_log:
+  - previous_triaged_at: 2026-06-16T15:48:18Z
+    summary: "k8s-triage-robot escalated lifecycle/stale to lifecycle/rotten (2026-07-11) after continued inactivity; no other issue activity, no linked PRs, no relevant code movement on main."
 ---
 
 ## Findings
@@ -80,11 +83,15 @@ recommended_labels: [kind/cleanup, area/plugins, help-wanted]
 
 ## Next steps
 
-- Remove `/lifecycle stale` -- issue is valid and actionable
+- Remove `/lifecycle rotten` (escalated from `lifecycle/stale` by k8s-triage-robot on 2026-07-11) -- issue is valid and actionable, and will auto-close ~30d after rotten (i.e. around 2026-08-10) if left untouched
 - Post comment summarizing per-component plan, ask for maintainer alignment on deprecation process
 - Consider creating separate sub-issues per component for independent assignment
 - Unblock buildifier removal immediately -- zero coupling, no controversy
 - Apply labels: kind/cleanup, area/plugins, help-wanted
+
+## Since previous triage (2026-06-16)
+
+- k8s-triage-robot escalated the issue from `lifecycle/stale` to `lifecycle/rotten` on 2026-07-11 due to continued inactivity; no human comments, no linked PRs, and no relevant upstream code changes since the prior triage.
 
 ## Open questions
 

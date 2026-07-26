@@ -34,8 +34,8 @@
   <div class="row"><dt>Issue</dt><dd><a href="https://github.com/kubernetes-sigs/prow/issues/585">kubernetes-sigs/prow#585</a></dd></div>
   <div class="row"><dt>Title</dt><dd>Remove unneeded prow plugins/cmds</dd></div>
   <div class="row"><dt>State</dt><dd>open</dd></div>
-  <div class="row"><dt>Labels</dt><dd>lifecycle/stale</dd></div>
-  <div class="row"><dt>Triaged at</dt><dd>2026-06-16T15:48:18Z</dd></div>
+  <div class="row"><dt>Labels</dt><dd>lifecycle/rotten</dd></div>
+  <div class="row"><dt>Triaged at</dt><dd>2026-07-26T00:00:00Z</dd></div>
   <div class="row"><dt>Main SHA</dt><dd><code>351e8cfd58915657bd36a50e7e86bbe972bc0739</code></dd></div>
   <div class="row"><dt>Verdict</dt><dd><strong>accepted</strong></dd></div>
 </div>
@@ -57,6 +57,8 @@
   <li>The <strong>jenkins-operator</strong> bridges ProwJobs to Jenkins, which is no longer used by the Prow community.</li>
   <li>The <strong>buildifier</strong> plugin formats Bazel files, but Prow no longer uses Bazel; it pulls an unmaintained dependency pinned to a 2020 commit.</li>
 </ul>
+
+<p><strong>Since previous triage (2026-06-16):</strong> k8s-triage-robot escalated the issue from <code>lifecycle/stale</code> to <code>lifecycle/rotten</code> on 2026-07-11 due to continued inactivity. No human comments, no linked PRs, and no relevant upstream code changes since the prior triage.</p>
 
 <h2>Analysis</h2>
 
@@ -115,7 +117,7 @@
 <h2>Recommended next steps</h2>
 
 <ul>
-  <li>Remove <code>/lifecycle stale</code> &mdash; this issue is valid and actionable.</li>
+  <li>Remove <code>/lifecycle rotten</code> (escalated from <code>lifecycle/stale</code> by k8s-triage-robot on 2026-07-11) &mdash; this issue is valid and actionable, and will auto-close ~30d after rotten (around 2026-08-10) if left untouched.</li>
   <li>Post a comment summarizing the per-component plan and asking for maintainer alignment on the deprecation process (phased for all four vs. immediate for linters).</li>
   <li>Consider creating separate sub-issues per component to make them independently assignable.</li>
   <li>Unblock buildifier removal immediately &mdash; zero coupling, no controversy, good first-contributor task.</li>

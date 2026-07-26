@@ -11,11 +11,13 @@ effort: "Level 2 — Moderate"
 labels:
   - area/tide
   - kind/feature
-  - lifecycle/stale
-triaged_at: 2026-06-09T15:13:53Z
+  - lifecycle/rotten
+triaged_at: 2026-07-26T23:18:05Z
 refresh_log:
   - previous: "2026-06-09"
     summary: "k8s-triage-robot applied lifecycle/stale; help-wanted removed. No substantive new information."
+  - previous: "2026-06-09T15:13:53Z"
+    summary: "k8s-triage-robot applied lifecycle/rotten (30 days after stale, no response). Still open, no substantive new information."
 ---
 
 # Triage: Issue #650
@@ -36,6 +38,10 @@ refresh_log:
 **Since previous triage (2026-06-09):**
 - `k8s-triage-robot` applied `lifecycle/stale` at 2026-06-09T14:23:49Z (90 days of inactivity). The `help-wanted` label is no longer present.
 - No substantive comments, no linked PRs, no cross-references.
+
+**Since previous triage (2026-06-09T15:13:53Z):**
+- `k8s-triage-robot` applied `lifecycle/rotten` at 2026-07-09T14:33:28Z (30 days of inactivity since `lifecycle/stale`). Per the bot's stale/rotten/close policy, the issue will be auto-closed after another 30 days of inactivity unless someone comments `/remove-lifecycle rotten`.
+- No substantive comments, no linked PRs, no cross-references. Issue remains open.
 
 When the base branch SHA advances (merge, manual or via Tide), Tide starts a new batch without aborting ProwJobs from the previous batch. The old ProwJobs continue running to completion even though their results are no longer relevant, wasting CI resources. The reporter provided a real-world example from Azure/ARO-HCP where a manual merge caused a third parallel batch to start.
 

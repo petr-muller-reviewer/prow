@@ -3,18 +3,25 @@ pr: kubernetes-sigs/prow#772
 title: "git: add SSH commit signing support to the git client factory"
 head_sha: 6ac6774906e85c753c3903ceb98e8d3a691449ce
 base: main
-reviewed_at: 2026-06-29T15:19:47Z
+reviewed_at: 2026-07-26T23:32:33Z
 verdict: approve
 gate:
-  decision: hold
+  decision: merged
   gated_at: 2026-06-29T15:22:12Z
   gated_head_sha: 6ac6774906e85c753c3903ceb98e8d3a691449ce
   reviewed_head_sha: 6ac6774906e85c753c3903ceb98e8d3a691449ce
+refresh_log:
+  - from_head_sha: 6ac6774906e85c753c3903ceb98e8d3a691449ce
+    to_head_sha: 6ac6774906e85c753c3903ceb98e8d3a691449ce
+    at: 2026-07-26T23:32:33Z
+    summary: No code changes. petr-muller approved (satisfying pkg/OWNERS), cancelled the hold, and the PR merged 2026-07-01T15:32:14Z.
 ---
 
 ## Gate
 
-**Decision: hold** — PR has `lgtm` but is missing `approved`. The required approver (`droslean` per `pkg/OWNERS`) requested architectural changes via `/hold`, those changes were made (signing moved from cherrypicker into the git client factory), and `/unhold` was applied by `jmguzik` with `/lgtm`. But `droslean` has not re-engaged to confirm the rework addresses the concern or to `/approve`.
+**Decision: merged** — resolved since the previous gate check. `petr-muller` (an approver per `pkg/OWNERS`) reviewed, left two clarifying comments (resolved inline — the `SigningKeyPath` flag's placement on `GitHubOptions` is because git clients are built from that struct via `GitClientFactory`), and `/approve`d on 2026-06-29T15:45:23Z, which satisfied the `pkg/OWNERS` approval requirement (`approved` label applied). `petr-muller` then ran `/hold cancel` on 2026-07-01T14:59:38Z ("I consider the opportunity as given :D"), and the PR merged at 2026-07-01T15:32:14Z.
+
+Previously this section noted `droslean` as the required approver who hadn't re-engaged — `petr-muller` also satisfies the `pkg/OWNERS` requirement and did approve, resolving the hold.
 
 ### Prior findings disposition
 
@@ -36,11 +43,20 @@ No notable merge risk. All changes are additive and opt-in:
 
 ### Gating list
 
-1. Missing `approved` label — `droslean` is the required approver per `pkg/OWNERS` and has not `/approve`d after the rework.
+1. ~~Missing `approved` label~~ — **resolved**: `petr-muller` `/approve`d 2026-06-29T15:45:23Z, satisfying `pkg/OWNERS`.
+
+### Resolved since previous gate check
+
+- `petr-muller` approved and cancelled the hold; PR merged 2026-07-01T15:32:14Z with all `should-fix`/`nit` findings still outstanding in the merged code (none were blocking).
 
 ## Summary
 
 Adds `--git-signing-key-path` flag to `GitHubOptions`. When set, every repo cloned via `ClientForWithRepoOpts` gets `gpg.format=ssh`, `user.signingkey`, and `commit.gpgsign=true`. Primary consumer is cherrypicker (`git am` path). Opt-in, no behavioral change without the flag. Three independent reviewer perspectives (code quality, maintainability, deployment risk) all converge on approve.
+
+**Since previous review:** No code changes (head SHA unchanged).
+- `petr-muller` approved the PR (2026-06-29), satisfying the `pkg/OWNERS` approval requirement.
+- Hold was cancelled by `petr-muller` (2026-07-01).
+- PR merged 2026-07-01T15:32:14Z.
 
 ## Findings
 

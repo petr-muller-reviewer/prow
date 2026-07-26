@@ -3,11 +3,20 @@ pr: kubernetes-sigs/prow#766
 title: "handle github teams lookup correctly with github apps"
 head_sha: b6a76dd31dbbcd5c7292052f4400d138820c2bbc
 base: main
-reviewed_at: 2026-06-24T11:19:04Z
+reviewed_at: 2026-07-26T22:55:58Z
 verdict: request-changes
+refresh_log:
+  - from: b6a76dd31dbbcd5c7292052f4400d138820c2bbc
+    to: b6a76dd31dbbcd5c7292052f4400d138820c2bbc
+    summary: "No code changes. Incorporated new discussion: matthyx suggested the ListTeamMembersbyID comment-typo fix inline; upodroid and matthyx opened a broader design thread on deprecating/reworking GitHubTeamIDs vs GitHubTeamSlugs."
 ---
 
 Fixes GitHub Apps auth failure for team-member-by-ID lookups by changing the API path from `/teams/{id}/members` (no org in URL, so `extractOrgFromContext` returned empty) to `/orgs/{org}/team/{id}/members`. Renames `ListTeamMembers` to `ListTeamMembersByID`, removes deprecation warning, updates all callers/interfaces/fakes/tests. Drive-by doc cleanup in peribolos.md.
+
+Since previous review:
+- No new commits (head still `b6a76dd3`).
+- matthyx posted an inline suggestion on `pkg/github/fakegithub/fakegithub.go` fixing the `ListTeamMembersbyID` comment typo (matches the existing "Comment typo and stale references in fakegithub" nit below) — not yet pushed by the author.
+- upodroid and matthyx opened a design discussion on the issue thread about the empty-org problem: whether to deprecate/remove `GitHubTeamIDs` in favor of `GitHubTeamSlugs`, or keep `GitHubTeamIDs` working via this PR's org-scoped path with a hard error on empty org, plus a deprecation warning and doc update — this bears directly on the unresolved "Empty org produces malformed URL" blocking finding below.
 
 ## Findings
 
@@ -20,6 +29,7 @@ Fixes GitHub Apps auth failure for team-member-by-ID lookups by changing the API
 ### [blocking] Empty org produces malformed URL
 - where: `pkg/github/client.go:3909`
 - concern: Callers like `RerunAuthConfig.IsAuthorized` (types.go:314) can pass empty `org` in periodic job contexts (visible in the original stack trace as `{0x0, 0x0}`). New path produces `/orgs//team/{id}/members`. Raised by reviewers alvaroaleman and matthyx in PR comments, remains unaddressed.
+- update (2026-07-26): matthyx proposed a concrete path forward on the issue thread — keep `GitHubTeamIDs` working via this PR's org-scoped route with a hard error when org is empty, log a deprecation warning, document `github_team_slugs` as the replacement, and drop the field in a future major. upodroid is weighing this against outright removing `github_team_ids`. Still unresolved/unimplemented.
 - excerpt: |
     path := fmt.Sprintf("/orgs/%s/team/%d/members", org, id)
 
@@ -32,6 +42,7 @@ Fixes GitHub Apps auth failure for team-member-by-ID lookups by changing the API
 ### [nit] Comment typo and stale references in fakegithub
 - where: `pkg/github/fakegithub/fakegithub.go:741`
 - concern: Comment reads `ListTeamMembersbyID` (lowercase b), function is `ListTeamMembersByID` (capital B). Also lines 723 and 759 still reference old `ListTeamMembers` name.
+- update (2026-07-26): matthyx posted an inline suggested-change fixing this exact typo; not yet applied by the author.
 - excerpt: |
     // ListTeamMembersbyID return a fake team with a single "sig-lead" GitHub teammember
 
@@ -66,5 +77,5 @@ Fixes GitHub Apps auth failure for team-member-by-ID lookups by changing the API
 
 ## Open questions
 - Can you confirm `/orgs/{org_name}/team/{numeric_id}/members` works against production GitHub API? How was it verified?
-- How should the empty-org case be handled — return an error, fall back to legacy `/teams/{id}/members`, or require callers to always supply org?
+- How should the empty-org case be handled — return an error, fall back to legacy `/teams/{id}/members`, or require callers to always supply org? (matthyx's proposal: hard error on empty org + deprecation warning + future removal — does upodroid want to go further and drop `GitHubTeamIDs` outright instead?)
 - Duration logger at `client.go:3903` omits `org` — intentional or should it match `ListTeamMembersBySlug`?

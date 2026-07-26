@@ -34,7 +34,7 @@
 <tr><td>Author</td><td>upodroid</td></tr>
 <tr><td>Head SHA</td><td><code>b6a76dd31dbbcd5c7292052f4400d138820c2bbc</code></td></tr>
 <tr><td>Base</td><td>main</td></tr>
-<tr><td>Reviewed</td><td>2026-06-24T11:19:04Z</td></tr>
+<tr><td>Reviewed</td><td>2026-07-26T22:55:58Z</td></tr>
 </table>
 </div>
 
@@ -50,6 +50,13 @@
   <li>Renames <code>ListTeamMembers</code> to <code>ListTeamMembersByID</code> and removes the deprecation warning, since the method is now a proper peer of <code>ListTeamMembersBySlug</code> rather than a deprecated shim.</li>
   <li>Updates all callers across the <code>TeamClient</code> interface, fake client, milestone/milestonestatus/project plugins, and tests.</li>
   <li>Cleans up the peribolos docs: fixes bullet style and updates the stale <code>test-infra</code> repo reference in an error message.</li>
+</ul>
+
+<p><em>Since previous review:</em></p>
+<ul>
+  <li>No new commits (head still <code>b6a76dd3</code>).</li>
+  <li>matthyx posted an inline suggested-change fixing the <code>ListTeamMembersbyID</code> comment typo (matches the existing nit below) &mdash; not yet applied by the author.</li>
+  <li>upodroid and matthyx opened a design discussion on the issue thread about the empty-org problem: whether to deprecate/remove <code>GitHubTeamIDs</code> in favor of <code>GitHubTeamSlugs</code>, or keep <code>GitHubTeamIDs</code> working via this PR's org-scoped path with a hard error on empty org, plus a deprecation warning and doc update &mdash; directly bears on the unresolved "Empty org produces malformed URL" blocking finding below.</li>
 </ul>
 
 <h2>Findings</h2>
@@ -72,6 +79,7 @@
 <h3>Empty org produces malformed URL &mdash; <code>pkg/github/client.go:3909</code></h3>
 <pre>path := fmt.Sprintf("/orgs/%s/team/%d/members", org, id)</pre>
 <p>Callers like <code>RerunAuthConfig.IsAuthorized</code> (in <code>types.go:314</code>) can pass an empty <code>org</code> in periodic job contexts &mdash; this is visible in the original stack trace where org is <code>{0x0, 0x0}</code>. The old path <code>/teams/{id}/members</code> didn't need org in the URL. The new path would produce <code>/orgs//team/{id}/members</code>. This was raised by reviewers alvaroaleman and matthyx in PR comments and remains unaddressed. Add a guard (return a clear error) or fall back to the legacy path when org is empty.</p>
+<p><strong>Update (2026-07-26):</strong> matthyx proposed a concrete path forward on the issue thread &mdash; keep <code>GitHubTeamIDs</code> working via this PR's org-scoped route with a hard error when org is empty, log a deprecation warning, document <code>github_team_slugs</code> as the replacement, and drop the field in a future major. upodroid is weighing this against outright removing <code>github_team_ids</code>. Still unresolved/unimplemented.</p>
 </div>
 
 <h3>Should fix</h3>
@@ -90,6 +98,7 @@
 <h3>Comment typo: lowercase 'b' &mdash; <code>pkg/github/fakegithub/fakegithub.go:741</code></h3>
 <pre>// ListTeamMembersbyID return a fake team with a single "sig-lead" GitHub teammember</pre>
 <p>Function name is <code>ListTeamMembersByID</code> (capital B). Also, stale comments at lines 723 and 759 still reference the old <code>ListTeamMembers</code> name.</p>
+<p><strong>Update (2026-07-26):</strong> matthyx posted an inline suggested-change fixing this exact typo; not yet applied by the author.</p>
 </div>
 
 <div class="severity-nit">
@@ -130,7 +139,7 @@
 <h2>Open questions for the author</h2>
 <ul>
   <li>Can you confirm <code>/orgs/{org_name}/team/{numeric_id}/members</code> works against the production GitHub API? If so, could you note how you verified it (e.g., a link to GitHub support confirmation or a screenshot of a successful call)?</li>
-  <li>How should the empty-org case be handled &mdash; return an error, fall back to legacy <code>/teams/{id}/members</code>, or require callers to always supply org?</li>
+  <li>How should the empty-org case be handled &mdash; return an error, fall back to legacy <code>/teams/{id}/members</code>, or require callers to always supply org? (matthyx's proposal: hard error on empty org + deprecation warning + future removal &mdash; does upodroid want to go further and drop <code>GitHubTeamIDs</code> outright instead?)</li>
   <li>The duration logger at <code>client.go:3903</code> omits <code>org</code> &mdash; was that intentional, or should it match <code>ListTeamMembersBySlug</code>'s logging pattern?</li>
 </ul>
 

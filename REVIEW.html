@@ -40,17 +40,18 @@
 <div class="header-meta">
   <dl>
     <dt>PR:</dt><dd><a href="https://github.com/kubernetes-sigs/prow/pull/778">kubernetes-sigs/prow#778</a></dd>
-    <dt>Head SHA:</dt><dd><code>a28708fb8055cd4b5376a84abfcec2443faecdd8</code></dd>
+    <dt>Head SHA:</dt><dd><code>e8e26219d966f3b9dbdaf0ef6f27a439435529b1</code></dd>
     <dt>Base:</dt><dd><code>main</code></dd>
-    <dt>Reviewed:</dt><dd>2026-07-03T11:30:53Z</dd>
-    <dt>Previous SHA:</dt><dd><code>e1347598</code></dd>
+    <dt>Reviewed:</dt><dd>2026-07-26T23:33:05Z</dd>
+    <dt>Previous SHA:</dt><dd><code>a28708fb</code></dd>
+    <dt>State:</dt><dd><strong>MERGED</strong> 2026-07-14T08:48:24Z</dd>
   </dl>
 </div>
 
 <h2>Verdict</h2>
 <div class="verdict approve">
-  <strong>Approve with suggestions.</strong>
-  Author addressed 6 of 8 findings in <code>a28708fb</code>. The remaining baseSHA semantic issue is the main outstanding item. Operator precedence parentheses are a minor nit. Overall the PR is in good shape.
+  <strong>Approve &mdash; merged.</strong>
+  Author addressed 6 of 8 findings in <code>a28708fb</code>, then a second reviewer (Prucek) independently raised the operator-precedence nit plus a new constant-extraction nit; both fixed in <code>e8e26219</code>. PR was lgtm'd and approved by Prucek, self-approved by the author, and merged. The baseSHA-reuse semantic issue remains open but was not blocking.
 </div>
 
 <h2>What this PR does</h2>
@@ -73,6 +74,15 @@
   </ul>
 </div>
 
+<div class="update-note">
+  <strong>Since previous review</strong> (<code>a28708fb</code> &rarr; <code>e8e26219</code>, addressing a second reviewer's comments):
+  <ul>
+    <li>Extracted <code>overrideDescriptionPrefix = "Overridden by"</code> constant, shared by <code>description()</code>, <code>stickyDescription()</code>, and the cancel-matching logic, so they can't drift independently.</li>
+    <li>Added explicit parentheses around the baseSHA condition in <code>tide.go</code>'s <code>prowJobsFromContexts</code> &mdash; the same fix as the precedence nit below, raised independently by Prucek.</li>
+    <li>PR received <code>/lgtm</code> and approval from Prucek, self-approval from the author (smg247), and merged 2026-07-14T08:48:24Z.</li>
+  </ul>
+</div>
+
 <h2>Findings &mdash; Still Open</h2>
 
 <h3>Should fix</h3>
@@ -85,16 +95,22 @@
   <p class="posted">Posted on PR: override.go:513 &mdash; not addressed in a28708fb</p>
 </div>
 
-<h3>Nits</h3>
+<h2>Findings &mdash; Resolved</h2>
 
-<div class="finding nit">
-  <p><span class="severity nit">nit</span> <strong>Operator precedence ambiguity in Tide condition</strong></p>
+<h3>Resolved in <code>e8e26219</code></h3>
+
+<div class="finding resolved">
+  <p><span class="severity resolved">resolved</span> <strong>Operator precedence ambiguity in Tide condition</strong></p>
   <p><code>pkg/tide/tide.go:1056</code></p>
-  <pre><code>if config.IsSkipRetest(desc) || baseSHAForContext != "" &amp;&amp; baseSHAForContext == baseSHA {</code></pre>
-  <p>Correct per Go rules but reads ambiguously. Adding explicit parentheses around the <code>&amp;&amp;</code> clause would prevent second-guessing during incidents. Not addressed in a28708fb.</p>
+  <p>Added explicit parentheses: <code>config.IsSkipRetest(desc) || (baseSHAForContext != "" &amp;&amp; baseSHAForContext == baseSHA)</code>. Raised independently by both this review and second reviewer Prucek.</p>
 </div>
 
-<h2>Findings &mdash; Resolved in <code>a28708fb</code></h2>
+<div class="finding resolved">
+  <p><span class="severity resolved">resolved</span> <strong>"Overridden by" string literal duplicated between <code>description()</code> and cancel logic</strong></p>
+  <p>Extracted <code>overrideDescriptionPrefix = "Overridden by"</code> constant, used by <code>description()</code>, <code>stickyDescription()</code>, and <code>handleOverrideCancel</code>'s match check. Raised by second reviewer Prucek; not in the original findings list.</p>
+</div>
+
+<h3>Resolved in <code>a28708fb</code></h3>
 
 <div class="finding resolved">
   <p><span class="severity resolved">resolved</span> <strong>Mixed command types in one comment silently dropped</strong></p>

@@ -1,14 +1,18 @@
 ---
 pr: kubernetes-sigs/prow#778
 title: "Add /override-sticky command for persistent overrides"
-head_sha: a28708fb8055cd4b5376a84abfcec2443faecdd8
+head_sha: e8e26219d966f3b9dbdaf0ef6f27a439435529b1
 base: main
-reviewed_at: 2026-07-03T11:30:53Z
+reviewed_at: 2026-07-26T23:33:05Z
 verdict: approve
+state: merged
 refresh_log:
   - from: e13475980c21dd371d222b70e6a21011652bfc63
     to: a28708fb8055cd4b5376a84abfcec2443faecdd8
     summary: "Author addressed 6 of 8 findings: extracted isAuthorized helper, sequential multi-command dispatch, broadened /override-cancel to all overrides, description length test, fixed error messages"
+  - from: a28708fb8055cd4b5376a84abfcec2443faecdd8
+    to: e8e26219d966f3b9dbdaf0ef6f27a439435529b1
+    summary: "Second reviewer (Prucek) raised the same operator-precedence nit and a new 'Overridden by' constant-extraction nit; author addressed both in e8e26219, then PR was lgtm'd, approved, and merged"
 ---
 
 ## Summary
@@ -22,9 +26,14 @@ Since previous review (a28708fb):
 - Error messages now reflect actual command name via `cmdName` variable
 - Added `TestStickyDescriptionFitsGitHubLimit` test for description length
 
+Since previous review (e8e26219, addressing a second reviewer's comments):
+- Extracted `overrideDescriptionPrefix = "Overridden by"` constant, used by both `description()`/`stickyDescription()` and the cancel-matching logic, so they can't drift independently
+- Added explicit parentheses around the baseSHA condition in `tide.go`'s `prowJobsFromContexts` (`config.IsSkipRetest(desc) || (baseSHAForContext != "" && baseSHAForContext == baseSHA)`) — same fix as the precedence nit below, raised independently by Prucek
+- PR received `/lgtm` and approval from Prucek, self-approval from author (smg247), and merged 2026-07-14T08:48:24Z
+
 ## Review posted
 
-Review comments posted on 2026-07-01T14:16:00Z by petr-muller. Author responded on 2026-07-01T17:24:37Z and pushed a28708fb addressing most feedback.
+Review comments posted on 2026-07-01T14:16:00Z by petr-muller. Author responded on 2026-07-01T17:24:37Z and pushed a28708fb addressing most feedback. A second reviewer, Prucek, reviewed on 2026-07-13 and raised two nits (constant extraction, parentheses); author addressed both in e8e26219. PR merged 2026-07-14.
 
 ## Findings
 
@@ -33,13 +42,6 @@ Review comments posted on 2026-07-01T14:16:00Z by petr-muller. Author responded 
 - concern: `baseSHAGetter()` fetches the current base branch HEAD at override time. For regular `/override`, this is wrong — it should reuse the baseSHA already embedded in the overridden context's description (via `BaseSHAFromContextDescription`). The override just changes the verdict, it shouldn't claim the job ran against a different base. If the original context has no baseSHA, fall back to the current base as today.
 - posted: yes (petr-muller, override.go:513)
 - status: OPEN — not addressed in a28708fb
-
-### [nit] Operator precedence ambiguity in Tide condition
-- where: `pkg/tide/tide.go:1056`
-- concern: Correct per Go rules but reads ambiguously. Explicit parentheses recommended.
-- status: OPEN — not addressed in a28708fb
-- excerpt: |
-    if config.IsSkipRetest(desc) || baseSHAForContext != "" && baseSHAForContext == baseSHA {
 
 ## Resolved
 
@@ -66,6 +68,14 @@ Review comments posted on 2026-07-01T14:16:00Z by petr-muller. Author responded 
 ### [nit] Hardcoded error message doesn't reflect actual command
 - resolved in: a28708fb
 - how: Error messages now use `cmdName` variable (`"/override"` or `"/override-sticky"`).
+
+### [nit] Operator precedence ambiguity in Tide condition
+- resolved in: e8e26219
+- how: Added explicit parentheses: `config.IsSkipRetest(desc) || (baseSHAForContext != "" && baseSHAForContext == baseSHA)`. Raised independently by both petr-muller (this review) and Prucek (second reviewer).
+
+### [nit] "Overridden by" string literal duplicated between description() and cancel logic
+- resolved in: e8e26219
+- how: Extracted `overrideDescriptionPrefix = "Overridden by"` constant, used by `description()`, `stickyDescription()`, and `handleOverrideCancel`'s match check. Raised by second reviewer (Prucek); not in the original findings list.
 
 ## Followup ideas (posted)
 

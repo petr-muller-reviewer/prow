@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Review: PR #611 — Local Hook Development Guide</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text-muted: #8b949e;
+    --accent: #58a6ff;
+    --red: #f85149;
+    --orange: #d29922;
+    --green: #3fb950;
+    --purple: #bc8cff;
+    --cyan: #39c5cf;
+    --code-bg: #1c2128;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    padding: 2rem;
+    max-width: 960px;
+    margin: 0 auto;
+  }
+  header {
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 1.5rem;
+    margin-bottom: 2rem;
+  }
+  header h1 { font-size: 1.6rem; font-weight: 600; }
+  header .meta {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin-top: 0.4rem;
+  }
+  header .meta a { color: var(--accent); text-decoration: none; }
+  header .meta a:hover { text-decoration: underline; }
+  .badge {
+    display: inline-block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.15em 0.5em;
+    border-radius: 1rem;
+    margin-left: 0.3rem;
+    vertical-align: middle;
+  }
+  .badge-open { background: #238636; color: #fff; }
+  .badge-first { background: #1f6feb; color: #fff; }
+
+  section { margin-bottom: 2rem; }
+  h2 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid var(--border);
+  }
+  h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 1rem 0 0.4rem;
+  }
+
+  .finding {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1rem;
+    border-left: 3px solid var(--border);
+  }
+  .finding.critical { border-left-color: var(--red); }
+  .finding.warning  { border-left-color: var(--orange); }
+  .finding.info     { border-left-color: var(--accent); }
+  .finding.positive { border-left-color: var(--green); }
+
+  .finding .severity {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.4rem;
+  }
+  .finding.critical .severity { color: var(--red); }
+  .finding.warning .severity  { color: var(--orange); }
+  .finding.info .severity     { color: var(--accent); }
+  .finding.positive .severity { color: var(--green); }
+
+  .finding .title {
+    font-weight: 600;
+    font-size: 1rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .convergence-tag {
+    display: inline-block;
+    font-size: 0.7rem;
+    font-weight: 600;
+    background: rgba(188, 140, 255, 0.15);
+    color: var(--purple);
+    padding: 0.1em 0.45em;
+    border-radius: 3px;
+    margin-left: 0.4rem;
+    vertical-align: middle;
+  }
+
+  ul, ol { padding-left: 1.5rem; margin: 0.4rem 0; }
+  li { margin-bottom: 0.3rem; }
+
+  code {
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    font-size: 0.85em;
+    background: var(--code-bg);
+    padding: 0.15em 0.35em;
+    border-radius: 4px;
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1rem;
+    overflow-x: auto;
+    margin: 0.6rem 0;
+    font-size: 0.85rem;
+    line-height: 1.5;
+  }
+  pre code { background: none; padding: 0; }
+
+  .file-ref {
+    color: var(--purple);
+    font-family: 'SFMono-Regular', Consolas, monospace;
+    font-size: 0.85em;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0.6rem 0;
+    font-size: 0.9rem;
+  }
+  th, td {
+    text-align: left;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--border);
+  }
+  th { background: var(--surface); font-weight: 600; }
+
+  .checklist { list-style: none; padding-left: 0; }
+  .checklist li { padding: 0.2rem 0; }
+  .checklist li::before {
+    content: '☐ ';
+    color: var(--text-muted);
+    font-size: 1.1em;
+  }
+
+  .comment-draft {
+    background: var(--code-bg);
+    border: 1px dashed var(--border);
+    border-radius: 6px;
+    padding: 1rem 1.25rem;
+    margin: 0.6rem 0;
+    white-space: pre-wrap;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    cursor: pointer;
+    position: relative;
+  }
+  .comment-draft:hover { border-color: var(--accent); }
+  .comment-draft .copy-hint {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.75rem;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+  .comment-draft:hover .copy-hint { opacity: 1; }
+
+  .verdict-box {
+    background: var(--surface);
+    border: 2px solid var(--orange);
+    border-radius: 6px;
+    padding: 1.25rem;
+    text-align: center;
+    margin-top: 2rem;
+  }
+  .verdict-box .verdict {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--orange);
+  }
+  .verdict-box .reason {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin-top: 0.3rem;
+  }
+
+  .perspectives {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.75rem;
+    margin-bottom: 2rem;
+  }
+  .perspective-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.85rem 1rem;
+    text-align: center;
+  }
+  .perspective-card .name {
+    font-weight: 600;
+    font-size: 0.9rem;
+    margin-bottom: 0.25rem;
+  }
+  .perspective-card .detail {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+  }
+  .perspective-card .card-verdict {
+    font-size: 0.75rem;
+    font-weight: 700;
+    margin-top: 0.4rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+  .perspective-card .card-verdict.changes { color: var(--orange); }
+  .perspective-card .card-verdict.low { color: var(--green); }
+
+  .prior-review {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1rem;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+  }
+  .prior-review .reviewer-name { color: var(--accent); font-weight: 600; }
+
+  .toast {
+    position: fixed;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%) translateY(100%);
+    background: var(--green);
+    color: #000;
+    padding: 0.5rem 1.25rem;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    opacity: 0;
+    transition: all 0.25s ease;
+    pointer-events: none;
+    z-index: 100;
+  }
+  .toast.show {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>PR #611: Doc: Add a local hook development guide
+    <span class="badge badge-open">Open</span>
+    <span class="badge badge-first">First-time contributor</span>
+  </h1>
+  <div class="meta">
+    Author: <a href="https://github.com/linolayani">@linolayani</a>
+    &middot; <a href="https://github.com/kubernetes-sigs/prow/pull/611">View on GitHub</a>
+    &middot; <span title="head: bf6575f7d15a5902d022415f6f0057bb2f07ef23 · refreshed: 2026-06-08T18:57:49Z">+151 &minus;0</span>
+    &middot; Reviewers requested: @krzyzacy, @matthyx
+  </div>
+</header>
+
+<!-- ===== REVIEWER PERSPECTIVES ===== -->
+<section>
+  <h2>Reviewer Perspectives</h2>
+  <div class="perspectives">
+    <div class="perspective-card">
+      <div class="name">Code Quality</div>
+      <div class="detail">Senior Go engineer</div>
+      <div class="card-verdict changes">Request Changes</div>
+    </div>
+    <div class="perspective-card">
+      <div class="name">Maintainability</div>
+      <div class="detail">Long-term maintainer</div>
+      <div class="card-verdict changes">Request Changes</div>
+    </div>
+    <div class="perspective-card">
+      <div class="name">Deployment Risk</div>
+      <div class="detail">Platform operator</div>
+      <div class="card-verdict low">Low Risk &mdash; No Concerns</div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== PRIOR COMMUNITY REVIEW ===== -->
+<section>
+  <h2>Prior Community Review</h2>
+  <div class="prior-review">
+    <span class="reviewer-name">@ivankatliarchuk</span> has already left a detailed review covering many of the same issues (broken command, typos, HMAC secret, naming confusion). The findings below incorporate and extend that review. Overlapping items are noted.
+  </div>
+</section>
+
+<!-- ===== CRITICAL ===== -->
+<section>
+  <h2>Required Changes</h2>
+
+  <div class="finding critical">
+    <div class="severity">Critical &mdash; Correctness <span class="convergence-tag">All 3 reviewers + @ivankatliarchuk</span></div>
+    <div class="title">Broken <code>go run</code> command</div>
+    <p>In <span class="file-ref">site/content/en/docs/getting-started-hook.md:84-85</span>, the <code>go run</code> command block is missing line-continuation backslashes on the last two flags:</p>
+    <pre><code>                 --github-app-private-key-path=config/local/hook/prow-sandbox.private-key.pem
+                 --github-app-id=$GITHUB_APP_ID</code></pre>
+    <p>As written, the shell will execute <code>go run</code> without these flags, then try to run <code>--github-app-id=$GITHUB_APP_ID</code> as a separate command. The guide's primary instruction is non-functional.</p>
+    <div class="comment-draft" onclick="copyDraft(this)"><span class="copy-hint">click to copy</span>The last two flags are missing line-continuation backslashes (`\`). As written, the shell will execute `go run` without `--github-app-private-key-path` and `--github-app-id`, then try to run those as separate commands:
+
+```suggestion
+                  --hmac-secret-file=config/local/hook/hmac-secret \
+                  --github-app-private-key-path=config/local/hook/prow-sandbox.private-key.pem \
+                  --github-app-id=$GITHUB_APP_ID
+```</div>
+  </div>
+
+  <div class="finding critical">
+    <div class="severity">Critical &mdash; Documentation <span class="convergence-tag">Code Quality + Maintainability + @ivankatliarchuk</span></div>
+    <div class="title">Typo: "sensible" &rarr; "sensitive"</div>
+    <p><span class="file-ref">config/local/hook/README.md:3</span> says "safe place to store sensible credentials" &mdash; a meaning-altering typo in a security-relevant sentence. Should be "sensitive credentials".</p>
+    <div class="comment-draft" onclick="copyDraft(this)"><span class="copy-hint">click to copy</span>```suggestion
+This folder contains configuration files to run [Hook](/docs/components/core/hook/) locally for plugin development and testing. This is a safe place to store sensitive credentials, as the `config/local` folder is included in the gitignore.
+```</div>
+  </div>
+
+  <div class="finding critical">
+    <div class="severity">Critical &mdash; Documentation <span class="convergence-tag">Code Quality + Maintainability + @ivankatliarchuk</span></div>
+    <div class="title">Typo: "Form" &rarr; "From" + incomplete sentence</div>
+    <p><span class="file-ref">getting-started-hook.md:76</span>: "Form the root" should be "From the root".</p>
+    <p><span class="file-ref">getting-started-hook.md:74</span>: "We're now going to" &mdash; sentence trails off with no conclusion. Add e.g. "run the two processes."</p>
+    <div class="comment-draft" onclick="copyDraft(this)"><span class="copy-hint">click to copy</span>"Form the root" → "From the root"
+
+Also, the sentence "We're now going to" on the line above is incomplete — it trails off. Consider: "We're now going to start Hook and the smee client."</div>
+  </div>
+</section>
+
+<!-- ===== WARNINGS ===== -->
+<section>
+  <h2>Warnings</h2>
+
+  <div class="finding warning">
+    <div class="severity">Warning &mdash; Architecture <span class="convergence-tag">Maintainability + initial review</span></div>
+    <div class="title"><code>.gitignore</code> vs tracked files tension</div>
+    <p>The PR adds <code>config/local/</code> to <code>.gitignore</code> <strong>and</strong> commits files under <code>config/local/hook/</code>. This is a workable but surprising pattern: <code>.gitignore</code> only affects <em>untracked</em> files. Once committed, git continues tracking these files &mdash; modifications show in <code>git diff</code>, and <code>git clean -fdx</code> will delete them entirely.</p>
+    <p style="margin-top:0.5rem">The README's claim that this is a "safe place to store sensitive credentials" is <strong>misleading for committed files</strong>. New files created here (like a real private key) <em>will</em> be correctly ignored, but edits to committed files (like putting a real secret in <code>hmac-secret</code>) will be tracked.</p>
+    <h3>Suggested alternative</h3>
+    <p>Place templates in a non-ignored location (e.g. <code>config/templates/hook/</code>) and have users copy them into the gitignored <code>config/local/hook/</code>. This is the well-understood <code>.example</code> / <code>cp</code> convention.</p>
+    <div class="comment-draft" onclick="copyDraft(this)"><span class="copy-hint">click to copy</span>The `config/local/` directory is gitignored, but these template files are committed into it. `.gitignore` only affects *untracked* files — once committed, git continues tracking changes (they'll show in `git diff`, and `git clean -fdx` will delete them).
+
+This means the README's claim that this is a "safe place to store sensitive credentials" is misleading for any of the committed files. If a user modifies `hmac-secret` with a real value, it *will* show in `git status`.
+
+Consider placing templates in a non-ignored location (e.g. `config/templates/hook/`) with instructions to copy them into `config/local/hook/`. This follows the well-understood `.env.example` → `.env` convention.</div>
+  </div>
+
+  <div class="finding warning">
+    <div class="severity">Warning &mdash; Security <span class="convergence-tag">Code Quality + Deployment Risk context</span></div>
+    <div class="title">Hardcoded HMAC secret value</div>
+    <p><span class="file-ref">config/local/hook/hmac-secret</span> contains the literal value <code>abcde12345</code>. The Deployment Risk reviewer noted this is the <strong>established convention</strong> across the codebase (<code>cmd/phony</code>, integration tests, integration config), so it's consistent &mdash; but Code Quality suggested encouraging <code>openssl rand -hex 20</code> to avoid the value being cargo-culted into less appropriate contexts.</p>
+    <p style="margin-top:0.5rem"><strong>Maintainer call:</strong> This is non-blocking given the established convention, but worth a brief note in the guide that this is a throwaway dev-only value.</p>
+  </div>
+
+  <div class="finding warning">
+    <div class="severity">Warning &mdash; Naming <span class="convergence-tag">@ivankatliarchuk</span></div>
+    <div class="title"><code>config/local/hook</code> may be confused with git hooks</div>
+    <p>In a git repository, "hook" commonly refers to git hooks (<code>.git/hooks/</code>). The directory name <code>config/local/hook</code> could confuse contributors. Consider <code>config/local/prow-hook</code> or <code>config/local/hook-dev</code>.</p>
+    <div class="comment-draft" onclick="copyDraft(this)"><span class="copy-hint">click to copy</span>Nit: `config/local/hook` could be confused with git hooks. Consider `config/local/prow-hook` or similar to disambiguate.</div>
+  </div>
+
+  <div class="finding warning">
+    <div class="severity">Warning &mdash; Documentation</div>
+    <div class="title">README links broken outside Hugo</div>
+    <p><span class="file-ref">config/local/hook/README.md</span> uses relative links (<code>/docs/components/core/hook/</code>, <code>/docs/getting-started-hook</code>) that only resolve when rendered by Hugo. They are broken when reading the README on GitHub or in an editor. Consider using full GitHub URLs or noting these resolve on the published site.</p>
+  </div>
+</section>
+
+<!-- ===== INFO / NITS ===== -->
+<section>
+  <h2>Nits &amp; Polish</h2>
+
+  <div class="finding info">
+    <div class="severity">Info &mdash; Grammar / Typos <span class="convergence-tag">Code Quality + @ivankatliarchuk</span></div>
+    <div class="title">Multiple issues in <span class="file-ref">getting-started-hook.md</span></div>
+    <table>
+      <thead><tr><th>Location</th><th>Current</th><th>Fix</th></tr></thead>
+      <tbody>
+        <tr><td>Set up webhook, intro</td><td>"smee&hellip; to forwards"</td><td>"to forward"</td></tr>
+        <tr><td>Test the setup</td><td>"This plugin listen for"</td><td>"This plugin listens for"</td></tr>
+        <tr><td>Test the setup</td><td>"listen for /woof comment"</td><td>"listens for <code>/woof</code> comments"</td></tr>
+        <tr><td>Understanding, step 1</td><td>"eg."</td><td>"e.g."</td></tr>
+        <tr><td>Understanding, step 3</td><td>"smee-client receive"</td><td>"receives"</td></tr>
+        <tr><td>Understanding, step 4</td><td>"parse the event"</td><td>"parses"</td></tr>
+        <tr><td>Understanding, step 5</td><td>"adding a comment the issue"</td><td>"adding a comment to the issue"</td></tr>
+        <tr><td>Understanding, step 5</td><td>"eg."</td><td>"e.g."</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="finding info">
+    <div class="severity">Info &mdash; Formatting</div>
+    <div class="title">Hugo heading level</div>
+    <p><code># Prerequisites</code> uses h1 while all subsequent sections use <code>##</code> (h2). Hugo content with frontmatter <code>title:</code> should start body headings at <code>##</code>.</p>
+  </div>
+
+  <div class="finding info">
+    <div class="severity">Info &mdash; Formatting</div>
+    <div class="title">Missing language annotation on code block</div>
+    <p>The smee command block (step 2 under "Run hook and smee") uses a bare <code>```</code> fence. Add <code>```sh</code> for syntax highlighting consistency.</p>
+  </div>
+
+  <div class="finding info">
+    <div class="severity">Info &mdash; File hygiene</div>
+    <div class="title">Missing trailing newline in <code>hmac-secret</code></div>
+    <p><span class="file-ref">config/local/hook/hmac-secret</span> lacks a final newline. Some tools behave unexpectedly with files missing one, and Hook's HMAC reading code may or may not trim whitespace.</p>
+  </div>
+
+  <div class="finding info">
+    <div class="severity">Info &mdash; Suggestion</div>
+    <div class="title"><code>.gitignore</code> comment wording</div>
+    <p>"Make sure to not commit sensitive credentials" &rarr; "Do not commit sensitive credentials."</p>
+  </div>
+</section>
+
+<!-- ===== POSITIVE ===== -->
+<section>
+  <h2>What's Good</h2>
+
+  <div class="finding positive">
+    <div class="severity">Positive</div>
+    <div class="title">Valuable contribution for onboarding</div>
+    <ul>
+      <li>The smee-based approach is practical and well-chosen for local development.</li>
+      <li>Using <code>go run ./cmd/hook</code> avoids build-step dependencies &mdash; keeps the guide simple.</li>
+      <li>Flag names correctly match <code>cmd/hook/main.go</code> and <code>pkg/flagutil/github.go</code>.</li>
+      <li>The file table in the README is helpful for orientation.</li>
+      <li>The "Understanding the workflow" section builds mental models for newcomers.</li>
+      <li>The <code>config/local/</code> pattern is extensible to other components beyond Hook.</li>
+      <li>The <code>.pem</code> placeholder correctly uses only comments (no dummy key material).</li>
+      <li>The HMAC placeholder value is consistent with the established codebase convention.</li>
+      <li>Linking to the full documented config reference helps discoverability.</li>
+      <li>Overall concept meaningfully lowers the barrier to entry for new contributors.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ===== VERDICT ===== -->
+<div class="verdict-box">
+  <div class="verdict">Request Changes</div>
+  <div class="reason">
+    Broken shell command makes the guide non-functional. Three text fixes also required.<br>
+    Once addressed, deployment risk is zero and maintenance burden is low &mdash; ready to merge.
+  </div>
+</div>
+
+<!-- ===== GATE ===== -->
+<div class="verdict-box" style="border-color:var(--orange);margin-top:1.5rem">
+  <div class="verdict" style="color:var(--orange)">Gate: HOLD</div>
+  <div class="reason" style="text-align:left;margin-top:0.75rem">
+    <p>All three critical findings from the original review are unaddressed at <code>bf6575f7d</code>. The PR also carries <code>lifecycle/stale</code> and <code>needs-ok-to-test</code> — no CI has run, no formal reviews submitted.</p>
+    <h3 style="margin-top:1rem;margin-bottom:0.4rem;font-size:0.9rem">Gating items</h3>
+    <ul style="font-size:0.9rem">
+      <li><strong>Broken <code>go run</code> command</strong> &mdash; <code>getting-started-hook.md</code> lines ~84–88: missing backslashes on <code>--github-app-private-key-path</code> and <code>--github-app-id</code>. Command does not execute correctly. Verified at current head.</li>
+      <li><strong>Typo &ldquo;sensible&rdquo; &rarr; &ldquo;sensitive&rdquo;</strong> &mdash; <code>config/local/hook/README.md:3</code>: unchanged. The two post-initial commits to this file only fixed the heading and a broken link.</li>
+      <li><strong>&ldquo;Form&rdquo; &rarr; &ldquo;From&rdquo; + incomplete sentence</strong> &mdash; <code>getting-started-hook.md</code> lines ~74,76: both still present.</li>
+    </ul>
+    <h3 style="margin-top:1rem;margin-bottom:0.4rem;font-size:0.9rem">Process blockers</h3>
+    <ul style="font-size:0.9rem">
+      <li><code>lifecycle/stale</code> applied 2026-06-06 &mdash; author must <code>/remove-lifecycle stale</code></li>
+      <li><code>needs-ok-to-test</code> &mdash; CI has not run</li>
+      <li>No <code>lgtm</code> or <code>approve</code> from <code>@matthyx</code> (requested approver)</li>
+    </ul>
+    <p style="margin-top:0.75rem"><strong>Merge risk: none.</strong> Documentation-only PR; no code, no API surface, no flag changes.</p>
+    <p style="margin-top:0.5rem;font-size:0.8rem;color:var(--text-muted)">Gated at 2026-06-08T18:59:20Z &middot; head bf6575f7d</p>
+  </div>
+</div>
+
+<!-- ===== DRAFT OVERALL COMMENT ===== -->
+<section style="margin-top:2rem">
+  <h2>Draft Overall Comment</h2>
+  <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:0.5rem">Click to copy, then paste into the GitHub review summary box.</p>
+  <div class="comment-draft" onclick="copyDraft(this)"><span class="copy-hint">click to copy</span>Thanks for putting this guide together @linolayani — it fills a real gap in the onboarding experience. I'm requesting changes for one critical fix and a few small text corrections.
+
+The `go run` command on lines 84-85 is missing line continuation backslashes, which means anyone following the guide will hit a shell error. Please also fix the typos ("sensible" → "sensitive", "Form" → "From") and complete the truncated sentence ("We're now going to").
+
+Once those are addressed, this is good to merge. The gitignore/template layout and heading consistency points are suggestions you can take or leave.</div>
+</section>
+
+<!-- ===== CHECKLIST ===== -->
+<section style="margin-top:2rem">
+  <h2>Review Checklist</h2>
+  <ul class="checklist">
+    <li>Post overall comment</li>
+    <li>Post inline comment: broken go run command (lines 84-85)</li>
+    <li>Post inline comment: "sensible" &rarr; "sensitive" typo (README.md:3)</li>
+    <li>Post inline comment: "Form" &rarr; "From" + incomplete sentence (lines 74, 76)</li>
+    <li>Post inline comment: gitignore/tracked files tension (non-blocking suggestion)</li>
+    <li>Optionally post: README broken links, naming confusion, heading levels, trailing newline</li>
+    <li>Submit review as "Request Changes"</li>
+  </ul>
+</section>
+
+<div class="toast" id="toast">Copied to clipboard</div>
+
+<script>
+function copyDraft(el) {
+  const text = el.textContent.replace(/^click to copy/, '').trim();
+  navigator.clipboard.writeText(text).then(() => {
+    const toast = document.getElementById('toast');
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 1500);
+  });
+}
+</script>
+
+</body>
+</html>

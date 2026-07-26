@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Review: kubernetes-sigs/prow#770</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; line-height: 1.6; max-width: 52em; margin: 2em auto; padding: 0 1em; color: #24292f; background: #fff; }
+  h1 { font-size: 1.4em; border-bottom: 1px solid #d0d7de; padding-bottom: .3em; }
+  h2 { font-size: 1.15em; margin-top: 1.8em; border-bottom: 1px solid #d0d7de; padding-bottom: .2em; }
+  h3 { font-size: 1em; margin-top: 1.2em; }
+  code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; font-size: 0.9em; background: #f6f8fa; padding: .15em .3em; border-radius: 3px; }
+  pre { background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 6px; padding: .8em 1em; overflow-x: auto; font-size: 0.85em; line-height: 1.5; }
+  .meta { background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 6px; padding: 1em 1.2em; margin-bottom: 1.5em; }
+  .meta dt { font-weight: 600; display: inline; }
+  .meta dd { display: inline; margin: 0 1.5em 0 .3em; }
+  .verdict { padding: .8em 1em; border-radius: 6px; margin-bottom: 1.5em; }
+  .verdict.approve { background: #dafbe1; border: 1px solid #a7f3d0; }
+  .verdict h2 { margin: 0 0 .4em 0; border: none; padding: 0; }
+  ul { padding-left: 1.4em; }
+  li { margin-bottom: .35em; }
+  a { color: #0969da; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .severity { display: inline-block; font-size: 0.75em; font-weight: 600; padding: .15em .5em; border-radius: 3px; margin-right: .4em; text-transform: uppercase; }
+  .severity.should-fix { background: #fff8c5; color: #735c0f; border: 1px solid #d4a72c; }
+  .severity.nit { background: #ddf4ff; color: #0550ae; border: 1px solid #54aeff; }
+  .severity.question { background: #f0e6ff; color: #5e3a8c; border: 1px solid #b07fe0; }
+  .finding { border: 1px solid #d0d7de; border-radius: 6px; padding: .8em 1em; margin-bottom: 1em; }
+</style>
+</head>
+<body>
+
+<h1>Review: kubernetes-sigs/prow#770</h1>
+
+<div class="meta">
+  <dl>
+    <dt>PR:</dt><dd><a href="https://github.com/kubernetes-sigs/prow/pull/770">kubernetes-sigs/prow#770</a></dd>
+    <dt>Title:</dt><dd>trigger: expose triggering comment ID and URL in JOB_SPEC</dd>
+    <dt>Author:</dt><dd>tiborv</dd>
+    <dt>Base:</dt><dd>main</dd>
+    <dt>Head SHA:</dt><dd><code>043dffcf0ea7a043e769daea76d1a2b39cee944f</code></dd>
+    <dt>Reviewed:</dt><dd>2026-06-25T12:04:58Z</dd>
+  </dl>
+</div>
+
+<div class="verdict approve">
+  <h2>Verdict: Approve</h2>
+  <p>Clean, well-tested, additive change. Adds trigger comment provenance (ID and URL) to ProwJobSpec and surfaces it as env vars for comment-triggered presubmits. No correctness bugs found. The implementation correctly keeps the boundary at provenance metadata (who triggered this) rather than behavioral parameters (what to do differently). All three independent reviewer perspectives converge on approval. Two suggestions and one architectural question below.</p>
+</div>
+
+<h2>What this PR does</h2>
+<ul>
+  <li>Adds a <code>TriggerComment</code> struct (ID + HTML URL) to <code>ProwJobSpec</code> to capture which GitHub comment triggered a job.</li>
+  <li>Populates it in <code>handleGenericComment</code> for <code>/test</code>, <code>/retest</code>, <code>/ok-to-test</code> commands; leaves it nil for automatic triggers (PR open/sync, Tide, periodics).</li>
+  <li>Surfaces as <code>TRIGGER_COMMENT_ID</code> and <code>TRIGGER_COMMENT_URL</code> env vars and in the <code>JOB_SPEC</code> JSON under <code>trigger_comment</code>.</li>
+  <li>Handles the review-body edge case (URL present but no dedicated comment ID) by omitting <code>TRIGGER_COMMENT_ID</code> when ID is zero.</li>
+  <li>Updates both CRD manifests, generated deepcopy, tests (two new cases), and documentation.</li>
+</ul>
+
+<h2>Findings</h2>
+
+<div class="finding">
+  <h3><span class="severity should-fix">Should Fix</span> RunRequestedWithLabels has 7 positional parameters</h3>
+  <p><code>pkg/plugins/trigger/trigger.go:335-336</code></p>
+  <pre>func RunRequestedWithLabels(c Client, pr *github.PullRequest, baseSHA string,
+    requestedJobs []config.Presubmit, eventGUID string,
+    labels map[string]string, triggerComment *prowapi.TriggerComment) error {</pre>
+  <p>This exported function now takes 7 positional args. It's at the edge of readability and each new feature adds another parameter. Not blocking for this PR, but the next addition should refactor to an options struct. Consider noting this as a known debt item.</p>
+</div>
+
+<div class="finding">
+  <h3><span class="severity nit">Nit</span> Reserved env var names deserve a release note</h3>
+  <p><code>pkg/pod-utils/downwardapi/jobspec.go:209</code></p>
+  <pre>pullEnv := []string{PullNumberEnv, PullPullShaEnv, PullHeadRefEnv, PullTitleEnv,
+    TriggerCommentIDEnv, TriggerCommentURLEnv}</pre>
+  <p><code>TRIGGER_COMMENT_ID</code> and <code>TRIGGER_COMMENT_URL</code> are now reserved for all presubmits via <code>EnvForType</code>. Any existing job config defining these names will fail config validation on upgrade. The names are distinctive enough that collision is very unlikely, but a release note would help operators who hit this.</p>
+</div>
+
+<div class="finding">
+  <h3><span class="severity question">Question</span> Abstraction boundary: provenance vs. behavioral coupling</h3>
+  <p><code>pkg/apis/prowjobs/v1/types.go:240-259</code></p>
+  <pre>// TriggerComment, when set, references the GitHub comment whose command
+// triggered this job (e.g. /test, /retest, /ok-to-test). It is nil for jobs
+// that were triggered automatically ...
+TriggerComment *TriggerComment `json:"trigger_comment,omitempty"`</pre>
+  <p><code>TriggerComment</code> introduces "how a job was triggered" into <code>ProwJobSpec</code>, which otherwise describes "what to run against what code". This PR keeps the right boundary &mdash; exposing provenance (ID and URL) rather than content (the comment body). But if future extensions start exposing the comment body or parsed arguments, that would cross into coupling job behavior to the trigger mechanism. Worth adding an explicit note in the struct doc comment that this is provenance metadata, not a channel for trigger-time arguments.</p>
+</div>
+
+<h2>Things I checked and was fine with</h2>
+<ul>
+  <li>All callers of <code>RunRequestedWithLabels</code> and <code>RunRequested</code> updated for the new parameter.</li>
+  <li><code>TriggerComment.ID</code> uses <code>int</code>, matching prow's existing GitHub types (<code>IssueComment.ID</code>, <code>Review.ID</code>, <code>ReviewComment.ID</code>).</li>
+  <li>Shared <code>triggerComment</code> pointer in <code>runRequested</code> loop is safe: value-only fields, never mutated after construction, <code>DeepCopy</code> generated correctly (<code>**out = **in</code>).</li>
+  <li>Zero-value handling: <code>ID == 0</code> suppresses <code>TRIGGER_COMMENT_ID</code>; empty <code>HTMLURL</code> suppresses <code>TRIGGER_COMMENT_URL</code>.</li>
+  <li><code>EnvForType</code>/<code>EnvForSpec</code> asymmetry (unconditional listing vs conditional setting) matches existing pattern for <code>PULL_TITLE</code> and other optional vars.</li>
+  <li>CRD schema (<code>type: integer</code> / <code>type: string</code>) matches Go types. Both production and integration CRDs updated consistently.</li>
+  <li>Tests cover full-comment case (ID + URL) and URL-only case (review body, ID=0) with explicit absent-key assertion.</li>
+  <li><code>gc.CommentID</code> nil-check in <code>generic-comment.go</code> correctly handles events without a dedicated comment ID.</li>
+  <li>Rollback is clean: old binaries ignore the <code>trigger_comment</code> field.</li>
+  <li>CRD update ordering is flexible (field is optional with zero-value defaults).</li>
+</ul>
+
+<h2>Open questions for the author</h2>
+<ul>
+  <li>Should the <code>TriggerComment</code> doc comment explicitly state this is provenance metadata and not intended as a channel for passing trigger-time arguments to jobs? This would help future contributors maintain the right abstraction boundary.</li>
+  <li>Would you consider adding a release note about the two new reserved env var names (<code>TRIGGER_COMMENT_ID</code>, <code>TRIGGER_COMMENT_URL</code>) for presubmits?</li>
+</ul>
+
+</body>
+</html>

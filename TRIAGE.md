@@ -2,10 +2,13 @@
 issue: kubernetes-sigs/prow#673
 title: "Tide gets stuck retrying unmergeable PR instead of advancing to next candidate"
 state: open
-labels: lifecycle/stale
+labels: ""
 main_sha: ae8e2d87967f0a2b45cfed2c514f5ec91b964596
-triaged_at: 2026-07-01T12:47:15Z
+triaged_at: 2026-07-26T23:32:43Z
 verdict: accepted
+refresh_log:
+  - previous_triaged_at: 2026-07-01T12:47:15Z
+    summary: "lifecycle/stale removed by @kaovilai via /remove-lifecycle stale comment; no other activity. PR #674 still open, not merged."
 ---
 
 ## Findings
@@ -90,9 +93,11 @@ verdict: accepted
 ## Next steps
 
 - Review PR #674 — directly addresses this issue with a well-scoped, tested fix
-- Remove `lifecycle/stale` and apply `kind/bug`, `area/tide`
+- `lifecycle/stale` already removed (by @kaovilai, 2026-07-01); still apply `kind/bug`, `area/tide`
 - Verify @tuminoid's "changes requested" scenario is covered by PR #674 (any `UnmergablePRError` triggers exclusion regardless of specific rejection reason)
 - Consider as follow-up whether `github_merge_blocks_policy` default should change from `"permit"` to `"block"`
+
+Since previous triage: @kaovilai removed the `lifecycle/stale` label via `/remove-lifecycle stale` on 2026-07-01. No other activity; PR #674 remains open and unmerged.
 
 ## Open questions
 

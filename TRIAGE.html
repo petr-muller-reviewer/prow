@@ -32,8 +32,8 @@
 <tr><td>Issue</td><td><a href="https://github.com/kubernetes-sigs/prow/issues/673">kubernetes-sigs/prow#673</a></td></tr>
 <tr><td>Title</td><td>Tide gets stuck retrying unmergeable PR instead of advancing to next candidate</td></tr>
 <tr><td>State</td><td>open</td></tr>
-<tr><td>Labels</td><td>lifecycle/stale</td></tr>
-<tr><td>Triaged at</td><td>2026-07-01T12:47:15Z</td></tr>
+<tr><td>Labels</td><td>(none)</td></tr>
+<tr><td>Triaged at</td><td>2026-07-26T23:32:43Z</td></tr>
 <tr><td>Main SHA</td><td><code>ae8e2d87967f0a2b45cfed2c514f5ec91b964596</code></td></tr>
 <tr><td>Verdict</td><td><strong>accepted</strong></td></tr>
 </table>
@@ -51,6 +51,8 @@
 <li>The error is logged at Debug level only &mdash; operators may not notice the queue is stalled.</li>
 <li>A member comment confirms the same loop occurs when a PR has a "changes requested" review verdict alongside lgtm/approve labels.</li>
 </ul>
+
+<p><em>Since previous triage:</em> @kaovilai removed the <code>lifecycle/stale</code> label via <code>/remove-lifecycle stale</code> on 2026-07-01. No other activity; PR #674 remains open and unmerged.</p>
 
 <h2>Analysis</h2>
 
@@ -110,7 +112,7 @@ func (e UnmergablePRError) Error() string { return string(e) }</code></pre>
 <h2>Recommended next steps</h2>
 <ul>
 <li>Review <a href="https://github.com/kubernetes-sigs/prow/pull/674">PR #674</a> &mdash; it directly addresses this issue with a well-scoped, tested fix (temporary exclusion with TTL + SHA invalidation).</li>
-<li>Remove <code>lifecycle/stale</code> label and apply <code>kind/bug</code>, <code>area/tide</code>.</li>
+<li><code>lifecycle/stale</code> label already removed (by @kaovilai, 2026-07-01); still apply <code>kind/bug</code>, <code>area/tide</code>.</li>
 <li>Verify that @tuminoid's "changes requested" scenario is covered by PR #674 (it should be &mdash; any <code>UnmergablePRError</code> triggers exclusion regardless of the specific rejection reason).</li>
 <li>Consider as a follow-up whether <code>github_merge_blocks_policy</code> default should change from <code>"permit"</code> to <code>"block"</code>.</li>
 </ul>

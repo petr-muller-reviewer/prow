@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Review: kubernetes-sigs/prow#771</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; line-height: 1.6; max-width: 820px; margin: 2rem auto; padding: 0 1rem; color: #24292f; }
+  code, pre { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; font-size: 0.9em; }
+  code { background: #f6f8fa; padding: 0.15em 0.35em; border-radius: 3px; }
+  pre { background: #f6f8fa; padding: 1em; border-radius: 6px; overflow-x: auto; line-height: 1.45; }
+  h1 { font-size: 1.4em; border-bottom: 1px solid #d0d7de; padding-bottom: 0.4em; }
+  h2 { font-size: 1.15em; margin-top: 2em; border-bottom: 1px solid #d0d7de; padding-bottom: 0.3em; }
+  h3 { font-size: 1.05em; margin-top: 1.5em; }
+  .meta { background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 6px; padding: 0.8em 1em; margin-bottom: 1.5em; font-size: 0.92em; }
+  .meta td { padding: 0.15em 0.6em 0.15em 0; }
+  .meta td:first-child { font-weight: 600; white-space: nowrap; }
+  .verdict { border-left: 4px solid #2da44e; padding: 0.6em 1em; margin: 1em 0; background: #dafbe1; border-radius: 0 6px 6px 0; }
+  .finding { border-left: 3px solid #d0d7de; padding: 0.5em 1em; margin: 1em 0; border-radius: 0 6px 6px 0; }
+  .finding.should-fix { border-left-color: #bf8700; background: #fff8e1; }
+  .finding.nit { border-left-color: #57606a; background: #f6f8fa; }
+  .finding.question { border-left-color: #0969da; background: #ddf4ff; }
+  .finding h3 { margin-top: 0; font-size: 1em; }
+  ul { padding-left: 1.4em; }
+  li { margin-bottom: 0.3em; }
+  a { color: #0969da; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .checked { color: #1a7f37; }
+  .severity { display: inline-block; font-size: 0.8em; font-weight: 600; padding: 0.1em 0.5em; border-radius: 3px; margin-right: 0.4em; vertical-align: middle; }
+  .severity.should-fix { background: #bf8700; color: #fff; }
+  .severity.nit { background: #57606a; color: #fff; }
+  .severity.question { background: #0969da; color: #fff; }
+</style>
+</head>
+<body>
+
+<h1>Review: branchprotector: add require_signed_commits config</h1>
+
+<div class="meta">
+<table>
+<tr><td>PR</td><td><a href="https://github.com/kubernetes-sigs/prow/pull/771">kubernetes-sigs/prow#771</a></td></tr>
+<tr><td>Author</td><td>Prucek (Peter Rucek)</td></tr>
+<tr><td>Head SHA</td><td><code>892e2930e347a01055d180247b348aa2d46cbc82</code></td></tr>
+<tr><td>Base</td><td>main</td></tr>
+<tr><td>Reviewed</td><td>2026-06-24T11:27:43Z</td></tr>
+<tr><td>Size</td><td>+252 / -17, 6 files</td></tr>
+</table>
+</div>
+
+<h2>Verdict</h2>
+<div class="verdict">
+<strong>Approve.</strong> Clean, well-structured addition that follows existing codebase patterns throughout. No correctness bugs. Two should-fix items around error handling and test coverage, and one question about user-facing behavior. None are blocking.
+</div>
+
+<h2>Gate</h2>
+<div class="verdict" style="border-left-color: #bf8700; background: #fff8e1;">
+<strong>Hold.</strong> No code changes since review, no reviewer activity on GitHub. The two should-fix findings are unaddressed, and the PR lacks <code>lgtm</code> and <code>approved</code> labels. <code>mergeStateStatus: UNSTABLE</code>.
+<p style="font-size: 0.88em; color: #57606a; margin-bottom: 0;">Gated: 2026-06-24T12:25:33Z &middot; SHA: <code>892e2930e3</code></p>
+</div>
+
+<h3>Unaddressed findings</h3>
+<ul>
+<li><strong>[should-fix] applySeparateRequests fires after UpdateBranchProtection failure</strong> (<code>protect.go:204-210</code>): unchanged. Recommend adding <code>continue</code> after the error.</li>
+<li><strong>[should-fix] TestConfigureBranches lacks coverage for applySeparateRequests path</strong>: no new test cases added.</li>
+</ul>
+
+<h3>Merge risk</h3>
+<ul>
+<li><strong><code>RepositoryClient</code> interface widened</strong> (<code>pkg/github/client.go:174-175</code>): two new exported methods. Technically backward-incompatible for external implementors. In practice, <code>RepositoryClient</code> is not referenced by name outside <code>pkg/github/client.go</code> in production code &mdash; it's embedded into the aggregate <code>Client</code> interface. Risk is low; follows the standard pattern for provider-side interfaces.</li>
+<li><strong>Config change</strong>: additive <code>*bool</code> with <code>omitempty</code> &mdash; no impact on existing configs.</li>
+<li><strong>Behavioral change</strong>: opt-in only &mdash; no effect on existing deployments that don't set <code>require_signed_commits</code>.</li>
+</ul>
+
+<h3>What unblocks</h3>
+<ol>
+<li>Author addresses the two should-fix findings (or a maintainer explicitly accepts them as-is).</li>
+<li>PR obtains <code>lgtm</code> and <code>approved</code> labels per project process.</li>
+</ol>
+
+<h2>What this PR does</h2>
+<ul>
+<li>Adds <code>require_signed_commits</code> field to the branch protection <code>Policy</code> config struct, wired through config merging (<code>Apply</code>/<code>selectBool</code>) and <code>defined()</code>.</li>
+<li>Introduces a <code>separateRequests</code> struct in branchprotector to group settings that GitHub manages via dedicated POST/DELETE endpoints rather than the main branch protection PUT body.</li>
+<li>Adds <code>EnableCommitSignProtection</code> / <code>DisableCommitSignProtection</code> methods to the GitHub client, hitting <code>/repos/{o}/{r}/branches/{b}/protection/required_signatures</code>.</li>
+<li>Adds <code>equalSeparateRequests</code> to the no-op-skip logic so branchprotector doesn't update branches whose signed-commits state already matches config.</li>
+<li>Adds unit tests for the equality function and an integration test for the config-to-requirements flow.</li>
+</ul>
+
+<h2>Findings</h2>
+
+<h3>Blocking</h3>
+<p>None.</p>
+
+<h3>Should fix</h3>
+
+<div class="finding should-fix">
+<h3><span class="severity should-fix">should-fix</span> applySeparateRequests fires after UpdateBranchProtection failure</h3>
+<p><code>cmd/branchprotector/protect.go:204-210</code></p>
+<pre>if err := p.client.UpdateBranchProtection(u.Org, u.Repo, u.Branch, *u.Request); err != nil {
+    p.errors.add(fmt.Errorf("update %s/%s=%s protection to %v failed: %w", u.Org, u.Repo, u.Branch, *u.Request, err))
+}
+
+if u.Separate != nil {
+    p.applySeparateRequests(u.Org, u.Repo, u.Branch, u.Separate)
+}</pre>
+<p>When <code>UpdateBranchProtection</code> fails, execution falls through to <code>applySeparateRequests</code>. The signature endpoint requires branch protection to be enabled, so the POST/DELETE will also fail (or leave partial state). Adding <code>continue</code> after the error would skip redundant failing calls. Three independent reviewers converged on this point.</p>
+</div>
+
+<div class="finding should-fix">
+<h3><span class="severity should-fix">should-fix</span> TestConfigureBranches lacks coverage for applySeparateRequests path</h3>
+<p><code>cmd/branchprotector/protect_test.go</code> (TestConfigureBranches)</p>
+<p>No test case sends a <code>requirements</code> with <code>Separate</code> through the channel. The actual enable/disable calls and error accumulation from <code>applySeparateRequests</code> are untested. Adding a case with <code>Separate: &amp;separateRequests{RequireSignedCommits: &amp;yes}</code> and one with <code>branch: "error"</code> to verify error accumulation would close this gap.</p>
+</div>
+
+<h3>Nits</h3>
+
+<div class="finding nit">
+<h3><span class="severity nit">nit</span> TestProtect error diagnostic omits Separate field</h3>
+<p><code>cmd/branchprotector/protect_test.go:~1660</code></p>
+<p>On mismatch, <code>ObjectDiff</code> compares <code>a.Request</code> vs <code>e.Request</code> but not <code>a.Separate</code> vs <code>e.Separate</code>. If the <code>Separate</code> fields differ, the test fails but the diagnostic output won't reveal what differed.</p>
+</div>
+
+<h3>Questions</h3>
+
+<div class="finding question">
+<h3><span class="severity question">question</span> Silent no-op when require_signed_commits is set without protect</h3>
+<p><code>cmd/branchprotector/protect.go:494</code></p>
+<p>Setting <code>require_signed_commits: true</code> without <code>protect: true</code> anywhere in the hierarchy causes <code>UpdateBranch</code> to bail at line 494 (<code>bp.Protect == nil</code>). The setting is silently ignored. This is consistent with how other sub-settings (<code>allow_force_pushes</code>, <code>allow_deletions</code>) behave, but could confuse users. Worth a log warning or documentation note?</p>
+</div>
+
+<h2>Things I checked and was fine with</h2>
+<ul>
+<li class="checked"><code>equalSeparateRequests</code> nil safety: nil sep, nil state, nil <code>RequireSignedCommits</code> all handled correctly</li>
+<li class="checked"><code>Policy.Apply()</code> merges <code>RequireSignedCommits</code> via <code>selectBool</code>; <code>defined()</code> includes it</li>
+<li class="checked"><code>protect: false</code> path: <code>RemoveBranchProtection</code> + <code>continue</code> correctly skips <code>applySeparateRequests</code></li>
+<li class="checked">GitHub API v2022-11-28 includes <code>required_signatures</code> in GET branch protection response (preview header graduated); equality check reads correct current state</li>
+<li class="checked">HTTP status codes: 200 for POST enable, 204 for DELETE disable, match GitHub API docs</li>
+<li class="checked"><code>FakeClient</code> in <code>fakegithub.go</code> has no compile-time <code>RepositoryClient</code> assertion; missing methods don't break compilation</li>
+<li class="checked">Config compatibility: new <code>*bool</code> with <code>omitempty</code> means existing configs parse unchanged, nil = no API calls</li>
+<li class="checked">No new permissions needed: <code>required_signatures</code> endpoint requires same admin access as <code>UpdateBranchProtection</code></li>
+<li class="checked">Rollback safe: removing field stops managing the setting but won't actively disable it on GitHub</li>
+</ul>
+
+<h2>Open questions for the author</h2>
+<ul>
+<li>Should <code>applySeparateRequests</code> be skipped when <code>UpdateBranchProtection</code> fails? Three reviewers flagged this independently.</li>
+<li>Would a warning log when <code>require_signed_commits</code> is set without <code>protect: true</code> be helpful, or is silent consistency with other sub-settings the right call?</li>
+</ul>
+
+<h2>Followups</h2>
+
+<div class="finding should-fix">
+<h3><span class="severity should-fix">should</span> tests: Add TestConfigureBranches coverage for applySeparateRequests</h3>
+<p><code>cmd/branchprotector/protect_test.go:205-303</code></p>
+<p><code>TestConfigureBranches</code> exercises the <code>configureBranches()</code> goroutine but no test case includes <code>Separate</code> in its requirements and assertions don't check <code>fc.signedCommitsEnabled</code>. The enable/disable calls and error accumulation have zero direct test coverage.</p>
+<pre>In kubernetes-sigs/prow, following PR #771 ("branchprotector: add require_signed_commits config"),
+add missing test coverage for the `applySeparateRequests` path in `TestConfigureBranches`.
+
+Context: PR #771 added a `separateRequests` struct and `applySeparateRequests` method to
+`configureBranches()` in `cmd/branchprotector/protect.go`. The existing `TestConfigureBranches`
+(protect_test.go:205-303) exercises the `configureBranches()` goroutine by sending `requirements`
+through a channel and checking `fc.deleted` and `fc.updated` — but no test case includes `Separate`
+in its requirements, and assertions don't check `fc.signedCommitsEnabled`. The enable/disable calls
+and error accumulation from `applySeparateRequests` have zero direct test coverage.
+
+Task:
+1. Add a test case that sends a `requirements` with
+   `Separate: &amp;separateRequests{RequireSignedCommits: &amp;yes}` and a valid branch, then asserts
+   `fc.signedCommitsEnabled` contains the expected key set to `true`.
+2. Add a test case with `Branch: "error"` and `Separate` set, then asserts `errors` count is 2
+   (one for UpdateBranchProtection, one for EnableCommitSignProtection).
+3. Add a test case with `RequireSignedCommits: &amp;no` (false) to verify DisableCommitSignProtection
+   is called.
+4. Extend the test assertions block (around line 295-301) to also compare `fc.signedCommitsEnabled`
+   against expected values.
+
+Acceptance criteria: `go test ./cmd/branchprotector/...` passes with the new cases.
+
+Out of scope: Do not modify `configureBranches()` itself. Do not touch files outside
+`cmd/branchprotector/protect_test.go`.</pre>
+</div>
+
+<div class="finding nit">
+<h3><span class="severity nit">could</span> efficiency: Avoid redundant API calls when only one component changed</h3>
+<p><code>cmd/branchprotector/protect.go:204-210,543</code></p>
+<p>The combined equality check sends both <code>Request</code> and <code>Separate</code> whenever either differs. <code>configureBranches()</code> then calls both API paths unconditionally. If only <code>require_signed_commits</code> changed, the PUT is a no-op; if only main protection changed, the POST/DELETE is a no-op.</p>
+<pre>In kubernetes-sigs/prow, following PR #771 ("branchprotector: add require_signed_commits config"),
+eliminate redundant API calls when only one of {main branch protection, separate requests} has changed.
+
+Context: In `cmd/branchprotector/protect.go`, `UpdateBranch()` (around line 543) uses a combined
+equality check: `equalBranchProtections(currentBP, req) &amp;&amp; equalSeparateRequests(currentBP, sep)`.
+When either component differs, the entire `requirements` struct is sent through the channel.
+`configureBranches()` (lines 204-210) then unconditionally calls both `UpdateBranchProtection` and
+`applySeparateRequests`. This wastes GitHub API quota.
+
+Task:
+1. Split the equality check in `UpdateBranch()` so each component is evaluated independently.
+2. Only populate `Request` in `requirements` when `equalBranchProtections` is false; only populate
+   `Separate` when `equalSeparateRequests` is false.
+3. In `configureBranches()`, gate `UpdateBranchProtection` on `u.Request != nil` and
+   `applySeparateRequests` on `u.Separate != nil` (already done).
+4. Update `TestConfigureBranches` to cover the case where only `Separate` is set.
+5. Update `TestProtect` to cover the case where main protection matches but signed commits differs.
+
+Acceptance criteria: `go test ./cmd/branchprotector/...` passes. When only signed commits state
+differs, no PUT to the main branch protection endpoint. When only main protection differs, no
+POST/DELETE to the signatures endpoint.
+
+Out of scope: Do not change the GitHub client methods, do not modify `pkg/config/` or
+`pkg/github/types.go`. Keep changes within `cmd/branchprotector/`.</pre>
+</div>
+
+</body>
+</html>

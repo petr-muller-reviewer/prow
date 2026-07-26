@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Review: kubernetes-sigs/prow#796</title>
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+    color: #1a1a1a;
+    max-width: 900px;
+    margin: 2rem auto;
+    padding: 0 1.5rem;
+    background: #fdfdfd;
+  }
+  code, pre {
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.92em;
+  }
+  pre {
+    background: #f4f4f4;
+    padding: 0.8rem 1rem;
+    border-radius: 6px;
+    overflow-x: auto;
+    border: 1px solid #e2e2e2;
+  }
+  code.inline {
+    background: #f0f0f0;
+    padding: 0.1em 0.35em;
+    border-radius: 4px;
+  }
+  header {
+    border-bottom: 2px solid #ddd;
+    padding-bottom: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  header h1 { margin-bottom: 0.3rem; font-size: 1.4rem; }
+  header dl {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 0.2rem 1rem;
+    font-size: 0.9rem;
+    color: #444;
+  }
+  header dt { font-weight: 600; }
+  .verdict {
+    background: #fdecea;
+    border-left: 4px solid #d33b2c;
+    padding: 0.8rem 1.2rem;
+    border-radius: 0 6px 6px 0;
+    margin-bottom: 1.5rem;
+  }
+  .verdict .label {
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: #b0281a;
+  }
+  h2 {
+    border-bottom: 1px solid #e5e5e5;
+    padding-bottom: 0.3rem;
+    margin-top: 2rem;
+  }
+  .finding {
+    margin: 1rem 0 1.5rem;
+    padding: 0.8rem 1rem;
+    border-radius: 6px;
+    border-left: 4px solid #ccc;
+  }
+  .finding.blocking { border-left-color: #d33b2c; background: #fdf2f1; }
+  .finding.question { border-left-color: #7a5cff; background: #f7f5ff; }
+  .finding .sev {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 0.15em 0.5em;
+    border-radius: 4px;
+    margin-bottom: 0.4rem;
+  }
+  .finding.blocking .sev { background: #fadbd8; color: #922016; }
+  .finding.question .sev { background: #e4ddff; color: #4b2fc9; }
+  .finding .loc { color: #666; font-size: 0.85rem; margin-bottom: 0.5rem; }
+  ul { padding-left: 1.3rem; }
+  li { margin-bottom: 0.4rem; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Review: autobump prow base images</h1>
+  <dl>
+    <dt>PR</dt><dd><a href="https://github.com/kubernetes-sigs/prow/pull/796">kubernetes-sigs/prow#796</a></dd>
+    <dt>Head SHA</dt><dd><code class="inline">ab99df655a530e6e7b30a29efad116423e4d8018</code></dd>
+    <dt>Base</dt><dd><code class="inline">main</code></dd>
+    <dt>Reviewed at</dt><dd>2026-07-26T23:35:11Z</dd>
+  </dl>
+</header>
+
+<div class="verdict">
+  <div class="label">Verdict: Request Changes</div>
+  <p>The config is missing the mandatory <code class="inline">includedConfigPaths</code> field. <code class="inline">cmd/generic-autobumper/main.go</code>'s <code class="inline">validateOptions</code> fatally errors whenever that field is empty, so <em>every</em> invocation of the bumper with this config will exit nonzero before ever touching <code class="inline">.ko.yaml</code> — meaning the PR as written does not actually fix #559.</p>
+</div>
+
+<h2>What this PR does</h2>
+<ul>
+  <li>Adds <code class="inline">hack/autobump.yaml</code>, a new config for the in-tree <code class="inline">cmd/generic-autobumper</code> tool.</li>
+  <li>Targets images under the <code class="inline">gcr.io/k8s-staging-test-infra</code> prefix, referenced as base images in <code class="inline">.ko.yaml</code>, via <code class="inline">extraFiles: [".ko.yaml"]</code>.</li>
+  <li>Fixes <a href="https://github.com/kubernetes-sigs/prow/issues/559">#559</a>: those images now expire after 6 months and <code class="inline">.ko.yaml</code> hadn't been bumped since ~July 2025.</li>
+  <li>Purely additive: one new file, not referenced by any existing build/test/deploy path.</li>
+</ul>
+
+<h2>Findings</h2>
+
+<div class="finding blocking">
+  <div class="sev">Blocking</div>
+  <div class="loc"><code class="inline">hack/autobump.yaml</code> (whole file) — validated against <code class="inline">cmd/generic-autobumper/main.go:123,232-234</code></div>
+  <p><code class="inline">IncludedConfigPaths []string \`yaml:"includedConfigPaths"\`</code> is unconditionally required by <code class="inline">validateOptions</code>, which returns <code class="inline">errors.New("includedConfigPaths is mandatory")</code> when empty. <code class="inline">main()</code> calls <code class="inline">validateOptions</code> before any bump logic runs and <code class="inline">logrus.Fatalf</code>s on error. This config never sets <code class="inline">includedConfigPaths</code>, so any invocation exits nonzero immediately, before <code class="inline">.ko.yaml</code> is ever touched. As written this cannot fix #559 — confirmed directly by reading the source, not inferred.</p>
+  <pre>// cmd/generic-autobumper/main.go
+if len(o.IncludedConfigPaths) == 0 {
+    return errors.New("includedConfigPaths is mandatory")
+}
+
+# hack/autobump.yaml — missing field
+extraFiles:
+  - ".ko.yaml"
+prefixes:
+  - name: "k8s-staging-test-infra GCR images"</pre>
+</div>
+
+<div class="finding question">
+  <div class="sev">Question</div>
+  <div class="loc"><code class="inline">hack/autobump.yaml</code> (whole file)</div>
+  <p>Nothing in this repo (<code class="inline">config/jobs/**</code>, <code class="inline">Makefile</code>s, <code class="inline">.github/workflows/**</code>) invokes <code class="inline">generic-autobumper --config=hack/autobump.yaml</code> on a schedule. The periodic + postsubmit jobs likely need to live in a separate infra/job-config repo, but that's invisible from here. Even once the blocking issue is fixed, it's unclear the bump will actually run without that wiring, and #559 could get marked resolved while the automation stays inert.</p>
+  <pre>gitHubToken: "/etc/github-token/token"
+...
+prefixes:
+  - prefix: "gcr.io/k8s-staging-test-infra"</pre>
+</div>
+
+<h2>Things I checked and was fine with</h2>
+<ul>
+  <li>All other fields (<code class="inline">gitHubLogin</code>, <code class="inline">gitHubToken</code>, <code class="inline">gitName</code>, <code class="inline">gitEmail</code>, <code class="inline">skipPullRequest</code>, <code class="inline">gitHubOrg</code>, <code class="inline">gitHubRepo</code>, <code class="inline">remoteName</code>, <code class="inline">upstreamURLBase</code>, <code class="inline">targetVersion</code>, <code class="inline">prefixes[].name/prefix/repo/summarise/consistentImages</code>) match the <code class="inline">Options</code>/<code class="inline">Prefix</code> structs in <code class="inline">cmd/generic-autobumper/main.go:121-170</code> and satisfy the other <code class="inline">validateOptions</code> checks (fork mode requires <code class="inline">gitHubToken</code>+<code class="inline">remoteName</code>, both present; <code class="inline">consistentImages: false</code> with no exceptions passes cross-field validation).</li>
+  <li><code class="inline">prefix: "gcr.io/k8s-staging-test-infra"</code> matches exactly the images in <code class="inline">.ko.yaml</code>'s <code class="inline">baseImageOverrides</code> (<code class="inline">alpine</code>, <code class="inline">git</code>, <code class="inline">git-custom-k8s-auth</code>); unrelated images (<code class="inline">gcr.io/distroless/static</code>, <code class="inline">google/cloud-sdk</code>) correctly untouched.</li>
+  <li><code class="inline">targetVersion: "latest"</code> is a supported value per <code class="inline">cmd/generic-autobumper/main_test.go</code>.</li>
+  <li>All CI checks pass (image-build-test, integration, unit-test, race-detector, verify-lint, EasyCLA, Netlify preview) — none of them exercise <code class="inline">hack/autobump.yaml</code> itself, so they don't catch the missing-field bug.</li>
+  <li>Low blast radius: new file isn't referenced anywhere else, so the bug can't regress existing behavior — it only means the bumper fails/no-ops wherever it's eventually invoked.</li>
+</ul>
+
+<h2>Open questions for the author</h2>
+<ul>
+  <li>Can you add <code class="inline">includedConfigPaths</code> (e.g. <code class="inline">["."]</code> or the actual directories to scan)? Without it the tool exits nonzero on every run.</li>
+  <li>Has this config been dry-run (<code class="inline">generic-autobumper --config hack/autobump.yaml</code>) to confirm it validates and reaches the bump step?</li>
+  <li>Is there a companion PR/job (likely in a separate infra repo) that actually invokes this config on a schedule, and does it mount the <code class="inline">/etc/github-token/token</code> secret this config expects?</li>
+</ul>
+
+</body>
+</html>

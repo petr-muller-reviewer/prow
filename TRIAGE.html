@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Triage: kubernetes-sigs/prow#768</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 15px; line-height: 1.6; color: #24292e; margin: 0; padding: 24px; }
+  .container { max-width: 860px; margin: 0 auto; }
+  h1 { font-size: 1.5em; margin-bottom: 4px; }
+  h2 { font-size: 1.15em; margin-top: 28px; margin-bottom: 8px; border-bottom: 1px solid #e1e4e8; padding-bottom: 4px; }
+  h3 { font-size: 1em; margin-top: 16px; margin-bottom: 4px; color: #0366d6; }
+  .meta { background: #f6f8fa; border: 1px solid #e1e4e8; border-radius: 6px; padding: 14px 18px; margin-bottom: 24px; font-size: 0.9em; }
+  .meta table { border-collapse: collapse; }
+  .meta td { padding: 2px 12px 2px 0; vertical-align: top; }
+  .meta td:first-child { font-weight: 600; white-space: nowrap; color: #586069; }
+  .verdict-box { border-left: 4px solid #28a745; background: #f0fff4; padding: 12px 16px; border-radius: 0 6px 6px 0; margin-bottom: 20px; }
+  .verdict-box .label { font-weight: 700; color: #28a745; font-size: 1.05em; }
+  code { font-family: "SFMono-Regular", Consolas, monospace; font-size: 0.88em; background: #f6f8fa; padding: 1px 5px; border-radius: 3px; }
+  pre { font-family: "SFMono-Regular", Consolas, monospace; font-size: 0.85em; background: #f6f8fa; border: 1px solid #e1e4e8; border-radius: 6px; padding: 12px 16px; overflow-x: auto; line-height: 1.45; }
+  ul { margin: 6px 0; padding-left: 22px; }
+  li { margin: 3px 0; }
+  a { color: #0366d6; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .tag { display: inline-block; font-size: 0.78em; font-weight: 600; padding: 1px 7px; border-radius: 10px; margin-right: 4px; }
+  .tag-cause { background: #ffeef0; color: #b31d28; border: 1px solid #f9c0c5; }
+  .tag-code { background: #e8f4fd; color: #0366d6; border: 1px solid #c8dfee; }
+  .tag-issue { background: #fff8c5; color: #735c0f; border: 1px solid #f0d785; }
+  .finding { margin-bottom: 18px; padding-left: 12px; border-left: 3px solid #e1e4e8; }
+  .finding h3 { margin-top: 0; }
+  .effort { display: inline-block; background: #fff3cd; border: 1px solid #ffc107; border-radius: 4px; padding: 2px 10px; font-weight: 700; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>Triage: <a href="https://github.com/kubernetes-sigs/prow/issues/768">kubernetes-sigs/prow#768</a></h1>
+<p style="color:#586069;margin-top:2px;">Support sticky overrides via /override-sticky command</p>
+
+<div class="meta">
+  <table>
+    <tr><td>Issue</td><td><a href="https://github.com/kubernetes-sigs/prow/issues/768">kubernetes-sigs/prow#768</a></td></tr>
+    <tr><td>State</td><td>open</td></tr>
+    <tr><td>Labels</td><td><em>(none at triage time)</em></td></tr>
+    <tr><td>Triaged at</td><td>2026-06-24T01:02:30Z</td></tr>
+    <tr><td>Main SHA</td><td><code>1e6ed72765e2d88f3bb1e06af85720e88b5db3af</code></td></tr>
+    <tr><td>Verdict</td><td><strong>accepted</strong></td></tr>
+    <tr><td>Effort</td><td><span class="effort">Level 3 — Large (requires expertise)</span></td></tr>
+  </table>
+</div>
+
+<div class="verdict-box">
+  <div class="label">ACCEPTED</div>
+  <p style="margin:6px 0 0;">
+    This is a legitimate, well-motivated feature request for Prow components that live in this repo. The problem is real and reproducible: <code>/override</code> results are silently lost whenever the target branch advances, forcing maintainers to repeatedly re-override the same broken job. The author provides two concrete implementation approaches and links the prior discussion (#238). Accepting for labeling and design engagement; effort level 3 — requires an experienced Prow contributor and design discussion before coding.
+  </p>
+</div>
+
+<h2>What the issue reports</h2>
+<ul>
+  <li>When a job is overridden via <code>/override</code>, Tide re-triggers it every time the base branch HEAD moves (another PR merges or a commit is pushed to the target branch).</li>
+  <li>This is fine for "reviewed and accepted" overrides, but painful for "job is simply broken / irrelevant" overrides — maintainers must keep re-overriding the same job repeatedly.</li>
+  <li>Proposed: an <code>/override-sticky</code> command that persists the override across retests.</li>
+  <li>Two approaches offered: (1) a plugin that re-applies overrides when cleared, or (2) a Tide modification that skips triggering sticky-overridden jobs entirely.</li>
+  <li>Prior discussion in <a href="https://github.com/kubernetes-sigs/prow/issues/238">#238</a> (2024) was closed by the original reporter without a fix.</li>
+</ul>
+
+<h2>Analysis</h2>
+
+<h3>Probable cause — why overrides are re-triggered</h3>
+
+<p>Prow's status reporter embeds the current <code>baseSHA</code> into status context descriptions using <code>ContextDescriptionWithBaseSha()</code>. When the base branch advances, Tide's <code>prowJobsFromContexts()</code> (<code>pkg/tide/tide.go:1043–1073</code>) synthesizes ProwJob records only from statuses whose embedded <code>baseSHA</code> matches the new subpool SHA. This allows Tide to recognize valid results even after sinker GCs the original ProwJobs.</p>
+
+<p>The <code>/override</code> plugin does <strong>not</strong> use <code>ContextDescriptionWithBaseSha()</code>. It sets the description to the plain string <code>"Overridden by &lt;user&gt;"</code>, which contains no baseSHA. As a result:</p>
+<ul>
+  <li><code>BaseSHAFromContextDescription("Overridden by X")</code> returns <code>""</code> — override status is never promoted to a synthetic ProwJob.</li>
+  <li>The real override ProwJob was created with the <em>old</em> baseSHA; when the subpool's <code>sp.sha</code> changes, it falls out of scope.</li>
+  <li><code>accumulate()</code> finds no ProwJob for the context at the new baseSHA+headSHA combination → context is "missing" → Tide triggers the job.</li>
+</ul>
+
+<h3>Related code</h3>
+
+<div class="finding">
+  <h3><span class="tag tag-code">related-code</span> Override plugin — description and ProwJob creation</h3>
+  <ul>
+    <li><code>pkg/plugins/override/override.go:290–292</code> — <code>description()</code> returns <code>"Overridden by &lt;user&gt;"</code> with no baseSHA.</li>
+    <li><code>pkg/plugins/override/override.go:494–517</code> — Creates ProwJob with <code>SuccessState</code> using baseSHA at override time.</li>
+    <li><code>pkg/plugins/override/override.go:520–527</code> — Sets GitHub status with plain description.</li>
+  </ul>
+</div>
+
+<div class="finding">
+  <h3><span class="tag tag-code">related-code</span> BaseSHA encoding mechanism</h3>
+  <ul>
+    <li><code>pkg/config/config.go:3416–3458</code> — <code>ContextDescriptionWithBaseSha</code> and <code>BaseSHAFromContextDescription</code>. Override plugin never calls the former.</li>
+  </ul>
+  <pre>func BaseSHAFromContextDescription(description string) string {
+    split := strings.Split(description, " BaseSHA:")
+    if len(split) != 2 || len(split[1]) != 40 { return "" }
+    return split[1]
+}</pre>
+</div>
+
+<div class="finding">
+  <h3><span class="tag tag-code">related-code</span> Tide — prowJobsFromContexts and accumulate</h3>
+  <ul>
+    <li><code>pkg/tide/tide.go:1043–1073</code> — <code>prowJobsFromContexts()</code>: only promotes statuses where the embedded baseSHA matches the current subpool SHA.</li>
+    <li><code>pkg/tide/tide.go:1077–1135</code> — <code>accumulate()</code>: marks contexts with no matching ProwJob as "missing", causing Tide to trigger them.</li>
+  </ul>
+  <pre>if baseSHAForContext := config.BaseSHAFromContextDescription(string(headContext.Description));
+    baseSHAForContext != "" &amp;&amp; baseSHAForContext == baseSHA {
+    passingCurrentContexts = append(passingCurrentContexts, string(headContext.Context))
+}</pre>
+</div>
+
+<div class="finding">
+  <h3><span class="tag tag-issue">related-issue</span> #238 — prior discussion (2024, closed)</h3>
+  <ul>
+    <li><a href="https://github.com/kubernetes-sigs/prow/issues/238">kubernetes-sigs/prow#238</a> — Original report of Tide re-running overridden jobs. My 2024 comment identified the two override motivations (broken job vs. reviewed-and-accepted). Closed by the reporter in April 2025 as no longer affecting them; no code fix was merged.</li>
+  </ul>
+</div>
+
+<h3>Proposed solution — Approach 1 (recommended): plugin-based re-apply</h3>
+
+<p>Introduce <code>/override-sticky &lt;job&gt;</code> which applies a normal override AND records sticky intent as a GitHub PR label (e.g. <code>prow-sticky-override/&lt;encoded-context&gt;</code>). A new event handler watches for status changes on that context; when Tide clears the override by triggering the job, the plugin automatically re-applies <code>/override &lt;context&gt;</code>. <code>/override-sticky cancel &lt;job&gt;</code> removes the label.</p>
+
+<p><strong>Pros:</strong> Self-contained, no Tide changes, follows the established Prow pattern (labels for persistent state like <code>approved</code>/<code>lgtm</code>), override intent is visible in the GitHub UI.</p>
+<p><strong>Cons:</strong> Job still gets triggered once before being re-overridden (wasted CI resources + latency); race window between Tide triggering and re-override firing; label naming is awkward when context names contain spaces or slashes.</p>
+
+<h3>Alternative — Approach 2: Tide modification</h3>
+
+<p>Modify Tide's <code>accumulate()</code> to read sticky-override labels from PRs and skip triggering those contexts. More efficient (job never runs) but couples Tide's core safety logic to the override plugin's label scheme and requires changes to Tide's subpool sync to fetch PR labels.</p>
+
+<h2>What I checked</h2>
+<ul>
+  <li><code>description()</code> in override plugin has no call to <code>ContextDescriptionWithBaseSha</code> — confirmed no baseSHA is embedded.</li>
+  <li>Checkrun-based override path (GitHub Apps auth, <code>override.go:530–554</code>) follows the same pattern — override checkrun output has no baseSHA.</li>
+  <li>No existing sticky-override or label-based override persistence anywhere in the codebase.</li>
+  <li>#238 was closed by the original reporter (<code>/close</code> comment), not resolved with a code fix.</li>
+  <li>Override ProwJob creation at <code>override.go:494–496</code> uses baseSHA from <code>baseSHAGetter()</code> at override time — correct baseSHA for the override moment, wrong for later subpool evaluations.</li>
+</ul>
+
+<h2>Recommended next steps</h2>
+<ol>
+  <li>Apply labels: <code>kind/feature</code>, <code>area/plugins</code>, <code>area/tide</code>, <code>help-wanted</code>.</li>
+  <li>Post a comment linking to <a href="https://github.com/kubernetes-sigs/prow/issues/238">#238</a> for historical context and noting that the new issue proposes concrete implementation approaches.</li>
+  <li>If a contributor engages, require a design comment/sketch covering: (a) label naming scheme for context names with special characters, (b) whether sticky override should cancel when the PR head SHA changes, (c) race-condition handling between Tide trigger and re-override firing — before any code is written.</li>
+  <li>Separately evaluate with maintainers whether Approach 2 (Tide modification) is acceptable given the efficiency benefit vs. the override↔Tide coupling concern.</li>
+  <li>Consider whether the override plugin config should gain an <code>allowStickyOverride: bool</code> gate (like <code>allowTopLevelOwners</code>) so repos can opt out.</li>
+</ol>
+
+<h2>Open questions</h2>
+<ul>
+  <li>Should sticky overrides auto-cancel when the PR head SHA changes (new push to the PR branch)? The issue doesn't address this — canceling on head-change seems safer but reduces utility.</li>
+  <li>What happens to sticky labels if the overridden job is later removed from the required list? Need a cleanup mechanism or orphan handling to avoid a label that silently does nothing.</li>
+  <li>Is GitHub PR label storage sufficient for encoding arbitrary context names (containing spaces, slashes, colons), or does this suggest a different state mechanism (e.g., a structured bot comment marker)?</li>
+  <li>Is Approach 2 (Tide modification) acceptable to maintainers, given the efficiency benefit of not triggering the job at all vs. the coupling concern?</li>
+</ul>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Review: kubernetes-sigs/prow#749</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; line-height: 1.6; color: #24292f; max-width: 860px; margin: 2rem auto; padding: 0 1rem; }
+  h1 { font-size: 1.5rem; border-bottom: 1px solid #d0d7de; padding-bottom: 0.4rem; }
+  h2 { font-size: 1.25rem; margin-top: 2rem; border-bottom: 1px solid #d0d7de; padding-bottom: 0.3rem; }
+  h3 { font-size: 1rem; margin-top: 1.2rem; }
+  code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; font-size: 0.9em; background: #f6f8fa; padding: 0.15em 0.35em; border-radius: 3px; }
+  pre { background: #f6f8fa; padding: 1rem; border-radius: 6px; overflow-x: auto; font-size: 0.85em; line-height: 1.5; }
+  pre code { background: none; padding: 0; }
+  .header-meta { background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 6px; padding: 1rem; margin-bottom: 1.5rem; }
+  .header-meta p { margin: 0.2rem 0; }
+  .verdict { background: #fff8c5; border: 1px solid #d4a72c; border-radius: 6px; padding: 1rem; margin-bottom: 1.5rem; }
+  .gate-merge { background: #dafbe1; border: 1px solid #2da44e; border-radius: 6px; padding: 1rem; margin-bottom: 1.5rem; }
+  .gate-hold { background: #fff8c5; border: 1px solid #d4a72c; border-radius: 6px; padding: 1rem; margin-bottom: 1.5rem; }
+  .gate-dnm { background: #ffebe9; border: 1px solid #cf222e; border-radius: 6px; padding: 1rem; margin-bottom: 1.5rem; }
+  ul { padding-left: 1.5rem; }
+  a { color: #0969da; }
+  .finding { margin-bottom: 1.5rem; border-left: 3px solid #d0d7de; padding-left: 1rem; }
+  .finding-should-fix { border-left-color: #bf8700; }
+  .finding-nit { border-left-color: #57606a; }
+  .finding-question { border-left-color: #0969da; }
+  .severity-should-fix { color: #bf8700; font-weight: bold; }
+  .severity-nit { color: #57606a; font-weight: bold; }
+  .severity-question { color: #0969da; font-weight: bold; }
+  .convergence { background: #fff3cd; padding: 0.2em 0.5em; border-radius: 3px; font-size: 0.85em; }
+</style>
+</head>
+<body>
+
+<h1>Review: fix(pipeline): reject duplicate cluster endpoints at startup</h1>
+
+<div class="header-meta">
+  <p><strong>PR:</strong> <a href="https://github.com/kubernetes-sigs/prow/pull/749">kubernetes-sigs/prow#749</a></p>
+  <p><strong>Title:</strong> fix(pipeline): reject duplicate cluster endpoints at startup</p>
+  <p><strong>Head SHA:</strong> <code>93096b1e06a8d9ddaf7ddc3b6c95f482a4d3c4fb</code></p>
+  <p><strong>Base:</strong> main</p>
+  <p><strong>Reviewed:</strong> 2026-06-16T11:35:24Z</p>
+</div>
+
+<div class="gate-merge">
+  <h2 style="margin-top:0; border:none; padding:0;">Gate Decision: Merge</h2>
+  <p><strong>Gated:</strong> 2026-06-16T16:36:39Z &nbsp;|&nbsp; <strong>Head:</strong> <code>93096b1e</code></p>
+  <p>PR has <code>lgtm</code> and <code>approved</code> labels, <code>reviewDecision: APPROVED</code>, no code changes since review. The two open <code>should-fix</code> items (report all collisions at once; deterministic iteration) are operator UX improvements, not correctness bugs — original review verdict was <code>approve</code>. No API, config, or behavioral merge risk.</p>
+  <p><strong>Gating list:</strong></p>
+  <ul>
+    <li><code>[should-fix]</code> <em>Only the first duplicate collision is reported</em> (<code>cmd/pipeline/main.go:114-119</code>) — not addressed; acceptable for merge, follow-up material.</li>
+    <li><code>[should-fix]</code> <em>Non-deterministic error output from map iteration</em> (<code>cmd/pipeline/main.go:114</code>) — not addressed; same disposition.</li>
+  </ul>
+  <p><strong>Process blocker (not a code concern):</strong> <code>needs-ok-to-test</code> label is present. An org member must issue <code>/ok-to-test</code> to unblock CI tests before merge.</p>
+</div>
+
+<div class="verdict">
+  <h2 style="margin-top:0; border:none; padding:0;">Verdict: Approve with suggestions</h2>
+  <p>Good, focused fix for a real data-loss bug. Adds a startup-time validation that detects duplicate cluster endpoints and fatals with an actionable error message. The code is correct, idiomatic, well-placed, and adequately tested. No blocking issues. One suggestion was independently flagged by all three review perspectives (code quality, maintainability, deployment risk): report all duplicate groups in a single error instead of returning on the first collision.</p>
+</div>
+
+<h2>What this PR does</h2>
+<ul>
+  <li>Adds <code>validateUniqueClusters()</code> that groups kubeconfig contexts by <code>rest.Config.Host</code> and rejects duplicates at startup.</li>
+  <li>Prevents a data-loss bug where duplicate-endpoint informers cause the reconcile loop at <code>controller.go:462</code> to delete valid PipelineRuns that arrive through the "wrong" context.</li>
+  <li>Placed correctly after <code>InClusterContext</code> removal and <code>allContexts</code> truncation, so it validates exactly the config set that will create informers.</li>
+  <li>Only affects the pipeline (Tekton) controller running with <code>--all-contexts</code>; single-context mode is unaffected.</li>
+  <li>Includes table-driven tests covering unique, duplicate, empty, and single-config cases.</li>
+</ul>
+
+<h2>Findings</h2>
+
+<h3>Should fix</h3>
+
+<div class="finding finding-should-fix">
+  <h3><span class="severity-should-fix">[should-fix]</span> Only the first duplicate collision is reported <span class="convergence">flagged by all 3 reviewers</span></h3>
+  <p><code>cmd/pipeline/main.go:114-119</code></p>
+  <pre><code>for host, ctxs := range hostToCtxs {
+    if len(ctxs) > 1 {
+        sort.Strings(ctxs)
+        return fmt.Errorf("contexts %v resolve to the same cluster endpoint %s; deduplicate them in the kubeconfig", ctxs, host)
+    }
+}</code></pre>
+  <p>The function returns on the first collision found. If an operator has multiple independent duplicate groups (e.g., contexts A/B both point at cluster X, and contexts C/D both point at cluster Y), they must restart repeatedly to discover each one. Collecting all violations and returning a combined error gives operators the full picture in one cycle.</p>
+</div>
+
+<div class="finding finding-should-fix">
+  <h3><span class="severity-should-fix">[should-fix]</span> Non-deterministic error output from map iteration</h3>
+  <p><code>cmd/pipeline/main.go:114</code></p>
+  <pre><code>for host, ctxs := range hostToCtxs {</code></pre>
+  <p>Even with the current early-return, which collision is reported first varies between runs due to map iteration order. If changed to collect all violations (per above), the groups also need sorting for stable, reproducible error output.</p>
+</div>
+
+<h3>Nits</h3>
+
+<div class="finding finding-nit">
+  <h3><span class="severity-nit">[nit]</span> Test doesn't verify error message content</h3>
+  <p><code>cmd/pipeline/main_test.go:120-128</code></p>
+  <pre><code>err := validateUniqueClusters(tc.configs)
+if (err != nil) != tc.wantErr {
+    t.Errorf("validateUniqueClusters() error = %v, wantErr %v", err, tc.wantErr)
+}</code></pre>
+  <p>The duplicate-hosts test only checks <code>wantErr: true</code>. The operational value of this validation is the error message telling operators which contexts collide and at which endpoint. A <code>strings.Contains</code> check on the error for the colliding context names and endpoint would guard against regressions in message quality.</p>
+</div>
+
+<div class="finding finding-nit">
+  <h3><span class="severity-nit">[nit]</span> Missing test cases for 3-way collision and multiple duplicate groups</h3>
+  <p><code>cmd/pipeline/main_test.go:86-128</code></p>
+  <p>A test with three contexts sharing the same host would exercise <code>sort.Strings</code> more meaningfully. A test with two distinct hosts each having duplicates would document the first-duplicate-wins behavior (or verify all-at-once reporting if changed per the should-fix above).</p>
+</div>
+
+<h3>Questions</h3>
+
+<div class="finding finding-question">
+  <h3><span class="severity-question">[question]</span> String-based host comparison and URL normalization</h3>
+  <p><code>cmd/pipeline/main.go:112</code></p>
+  <pre><code>hostToCtxs[cfg.Host] = append(hostToCtxs[cfg.Host], ctx)</code></pre>
+  <p><code>rest.Config.Host</code> values like <code>https://k8s.example.com</code> and <code>https://k8s.example.com:443</code> point at the same server but won't match with string comparison. Similarly, trailing slashes could differ. In practice, <code>client-go</code>'s kubeconfig loader produces consistent Host values, so this is likely fine. Worth acknowledging as a known limitation rather than complicating the code.</p>
+</div>
+
+<h2>Things I checked and was fine with</h2>
+<ul>
+  <li><strong>Placement in <code>main()</code></strong> — validation runs after <code>delete(configs, kube.InClusterContext)</code> and the <code>allContexts</code> truncation, so it checks exactly the config set that creates informers.</li>
+  <li><strong>No impact on single-context mode</strong> — when <code>--all-contexts</code> is false, configs is truncated to a single entry before validation runs; the check is a no-op pass-through.</li>
+  <li><strong>The underlying bug analysis is correct</strong> — confirmed at <code>controller.go:462</code> that a context mismatch falls through without setting <code>wantPipelineRun = true</code>, leading to deletion.</li>
+  <li><strong>Pure function shape</strong> — <code>map[string]rest.Config</code> in, <code>error</code> out, no side effects, trivially testable.</li>
+  <li><strong>Deterministic context names in error</strong> — <code>sort.Strings(ctxs)</code> stabilizes the within-group ordering despite non-deterministic map iteration.</li>
+  <li><strong>Test structure</strong> — table-driven, consistent with existing <code>TestOptions</code>, covers boundary cases (empty, single, unique, duplicate).</li>
+  <li><strong>Import additions</strong> — <code>sort</code> (stdlib) and <code>k8s.io/client-go/rest</code> (already a transitive dep) are appropriate and minimal.</li>
+  <li><strong>Clean failure semantics</strong> — check runs before any informers/clients are created; no partial initialization or resource leaks on failure.</li>
+  <li><strong>Rollback safety</strong> — reverting removes the check; controller starts again (data-loss bug returns, but no new breakage).</li>
+</ul>
+
+<h2>Open questions for the author</h2>
+<ul>
+  <li>Have you considered collecting all collisions and reporting them in a single error, so operators don't need multiple restart cycles to find every misconfiguration?</li>
+  <li>Is URL normalization (default ports, trailing slashes) a practical concern in the environments where this controller runs, or are kubeconfig generators consistent enough that string comparison is reliable?</li>
+</ul>
+
+
+<h2>Followups</h2>
+
+<div class="finding finding-should-fix">
+  <h3>Report all duplicate collision groups in a single error</h3>
+  <p><strong>Category:</strong> deferred-review &nbsp;|&nbsp; <strong>Necessity:</strong> should &nbsp;|&nbsp; <strong>Where:</strong> <code>cmd/pipeline/main.go:114-119</code></p>
+  <p><code>validateUniqueClusters</code> returns on the first collision group found. An operator with multiple independent sets of duplicate endpoints must fix one, restart, discover the next, and repeat. All three reviewers flagged this during review and agreed it was non-blocking but worth fixing as followup.</p>
+  <pre>In kubernetes-sigs/prow, following PR #749 ("fix(pipeline): reject duplicate cluster endpoints at startup",
+head commit 93096b1e06a8d9ddaf7ddc3b6c95f482a4d3c4fb), the function validateUniqueClusters in
+cmd/pipeline/main.go currently returns on the first collision group it finds. An operator with multiple
+independent sets of duplicate endpoints (e.g. contexts A/B both pointing at cluster X, and contexts C/D
+both pointing at cluster Y) must fix one, restart, discover the second, fix that, and restart again.
+
+Task: Modify validateUniqueClusters (cmd/pipeline/main.go:109-121) to collect all duplicate groups before
+returning, then emit a single combined error listing every collision. Requirements:
+
+1. Collect all host entries where len(ctxs) > 1 into a slice of formatted strings.
+2. Sort the context names within each group (sort.Strings(ctxs) -- already done for the single-group case).
+3. Sort the resulting slice of group error strings so the combined error is deterministic across runs.
+4. Join them into one error message that preserves the existing guidance ("deduplicate them in the kubeconfig").
+5. Add a test case with two distinct hosts each having duplicate contexts (e.g. ctx-a and ctx-b both pointing
+   at https://a.example.com, and ctx-c and ctx-d both pointing at https://b.example.com) that asserts:
+   - err is non-nil
+   - the error message contains both host endpoints
+   - the error message contains all four colliding context names
+
+Acceptance criteria:
+- All existing tests in cmd/pipeline/main_test.go still pass.
+- The new test case passes.
+- The function still returns nil when all hosts are unique.
+- go build ./cmd/pipeline/... succeeds.
+
+Out of scope: Do not change the host-comparison logic (raw string comparison of cfg.Host is intentional).
+Do not add URL normalization. Do not touch controller.go or any other file.</pre>
+</div>
+
+</body>
+</html>

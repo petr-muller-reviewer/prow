@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Triage: Issue #650 &mdash; Tide batch ProwJob cleanup</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text-muted: #8b949e;
+    --accent: #58a6ff;
+    --green: #3fb950;
+    --orange: #d29922;
+    --red: #f85149;
+    --purple: #bc8cff;
+    --pink: #f778ba;
+    --code-bg: #1c2128;
+    --tag-bg: #1f2a37;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    padding: 2rem;
+    max-width: 960px;
+    margin: 0 auto;
+  }
+  h1 { font-size: 1.75rem; margin-bottom: 0.25rem; }
+  h2 {
+    font-size: 1.25rem;
+    color: var(--accent);
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0.4rem;
+    margin: 2rem 0 1rem;
+  }
+  h3 { font-size: 1.05rem; color: var(--purple); margin: 1.25rem 0 0.5rem; }
+  .subtitle { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.5rem; }
+  .badge {
+    display: inline-block;
+    padding: 0.15rem 0.55rem;
+    border-radius: 1rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    margin-right: 0.35rem;
+    vertical-align: middle;
+  }
+  .badge-green  { background: #1a3a2a; color: var(--green); border: 1px solid #26492e; }
+  .badge-blue   { background: #152238; color: var(--accent); border: 1px solid #1a3050; }
+  .badge-orange { background: #2d2310; color: var(--orange); border: 1px solid #3d3015; }
+  .badge-pink   { background: #2a1525; color: var(--pink); border: 1px solid #3d1d35; }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.25rem;
+    margin: 0.75rem 0;
+  }
+  .card-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+    font-weight: 600;
+  }
+  .card-header .icon { font-size: 1.2rem; }
+  code {
+    background: var(--code-bg);
+    padding: 0.15rem 0.4rem;
+    border-radius: 4px;
+    font-size: 0.85em;
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    color: var(--pink);
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1rem;
+    overflow-x: auto;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    margin: 0.75rem 0;
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    color: var(--text);
+  }
+  ul, ol { padding-left: 1.5rem; margin: 0.5rem 0; }
+  li { margin: 0.3rem 0; }
+  .flow-diagram {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    flex-wrap: wrap;
+    margin: 0.75rem 0;
+    font-size: 0.85rem;
+  }
+  .flow-step {
+    background: var(--tag-bg);
+    border: 1px solid var(--border);
+    padding: 0.3rem 0.6rem;
+    border-radius: 4px;
+    white-space: nowrap;
+  }
+  .flow-arrow { color: var(--text-muted); }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0.75rem 0;
+    font-size: 0.9rem;
+  }
+  th, td {
+    text-align: left;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--border);
+  }
+  th { background: var(--tag-bg); color: var(--accent); font-weight: 600; }
+  td { background: var(--surface); }
+  .approach-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    margin: 0.75rem 0;
+  }
+  .approach-card.recommended {
+    border-color: var(--green);
+    box-shadow: 0 0 0 1px rgba(63, 185, 80, 0.15);
+  }
+  .approach-title {
+    font-weight: 600;
+    margin-bottom: 0.4rem;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .pros-cons { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-top: 0.5rem; }
+  .pros li::marker { color: var(--green); }
+  .cons li::marker { color: var(--red); }
+  .comment-preview {
+    background: #1c2128;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.25rem;
+    margin: 0.75rem 0;
+    font-size: 0.9rem;
+    line-height: 1.7;
+    border-left: 3px solid var(--accent);
+  }
+  .copy-hint {
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    font-style: italic;
+    margin-top: 0.5rem;
+  }
+  .kv { display: grid; grid-template-columns: 160px 1fr; gap: 0.25rem 0.75rem; margin: 0.5rem 0; font-size: 0.9rem; }
+  .kv dt { color: var(--text-muted); font-weight: 500; }
+  .kv dd { color: var(--text); }
+  .section-nav {
+    position: sticky;
+    top: 0;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    padding: 0.75rem 0;
+    margin-bottom: 1rem;
+    z-index: 10;
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    font-size: 0.82rem;
+  }
+  .section-nav a { color: var(--accent); text-decoration: none; }
+  .section-nav a:hover { text-decoration: underline; }
+  .highlight { background: #2d1f00; border: 1px solid #5c3d00; border-radius: 6px; padding: 1rem 1.25rem; margin: 0.75rem 0; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+
+<h1>Triage: Issue #650</h1>
+<div class="subtitle">
+  <code>tide</code>: obsolete batch ProwJobs not aborted when a new batch supersedes them
+  &nbsp;&mdash;&nbsp;
+  <a href="https://github.com/kubernetes-sigs/prow/issues/650" target="_blank">View on GitHub</a>
+</div>
+
+<div style="margin-bottom:1rem;">
+  <span class="badge badge-green">LEGITIMATE</span>
+  <span class="badge badge-blue">area/tide</span>
+  <span class="badge badge-blue">kind/feature</span>
+  <span class="badge badge-orange">Level 2 &mdash; Moderate</span>
+  <span class="badge badge-orange">lifecycle/stale</span>
+</div>
+
+<nav class="section-nav">
+  <a href="#overview">Overview</a>
+  <a href="#root-cause">Root Cause</a>
+  <a href="#code-map">Code Map</a>
+  <a href="#solutions">Solutions</a>
+  <a href="#effort">Effort</a>
+  <a href="#comment">Draft Comment</a>
+  <a href="#contributor-guide">Contributor Guide</a>
+</nav>
+
+<!-- ───────────────── OVERVIEW ───────────────── -->
+<h2 id="overview">Overview</h2>
+
+<div class="card">
+  <dl class="kv">
+    <dt>Reporter</dt>    <dd><a href="https://github.com/Prucek">@Prucek</a></dd>
+    <dt>Opened</dt>      <dd>2026-03-11</dd>
+    <dt>Category</dt>    <dd>Feature request (reclassified from bug)</dd>
+    <dt>Component</dt>   <dd>Tide &mdash; <code>pkg/tide/</code></dd>
+  </dl>
+</div>
+
+<div class="highlight" style="border-color:var(--orange);">
+  <strong>Since previous triage (2026-06-09):</strong>
+  <ul style="margin-top:0.4rem;">
+    <li><code>k8s-triage-robot</code> applied <code>lifecycle/stale</code> at 2026-06-09T14:23:49Z (90 days of inactivity). The <code>help-wanted</code> label is no longer present.</li>
+    <li>No substantive comments, no linked PRs, no cross-references.</li>
+  </ul>
+</div>
+
+<p>When the base branch SHA advances (merge, manual or via Tide), Tide starts a new batch without aborting ProwJobs from the previous batch. The old ProwJobs continue running to completion even though their results are no longer relevant, wasting CI resources. The reporter provided a real-world example from Azure/ARO-HCP where a manual merge caused a third parallel batch to start.</p>
+
+<!-- ───────────────── ROOT CAUSE ───────────────── -->
+<h2 id="root-cause">Root Cause</h2>
+
+<div class="highlight">
+  <strong>In one sentence:</strong> <code>dividePool()</code> queries ProwJobs using a cache index keyed by <code>org/repo:branch@baseSHA</code>. When baseSHA advances, old batch ProwJobs vanish from the query results &mdash; Tide can't see them, sees <code>batchPending&nbsp;==&nbsp;0</code>, and triggers a fresh batch.
+</div>
+
+<h3>How it happens</h3>
+<div class="flow-diagram">
+  <span class="flow-step">baseSHA advances</span>
+  <span class="flow-arrow">&rarr;</span>
+  <span class="flow-step"><code>dividePool()</code> queries new SHA</span>
+  <span class="flow-arrow">&rarr;</span>
+  <span class="flow-step">old batch ProwJobs invisible</span>
+  <span class="flow-arrow">&rarr;</span>
+  <span class="flow-step"><code>accumulateBatch()</code> returns empty</span>
+  <span class="flow-arrow">&rarr;</span>
+  <span class="flow-step"><code>takeAction()</code>: batchPending == 0</span>
+  <span class="flow-arrow">&rarr;</span>
+  <span class="flow-step">new batch triggered</span>
+</div>
+<p style="color:var(--text-muted);font-size:0.9rem;margin-top:0.5rem;">Old batch ProwJobs continue running on the cluster, orphaned. Their results will never be used.</p>
+
+<h3>Contributing factors</h3>
+<ul>
+  <li><code>TerminateOlderJobs</code> in <code>pkg/pjutil/abort.go:64</code> <strong>explicitly excludes batch jobs</strong> &mdash; Plank won't clean them up</li>
+  <li>No state is persisted between sync iterations &mdash; Tide has no memory of previous baseSHAs</li>
+  <li>The cache index (<code>cacheIndexFunc</code> at <code>tide.go:2082</code>) keys on baseSHA &mdash; no way to find stale-SHA jobs</li>
+</ul>
+
+<!-- ───────────────── CODE MAP ───────────────── -->
+<h2 id="code-map">Code Map</h2>
+
+<table>
+  <thead>
+    <tr><th>Function</th><th>Location</th><th>Role</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>Sync()</code></td><td><code>tide.go:531-623</code></td><td>Main sync loop, runs periodically</td></tr>
+    <tr><td><code>dividePool()</code></td><td><code>tide.go:1864-1909</code></td><td>Partitions PRs into subpools, queries ProwJobs by current baseSHA</td></tr>
+    <tr><td><code>syncSubpool()</code></td><td><code>tide.go:1721-1790</code></td><td>Syncs a single org/repo/branch subpool</td></tr>
+    <tr><td><code>accumulateBatch()</code></td><td><code>tide.go:937-1038</code></td><td>Classifies batch ProwJobs into pending/success</td></tr>
+    <tr><td><code>takeAction()</code></td><td><code>tide.go:1483-1526</code></td><td>Decides action; triggers batch when <code>batchPending == 0</code></td></tr>
+    <tr><td><code>trigger()</code></td><td><code>tide.go:1425-1466</code></td><td>Creates ProwJob objects with current baseSHA</td></tr>
+    <tr><td><code>cacheIndexFunc()</code></td><td><code>tide.go:2082-2095</code></td><td>Indexes ProwJobs by <code>org/repo:branch@baseSHA</code></td></tr>
+  </tbody>
+</table>
+
+<h3>Existing abort mechanisms</h3>
+<table>
+  <thead>
+    <tr><th>Mechanism</th><th>Location</th><th>Handles batches?</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>pjutil.TerminateOlderJobs()</code></td><td><code>abort.go:58-122</code></td><td>No &mdash; explicitly excluded at line 64</td></tr>
+    <tr><td><code>trigger.abortAllJobs()</code></td><td><code>pull-request.go:170-199</code></td><td>Yes, but triggered by PR events, not Tide</td></tr>
+    <tr><td><code>plank.terminateDupes()</code></td><td><code>reconciler.go:444-451</code></td><td>No &mdash; calls TerminateOlderJobs</td></tr>
+    <tr><td><code>plank.syncAbortedJob()</code></td><td><code>reconciler.go:783-804</code></td><td>Yes &mdash; handles cleanup of any aborted job</td></tr>
+  </tbody>
+</table>
+
+<h3>Test coverage gaps</h3>
+<ul>
+  <li><code>TestAccumulateBatch</code> (<code>tide_test.go:89-308</code>) &mdash; does NOT test baseSHA change scenarios</li>
+  <li><code>TestDividePool</code> (<code>tide_test.go:933-1122</code>) &mdash; does NOT test what happens when baseSHA advances with pending batches</li>
+  <li><code>TestTerminateOlderJobs</code> (<code>abort_test.go:123</code>) &mdash; explicitly confirms batch jobs are NOT terminated</li>
+</ul>
+
+<!-- ───────────────── SOLUTIONS ───────────────── -->
+<h2 id="solutions">Proposed Solutions</h2>
+
+<div class="approach-card">
+  <div class="approach-title">Approach 1: Abort stale batches in dividePool/syncSubpool</div>
+  <p>After querying ProwJobs by current baseSHA, also query for batch ProwJobs with stale baseSHAs for the same org/repo/branch and abort them.</p>
+  <div class="pros-cons">
+    <div class="pros"><strong style="color:var(--green)">Pros</strong><ul><li>Directly addresses the issue at the source</li><li>Cleanup happens early in sync cycle</li></ul></div>
+    <div class="cons"><strong style="color:var(--red)">Cons</strong><ul><li>Additional ProwJob query per subpool</li><li>Breaks <code>dividePool()</code> read-only role</li></ul></div>
+  </div>
+</div>
+
+<div class="approach-card">
+  <div class="approach-title">Approach 2: Extend TerminateOlderJobs to include batch jobs</div>
+  <p>Remove the batch job exclusion in <code>abort.go:64</code> so Plank automatically aborts stale batch jobs.</p>
+  <div class="pros-cons">
+    <div class="pros"><strong style="color:var(--green)">Pros</strong><ul><li>Minimal code change</li><li>Leverages existing abort infrastructure</li></ul></div>
+    <div class="cons"><strong style="color:var(--red)">Cons</strong><ul><li>Digest comparison may not suit batch jobs</li><li>Exclusion was intentional &mdash; reason unknown</li></ul></div>
+  </div>
+</div>
+
+<div class="approach-card recommended">
+  <div class="approach-title"><span style="color:var(--green)">&star;</span> Approach 3: Abort stale batches in takeAction before triggering <span class="badge badge-green">Recommended</span></div>
+  <p>Before triggering a new batch, query for batch ProwJobs with stale baseSHAs for the same org/repo/branch and set them to <code>AbortedState</code>. Plank's <code>syncAbortedJob()</code> handles cleanup.</p>
+  <div class="pros-cons">
+    <div class="pros"><strong style="color:var(--green)">Pros</strong><ul><li>Clear intent: abort old &rarr; trigger new</li><li>Follows established abort pattern</li><li>No changes to <code>dividePool()</code> semantics</li><li>Can be made configurable</li></ul></div>
+    <div class="cons"><strong style="color:var(--red)">Cons</strong><ul><li>May need new cache index</li><li>Only cleans up when new batch is about to start</li></ul></div>
+  </div>
+</div>
+
+<h3>Key implementation considerations</h3>
+<ol>
+  <li>Need a way to query batch ProwJobs by org/repo/branch <em>without</em> baseSHA &mdash; either a new index or a broader list query</li>
+  <li>Abort should set <code>Status.State = AbortedState</code> following the established pattern &mdash; Plank handles pod cleanup</li>
+  <li>Consider whether to abort on every sync or only when triggering a new batch</li>
+  <li>Configurability: some deployments may want stale batches to complete</li>
+</ol>
+
+<!-- ───────────────── EFFORT ───────────────── -->
+<h2 id="effort">Effort Assessment</h2>
+
+<div class="card">
+  <div class="card-header"><span class="icon">&#x1f4ca;</span> Level 2 &mdash; Moderate (help-wanted)</div>
+  <p>Well-defined problem with established abort patterns to follow. Moderate scope (2-4 files, ~100-200 LOC) but requires understanding Tide's batch lifecycle and ProwJob indexing.</p>
+</div>
+
+<table>
+  <thead><tr><th>Factor</th><th>Assessment</th><th>Level</th></tr></thead>
+  <tbody>
+    <tr><td>Scope</td><td>2-4 files, 100-200 LOC</td><td>2-3</td></tr>
+    <tr><td>Complexity</td><td>Abort pattern well-established; main challenge is index query</td><td>2</td></tr>
+    <tr><td>Required expertise</td><td>Tide sync loop, cache indexes, controller-runtime</td><td>2-3</td></tr>
+    <tr><td>Clarity</td><td>Well-defined problem and solution</td><td>1-2</td></tr>
+    <tr><td>Testing</td><td>Follow existing patterns, add baseSHA-change scenarios</td><td>2</td></tr>
+    <tr><td>Backwards compat</td><td>Minor &mdash; changes behavior for stale jobs only</td><td>1-2</td></tr>
+    <tr><td>Arch alignment</td><td>Follows established abort pattern exactly</td><td>1-2</td></tr>
+    <tr><td>External deps</td><td>None</td><td>1-3</td></tr>
+  </tbody>
+</table>
+
+<!-- ───────────────── DRAFT COMMENT ───────────────── -->
+<h2 id="comment">Draft Comment</h2>
+
+<p>Ready to copy-paste into GitHub. Labels <code>area/tide</code> and <code>kind/feature</code> are already applied.</p>
+
+<div class="comment-preview">
+The root cause is in Tide's <code>dividePool()</code> function, which queries ProwJobs using a cache index keyed by <code>org/repo:branch@baseSHA</code>. When baseSHA advances, old batch ProwJobs no longer match the index and become invisible to subsequent sync iterations. <code>takeAction()</code> then sees <code>batchPending == 0</code> and triggers a fresh batch, while the old one continues running to completion. In effect, the old batch ProwJobs are orphaned &mdash; still consuming CI resources but with results that Tide will never use.
+<br><br>
+Prow already has a well-established pattern for aborting superseded jobs: <code>pjutil.TerminateOlderJobs()</code> in <code>pkg/pjutil/abort.go</code> does exactly this for presubmit jobs, and Plank's <code>syncAbortedJob()</code> handles the cleanup (pod deletion, marking complete). However, <code>TerminateOlderJobs</code> explicitly excludes batch jobs (line 64). The fix would involve either removing that exclusion (if batch job digest comparison works correctly for this case) or adding batch-specific abort logic in Tide itself &mdash; for example, querying for batch ProwJobs with stale baseSHAs before triggering a new batch and setting them to <code>AbortedState</code>.
+<br><br>
+<code>/help-wanted</code>
+</div>
+<div class="copy-hint">Title is already clear &mdash; no /retitle needed.</div>
+
+<!-- ───────────────── CONTRIBUTOR GUIDE ───────────────── -->
+<h2 id="contributor-guide">Contributor Guide</h2>
+
+<div class="card">
+  <div class="card-header"><span class="icon">&#x1f4d6;</span> Files to review before starting</div>
+  <ul>
+    <li><code>pkg/tide/tide.go</code> &mdash; <code>dividePool()</code>, <code>takeAction()</code>, <code>trigger()</code>, <code>accumulateBatch()</code></li>
+    <li><code>pkg/pjutil/abort.go</code> &mdash; <code>TerminateOlderJobs()</code> &mdash; the established abort pattern</li>
+    <li><code>pkg/plank/reconciler.go</code> &mdash; <code>syncAbortedJob()</code> &mdash; how aborted jobs are cleaned up</li>
+    <li><code>pkg/tide/tide_test.go</code> &mdash; <code>TestAccumulateBatch</code>, <code>TestDividePool</code> &mdash; existing test patterns</li>
+  </ul>
+</div>
+
+<div class="card">
+  <div class="card-header"><span class="icon">&#x1f9ea;</span> Tests to write</div>
+  <ul>
+    <li>baseSHA changes with pending batch &rarr; old batch aborted, new batch triggered</li>
+    <li>Multiple stale batches from sequential baseSHA advances &rarr; all aborted</li>
+    <li>Configuration to disable abort behavior (if config option added)</li>
+    <li>Full sync cycle with baseSHA advance (integration-style)</li>
+  </ul>
+</div>
+
+<div class="card">
+  <div class="card-header"><span class="icon">&#x26a0;&#xfe0f;</span> Caveats</div>
+  <ul>
+    <li>The <code>TerminateOlderJobs</code> batch exclusion at <code>abort.go:64</code> was intentional. Investigate before removing.</li>
+    <li>Consider abort-on-every-sync vs. abort-only-before-new-batch. Every-sync is more aggressive but prevents orphans when no new batch is needed.</li>
+    <li>Some deployments may want stale batches to complete (artifacts beyond merge gating). Config option could address this.</li>
+  </ul>
+</div>
+
+<div style="margin-top:2rem;padding-top:1rem;border-top:1px solid var(--border);color:var(--text-muted);font-size:0.8rem;">
+  Generated from triage of <a href="https://github.com/kubernetes-sigs/prow/issues/650">#650</a>.
+  Full triage document: <a href="https://github.com/petr-muller/prow/blob/issue-triage-650/ISSUE-TRIAGE.md">ISSUE-TRIAGE.md</a>
+</div>
+
+</body>
+</html>

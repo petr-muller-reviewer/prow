@@ -2,15 +2,17 @@
 pr: 624
 title: "`tide` does not respect required contexts from Github Rulesets"
 issue_url: https://github.com/kubernetes-sigs/prow/issues/624
-reviewed_at: 2026-06-01T00:31:21Z
+reviewed_at: 2026-07-26T23:35:19Z
 verdict: LEGITIMATE
 effort: 3
-labels: kind/feature, area/tide, lifecycle/stale
+labels: kind/feature, area/tide, lifecycle/rotten
 refresh_log:
   - at: 2026-05-03
     summary: Initial triage
   - at: 2026-06-01T00:31:21Z
     summary: "k8s-triage-robot applied lifecycle/stale on 2026-05-31 (90d inactivity); no human activity, analysis unchanged"
+  - at: 2026-07-26T23:35:19Z
+    summary: "k8s-triage-robot applied lifecycle/rotten on 2026-06-30 (30d since stale); no human activity, analysis unchanged"
 ---
 
 # Triage: Issue #624 — Tide + GitHub Rulesets
@@ -119,11 +121,15 @@ Parallel `from-rulesets` config option:
 | Architecture | Good fit with new polymorphic handling needed | Level 2-3 |
 | External Deps | Stable API, complex response model | Level 2-3 |
 
-**Labels**: `area/tide`, `kind/feature`, `lifecycle/stale` (current). No difficulty label — Level 3, experienced contributors self-select.
+**Labels**: `area/tide`, `kind/feature`, `lifecycle/rotten` (current). No difficulty label — Level 3, experienced contributors self-select.
 
 ### Since previous triage (2026-05-03)
 
 - 2026-05-31: `k8s-triage-robot` applied `lifecycle/stale` after 90 days of inactivity. No human comments or linked PRs. Analysis and recommendations unchanged. To keep open, post `/remove-lifecycle stale`.
+
+### Since previous triage (2026-06-01)
+
+- 2026-06-30: `k8s-triage-robot` applied `lifecycle/rotten` after a further 30 days of inactivity (bot comment only; `lifecycle/stale` removed, `lifecycle/rotten` added). No human comments or linked PRs. Analysis and recommendations unchanged. Issue will be auto-closed after another 30 days of inactivity unless someone posts `/remove-lifecycle rotten`.
 
 ## Key Gotchas for Contributors
 

@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Review: kubernetes-sigs/prow#783</title>
+<style>
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; line-height: 1.6; max-width: 52em; margin: 2em auto; padding: 0 1em; color: #1a1a1a; background: #fff; }
+h1 { font-size: 1.4em; border-bottom: 2px solid #0969da; padding-bottom: 0.3em; }
+h2 { font-size: 1.15em; margin-top: 1.8em; border-bottom: 1px solid #d0d7de; padding-bottom: 0.2em; }
+h3 { font-size: 1em; margin-top: 1.2em; }
+code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; font-size: 0.9em; background: #f6f8fa; padding: 0.15em 0.3em; border-radius: 3px; }
+pre { background: #f6f8fa; padding: 1em; overflow-x: auto; border-radius: 6px; font-size: 0.85em; line-height: 1.45; }
+.header-meta { background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 6px; padding: 0.8em 1em; margin-bottom: 1.5em; }
+.header-meta p { margin: 0.2em 0; }
+.verdict { padding: 0.6em 1em; border-radius: 6px; margin: 1em 0; }
+.verdict-request-changes { background: #fff1e5; border-left: 4px solid #d1242f; }
+.severity-blocking { color: #d1242f; font-weight: 600; }
+.severity-should-fix { color: #bf8700; font-weight: 600; }
+.severity-nit { color: #57606a; font-weight: 600; }
+.severity-question { color: #0969da; font-weight: 600; }
+.finding { margin: 1em 0; padding: 0.6em 0.8em; border: 1px solid #d0d7de; border-radius: 6px; }
+ul { padding-left: 1.5em; }
+li { margin: 0.3em 0; }
+a { color: #0969da; }
+</style>
+</head>
+<body>
+
+<h1>Review: kubernetes-sigs/prow#783</h1>
+
+<div class="header-meta">
+<p><strong>PR:</strong> <a href="https://github.com/kubernetes-sigs/prow/pull/783">kubernetes-sigs/prow#783</a></p>
+<p><strong>Title:</strong> repoowners: add advisory_approvers OWNERS field</p>
+<p><strong>Author:</strong> smg247</p>
+<p><strong>Base:</strong> main</p>
+<p><strong>Head SHA:</strong> <code>04a8f130565815a6fad8857f40eb9ca8a2751614</code></p>
+<p><strong>Reviewed:</strong> 2026-07-03T15:39:28Z</p>
+</div>
+
+<h2>Verdict</h2>
+<div class="verdict verdict-request-changes">
+<strong>Request changes.</strong>
+<p>The core design (merge advisory approvers into the approvers map, subtract in LeafApprovers) is sound for the common case and all three maintainer perspectives (code quality, maintainability, deployment risk) are positive. However, two confirmed correctness bugs in the advisory-only-directory edge case need fixing: LeafApprovers returns an empty set when a directory has only advisory approvers, and verify-owners rejects a valid advisory-only root OWNERS file.</p>
+</div>
+
+<h2>What this PR does</h2>
+<ul>
+<li>Adds an <code>advisory_approvers</code> field to the OWNERS file <code>Config</code> struct, supporting both <code>SimpleConfig</code> and <code>FullConfig</code> (filters) formats.</li>
+<li>At load time (<code>applyConfigToPath</code>), merges advisory approvers into the <code>approvers</code> map so they are recognized by <code>Approvers()</code> for <code>/approve</code> authority.</li>
+<li>Modifies <code>LeafApprovers</code> to subtract advisory approvers, preventing them from being auto-assigned as reviewers.</li>
+<li>Adds <code>AdvisoryApprovers(path string)</code> to the <code>RepoOwner</code> interface with stub implementations in all test fakes.</li>
+<li>Updates <code>verify-owners</code> to collect advisory approvers and include them in org membership validation.</li>
+</ul>
+
+<h2>Findings</h2>
+
+<h3><span class="severity-blocking">Blocking</span></h3>
+
+<div class="finding">
+<h3>LeafApprovers returns empty set for advisory-only directories</h3>
+<p><code>pkg/repoowners/repoowners.go:903-908</code></p>
+<pre>func (o *RepoOwners) LeafApprovers(path string) sets.Set[string] {
+	all := o.entriesForFile(path, o.approvers, true).Set()
+	advisory := o.entriesForFile(path, o.advisoryApprovers, true).Set()
+	return all.Difference(advisory)
+}</pre>
+<p>If a directory's OWNERS lists only <code>advisory_approvers: [dan]</code> with no regular <code>approvers</code>, <code>applyConfigToPath</code> merges <code>dan</code> into <code>o.approvers</code> at that path. <code>entriesForFile</code> with <code>leafOnly: true</code> finds <code>{dan}</code> there and stops &mdash; never reaching the parent directory's regular approvers. The subtraction yields an empty set: <code>{dan} - {dan} = {}</code>. Auto-assignment silently finds zero candidates even though a parent directory has regular approvers.</p>
+</div>
+
+<div class="finding">
+<h3>verify-owners rejects root OWNERS with only advisory_approvers</h3>
+<p><code>pkg/plugins/verify-owners/verify-owners.go:459-464</code></p>
+<pre>if filepath.Dir(c.Filename) == "." &amp;&amp; len(approvers) == 0 {
+	return &amp;messageWithLine{
+		lineNumber,
+		fmt.Sprintf("No approvers defined in this root directory %s file.", filenames.Owners),
+	}, nil
+}</pre>
+<p>The <code>approvers</code> and <code>advisoryApprovers</code> slices are collected separately. The root-level <code>len(approvers) == 0</code> check on line 459 fires before <code>advisoryApprovers</code> are appended to <code>owners</code> on line 466. A root OWNERS with <code>advisory_approvers: [alice]</code> but no <code>approvers:</code> is rejected as "No approvers defined" even though <code>alice</code> would have <code>/approve</code> power at runtime.</p>
+</div>
+
+<h3><span class="severity-should-fix">Should fix</span></h3>
+
+<div class="finding">
+<h3>Dual-storage invariant is under-documented</h3>
+<p><code>pkg/repoowners/repoowners.go:270</code> (struct field) and <code>:756-769</code> (<code>applyConfigToPath</code>)</p>
+<p>Advisory approvers live in both <code>o.advisoryApprovers</code> and <code>o.approvers</code>. The only documentation of this invariant is the comment inside <code>LeafApprovers</code>. A future contributor adding a new method that reads <code>o.approvers</code> must know advisory approvers are mixed in. Add a doc comment on the <code>advisoryApprovers</code> struct field explaining the dual-storage design. Flagged independently by both the code quality and maintainability reviewers.</p>
+</div>
+
+<div class="finding">
+<h3>TopLevelApprovers/LeafApprovers asymmetry is undocumented</h3>
+<p><code>pkg/repoowners/repoowners.go:948-950</code></p>
+<p><code>TopLevelApprovers()</code> reads <code>o.approvers</code> directly and includes advisory approvers. <code>LeafApprovers()</code> subtracts them. The asymmetry is correct (TopLevelApprovers is used for authorization, not assignment) but a future contributor might "fix" the inconsistency without understanding why. A one-line comment explaining the intentional difference would prevent this.</p>
+</div>
+
+<h3><span class="severity-nit">Nits</span></h3>
+
+<div class="finding">
+<h3>Unnecessary set copy and overly complex merge logic</h3>
+<p><code>pkg/repoowners/repoowners.go:756-769</code></p>
+<pre>if existing, ok := o.approvers[path][re]; ok {
+	o.approvers[path][re] = existing.Union(advisorySet)
+} else {
+	o.approvers[path][re] = advisorySet.Union(sets.New[string]())
+}</pre>
+<p><code>advisorySet.Union(sets.New[string]())</code> unions with an empty set, which is just a verbose copy. <code>filterCollaborators</code> never mutates sets in place (it creates new sets via <code>Intersection</code>), so aliasing between the <code>advisoryApprovers</code> and <code>approvers</code> maps would be safe. The entire if/else block could be simplified to match the single-assignment pattern used for every other field. Flagged independently by both code quality and maintainability reviewers.</p>
+</div>
+
+<h3><span class="severity-question">Questions</span></h3>
+
+<div class="finding">
+<h3>Is advisory-only OWNERS a valid use case?</h3>
+<p>Both blocking findings hinge on whether an OWNERS file with only <code>advisory_approvers</code> (no regular <code>approvers</code>) is a supported configuration. If yes, both bugs need fixing. If no, should there be explicit validation that rejects it with a clear message rather than silently producing empty assignment sets?</p>
+</div>
+
+<div class="finding">
+<h3>Should advisory approvers listed as reviewers appear in LeafReviewers?</h3>
+<p><code>TestAdvisoryApproverAlsoReviewer</code> asserts that a user who is both an advisory approver and a reviewer still appears in <code>LeafReviewers</code>. This means they can still be auto-assigned as reviewers, just not as approvers. Is this the intended behavior?</p>
+</div>
+
+<h2>Things I checked and was fine with</h2>
+<ul>
+<li>All <code>RepoOwner</code> interface implementations (6 test fakes) implement <code>AdvisoryApprovers</code>.</li>
+<li>Callers of <code>LeafApprovers</code> (GetLeafApprovers, GetAllPotentialApprovers, GetCCs, blunderbuss fallback) all use it for auto-assignment where excluding advisory approvers is correct.</li>
+<li>Callers of <code>Approvers</code> (UnapprovedFiles, GetFilesApprovers, GetCCs reverse map, lgtm, override) all use it for authorization where including advisory approvers is correct.</li>
+<li><code>filterCollaborators</code> preserves the superset invariant (<code>approvers &supseteq; advisoryApprovers</code>) because set intersection preserves subset relationships.</li>
+<li><code>AllApprovers</code> / <code>AllOwners</code> / <code>TopLevelApprovers</code> correctly include advisory approvers via the merged <code>o.approvers</code> map.</li>
+<li><code>SimpleConfig.Empty()</code> correctly includes the new field.</li>
+<li>The add-then-subtract design is safer than the alternative (keep separate, union in Approvers) because new code reading <code>o.approvers</code> automatically includes advisory approvers &mdash; the correct default for authorization.</li>
+<li>Test coverage is thorough (TestAdvisoryApprovers, TestAdvisoryApproverAlsoReviewer, TestApplyConfigWithAdvisoryApprovers, TestSimpleConfigEmptyWithAdvisoryApprovers, TestParseOwnersFileIncludesAdvisoryApprovers).</li>
+<li>Deployment risk is low: purely additive change, <code>omitempty</code> preserves backward compatibility, rolling upgrades and rollbacks are safe.</li>
+</ul>
+
+<h2>Open questions for the author</h2>
+<ul>
+<li>Is an OWNERS file with only <code>advisory_approvers</code> (no regular <code>approvers</code>) a valid use case? If yes, both blocking findings need fixing. If no, should there be validation that rejects it explicitly with a clear message?</li>
+<li>Should advisory approvers who are also listed as <code>reviewers:</code> still appear in <code>LeafReviewers</code>? The test <code>TestAdvisoryApproverAlsoReviewer</code> asserts yes, but it's worth confirming this is intentional &mdash; it means they can still be auto-assigned as reviewers (just not as approvers).</li>
+<li>The <code>RepoOwner</code> interface gains a new method (<code>AdvisoryApprovers</code>), which is a source-level breaking change for out-of-tree implementations. Should this be noted in release notes?</li>
+</ul>
+
+</body>
+</html>

@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Triage: #603 — flaking test: TestAddWithParser</title>
+<style>
+  :root { --bg: #1a1a2e; --surface: #16213e; --accent: #e94560; --text: #eee; --muted: #a0a0b8; --green: #4ecca3; --yellow: #f0c040; --code-bg: #0a0a1a; --link: #6cb4ee; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.65; padding: 2rem; max-width: 900px; margin: 0 auto; }
+  h1 { font-size: 1.5rem; margin-bottom: .2rem; }
+  h2 { font-size: 1.15rem; color: var(--accent); margin: 2rem 0 .6rem; border-bottom: 1px solid #333; padding-bottom: .35rem; }
+  h3 { font-size: .95rem; color: var(--green); margin: 1rem 0 .4rem; }
+  a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+  code { background: var(--code-bg); padding: .1rem .35rem; border-radius: 3px; font-size: .84em; font-family: 'JetBrains Mono', 'Fira Code', monospace; }
+  pre { background: var(--code-bg); padding: 1rem; border-radius: 6px; overflow-x: auto; margin: .6rem 0; font-size: .8rem; line-height: 1.5; font-family: 'JetBrains Mono', 'Fira Code', monospace; white-space: pre; }
+  ul, ol { margin: .4rem 0 .4rem 1.4rem; } li { margin: .25rem 0; }
+  .meta { color: var(--muted); font-size: .85rem; margin-bottom: 1.5rem; line-height: 1.8; }
+  .meta span { display: inline-block; margin-right: 1.2rem; }
+  .badge { display: inline-block; padding: .12rem .55rem; border-radius: 999px; font-size: .72rem; font-weight: 600; margin-right: .35rem; vertical-align: middle; }
+  .b-green { background: #1a4a3a; color: var(--green); border: 1px solid var(--green); }
+  .b-yellow { background: #3a3520; color: var(--yellow); border: 1px solid var(--yellow); }
+  .b-blue { background: #1a2a4a; color: var(--link); border: 1px solid var(--link); }
+  .card { background: var(--surface); border-radius: 8px; padding: 1rem 1.2rem; margin: .6rem 0; border-left: 3px solid var(--accent); }
+  .card-g { border-left-color: var(--green); }
+  .fp { color: var(--link); }
+  .comment { background: #111; border: 1px solid #333; border-radius: 8px; padding: 1.1rem; margin: .6rem 0; font-size: .88rem; }
+  .lbl { color: var(--green); font-family: monospace; }
+  table { width: 100%; border-collapse: collapse; margin: .6rem 0; }
+  td { padding: .35rem .7rem; } tr { border-bottom: 1px solid #262640; }
+  hr { border: none; border-top: 1px solid #333; margin: 1.8rem 0; }
+</style>
+</head>
+<body>
+
+<h1>Triage: kubernetes-sigs/prow#603</h1>
+<div class="meta">
+  <a href="https://github.com/kubernetes-sigs/prow/issues/603">flaking test: <code>TestAddWithParser</code></a><br>
+  <span>State: <strong>open</strong></span>
+  <span>Labels: <code>kind/bug</code>, <code>lifecycle/rotten</code></span><br>
+  <span>Triaged: <strong>2026-06-01T10:55:35Z</strong></span>
+  <span>Main SHA: <code>71428b9c282ee8c9e7e9512068fccce86e7915da</code></span><br>
+  <span class="badge b-green">accepted</span>
+  <span class="badge b-green">Level 1 — Easy</span>
+  <span class="badge b-yellow">kind/flake</span>
+  <span class="badge b-blue">good-first-issue</span>
+</div>
+
+<h2>Verdict</h2>
+<div class="card card-g">
+  <p><strong>Accepted.</strong> Legitimate flaky test caused by a race in the test's own synchronization — production code is correct. Test-only fix, good-first-issue.</p>
+</div>
+
+<h2>What the Issue Reports</h2>
+<ul>
+  <li>Unit test <code>TestAddWithParser</code> in <code>pkg/config/secret</code> flakes intermittently in CI.</li>
+  <li>Failure message: <code>expected value 2 from generator, got 1</code> — the secret file was updated to <code>"2"</code> but the generator still returned <code>1</code>.</li>
+  <li>Observed twice on unrelated PRs (#601, #525), suggesting a genuine race rather than PR-specific breakage.</li>
+  <li>Log output also shows "no such file or directory" warnings for temp files from the parallel test instance and the expected <code>strconv.Atoi</code> error for the "not-a-number" phase.</li>
+  <li>Reported 2026-01-26, went stale with no fix.</li>
+</ul>
+<p style="margin-top:.8rem;color:var(--muted);font-size:.88rem"><strong>Since previous triage (2026-05-30):</strong></p>
+<ul>
+  <li>Lifecycle label progressed from <code>lifecycle/stale</code> to <code>lifecycle/rotten</code> (automated bot). Issue will auto-close in ~30 days without activity.</li>
+  <li>No new comments, no linked PRs, no cross-references.</li>
+</ul>
+
+<h2>Analysis</h2>
+
+<h3>Probable Cause</h3>
+<div class="card">
+  <p>The test uses a channel inside the parser callback as a synchronization signal. The parser executes inside <code>loadSingleSecretWithParser</code> — <strong>before</strong> the reload goroutine acquires the write lock and commits <code>p.parsed</code>. When the test receives on the channel and immediately calls <code>generator()</code>, it can read the stale value because the write hasn't happened yet.</p>
+</div>
+
+<h3>Race Sequence</h3>
+<pre>Reload goroutine                    Test goroutine
+─────────────────                   ──────────────
+loadSingleSecretWithParser()
+  → parsingFN("2")
+    → vals &lt;- 2                     ← receives 2 from vals ✓
+    → returns (2, nil)              calls generator()
+  ← returns (raw, 2, nil)            → p.lock.RLock()
+                                      → reads p.parsed == 1 (STALE)
+                                      → returns 1 ✗
+p.lock.Lock()
+p.parsed = 2  ← too late
+p.lock.Unlock()</pre>
+
+<h3>Related Code</h3>
+<table>
+  <tr><td class="fp">pkg/config/secret/reloader.go:72</td><td>Parser called outside any lock — channel send happens here</td></tr>
+  <tr><td class="fp">pkg/config/secret/reloader.go:78-81</td><td><code>p.lock.Lock(); p.parsed = parsed; p.lock.Unlock()</code> — value committed after parser returns</td></tr>
+  <tr><td class="fp">pkg/config/secret/reloader.go:95-99</td><td><code>get()</code> reads <code>p.parsed</code> under <code>RLock</code></td></tr>
+  <tr><td class="fp">pkg/config/secret/secret.go:34-41</td><td><code>loadSingleSecretWithParser</code> — reads file, calls <code>parsingFN</code></td></tr>
+  <tr><td class="fp">pkg/config/secret/agent_test.go:197-205</td><td>Test's <code>parsingFN</code> — sends parsed int to <code>vals</code> channel</td></tr>
+  <tr><td class="fp">pkg/config/secret/agent_test.go:211-229</td><td><code>checkValueAndErr</code> — receives on channel then calls <code>generator()</code> (the race)</td></tr>
+  <tr><td class="fp">pkg/config/secret/agent.go:75-81</td><td><code>AddWithParser</code> — returns <code>loader.get</code> as generator</td></tr>
+  <tr><td class="fp">pkg/config/secret/agent.go:33</td><td><code>secretAgent</code> — package-level singleton shared by parallel test instances</td></tr>
+</table>
+
+<h3>Key Excerpts</h3>
+
+<p>The reload loop — parser runs before lock (<code>reloader.go:72-81</code>):</p>
+<pre>raw, parsed, err := loadSingleSecretWithParser(p.path, p.parsingFN) // line 72 — parser (and channel send) here
+if err != nil {
+    logger.WithField("secret-path", p.path).WithError(err).Error("Error loading secret.")
+    continue
+}
+
+p.lock.Lock()       // line 78 — lock acquired AFTER parser returns
+p.rawValue = raw
+p.parsed = parsed   // line 80 — value committed here
+p.lock.Unlock()</pre>
+
+<p>The test's racy check (<code>agent_test.go:211-229</code>):</p>
+<pre>checkValueAndErr := func(expected int, e error) {
+    t.Helper()
+    select {
+    case v := &lt;-vals:           // receives from parser callback
+        if v != expected { ... }
+    case err := &lt;-errs: ...
+    case &lt;-time.After(10 * time.Second): ...
+    }
+    if actual := generator(); actual != expected {  // line 227 — races with lock acquisition
+        t.Errorf("expected value %d from generator, got %d", expected, actual)
+    }
+}</pre>
+
+<h2>What I Checked</h2>
+<ul>
+  <li>Full read of <code>pkg/config/secret/</code>: <code>agent.go</code>, <code>reloader.go</code>, <code>secret.go</code>, <code>agent_test.go</code></li>
+  <li>Synchronization primitives: <code>sync.RWMutex</code> on both <code>parsingSecretReloader</code> and <code>agent</code> — no atomics</li>
+  <li>Whether production code has a bug: no, the <code>RWMutex</code> correctly guards reads/writes of <code>p.parsed</code></li>
+  <li>Whether the singleton <code>secretAgent</code> causes cross-test interference: contributes scheduling pressure but is not the root cause</li>
+  <li>Reload interval: 1 second (<code>time.Tick(1 * time.Second)</code> at <code>reloader.go:55</code>)</li>
+  <li>Available area labels: none matching <code>pkg/config/secret</code></li>
+</ul>
+
+<h2>Recommended Next Steps</h2>
+<ol>
+  <li>Post comment with root cause analysis and fix approach (draft prepared below)</li>
+  <li>Apply labels: <code>/remove-lifecycle rotten</code>, <code>/kind flake</code>, <code>/good-first-issue</code></li>
+  <li>Wait for contributor pickup — or fix it yourself (30 min)</li>
+</ol>
+
+<h3>Proposed Comment</h3>
+<div class="comment">
+<p><strong>## Root Cause</strong></p>
+<p>This is a race condition in the test's synchronization logic, not in the production code. The test's <code>parsingFN</code> sends the parsed value to a channel <em>inside</em> the parser callback (<code>agent_test.go:203</code>), but the parser executes during <code>loadSingleSecretWithParser</code> (<code>reloader.go:72</code>) — <em>before</em> <code>reloadSecret</code> acquires the write lock and commits the value to <code>p.parsed</code> (<code>reloader.go:78-80</code>). When the test receives on the channel and immediately calls <code>generator()</code>, it can read the stale value because the write lock hasn't been acquired yet.</p>
+<p style="margin-top:.8rem"><strong>## Fix Approach</strong></p>
+<p>The fix is test-only: replace the channel-based synchronization in <code>checkValueAndErr</code> with polling <code>generator()</code> in a loop with a timeout. This eliminates the race because the test only checks the committed value, not the intermediate parser signal. The production code's <code>RWMutex</code> synchronization is correct.</p>
+<p style="margin-top:.8rem">
+  <span class="lbl">/remove-lifecycle rotten</span><br>
+  <span class="lbl">/kind flake</span><br>
+  <span class="lbl">/good-first-issue</span>
+</p>
+</div>
+
+<h2>Open Questions</h2>
+<ul>
+  <li>Is this still flaking on current main, or has it gone quiet? (The two CI links are from January 2026 — worth checking recent CI runs.)</li>
+  <li>Should the <code>skips</code> optimization in <code>reloadSecret</code> (stops checking modtime after 600 unchanged polls) also get a test, or is that out of scope?</li>
+</ul>
+
+<hr>
+<p style="color:var(--muted);font-size:.78rem">
+  Full triage document: <a href="https://github.com/petr-muller/prow/blob/603-triage/ISSUE-TRIAGE.md">ISSUE-TRIAGE.md</a>
+</p>
+</body>
+</html>

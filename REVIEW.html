@@ -278,7 +278,7 @@
   <div class="meta">
     Author: <a href="https://github.com/linolayani">@linolayani</a>
     &middot; <a href="https://github.com/kubernetes-sigs/prow/pull/611">View on GitHub</a>
-    &middot; <span title="head: bf6575f7d15a5902d022415f6f0057bb2f07ef23 · refreshed: 2026-06-08T18:57:49Z">+151 &minus;0</span>
+    &middot; <span title="head: bf6575f7d15a5902d022415f6f0057bb2f07ef23 · refreshed: 2026-07-26T22:41:26Z">+151 &minus;0</span>
     &middot; Reviewers requested: @krzyzacy, @matthyx
   </div>
 </header>
@@ -474,7 +474,7 @@ Consider placing templates in a non-ignored location (e.g. `config/templates/hoo
 <div class="verdict-box" style="border-color:var(--orange);margin-top:1.5rem">
   <div class="verdict" style="color:var(--orange)">Gate: HOLD</div>
   <div class="reason" style="text-align:left;margin-top:0.75rem">
-    <p>All three critical findings from the original review are unaddressed at <code>bf6575f7d</code>. The PR also carries <code>lifecycle/stale</code> and <code>needs-ok-to-test</code> — no CI has run, no formal reviews submitted.</p>
+    <p>All three critical findings from the original review are unaddressed at <code>bf6575f7d</code>. The PR now carries <code>lifecycle/rotten</code> (escalated from <code>lifecycle/stale</code> on 2026-07-06 — next stop is auto-close) and <code>needs-ok-to-test</code> — no CI has run, no formal reviews submitted.</p>
     <h3 style="margin-top:1rem;margin-bottom:0.4rem;font-size:0.9rem">Gating items</h3>
     <ul style="font-size:0.9rem">
       <li><strong>Broken <code>go run</code> command</strong> &mdash; <code>getting-started-hook.md</code> lines ~84–88: missing backslashes on <code>--github-app-private-key-path</code> and <code>--github-app-id</code>. Command does not execute correctly. Verified at current head.</li>
@@ -483,7 +483,7 @@ Consider placing templates in a non-ignored location (e.g. `config/templates/hoo
     </ul>
     <h3 style="margin-top:1rem;margin-bottom:0.4rem;font-size:0.9rem">Process blockers</h3>
     <ul style="font-size:0.9rem">
-      <li><code>lifecycle/stale</code> applied 2026-06-06 &mdash; author must <code>/remove-lifecycle stale</code></li>
+      <li><code>lifecycle/rotten</code> applied 2026-07-06 (escalated from <code>lifecycle/stale</code>, applied 2026-06-06) &mdash; PR will be auto-closed without further activity; author must <code>/remove-lifecycle rotten</code></li>
       <li><code>needs-ok-to-test</code> &mdash; CI has not run</li>
       <li>No <code>lgtm</code> or <code>approve</code> from <code>@matthyx</code> (requested approver)</li>
     </ul>

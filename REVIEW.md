@@ -4,10 +4,12 @@ title: "Doc: Add a local hook development guide"
 author: linolayani
 head_sha: "bf6575f7d15a5902d022415f6f0057bb2f07ef23"
 base: main
-reviewed_at: "2026-06-08T18:57:49Z"
+reviewed_at: "2026-07-26T22:41:26Z"
 refresh_log:
   - at: "2026-06-08T18:57:49Z"
     note: "Populated head_sha from live PR; no new commits or activity since review."
+  - at: "2026-07-26T22:41:26Z"
+    note: "No code changes (head_sha unchanged) and no new review/inline comments. Bot progressed the PR from lifecycle/stale to lifecycle/rotten (2026-07-06, next stop: auto-close)."
 verdict: request-changes
 gate:
   decision: hold
@@ -18,7 +20,7 @@ gate:
 
 ## Gate
 
-**HOLD** — all three critical findings from the review are unaddressed in the current head. The PR also carries `lifecycle/stale` and `needs-ok-to-test` labels, has no formal reviews, and has not been approved. The content is sound but the guide is non-functional as written.
+**HOLD** — all three critical findings from the review are unaddressed in the current head. The PR now carries `lifecycle/rotten` (escalated from `lifecycle/stale` on 2026-07-06; the next stage is auto-close) and `needs-ok-to-test`, has no formal reviews, and has not been approved. The content is sound but the guide is non-functional as written.
 
 ### Gating list
 
@@ -28,7 +30,7 @@ gate:
 
 ### Process blockers
 
-- `lifecycle/stale` applied 2026-06-06 by triage bot (90 days of inactivity). Author must `/remove-lifecycle stale` to keep the PR alive.
+- `lifecycle/rotten` applied 2026-07-06 by triage bot (escalated from `lifecycle/stale`, which was applied 2026-06-06). Without further activity the PR will be auto-closed next. Author must `/remove-lifecycle rotten` (and ideally push the fixes) to keep the PR alive.
 - `needs-ok-to-test`: no org member has run `/ok-to-test`. CI has not run on this PR.
 - No reviews submitted; `reviewDecision` is unset. `@krzyzacy` and `@matthyx` are requested but have not engaged.
 - NOT APPROVED per approver bot (requires `@matthyx` or root OWNERS approver).

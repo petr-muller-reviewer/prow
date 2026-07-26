@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Review: kubernetes-sigs/prow#766</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; line-height: 1.6; color: #24292f; max-width: 860px; margin: 2rem auto; padding: 0 1rem; }
+  h1 { font-size: 1.5rem; border-bottom: 1px solid #d0d7de; padding-bottom: 0.4rem; }
+  h2 { font-size: 1.25rem; margin-top: 2rem; border-bottom: 1px solid #d0d7de; padding-bottom: 0.3rem; }
+  h3 { font-size: 1rem; margin-top: 1.2rem; }
+  code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; font-size: 0.9em; background: #f6f8fa; padding: 0.15em 0.35em; border-radius: 3px; }
+  pre { background: #f6f8fa; padding: 1rem; border-radius: 6px; overflow-x: auto; font-size: 0.85em; line-height: 1.5; }
+  .meta { background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 6px; padding: 0.8rem 1rem; margin-bottom: 1.5rem; font-size: 0.9em; }
+  .meta td { padding: 0.15rem 0.6rem 0.15rem 0; }
+  .meta td:first-child { font-weight: 600; }
+  .verdict { background: #fff8c5; border: 1px solid #d4a72c; border-radius: 6px; padding: 0.8rem 1rem; margin-bottom: 1.5rem; }
+  .verdict strong { font-size: 1.05em; }
+  .severity-blocking { border-left: 4px solid #cf222e; padding-left: 0.8rem; margin-bottom: 1.2rem; }
+  .severity-should-fix { border-left: 4px solid #e16f24; padding-left: 0.8rem; margin-bottom: 1.2rem; }
+  .severity-nit { border-left: 4px solid #bf8700; padding-left: 0.8rem; margin-bottom: 1.2rem; }
+  .severity-question { border-left: 4px solid #54aeff; padding-left: 0.8rem; margin-bottom: 1.2rem; }
+  ul { padding-left: 1.3rem; }
+  a { color: #0969da; }
+</style>
+</head>
+<body>
+
+<h1>Review: kubernetes-sigs/prow#766</h1>
+
+<div class="meta">
+<table>
+<tr><td>PR</td><td><a href="https://github.com/kubernetes-sigs/prow/pull/766">kubernetes-sigs/prow#766</a></td></tr>
+<tr><td>Title</td><td>handle github teams lookup correctly with github apps</td></tr>
+<tr><td>Author</td><td>upodroid</td></tr>
+<tr><td>Head SHA</td><td><code>b6a76dd31dbbcd5c7292052f4400d138820c2bbc</code></td></tr>
+<tr><td>Base</td><td>main</td></tr>
+<tr><td>Reviewed</td><td>2026-06-24T11:19:04Z</td></tr>
+</table>
+</div>
+
+<div class="verdict">
+<strong>Verdict: request changes</strong>
+<p>The PR correctly identifies the root cause &mdash; <code>/teams/{id}/members</code> lacks the org, so GitHub Apps auth fails &mdash; and the rename to <code>ListTeamMembersByID</code> is a clean improvement. However, the replacement API path <code>/orgs/{org}/team/{id}/members</code> does not appear in GitHub's official REST API documentation (the documented ID-based alternate route is <code>/organizations/{org_id}/team/{team_id}/members</code> with numeric org ID, not org name). Additionally, callers like <code>RerunAuthConfig.IsAuthorized</code> can pass an empty org in periodic job contexts, which would produce a malformed path. Both issues should be addressed before merge.</p>
+</div>
+
+<h2>What this PR does</h2>
+<ul>
+  <li>Fixes GitHub Apps authentication failure when looking up team members by ID: the old API path <code>/teams/{id}/members</code> lacked the org, so <code>extractOrgFromContext</code> couldn't determine which installation token to use.</li>
+  <li>Changes the API path to <code>/orgs/{org}/team/{id}/members</code>, which includes the org for Apps auth compatibility.</li>
+  <li>Renames <code>ListTeamMembers</code> to <code>ListTeamMembersByID</code> and removes the deprecation warning, since the method is now a proper peer of <code>ListTeamMembersBySlug</code> rather than a deprecated shim.</li>
+  <li>Updates all callers across the <code>TeamClient</code> interface, fake client, milestone/milestonestatus/project plugins, and tests.</li>
+  <li>Cleans up the peribolos docs: fixes bullet style and updates the stale <code>test-infra</code> repo reference in an error message.</li>
+</ul>
+
+<h2>Findings</h2>
+
+<h3>Blocking</h3>
+
+<div class="severity-blocking">
+<h3>Undocumented API path &mdash; <code>pkg/github/client.go:3909</code></h3>
+<pre>path := fmt.Sprintf("/orgs/%s/team/%d/members", org, id)</pre>
+<p>This path does not match any documented GitHub REST API endpoint. The documented patterns are:</p>
+<ul>
+  <li><code>/orgs/{org}/teams/{team_slug}/members</code> &mdash; current, slug-based (plural <code>teams</code>)</li>
+  <li><code>/organizations/{org_id}/team/{team_id}/members</code> &mdash; alternate route, numeric IDs (note: <code>organizations</code> not <code>orgs</code>, numeric org ID not name)</li>
+  <li><code>/teams/{team_id}/members</code> &mdash; legacy, being deprecated</li>
+</ul>
+<p>The PR's path mixes <code>/orgs/{org_name}</code> with singular <code>/team/{numeric_id}</code>. The author validated it with <code>gh api</code>, but GitHub could break this undocumented route without notice. Please verify this is officially supported or switch to a documented endpoint. If verified to work despite being undocumented, add a comment explaining how it was confirmed.</p>
+</div>
+
+<div class="severity-blocking">
+<h3>Empty org produces malformed URL &mdash; <code>pkg/github/client.go:3909</code></h3>
+<pre>path := fmt.Sprintf("/orgs/%s/team/%d/members", org, id)</pre>
+<p>Callers like <code>RerunAuthConfig.IsAuthorized</code> (in <code>types.go:314</code>) can pass an empty <code>org</code> in periodic job contexts &mdash; this is visible in the original stack trace where org is <code>{0x0, 0x0}</code>. The old path <code>/teams/{id}/members</code> didn't need org in the URL. The new path would produce <code>/orgs//team/{id}/members</code>. This was raised by reviewers alvaroaleman and matthyx in PR comments and remains unaddressed. Add a guard (return a clear error) or fall back to the legacy path when org is empty.</p>
+</div>
+
+<h3>Should fix</h3>
+
+<div class="severity-should-fix">
+<h3><code>org</code> omitted from duration log &mdash; <code>pkg/github/client.go:3903</code></h3>
+<pre>durationLogger := c.log("ListTeamMembersByID", id, role)</pre>
+<p>Sibling <code>ListTeamMembersBySlug</code> logs all parameters including org:</p>
+<pre>durationLogger := c.log("ListTeamMembersBySlug", org, teamSlug, role)</pre>
+<p>Since <code>org</code> is now part of the API path, omitting it makes it harder to diagnose auth failures &mdash; exactly the kind of bug this PR fixes.</p>
+</div>
+
+<h3>Nits</h3>
+
+<div class="severity-nit">
+<h3>Comment typo: lowercase 'b' &mdash; <code>pkg/github/fakegithub/fakegithub.go:741</code></h3>
+<pre>// ListTeamMembersbyID return a fake team with a single "sig-lead" GitHub teammember</pre>
+<p>Function name is <code>ListTeamMembersByID</code> (capital B). Also, stale comments at lines 723 and 759 still reference the old <code>ListTeamMembers</code> name.</p>
+</div>
+
+<div class="severity-nit">
+<h3>Misleading comment about team_id/team_slug &mdash; <code>pkg/github/client.go:3901</code></h3>
+<pre>// Note: the API accepts both team_id and team_slug, but not fully documented</pre>
+<p>Reads as though <em>this method</em> accepts either form, when it only takes an <code>int</code> ID. A separate <code>ListTeamMembersBySlug</code> handles slugs. The comment conflates GitHub API endpoint variants with this function's signature.</p>
+</div>
+
+<div class="severity-nit">
+<h3>Stale doc link &mdash; <code>pkg/github/client.go:3899</code></h3>
+<pre>// https://developer.github.com/v3/teams/members/#list-team-members</pre>
+<p>Points to old <code>developer.github.com</code> domain which redirects. The sibling <code>ListTeamMembersBySlug</code> already uses <code>https://docs.github.com/en/rest/reference/teams#list-team-members</code>.</p>
+</div>
+
+<div class="severity-nit">
+<h3>Inconsistent Accept headers &mdash; <code>pkg/github/client.go:3917</code></h3>
+<p><code>ListTeamMembersByID</code> uses <code>application/vnd.github+json</code> while <code>ListTeamMembersBySlug</code> uses <code>application/vnd.github.v3+json</code>. Functionally equivalent but a papercut for anyone wondering if the difference is intentional.</p>
+</div>
+
+<h3>Questions</h3>
+
+<div class="severity-question">
+<h3>Interface rename as breaking change for out-of-tree consumers</h3>
+<p>The <code>TeamClient</code> interface rename from <code>ListTeamMembers</code> to <code>ListTeamMembersByID</code> is a compile-time breaking change for any code outside this repo implementing the interface. This is manageable (caught at build time, not runtime), but should it be documented in release notes? Or is a backward-compatible wrapper worth adding?</p>
+</div>
+
+<h2>Things I checked and found fine</h2>
+<ul>
+  <li>All implementations of the <code>TeamClient</code> interface are updated: real client, fake client, and all plugin-local interfaces.</li>
+  <li>The test in <code>client_test.go</code> is updated to match the new path <code>/orgs/orgName/team/1/members</code>.</li>
+  <li><code>TeamHasMember</code> correctly delegates to the renamed method.</li>
+  <li>No remaining references to the old <code>ListTeamMembers</code> name in any <code>.go</code> file that would cause a compile failure.</li>
+  <li>The peribolos doc changes are pure formatting (bullet style) and a log output update; no semantic changes.</li>
+  <li>The error message repo reference update (<code>test-infra</code> &rarr; <code>kubernetes-sigs/prow</code>) is correct.</li>
+  <li>Removal of the deprecation warning is appropriate &mdash; the method is being rehabilitated, not sunset, and the warning was just noise.</li>
+</ul>
+
+<h2>Open questions for the author</h2>
+<ul>
+  <li>Can you confirm <code>/orgs/{org_name}/team/{numeric_id}/members</code> works against the production GitHub API? If so, could you note how you verified it (e.g., a link to GitHub support confirmation or a screenshot of a successful call)?</li>
+  <li>How should the empty-org case be handled &mdash; return an error, fall back to legacy <code>/teams/{id}/members</code>, or require callers to always supply org?</li>
+  <li>The duration logger at <code>client.go:3903</code> omits <code>org</code> &mdash; was that intentional, or should it match <code>ListTeamMembersBySlug</code>'s logging pattern?</li>
+</ul>
+
+</body>
+</html>

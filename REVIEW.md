@@ -3,18 +3,26 @@ pr: kubernetes-sigs/prow#749
 title: "fix(pipeline): reject duplicate cluster endpoints at startup"
 head_sha: 93096b1e06a8d9ddaf7ddc3b6c95f482a4d3c4fb
 base: main
-reviewed_at: 2026-06-16T11:35:24Z
+reviewed_at: 2026-07-26T23:33:47Z
 verdict: approve
 gate:
   decision: merge
   gated_at: 2026-06-16T16:36:39Z
   gated_head_sha: 93096b1e06a8d9ddaf7ddc3b6c95f482a4d3c4fb
   reviewed_head_sha: 93096b1e06a8d9ddaf7ddc3b6c95f482a4d3c4fb
+merged_at: 2026-06-16T17:45:39Z
+refresh_log:
+  - from: 93096b1e06a8d9ddaf7ddc3b6c95f482a4d3c4fb
+    to: 93096b1e06a8d9ddaf7ddc3b6c95f482a4d3c4fb
+    at: 2026-07-26T23:33:47Z
+    summary: No code changes; no new comments/reviews beyond the gate. PR merged 2026-06-16T17:45:39Z by k8s-ci-robot.
 ---
 
 ## Gate
 
 **Decision: merge**
+
+**Since previous review:** PR merged 2026-06-16T17:45:39Z (merged by `k8s-ci-robot`, the standard tide/CI merge bot). No code changes since the reviewed head (`93096b1e0`) and no new comments or reviews beyond the approval/gate already recorded.
 
 PR has `lgtm` and `approved` labels, `reviewDecision: APPROVED`, no code changes since review (OLD_SHA == NEW_SHA). The only open findings are two `should-fix` suggestions (report all collisions at once; deterministic iteration order) and two `nits` — none are correctness bugs, and the original review verdict was `approve` not `request-changes`. No API, config, or behavioral merge risk: the change is purely additive, scoped to `cmd/pipeline/`, and only gates startup on a misconfiguration that was already causing data loss silently.
 

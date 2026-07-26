@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Triage: Issue #610 — owners-label should ignore merge commits</title>
+<style>
+  :root { --bg: #0d1117; --surface: #161b22; --border: #30363d; --text: #e6edf3; --muted: #8b949e; --accent: #58a6ff; --green: #3fb950; --red: #f85149; --yellow: #d29922; --purple: #bc8cff; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; padding: 2rem; max-width: 960px; margin: 0 auto; }
+  h1 { font-size: 1.6rem; margin-bottom: 0.25rem; }
+  h2 { font-size: 1.25rem; color: var(--accent); margin: 2rem 0 0.75rem; border-bottom: 1px solid var(--border); padding-bottom: 0.4rem; }
+  h3 { font-size: 1rem; color: var(--purple); margin: 1.25rem 0 0.5rem; }
+  p, li { margin-bottom: 0.5rem; }
+  ul { padding-left: 1.5rem; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code { font-family: 'JetBrains Mono', 'Fira Code', monospace; background: var(--surface); padding: 0.15em 0.4em; border-radius: 4px; font-size: 0.9em; color: #f0883e; }
+  pre { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; overflow-x: auto; margin: 0.75rem 0; font-size: 0.85rem; }
+  pre code { background: none; padding: 0; color: var(--text); }
+  .badge { display: inline-block; padding: 0.15em 0.6em; border-radius: 12px; font-size: 0.8rem; font-weight: 600; margin-right: 0.4rem; }
+  .badge-green { background: #238636; color: #fff; }
+  .badge-blue { background: #1f6feb; color: #fff; }
+  .badge-yellow { background: #9e6a03; color: #fff; }
+  .badge-purple { background: #8957e5; color: #fff; }
+  .badge-red { background: #da3633; color: #fff; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1rem 1.25rem; margin: 0.75rem 0; }
+  .card-header { font-weight: 600; margin-bottom: 0.5rem; color: var(--accent); }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+  .key-value { display: flex; gap: 0.5rem; }
+  .key-value .key { color: var(--muted); min-width: 120px; flex-shrink: 0; }
+  .separator { border: none; border-top: 1px solid var(--border); margin: 1.5rem 0; }
+  .highlight { border-left: 3px solid var(--accent); padding-left: 1rem; margin: 0.75rem 0; }
+  .highlight-green { border-left-color: var(--green); }
+  .highlight-yellow { border-left-color: var(--yellow); }
+  .highlight-red { border-left-color: var(--red); }
+  .comment-box { background: #1c2128; border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem; margin: 0.75rem 0; font-family: monospace; font-size: 0.85rem; white-space: pre-wrap; }
+  .meta { color: var(--muted); font-size: 0.85rem; }
+  table { width: 100%; border-collapse: collapse; margin: 0.75rem 0; }
+  th, td { text-align: left; padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--border); }
+  th { color: var(--muted); font-weight: 600; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; }
+  .pros { color: var(--green); }
+  .cons { color: var(--red); }
+  .toc { list-style: none; padding-left: 0; }
+  .toc li { padding: 0.2rem 0; }
+  .toc li::before { content: "# "; color: var(--muted); }
+  details { margin: 0.75rem 0; }
+  summary { cursor: pointer; color: var(--accent); font-weight: 600; }
+  summary:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+
+<h1>Issue #610: <code>owners-label</code> should ignore merge commits</h1>
+<p class="meta">
+  <span class="badge badge-green">LEGITIMATE</span>
+  <span class="badge badge-blue">Level 1</span>
+  <span class="badge badge-yellow">kind/feature</span>
+  <span class="badge badge-red">lifecycle/rotten</span>
+  &mdash; Reported by <strong>danwinship</strong> &middot; 2026-02-05 &middot; <a href="https://github.com/kubernetes-sigs/prow/issues/610">View on GitHub</a>
+</p>
+
+<h2>Quick Reference</h2>
+
+<div class="grid">
+  <div class="card">
+    <div class="card-header">Issue</div>
+    <div class="key-value"><span class="key">Problem</span><span>Merge commits cause flood of irrelevant labels</span></div>
+    <div class="key-value"><span class="key">Root Cause</span><span><code>GetPullRequestChanges</code> returns aggregate diff</span></div>
+    <div class="key-value"><span class="key">Labels stick</span><span>Plugin only adds, never removes</span></div>
+  </div>
+  <div class="card">
+    <div class="card-header">Fix</div>
+    <div class="key-value"><span class="key">Approach</span><span>Skip labeling when merge commits detected</span></div>
+    <div class="key-value"><span class="key">Pattern</span><span>DCO plugin (<code>dco.go:156-161</code>)</span></div>
+    <div class="key-value"><span class="key">Scope</span><span>~15-25 LOC in 1 file + tests</span></div>
+  </div>
+</div>
+
+<h2>Since Previous Triage (2026-05-03)</h2>
+
+<ul>
+  <li><strong>2026-05-07</strong>: <code>k8s-triage-robot</code> applied <code>lifecycle/stale</code> due to 90d inactivity; <code>good-first-issue</code> label removed in the same sweep.</li>
+  <li><strong>2026-06-06</strong>: <code>k8s-triage-robot</code> applied <code>lifecycle/rotten</code>. Issue will be <strong>auto-closed in ~30 days</strong> (around 2026-07-06) if no activity.</li>
+  <li>No new substantive comments or linked PRs. Analysis and recommended fix unchanged.</li>
+</ul>
+
+<h2>Discussion Summary</h2>
+
+<p>6 comments between <strong>danwinship</strong> (reporter) and <strong>BenTheElder</strong> (maintainer). Key points:</p>
+
+<div class="highlight highlight-green">
+  <strong>Consensus reached:</strong> Merge commits should <em>always</em> be skipped for labeling, regardless of whether <code>mergecommitblocker</code> is enabled. There is no workflow where labeling from merge commits makes sense.
+</div>
+
+<ul>
+  <li><strong>BenTheElder</strong>: +1, initially suggested opt-in tied to <code>mergecommitblocker</code></li>
+  <li><strong>danwinship</strong>: Argued the fix should be unconditional &mdash; labeling from merges only produces noise</li>
+  <li><strong>danwinship</strong> proposed per-commit pseudocode: skip commits with <code>len(Parents) &gt; 1</code></li>
+  <li><strong>Key insight</strong>: Merging master into a PR would label every file changed upstream since branch point &mdash; never useful</li>
+</ul>
+
+<h2>Root Cause</h2>
+
+<div class="card">
+  <p><code>owners-label</code> calls <code>GetPullRequestChanges</code> which hits GitHub's <code>GET /pulls/{n}/files</code> endpoint. This returns the <strong>full diff</strong> between PR head and base branch &mdash; no per-commit breakdown. When a merge commit is present, all files from the merged branch appear in the diff.</p>
+  <p style="margin-top:0.5rem">Since <code>owners-label</code> only adds labels and never removes them, the erroneous labels persist even after the user force-pushes to remove the merge commit.</p>
+</div>
+
+<h2>Code Paths</h2>
+
+<table>
+  <tr><th>What</th><th>Where</th><th>Role</th></tr>
+  <tr><td>Event handler</td><td><code>owners-label.go:58-69</code></td><td>Filters to opened/reopened/synchronize</td></tr>
+  <tr><td>File fetching</td><td><code>owners-label.go:77-84</code></td><td>Gets ALL changed files, maps to labels</td></tr>
+  <tr><td>Label application</td><td><code>owners-label.go:109-116</code></td><td>Only adds, never removes</td></tr>
+  <tr><td>DCO precedent</td><td><code>dco.go:156-161</code></td><td><code>len(commit.Parents) &gt; 1</code> to skip merges</td></tr>
+  <tr><td>GitHub client</td><td><code>client.go:4616</code></td><td><code>ListPullRequestCommits</code> &mdash; returns commits with <code>Parents</code></td></tr>
+</table>
+
+<h2>Recommended Solution</h2>
+
+<h3>Approach: Skip labeling when merge commits are present</h3>
+
+<p>Before processing files, call <code>ListPullRequestCommits()</code>. If any commit has <code>len(Parents) &gt; 1</code>, return early. Labels are applied correctly on the subsequent <code>synchronize</code> event after force-push.</p>
+
+<div class="grid">
+  <div class="card">
+    <div class="card-header pros">Pros</div>
+    <ul>
+      <li>~10-15 lines of code</li>
+      <li>Follows DCO plugin pattern exactly</li>
+      <li>One additional API call total</li>
+      <li>Self-correcting: labels applied after force-push</li>
+    </ul>
+  </div>
+  <div class="card">
+    <div class="card-header cons">Cons</div>
+    <ul>
+      <li>Skips all labeling for that event (coarse-grained)</li>
+      <li>Permanent merge commits = no labels ever (rare edge case)</li>
+    </ul>
+  </div>
+</div>
+
+<details>
+<summary>Why not danwinship's per-commit approach?</summary>
+<div class="card" style="margin-top:0.5rem">
+  <p><code>ListPullRequestCommits</code> doesn't populate the <code>Files</code> field on <code>RepositoryCommit</code> (only <code>GetCommit</code> does, per <code>types.go:1354-1355</code>). The per-commit approach would require N additional <code>GetCommit</code> API calls &mdash; expensive and unnecessary for what is always a transient state that users fix by force-pushing.</p>
+</div>
+</details>
+
+<h3>Implementation Checklist</h3>
+<ul>
+  <li>Add <code>ListPullRequestCommits</code> to the local <code>githubClient</code> interface in <code>owners-label.go</code></li>
+  <li>Add merge commit check early in <code>handle()</code>, before <code>GetPullRequestChanges</code></li>
+  <li>Log when skipping labeling due to merge commits</li>
+  <li>Add test: PR with merge commits &rarr; no labels added</li>
+  <li>Add test: PR without merge commits &rarr; labels added normally</li>
+</ul>
+
+<h2>Labels to Apply</h2>
+
+<table>
+  <tr><th>Command</th><th>Rationale</th></tr>
+  <tr><td><code>/area plugins</code></td><td>Change is in <code>pkg/plugins/owners-label/</code></td></tr>
+  <tr><td><code>/remove-lifecycle rotten</code></td><td>Issue is valid and actionable; reset triage-bot clock</td></tr>
+  <tr><td><code>/good-first-issue</code></td><td>Level 1: small scope, clear pattern, minimal expertise (was removed with stale lifecycle)</td></tr>
+  <tr><td><span class="meta">kind/feature already applied</span></td><td>&mdash;</td></tr>
+</table>
+
+<h2>Draft Comment</h2>
+
+<div class="comment-box">The root cause is that `owners-label` uses `GetPullRequestChanges` (the GitHub `GET /pulls/{n}/files` endpoint), which returns the full diff between the PR head and base branch without distinguishing which commits introduced which files. When a merge commit is present, all files from the merged branch appear in this diff, producing a flood of irrelevant labels. Since `owners-label` only adds labels and never removes them, these persist even after the merge commit is force-pushed away.
+
+The simplest fix is to call `ListPullRequestCommits` before processing files and skip labeling entirely if any commit has multiple parents (i.e., is a merge commit). This pattern is already established in the DCO plugin (`pkg/plugins/dco/dco.go`), which uses `len(commit.Parents) > 1` to detect and skip merge commits. Labels would be applied correctly on the subsequent `synchronize` event after the user force-pushes to remove the merge commit. The per-commit file analysis approach discussed above would be more precise, but `ListPullRequestCommits` doesn't populate per-commit `Files` (only `GetCommit` does per the types), so it would require N additional API calls — unnecessarily expensive for what is always a transient state.
+
+/area plugins
+/good-first-issue</div>
+
+<hr class="separator">
+<p class="meta">Triage completed 2026-05-03 &middot; Refreshed 2026-06-08 &middot; Full triage: <a href="https://github.com/petr-muller/prow/blob/610-triage/TRIAGE.md">TRIAGE.md</a></p>
+
+</body>
+</html>

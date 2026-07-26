@@ -3,7 +3,7 @@ pr: 698
 title: "feat: manage non-k8s members assigning issues"
 head_sha: 773c479cad28d019abfabee63bdba190d2544280
 base: main
-reviewed_at: 2026-05-30T23:35:02Z
+reviewed_at: 2026-07-26T23:00:46Z
 verdict: REQUEST_CHANGES
 refresh_log:
   - sha: 773c479cad28d019abfabee63bdba190d2544280
@@ -12,6 +12,9 @@ refresh_log:
   - sha: 773c479cad28d019abfabee63bdba190d2544280
     refreshed_at: 2026-05-30T23:35:02Z
     summary: "No code changes; 1 new comment from soltysh raising the member-assigns-non-member scenario"
+  - sha: 773c479cad28d019abfabee63bdba190d2544280
+    refreshed_at: 2026-07-26T23:00:46Z
+    summary: "No code changes; 1 new comment from Amulyam24 clarifying GitHub's own assignee restrictions in response to soltysh's question"
 ---
 
 # PR #698: feat: manage non-k8s members assigning issues
@@ -32,6 +35,10 @@ Post an educational comment when a non-org-member uses `/assign` on an issue wit
 These comments strengthen the "no opt-out mechanism" concern and the "PR description vs. code mismatch" concern, and surface a new design question about whether `good-first-issue` is the right gate or whether issue acceptance state / existing assignment should be the signal.
 
 - **soltysh** (2026-05-26, 14:15) — asked how this works when an org member assigns a non-org member to any issue. Notes from experience there are legitimate cases where a member needs to assign a non-member. This directly validates our **"Checks the commenter, not the target assignees"** blocker — the current code would incorrectly fire for this case since it only checks `e.User.Login`.
+
+### Since previous review (2026-05-30)
+
+- **Amulyam24** (2026-06-10) answered soltysh's question with GitHub's own current behavior: assigning a non-member/non-collaborator who hasn't commented already fails outright, with GitHub returning an explicit "GitHub didn't allow me to assign the following users" error and a link to the contributor guide. This means the "org member assigns a non-member" case soltysh raised is largely pre-filtered by GitHub's own assignee API restriction rather than reachable through this plugin's code path — it doesn't resolve the **"Checks the commenter, not the target assignees"** blocker (a non-member who *has* commented, and is thus assignable, can still be assigned by an org member without tripping the educational message incorrectly on the member), but it narrows the practical blast radius of that gap.
 
 ## Maintainer Advisor — Final Recommendation: REQUEST_CHANGES
 

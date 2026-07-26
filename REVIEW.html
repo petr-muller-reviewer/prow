@@ -271,7 +271,7 @@
   &middot; Files: <code>assign.go</code>, <code>assign_test.go</code>
   &middot; <span style="color:var(--green)">+130</span> / <span style="color:var(--red)">&minus;5</span>
   &middot; <span class="verdict changes">Changes Requested</span>
-  &middot; <span style="color:var(--text-muted)">Refreshed 2026-05-30</span>
+  &middot; <span style="color:var(--text-muted)">Refreshed 2026-07-26</span>
   <div class="reviewer-verdicts">
     <div class="reviewer-verdict"><span class="rv-name">Code Quality:</span> <span class="rv-result changes">REQUEST_CHANGES</span></div>
     <div class="reviewer-verdict"><span class="rv-name">Maintainability:</span> <span class="rv-result changes">REQUEST_CHANGES</span></div>
@@ -296,7 +296,7 @@
 <!-- SINCE PREVIOUS REVIEW -->
 <div class="section" style="border-color: rgba(57,197,207,0.3)">
   <div class="section-header" onclick="toggle(this)" style="color:var(--cyan)">
-    <span class="arrow">&#9660;</span> Since Previous Review &mdash; New Discussion (2026-05-26 &ndash; 2026-05-30)
+    <span class="arrow">&#9660;</span> Since Previous Review &mdash; New Discussion (2026-05-26 &ndash; 2026-07-26)
   </div>
   <div class="section-body">
     <div class="issue concern" style="border-left-color:var(--cyan)">
@@ -315,6 +315,11 @@
     <div class="issue concern" style="border-left-color:var(--cyan)">
       <div class="issue-title">Member-assigns-non-member scenario raised (soltysh, 2026-05-26)</div>
       <p><strong>soltysh</strong> asked how this works when an org member assigns a non-org member to any issue. Notes there are legitimate cases where a member needs to do this. Directly validates the <strong>Wrong membership check target</strong> blocker &mdash; the current code checks <code>e.User.Login</code> (commenter) and would misbehave in this scenario.</p>
+    </div>
+    <div class="issue concern" style="border-left-color:var(--cyan)">
+      <div class="issue-title">GitHub's own assignee restriction clarified (Amulyam24, 2026-06-10)</div>
+      <p><strong>Amulyam24</strong> answered soltysh's question with GitHub's current behavior: assigning a non-member/non-collaborator who hasn't already commented fails outright, with GitHub returning an explicit "GitHub didn't allow me to assign the following users" error and a link to the contributor guide.</p>
+      <p style="margin-top:0.4rem">This narrows &mdash; but doesn't resolve &mdash; the <strong>Wrong membership check target</strong> blocker: the "org member assigns a non-member" case is largely pre-filtered by GitHub's own assignee API, but a non-member who <em>has</em> commented (and is thus assignable) can still be assigned by an org member without correctly excluding the member from the educational-message check.</p>
     </div>
   </div>
 </div>

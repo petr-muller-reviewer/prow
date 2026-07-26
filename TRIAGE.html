@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Triage: Issue #624 — Tide + GitHub Rulesets</title>
+<style>
+  :root { --bg: #1a1a2e; --card: #16213e; --accent: #e94560; --accent2: #0f3460; --text: #eee; --muted: #aaa; --code-bg: #0d1b2a; --green: #4ecca3; --yellow: #f0c040; --border: #2a2a4a; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; padding: 2rem; max-width: 1100px; margin: 0 auto; }
+  h1 { color: var(--accent); font-size: 1.8rem; margin-bottom: 0.3rem; }
+  h2 { color: var(--green); font-size: 1.3rem; margin: 2rem 0 0.8rem; border-bottom: 2px solid var(--accent2); padding-bottom: 0.3rem; }
+  h3 { color: var(--yellow); font-size: 1.05rem; margin: 1.2rem 0 0.5rem; }
+  .subtitle { color: var(--muted); font-size: 0.95rem; margin-bottom: 1.5rem; }
+  .badge { display: inline-block; padding: 0.15rem 0.6rem; border-radius: 12px; font-size: 0.8rem; font-weight: 600; margin-right: 0.4rem; }
+  .badge-legitimate { background: #1b4332; color: #95d5b2; }
+  .badge-level3 { background: #5c2d0e; color: #f0c040; }
+  .badge-feature { background: #1a3a5c; color: #90cdf4; }
+  .badge-tide { background: #2d1a4e; color: #c4b5fd; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 1.2rem; margin: 1rem 0; }
+  .card-accent { border-left: 4px solid var(--accent); }
+  .card-green { border-left: 4px solid var(--green); }
+  .card-yellow { border-left: 4px solid var(--yellow); }
+  code { background: var(--code-bg); padding: 0.15rem 0.4rem; border-radius: 4px; font-size: 0.9em; font-family: 'JetBrains Mono', 'Fira Code', monospace; }
+  pre { background: var(--code-bg); padding: 1rem; border-radius: 6px; overflow-x: auto; margin: 0.8rem 0; font-size: 0.85rem; line-height: 1.5; border: 1px solid var(--border); }
+  pre code { background: none; padding: 0; }
+  ul, ol { padding-left: 1.5rem; margin: 0.5rem 0; }
+  li { margin: 0.3rem 0; }
+  a { color: var(--green); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  @media (max-width: 700px) { .grid { grid-template-columns: 1fr; } }
+  .factor { padding: 0.6rem 0; border-bottom: 1px solid var(--border); }
+  .factor:last-child { border-bottom: none; }
+  .factor-label { font-weight: 600; color: var(--green); font-size: 0.9rem; }
+  .factor-level { float: right; font-size: 0.8rem; color: var(--muted); }
+  .factor-detail { color: var(--muted); font-size: 0.85rem; margin-top: 0.2rem; }
+  .comment-box { background: #0d1b2a; border: 2px dashed var(--accent2); border-radius: 8px; padding: 1.2rem; margin: 1rem 0; position: relative; }
+  .comment-box::before { content: "DRAFT COMMENT"; position: absolute; top: -0.7rem; left: 1rem; background: var(--bg); padding: 0 0.5rem; font-size: 0.7rem; color: var(--accent); font-weight: 700; letter-spacing: 0.1em; }
+  .copy-btn { position: absolute; top: 0.5rem; right: 0.5rem; background: var(--accent2); color: var(--text); border: none; padding: 0.3rem 0.7rem; border-radius: 4px; cursor: pointer; font-size: 0.8rem; }
+  .copy-btn:hover { background: var(--accent); }
+  table { width: 100%; border-collapse: collapse; margin: 0.8rem 0; font-size: 0.9rem; }
+  th { background: var(--accent2); padding: 0.5rem; text-align: left; font-size: 0.85rem; }
+  td { padding: 0.5rem; border-bottom: 1px solid var(--border); }
+  .path { color: #90cdf4; }
+  .highlight { background: #2a1a3e; padding: 0.1rem 0.3rem; border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<h1>Issue #624: Tide + GitHub Rulesets</h1>
+<p class="subtitle">
+  <a href="https://github.com/kubernetes-sigs/prow/issues/624">github.com/kubernetes-sigs/prow/issues/624</a>
+  &mdash; reported by <strong>oliver-goetz</strong> on 2026-03-02
+  &nbsp;
+  <span class="badge badge-legitimate">LEGITIMATE</span>
+  <span class="badge badge-level3">Level 3</span>
+  <span class="badge badge-feature">kind/feature</span>
+  <span class="badge badge-tide">area/tide</span>
+  <span class="badge" style="background:#3d2b1f;color:#f6ad55;">lifecycle/stale</span>
+</p>
+
+<h2>TL;DR</h2>
+<div class="card card-accent">
+  <p>Tide can infer required status checks from <strong>branch protection</strong> via <code>from-branch-protection</code>, but has <strong>zero support</strong> for GitHub Rulesets. The GitHub client has no Ruleset types, methods, or HTTP calls. The fix is a parallel <code>from-rulesets</code> config option. Rated <strong>Level 3</strong> due to polymorphic API types, layering complexity, coexistence with branch protection, and interface-wide changes.</p>
+</div>
+
+<h2>How <code>from-branch-protection</code> Works Today</h2>
+<div class="card">
+  <ol>
+    <li>Tide sync loop calls <code>GetTideContextPolicy()</code> &mdash; <span class="path">pkg/config/tide.go:903-954</span></li>
+    <li>If <code>FromBranchProtection</code> is <code>true</code> (line 920), calls <code>GetBranchProtection()</code></li>
+    <li>Extracts <code>RequiredStatusChecks.Contexts</code> (plain string list) and adds to required set</li>
+    <li>Prow presubmit job names added via <code>BranchRequirements()</code></li>
+    <li>Final <code>TideContextPolicy</code> used by <code>contextChecker</code> to gate merges</li>
+  </ol>
+</div>
+
+<h2>Key Code Locations</h2>
+<table>
+  <tr><th>Component</th><th>File</th><th>Lines</th></tr>
+  <tr><td><code>TideContextPolicy</code> struct</td><td class="path">pkg/config/tide.go</td><td>159-175</td></tr>
+  <tr><td><code>TideContextPolicyOptions</code></td><td class="path">pkg/config/tide.go</td><td>189-194</td></tr>
+  <tr><td><code>GetTideContextPolicy()</code></td><td class="path">pkg/config/tide.go</td><td>903-954</td></tr>
+  <tr><td>Branch protection fetch</td><td class="path">pkg/config/tide.go</td><td>920-930</td></tr>
+  <tr><td>Config merging</td><td class="path">pkg/config/tide.go</td><td>852-898</td></tr>
+  <tr><td><code>RepositoryClient</code> interface</td><td class="path">pkg/github/client.go</td><td>165-202</td></tr>
+  <tr><td>Branch protection HTTP calls</td><td class="path">pkg/github/client.go</td><td>2727-2806</td></tr>
+  <tr><td><code>BranchProtection</code> type</td><td class="path">pkg/github/types.go</td><td>552</td></tr>
+  <tr><td>Override plugin (also needs update)</td><td class="path">pkg/plugins/override/override.go</td><td>445-453</td></tr>
+  <tr><td>Context checker</td><td class="path">pkg/tide/tide.go</td><td>961-984</td></tr>
+</table>
+
+<h2>GitHub Rulesets API: What Makes This Hard</h2>
+
+<div class="grid">
+  <div class="card card-yellow">
+    <h3>The Golden Endpoint</h3>
+    <code>GET /repos/{owner}/{repo}/rules/branches/{branch}</code>
+    <ul>
+      <li>Returns <strong>pre-aggregated</strong> effective rules</li>
+      <li>Includes org-level rulesets automatically</li>
+      <li>Only returns <code>active</code> enforcement</li>
+      <li>Resolves conditions &mdash; no fnmatch needed</li>
+      <li>Only needs <code>Metadata</code> (read) permission</li>
+      <li>Paginated (max 100 per page)</li>
+    </ul>
+  </div>
+  <div class="card card-yellow">
+    <h3>Why It's Complex</h3>
+    <ul>
+      <li><strong>Polymorphic responses</strong> &mdash; mixed rule types with <code>type</code> discriminator, each with different <code>parameters</code></li>
+      <li><strong>Layering</strong> &mdash; up to 150 rulesets per branch (75 repo + 75 org), union with most-restrictive-wins</li>
+      <li><strong>Coexistence</strong> &mdash; branch protection + Rulesets active simultaneously during migration</li>
+      <li><strong><code>integration_id</code></strong> &mdash; pins checks to specific GitHub App (can ignore for "what's required" but worth noting)</li>
+      <li><strong>Interface-wide changes</strong> &mdash; <code>RepositoryClient</code> touches all implementations</li>
+    </ul>
+  </div>
+</div>
+
+<h3>Branch Protection vs Rulesets: Data Model</h3>
+<div class="grid">
+  <div>
+    <pre><code>// Branch Protection (current, simple)
+{
+  "required_status_checks": {
+    "strict": true,
+    "contexts": ["ci/test", "ci/lint"]
+  }
+}</code></pre>
+  </div>
+  <div>
+    <pre><code>// Rulesets (polymorphic, nested)
+{
+  "type": "required_status_checks",
+  "parameters": {
+    "required_status_checks": [
+      {"context": "ci/test", "integration_id": 15368},
+      {"context": "ci/lint"}
+    ]
+  }
+}</code></pre>
+  </div>
+</div>
+
+<h2>Proposed Solution</h2>
+<div class="card card-green">
+  <h3>Approach: Parallel <code>from-rulesets</code> Option</h3>
+  <ol>
+    <li>Add Ruleset types to <code>pkg/github/types.go</code> (polymorphic rule structs)</li>
+    <li>Add <code>GetBranchRules()</code> to <code>RepositoryClient</code> interface + implement with pagination</li>
+    <li>Add <code>FromRulesets</code> field to <code>TideContextPolicy</code></li>
+    <li>New block in <code>GetTideContextPolicy()</code> alongside branch protection block (line 920-930)</li>
+    <li>Update override plugin for consistency</li>
+    <li>Update all fake/mock <code>RepositoryClient</code> implementations</li>
+  </ol>
+  <p style="margin-top: 0.8rem; color: var(--muted);">
+    <strong>Backwards compatible</strong> &mdash; opt-in, default off. Both options independently enableable.
+    <strong>Estimated: 8-12 files, 300-500 LOC, 3-5 days.</strong>
+  </p>
+</div>
+
+<h2>Effort Assessment: Level 3</h2>
+<div class="card">
+  <div class="factor">
+    <span class="factor-label">Scope</span><span class="factor-level">Level 2-3</span>
+    <div class="factor-detail">8-12 files including all RepositoryClient mock/fake implementations</div>
+  </div>
+  <div class="factor">
+    <span class="factor-label">Complexity</span><span class="factor-level">Level 3</span>
+    <div class="factor-detail">Polymorphic API types, layering semantics, coexistence design, pagination</div>
+  </div>
+  <div class="factor">
+    <span class="factor-label">Required Expertise</span><span class="factor-level">Level 3</span>
+    <div class="factor-detail">GitHub Rulesets API + Prow RepositoryClient + Tide context policy + override plugin</div>
+  </div>
+  <div class="factor">
+    <span class="factor-label">Clarity</span><span class="factor-level">Level 2-3</span>
+    <div class="factor-detail">Core behavior clear, open questions on integration_id handling and coexistence</div>
+  </div>
+  <div class="factor">
+    <span class="factor-label">Testing</span><span class="factor-level">Level 2-3</span>
+    <div class="factor-detail">Polymorphic deserialization tests, coexistence scenarios, pagination</div>
+  </div>
+  <div class="factor">
+    <span class="factor-label">Backwards Compat</span><span class="factor-level">Level 1-2</span>
+    <div class="factor-detail">Fully compatible &mdash; new opt-in config option</div>
+  </div>
+  <div class="factor">
+    <span class="factor-label">Architecture</span><span class="factor-level">Level 2-3</span>
+    <div class="factor-detail">Mirrors existing pattern but needs new polymorphic handling</div>
+  </div>
+  <div class="factor">
+    <span class="factor-label">External Deps</span><span class="factor-level">Level 2-3</span>
+    <div class="factor-detail">Stable API but complex response model; path-filtered workflow gotcha</div>
+  </div>
+</div>
+
+<h2>Draft Comment</h2>
+<div class="comment-box" id="comment">
+  <button class="copy-btn" onclick="copyComment()">Copy</button>
+<p>Tide currently supports inferring required contexts from GitHub branch protection rules via the <code>from-branch-protection</code> config option in <code>tide.context_options</code> (implemented in <code>pkg/config/tide.go</code>). When enabled, Tide calls <code>GetBranchProtection()</code> to fetch <code>RequiredStatusChecks.Contexts</code> and adds them to the set of required contexts before allowing a merge. However, Prow's GitHub client has no Ruleset API support at all &mdash; no types, no interface methods, no HTTP calls &mdash; so there's no way to extend this to Rulesets without building that foundation first.</p>
+<br>
+<p>The most natural approach would be a parallel <code>from-rulesets</code> config option that mirrors <code>from-branch-protection</code>. GitHub provides a helpful <code>GET /repos/{owner}/{repo}/rules/branches/{branch}</code> endpoint that returns pre-aggregated effective rules for a branch (including org-level rulesets, already filtered to active enforcement). The implementation would need: (1) new Ruleset types in <code>pkg/github/types.go</code> &mdash; note the API uses polymorphic rule objects with a <code>type</code> discriminator, more complex than branch protection's flat structure, (2) a <code>GetBranchRules()</code> method on the <code>RepositoryClient</code> interface in <code>pkg/github/client.go</code> with pagination support, (3) a <code>FromRulesets</code> field on <code>TideContextPolicy</code>, and (4) a new block in <code>GetTideContextPolicy()</code> alongside the existing branch protection block at <code>pkg/config/tide.go:920-930</code>. A key design consideration is coexistence: during migration, repos may have both branch protection and Rulesets active (GitHub layers both, union with most-restrictive-wins), so both <code>from-branch-protection</code> and <code>from-rulesets</code> should be independently enableable. The override plugin (<code>pkg/plugins/override/override.go</code>) also fetches branch protection for validation and should ideally gain Ruleset awareness for consistency.</p>
+</div>
+
+<h2>Key Gotchas for Contributors</h2>
+<div class="card card-accent">
+  <ul>
+    <li>Use <code>rules/branches/{branch}</code> endpoint &mdash; do NOT fetch all rulesets and do condition matching manually</li>
+    <li><code>integration_id</code> constrains <em>who</em> can satisfy a check, not <em>what</em> is required &mdash; extract <code>context</code> strings only</li>
+    <li>Both <code>from-branch-protection</code> and <code>from-rulesets</code> can be enabled simultaneously &mdash; take union of required contexts</li>
+    <li>GitHub limitation: path-filtered workflows as required status checks cause permanent "Pending" &mdash; not solvable in Prow</li>
+    <li>Rules endpoint needs <code>Metadata</code> (read) only &mdash; less than branch protection's <code>Administration</code> (read)</li>
+  </ul>
+</div>
+
+<h2>Activity Since Triage</h2>
+<div class="card card-accent">
+  <p><strong>2026-05-31</strong> — <code>k8s-triage-robot</code> applied <code>lifecycle/stale</code> after 90 days of inactivity. No human comments or linked PRs. Analysis and recommendations unchanged.</p>
+  <p style="margin-top:0.6rem;color:var(--muted);">To keep open: post <code>/remove-lifecycle stale</code> on the issue.</p>
+</div>
+
+<h2>Links</h2>
+<ul>
+  <li><a href="https://github.com/kubernetes-sigs/prow/issues/624">Issue #624</a></li>
+  <li><a href="https://github.com/petr-muller/prow/blob/issue-triage-624/ISSUE-TRIAGE.md">Full triage document</a></li>
+  <li><a href="https://docs.github.com/en/rest/repos/rules">GitHub Rulesets REST API docs</a></li>
+</ul>
+
+<script>
+function copyComment() {
+  const el = document.getElementById('comment');
+  const text = `Tide currently supports inferring required contexts from GitHub branch protection rules via the \`from-branch-protection\` config option in \`tide.context_options\` (implemented in \`pkg/config/tide.go\`). When enabled, Tide calls \`GetBranchProtection()\` to fetch \`RequiredStatusChecks.Contexts\` and adds them to the set of required contexts before allowing a merge. However, Prow's GitHub client has no Ruleset API support at all — no types, no interface methods, no HTTP calls — so there's no way to extend this to Rulesets without building that foundation first.
+
+The most natural approach would be a parallel \`from-rulesets\` config option that mirrors \`from-branch-protection\`. GitHub provides a helpful \`GET /repos/{owner}/{repo}/rules/branches/{branch}\` endpoint that returns pre-aggregated effective rules for a branch (including org-level rulesets, already filtered to active enforcement). The implementation would need: (1) new Ruleset types in \`pkg/github/types.go\` — note the API uses polymorphic rule objects with a \`type\` discriminator, more complex than branch protection's flat structure, (2) a \`GetBranchRules()\` method on the \`RepositoryClient\` interface in \`pkg/github/client.go\` with pagination support, (3) a \`FromRulesets\` field on \`TideContextPolicy\`, and (4) a new block in \`GetTideContextPolicy()\` alongside the existing branch protection block at \`pkg/config/tide.go:920-930\`. A key design consideration is coexistence: during migration, repos may have both branch protection and Rulesets active (GitHub layers both, union with most-restrictive-wins), so both \`from-branch-protection\` and \`from-rulesets\` should be independently enableable. The override plugin (\`pkg/plugins/override/override.go\`) also fetches branch protection for validation and should ideally gain Ruleset awareness for consistency.`;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.querySelector('.copy-btn');
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = 'Copy', 2000);
+  });
+}
+</script>
+
+</body>
+</html>

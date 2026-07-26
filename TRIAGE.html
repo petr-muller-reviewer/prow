@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Triage: Issue #609 — Pipeline controller deletes PipelineRuns</title>
+<style>
+  :root {
+    --bg: #1a1a2e;
+    --surface: #16213e;
+    --surface-2: #0f3460;
+    --accent: #e94560;
+    --accent-soft: #e9456033;
+    --text: #eee;
+    --text-muted: #a0a0b8;
+    --green: #4ecca3;
+    --yellow: #f0c040;
+    --blue: #53a8f0;
+    --code-bg: #0d1b2a;
+    --border: #2a2a4a;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    padding: 0;
+  }
+
+  header {
+    background: linear-gradient(135deg, var(--surface) 0%, var(--surface-2) 100%);
+    border-bottom: 3px solid var(--accent);
+    padding: 2rem 2rem 1.5rem;
+  }
+
+  header h1 {
+    font-size: 1.6rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+  }
+
+  header h1 .issue-num {
+    color: var(--accent);
+  }
+
+  .meta {
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+  }
+
+  .meta span { display: flex; align-items: center; gap: 0.3rem; }
+
+  .badge {
+    display: inline-block;
+    padding: 0.15rem 0.6rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+
+  .badge-legitimate { background: var(--green); color: #111; }
+  .badge-complete   { background: var(--blue); color: #111; }
+  .badge-level1     { background: var(--yellow); color: #111; }
+  .badge-bug        { background: var(--accent); color: #fff; }
+
+  main {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem 4rem;
+  }
+
+  section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+
+  section h2 {
+    font-size: 1.15rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border);
+    color: var(--accent);
+  }
+
+  section h3 {
+    font-size: 0.95rem;
+    font-weight: 600;
+    margin: 1rem 0 0.5rem;
+    color: var(--blue);
+  }
+
+  p { margin-bottom: 0.75rem; }
+
+  ul, ol {
+    margin: 0.5rem 0 0.75rem 1.5rem;
+  }
+
+  li { margin-bottom: 0.3rem; }
+
+  code {
+    font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+    background: var(--code-bg);
+    padding: 0.15rem 0.4rem;
+    border-radius: 4px;
+    font-size: 0.85em;
+    color: var(--green);
+  }
+
+  .code-block {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1rem;
+    overflow-x: auto;
+    font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+    font-size: 0.82rem;
+    line-height: 1.5;
+    margin: 0.75rem 0;
+    white-space: pre;
+  }
+
+  .flow-diagram {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 0.3rem 0.5rem;
+    margin: 1rem 0;
+    font-size: 0.85rem;
+  }
+
+  .flow-step {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.6rem 0.8rem;
+    grid-column: 1 / -1;
+    position: relative;
+  }
+
+  .flow-step .step-num {
+    position: absolute;
+    left: -0.3rem;
+    top: -0.3rem;
+    background: var(--accent);
+    color: #fff;
+    width: 1.4rem;
+    height: 1.4rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    font-weight: 700;
+  }
+
+  .flow-arrow {
+    grid-column: 1 / -1;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 1.2rem;
+  }
+
+  .solutions-grid {
+    display: grid;
+    gap: 1rem;
+  }
+
+  .solution-card {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1rem;
+  }
+
+  .solution-card.recommended {
+    border-color: var(--green);
+    box-shadow: 0 0 0 1px var(--green);
+  }
+
+  .solution-card h4 {
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .solution-card .tag {
+    font-size: 0.7rem;
+    padding: 0.1rem 0.5rem;
+    border-radius: 10px;
+    font-weight: 600;
+  }
+
+  .tag-recommended { background: var(--green); color: #111; }
+  .tag-low         { background: var(--yellow); color: #111; }
+  .tag-medium      { background: #f08040; color: #111; }
+
+  .pros-cons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+    margin-top: 0.5rem;
+    font-size: 0.82rem;
+  }
+
+  .pros-cons ul { margin-left: 1.2rem; }
+  .pros-cons h5 { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.3rem; }
+  .pros h5 { color: var(--green); }
+  .cons h5 { color: var(--accent); }
+
+  .factor-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 0.75rem;
+    margin: 1rem 0;
+  }
+
+  .factor {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.75rem;
+  }
+
+  .factor .label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.25rem;
+  }
+
+  .factor .value {
+    font-weight: 600;
+    font-size: 0.9rem;
+  }
+
+  .factor .value.green  { color: var(--green); }
+  .factor .value.yellow { color: var(--yellow); }
+
+  .file-list {
+    list-style: none;
+    margin: 0.5rem 0;
+    padding: 0;
+  }
+
+  .file-list li {
+    padding: 0.3rem 0;
+    font-size: 0.85rem;
+  }
+
+  .file-list li code {
+    margin-right: 0.3rem;
+  }
+
+  .file-list li .desc {
+    color: var(--text-muted);
+  }
+
+  .comment-preview {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 6px 6px 0;
+    padding: 1rem 1.2rem;
+    margin: 1rem 0;
+    font-size: 0.85rem;
+  }
+
+  .comment-preview p { margin-bottom: 0.5rem; }
+  .comment-preview p:last-child { margin-bottom: 0; }
+
+  .labels {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-top: 0.5rem;
+  }
+
+  .gh-label {
+    display: inline-block;
+    padding: 0.2rem 0.6rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border: 1px solid;
+  }
+
+  .gh-label-bug        { border-color: #e55; color: #e55; }
+  .gh-label-help       { border-color: var(--green); color: var(--green); }
+
+  .timeline {
+    position: relative;
+    padding-left: 1.5rem;
+    margin: 1rem 0;
+  }
+
+  .timeline::before {
+    content: '';
+    position: absolute;
+    left: 0.4rem;
+    top: 0.3rem;
+    bottom: 0.3rem;
+    width: 2px;
+    background: var(--border);
+  }
+
+  .timeline-item {
+    position: relative;
+    margin-bottom: 0.75rem;
+    font-size: 0.85rem;
+  }
+
+  .timeline-item::before {
+    content: '';
+    position: absolute;
+    left: -1.15rem;
+    top: 0.45rem;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+
+  .timeline-item.done::before { background: var(--green); }
+
+  .timeline-item .date {
+    color: var(--text-muted);
+    font-size: 0.78rem;
+  }
+
+  a {
+    color: var(--blue);
+    text-decoration: none;
+  }
+
+  a:hover { text-decoration: underline; }
+
+  footer {
+    text-align: center;
+    padding: 2rem;
+    color: var(--text-muted);
+    font-size: 0.78rem;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1><span class="issue-num">#609</span> Pipeline controller deletes PipelineRuns when two cluster contexts share the same cluster</h1>
+  <div class="meta">
+    <span><span class="badge badge-complete">Triage Complete</span></span>
+    <span><span class="badge badge-legitimate">Legitimate</span></span>
+    <span><span class="badge badge-level1">Level 1 — Easy</span></span>
+    <span><span class="badge badge-bug">Bug</span></span>
+    <span>Author: derryos</span>
+    <span>Triaged: 2026-02-10</span>
+    <span>Refreshed: 2026-06-10</span>
+    <span>Labels: <code style="background:var(--accent-soft);color:var(--accent);font-size:0.8em;padding:0.1rem 0.4rem;border-radius:4px;">lifecycle/rotten</code></span>
+    <span><a href="https://github.com/kubernetes-sigs/prow/issues/609">GitHub Issue</a></span>
+  </div>
+</header>
+
+<main>
+
+<!-- SUMMARY -->
+<section>
+  <h2>Issue Summary</h2>
+  <p>The reporter uses multiple build clusters (<code>cluster-a</code>, <code>cluster-b</code>, <code>cluster-c</code>, plus <code>default</code>). They configured a named cluster with the same kubeconfig as the default cluster, intending to transition away from <code>default</code> post-upgrade. The pipeline controller gets confused because the default cluster and the named cluster share the same kubeconfig/context, causing ProwJobs to be erroneously deleted.</p>
+  <p>The specific code triggering the issue is in <code>cmd/pipeline/controller.go</code> around line 463.</p>
+</section>
+
+<!-- ROOT CAUSE -->
+<section>
+  <h2>Root Cause Analysis</h2>
+  <p>The pipeline controller assumes each kubeconfig context name maps to a physically distinct cluster. When two context names point to the same underlying cluster, both contexts get independent informers that watch the same resources. During reconciliation, the context-name-based routing incorrectly identifies PipelineRuns as being in the "wrong cluster" because the context names differ, even though the underlying cluster is the same.</p>
+
+  <h3>Failure Mechanism</h3>
+  <div class="flow-diagram">
+    <div class="flow-step"><span class="step-num">1</span> Both informers watch the same cluster and see the same PipelineRun events</div>
+    <div class="flow-arrow">&#x25BC;</div>
+    <div class="flow-step"><span class="step-num">2</span> ProwJob specifies <code>Cluster: "my-cluster"</code> — reconcile called with <code>ctx = "my-cluster"</code></div>
+    <div class="flow-arrow">&#x25BC;</div>
+    <div class="flow-step"><span class="step-num">3</span> The <code>"default"</code> informer also enqueues the same ProwJob (same cluster), calling reconcile with <code>ctx = "default"</code></div>
+    <div class="flow-arrow">&#x25BC;</div>
+    <div class="flow-step"><span class="step-num">4</span> Check at line 463: <code>ClusterToCtx(pj.Spec.Cluster) != ctx</code> evaluates to <code>"my-cluster" != "default"</code> → <strong>true</strong></div>
+    <div class="flow-arrow">&#x25BC;</div>
+    <div class="flow-step"><span class="step-num">5</span> <code>wantPipelineRun = false</code> → controller <strong style="color:var(--accent)">deletes the PipelineRun</strong></div>
+  </div>
+
+  <h3>Contributing Factors</h3>
+  <ul>
+    <li>The <code>pipelines</code> map uses context name as key with no deduplication by cluster identity</li>
+    <li>The <code>InClusterContext → DefaultClusterAlias</code> dedup in <code>main.go:127-136</code> handles only one alias case, not the general case</li>
+    <li>The <code>getPipelineConfig</code> fallback to "default" (<code>controller.go:285-296</code>) masks configuration issues rather than failing fast</li>
+    <li>No validation at startup that all configured contexts point to distinct clusters</li>
+  </ul>
+</section>
+
+<!-- KEY FILES -->
+<section>
+  <h2>Key Code Paths</h2>
+  <ul class="file-list">
+    <li><code>cmd/pipeline/main.go:120-164</code> <span class="desc">— Cluster config loading, iterates contexts, creates pipelineConfig per context</span></li>
+    <li><code>cmd/pipeline/main.go:127-136</code> <span class="desc">— Existing InClusterContext → DefaultClusterAlias dedup (template for the fix)</span></li>
+    <li><code>cmd/pipeline/controller.go:181-195</code> <span class="desc">— Event handler registration, one informer per context</span></li>
+    <li><code>cmd/pipeline/controller.go:255-270</code> <span class="desc">— Work queue key format: <code>context/namespace/name</code></span></li>
+    <li><code>cmd/pipeline/controller.go:285-296</code> <span class="desc">— Pipeline config fallback to "default"</span></li>
+    <li><code>cmd/pipeline/controller.go:463</code> <span class="desc">— The check that triggers deletion: <code>ClusterToCtx(pj.Spec.Cluster) != ctx</code></span></li>
+    <li><code>pkg/kube/config.go:34-71</code> <span class="desc">— Cluster config loading</span></li>
+    <li><code>pkg/pjutil/pjutil.go:408-414</code> <span class="desc">— ClusterToCtx: maps empty string to "default"</span></li>
+  </ul>
+</section>
+
+<!-- PROPOSED SOLUTIONS -->
+<section>
+  <h2>Proposed Solutions</h2>
+  <div class="solutions-grid">
+
+    <div class="solution-card recommended">
+      <h4>Approach 1: Startup Validation and Deduplication <span class="tag tag-recommended">Recommended</span> <span class="tag tag-low">Low Complexity</span></h4>
+      <p>At startup, detect when multiple kubeconfig contexts resolve to the same cluster API server. Reject the configuration with a clear error.</p>
+      <div class="pros-cons">
+        <div class="pros">
+          <h5>Pros</h5>
+          <ul>
+            <li>Prevents the problem entirely</li>
+            <li>Fast-fail gives operators clear feedback</li>
+            <li>Minimal changes to reconciliation logic</li>
+            <li>No runtime overhead</li>
+          </ul>
+        </div>
+        <div class="cons">
+          <h5>Cons</h5>
+          <ul>
+            <li>May break existing (already-broken) configs</li>
+            <li>Requires comparing REST config server URLs</li>
+            <li>Deduplication must decide which context name to keep</li>
+          </ul>
+        </div>
+      </div>
+      <p style="margin-top:0.75rem; font-size:0.85rem;">Affected: <code>cmd/pipeline/main.go</code>, possibly <code>pkg/kube/config.go</code></p>
+    </div>
+
+    <div class="solution-card">
+      <h4>Approach 2: Reconciliation-Level Tolerance <span class="tag tag-medium">Medium Complexity</span></h4>
+      <p>Modify reconciliation to skip processing when a PipelineRun is found via one context but belongs to a ProwJob targeting a different context that resolves to the same cluster.</p>
+      <div class="pros-cons">
+        <div class="pros">
+          <h5>Pros</h5>
+          <ul>
+            <li>Allows alias configurations</li>
+            <li>More flexible for migration</li>
+            <li>Fixes the symptom directly</li>
+          </ul>
+        </div>
+        <div class="cons">
+          <h5>Cons</h5>
+          <ul>
+            <li>Runtime overhead in hot path</li>
+            <li>More complex reconciliation logic</li>
+            <li>Still creates redundant informers</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="solution-card">
+      <h4>Approach 3: Warn at Startup, Skip at Reconciliation <span class="tag tag-medium">Medium Complexity</span></h4>
+      <p>Detect overlapping contexts at startup, log a warning, build a context→cluster mapping, and use it during reconciliation to skip non-primary contexts.</p>
+      <div class="pros-cons">
+        <div class="pros">
+          <h5>Pros</h5>
+          <ul>
+            <li>Best of both: warns AND prevents</li>
+            <li>No configuration breakage</li>
+            <li>Mapping built once, cheap at runtime</li>
+          </ul>
+        </div>
+        <div class="cons">
+          <h5>Cons</h5>
+          <ul>
+            <li>More code than either alone</li>
+            <li>Must define "primary" selection logic</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- EFFORT ASSESSMENT -->
+<section>
+  <h2>Effort Assessment</h2>
+  <div class="factor-grid">
+    <div class="factor">
+      <div class="label">Scope</div>
+      <div class="value green">Small</div>
+      <div style="font-size:0.78rem; color:var(--text-muted)">1-2 files, ~30-50 lines</div>
+    </div>
+    <div class="factor">
+      <div class="label">Complexity</div>
+      <div class="value green">Simple</div>
+      <div style="font-size:0.78rem; color:var(--text-muted)">Map-based dedup logic</div>
+    </div>
+    <div class="factor">
+      <div class="label">Expertise</div>
+      <div class="value green">Minimal</div>
+      <div style="font-size:0.78rem; color:var(--text-muted)">Basic Go + kubeconfig</div>
+    </div>
+    <div class="factor">
+      <div class="label">Clarity</div>
+      <div class="value green">Well-defined</div>
+      <div style="font-size:0.78rem; color:var(--text-muted)">No open design questions</div>
+    </div>
+    <div class="factor">
+      <div class="label">Testing</div>
+      <div class="value green">Simple</div>
+      <div style="font-size:0.78rem; color:var(--text-muted)">Follow existing patterns</div>
+    </div>
+    <div class="factor">
+      <div class="label">Compat</div>
+      <div class="value green">Fully compatible</div>
+      <div style="font-size:0.78rem; color:var(--text-muted)">Broken configs stay broken</div>
+    </div>
+    <div class="factor">
+      <div class="label">Alignment</div>
+      <div class="value green">Perfect fit</div>
+      <div style="font-size:0.78rem; color:var(--text-muted)">Extends existing pattern</div>
+    </div>
+    <div class="factor">
+      <div class="label">Dependencies</div>
+      <div class="value green">None</div>
+      <div style="font-size:0.78rem; color:var(--text-muted)">Pure Go comparisons</div>
+    </div>
+  </div>
+
+  <h3>Recommended Labels</h3>
+  <div class="labels">
+    <span class="gh-label gh-label-bug">kind/bug</span>
+    <span class="gh-label gh-label-help">help-wanted</span>
+  </div>
+
+  <h3>Contributor Guidance</h3>
+  <ul>
+    <li>Good starting point for new Prow contributors with basic Go and Kubernetes knowledge</li>
+    <li>Review <code>cmd/pipeline/main.go:120-164</code> (template to follow) and <code>controller.go:463</code> (the bug)</li>
+    <li>Implementation: after loading cluster configs, build a reverse map of <code>Host → []contextName</code>; if any Host has multiple contexts, error and exit</li>
+    <li>Consider URL normalization (trailing slashes, port numbers) when comparing Host fields</li>
+  </ul>
+</section>
+
+<!-- TEST COVERAGE -->
+<section>
+  <h2>Test Coverage Gaps</h2>
+  <p>Existing tests cover 23 reconcile cases and cross-cluster deletion/ignoring scenarios, but miss the core issue:</p>
+  <ul>
+    <li>No test for two contexts pointing to the same underlying cluster (same server URL, different context names)</li>
+    <li>No test for event handler deduplication when contexts resolve to the same cluster</li>
+    <li>No test for ProwJob routing correctness when a named alias points to the same backend as "default"</li>
+  </ul>
+</section>
+
+<!-- POSTED COMMENT -->
+<section>
+  <h2>Posted GitHub Comment</h2>
+  <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:1rem;">
+    Posted on 2026-02-10 — <a href="https://github.com/kubernetes-sigs/prow/issues/609#issuecomment-3874545969">View on GitHub</a>
+  </p>
+  <div class="comment-preview">
+    <p><code>/retitle Pipeline controller deletes PipelineRuns when two cluster contexts share the same cluster</code></p>
+    <p>The root cause is in how the pipeline controller sets up per-cluster informers. When multiple kubeconfig contexts point to the same underlying cluster, each context gets its own independent informer watching the same resources. When a PipelineRun event arrives via the "wrong" context's informer, the reconciliation check at <code>cmd/pipeline/controller.go:463</code> (<code>ClusterToCtx(pj.Spec.Cluster) != ctx</code>) evaluates to true, setting <code>wantPipelineRun = false</code> and causing the controller to delete the PipelineRun. This only affects the pipeline (Tekton) controller; other Prow controllers operate in single-cluster mode and are not impacted.</p>
+    <p>The fix would be to add startup validation in <code>cmd/pipeline/main.go</code> that detects when multiple kubeconfig contexts resolve to the same cluster API server endpoint. There's already precedent for this kind of deduplication in the same file: the <code>InClusterContext</code> → <code>DefaultClusterAlias</code> mapping at lines 127-136 handles the specific case of empty-string vs "default" aliasing. The general case (any two contexts sharing a server URL) can follow the same pattern. As a workaround until this is fixed, ensure each kubeconfig context name maps to a distinct cluster — remove the duplicate context or avoid configuring <code>cluster:</code> in ProwJobs to use a named alias that shares a cluster with <code>default</code>.</p>
+    <p><code>/kind bug</code><br><code>/help-wanted</code></p>
+  </div>
+</section>
+
+<!-- TIMELINE -->
+<section>
+  <h2>Triage Timeline</h2>
+  <div class="timeline">
+    <div class="timeline-item done">
+      <strong>Initial Validation</strong> — Assessed as LEGITIMATE bug
+      <div class="date">2026-02-10</div>
+    </div>
+    <div class="timeline-item done">
+      <strong>Code Research</strong> — Root cause identified: dual informers on same cluster → wrong-cluster check → PipelineRun deletion
+      <div class="date">2026-02-10</div>
+    </div>
+    <div class="timeline-item done">
+      <strong>Effort Assessment</strong> — Level 1 (Easy), ~30-50 lines of validation code
+      <div class="date">2026-02-10</div>
+    </div>
+    <div class="timeline-item done">
+      <strong>Issue Augmentation</strong> — Comment drafted with root cause, fix approach, workaround, and labels
+      <div class="date">2026-02-10</div>
+    </div>
+    <div class="timeline-item done">
+      <strong>Maintainer Briefing</strong> — Briefed and approved
+      <div class="date">2026-02-10</div>
+    </div>
+    <div class="timeline-item done">
+      <strong>Comment Posted</strong> — <a href="https://github.com/kubernetes-sigs/prow/issues/609#issuecomment-3874545969">issuecomment-3874545969</a>
+      <div class="date">2026-02-10</div>
+    </div>
+  </div>
+</section>
+
+<!-- ACTIVITY SINCE TRIAGE -->
+<section>
+  <h2>Activity Since Triage</h2>
+  <div class="timeline">
+    <div class="timeline-item done">
+      <strong>kind/bug applied</strong> — k8s-ci-robot applied <code>kind/bug</code> from triage comment. <code>/help-wanted</code> was not processed — not a recognized prow label in this repo.
+      <div class="date">2026-02-10</div>
+    </div>
+    <div class="timeline-item">
+      <strong>lifecycle/stale applied</strong> — k8s-triage-robot: 90 days of inactivity.
+      <div class="date">2026-05-11</div>
+    </div>
+    <div class="timeline-item">
+      <strong style="color:var(--accent)">lifecycle/rotten applied</strong> — k8s-triage-robot: 30 days after stale. Issue will auto-close around <strong>2026-07-10</strong> if no activity.
+      <div class="date">2026-06-10</div>
+    </div>
+  </div>
+</section>
+
+<!-- NEXT STEPS -->
+<section>
+  <h2>Next Steps</h2>
+  <ul>
+    <li><strong>Action required</strong>: Issue is now <code>lifecycle/rotten</code>. Either <code>/remove-lifecycle rotten</code> to keep it open (recommended — this is a Level 1 candidate), or let it auto-close around 2026-07-10.</li>
+    <li>Consider creating an <code>area/pipeline</code> label for future pipeline controller issues</li>
+  </ul>
+</section>
+
+</main>
+
+<footer>
+  Triage document generated from ISSUE-TRIAGE.md &middot; kubernetes-sigs/prow
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Review: kubernetes-sigs/prow#806</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; line-height: 1.6; color: #1a1a1a; max-width: 860px; margin: 2rem auto; padding: 0 1.5rem; background: #fff; }
+  code, pre { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; font-size: 0.9em; background: #f3f3f3; border-radius: 4px; }
+  code { padding: 0.1em 0.35em; }
+  pre { padding: 0.75em 1em; overflow-x: auto; }
+  header { border-bottom: 2px solid #ddd; padding-bottom: 1rem; margin-bottom: 1.5rem; }
+  header .meta { color: #555; font-size: 0.95em; }
+  header .meta div { margin: 0.15em 0; }
+  h1 { font-size: 1.4rem; margin-bottom: 0.25rem; }
+  h2 { font-size: 1.15rem; border-bottom: 1px solid #eee; padding-bottom: 0.3em; margin-top: 2rem; }
+  .verdict { font-size: 1.1em; font-weight: 600; padding: 0.75em 1em; border-radius: 6px; background: #e8f5e9; color: #1b5e20; border: 1px solid #a5d6a7; }
+  ul { padding-left: 1.4em; }
+  li { margin: 0.3em 0; }
+  .empty { color: #777; font-style: italic; }
+  a { color: #1565c0; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Review: kubernetes-sigs/prow#806</h1>
+  <div class="meta">
+    <div><strong>Title:</strong> chore(deps): bump golang.org/x/crypto from 0.50.0 to 0.52.0 in /hack/tools</div>
+    <div><strong>Head SHA:</strong> <code>7fcb08791ceec267409b9c33369ae13a599da559</code></div>
+    <div><strong>Base:</strong> main</div>
+    <div><strong>Reviewed at:</strong> 2026-07-27T08:48:24Z</div>
+    <div><a href="https://github.com/kubernetes-sigs/prow/pull/806">View on GitHub</a></div>
+  </div>
+</header>
+
+<section>
+  <h2>Verdict</h2>
+  <div class="verdict">Approve</div>
+  <p>Dep-only bump confined to the <code>hack/tools</code> build-tooling submodule. All moved modules are indirect, unused directly anywhere in the codebase, the new <code>x/crypto</code> release is tagged and about two months old (no soak-time concern), and the upstream changes between versions are routine maintenance with no security advisories. No project code is affected.</p>
+</section>
+
+<section>
+  <h2>What this PR does</h2>
+  <ul>
+    <li>Bumps <code>golang.org/x/crypto</code> v0.50.0 &rarr; v0.52.0 in <code>hack/tools/go.mod</code> / <code>go.sum</code>.</li>
+    <li>Sibling <code>golang.org/x/*</code> modules move along transitively: <code>x/net</code> v0.53.0&rarr;v0.54.0, <code>x/sys</code> v0.43.0&rarr;v0.45.0, <code>x/term</code> v0.42.0&rarr;v0.43.0, <code>x/text</code> v0.36.0&rarr;v0.37.0.</li>
+    <li>All bumped modules are marked <code>// indirect</code> &mdash; pulled in by the tools listed in <code>hack/tools/go.mod</code> (golangci-lint, ko, controller-tools, code-generator, gotestsum), not used directly.</li>
+    <li>Does not touch the main module's <code>go.mod</code> or any prow source code.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Findings</h2>
+  <p class="empty">None.</p>
+</section>
+
+<section>
+  <h2>Things I checked and was fine with</h2>
+  <ul>
+    <li>All changed modules are <code>// indirect</code> in <code>hack/tools/go.mod</code>; grepped the repo (excluding vendor) for direct imports of <code>golang.org/x/crypto</code> and found none.</li>
+    <li><code>hack/tools</code> is a standalone tooling module (linters/codegen/test tools) &mdash; not linked into any shipped prow binary. The main module's dependency versions are untouched by this PR.</li>
+    <li>New <code>x/crypto</code> v0.52.0 is a real tagged release (not a pseudo-version), dated 2026-05-22 &mdash; about 2 months old relative to the review date, comfortably past any freshness concern.</li>
+    <li>Reviewed the upstream commit range v0.50.0..v0.52.0: NSS root-bundle refresh, <code>hkdf</code>/<code>pbkdf2</code> becoming stdlib wrappers, an ACME <code>OrderError</code> diagnostics improvement. No CVE or security fix in this range.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Open questions for the author</h2>
+  <p class="empty">None.</p>
+</section>
+
+</body>
+</html>

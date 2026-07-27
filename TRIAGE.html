@@ -22,8 +22,8 @@
   .badge-green { background: #238636; color: #fff; }
   .badge-blue { background: #1f6feb; color: #fff; }
   .badge-yellow { background: #9e6a03; color: #fff; }
-  .badge-purple { background: #8957e5; color: #fff; }
   .badge-red { background: #da3633; color: #fff; }
+  .badge-purple { background: #8957e5; color: #fff; }
   .card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1rem 1.25rem; margin: 0.75rem 0; }
   .card-header { font-weight: 600; margin-bottom: 0.5rem; color: var(--accent); }
   .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
@@ -34,6 +34,7 @@
   .highlight-green { border-left-color: var(--green); }
   .highlight-yellow { border-left-color: var(--yellow); }
   .highlight-red { border-left-color: var(--red); }
+  .highlight-purple { border-left-color: var(--purple); }
   .comment-box { background: #1c2128; border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem; margin: 0.75rem 0; font-family: monospace; font-size: 0.85rem; white-space: pre-wrap; }
   .meta { color: var(--muted); font-size: 0.85rem; }
   table { width: 100%; border-collapse: collapse; margin: 0.75rem 0; }
@@ -53,39 +54,37 @@
 
 <h1>Issue #610: <code>owners-label</code> should ignore merge commits</h1>
 <p class="meta">
-  <span class="badge badge-green">LEGITIMATE</span>
+  <span class="badge badge-green">ACCEPTED</span>
   <span class="badge badge-blue">Level 1</span>
   <span class="badge badge-yellow">kind/feature</span>
-  <span class="badge badge-red">lifecycle/rotten</span>
+  <span class="badge badge-red">CLOSED &mdash; not planned (bot)</span>
   &mdash; Reported by <strong>danwinship</strong> &middot; 2026-02-05 &middot; <a href="https://github.com/kubernetes-sigs/prow/issues/610">View on GitHub</a>
 </p>
+<p class="meta">Triaged at 2026-07-27T00:32:03Z &middot; main SHA <code>ea9e703d576df6d125159beb54d30d90ba7e8634</code> &middot; labels: <code>kind/feature</code>, <code>lifecycle/rotten</code></p>
 
-<h2>Quick Reference</h2>
-
-<div class="grid">
-  <div class="card">
-    <div class="card-header">Issue</div>
-    <div class="key-value"><span class="key">Problem</span><span>Merge commits cause flood of irrelevant labels</span></div>
-    <div class="key-value"><span class="key">Root Cause</span><span><code>GetPullRequestChanges</code> returns aggregate diff</span></div>
-    <div class="key-value"><span class="key">Labels stick</span><span>Plugin only adds, never removes</span></div>
-  </div>
-  <div class="card">
-    <div class="card-header">Fix</div>
-    <div class="key-value"><span class="key">Approach</span><span>Skip labeling when merge commits detected</span></div>
-    <div class="key-value"><span class="key">Pattern</span><span>DCO plugin (<code>dco.go:156-161</code>)</span></div>
-    <div class="key-value"><span class="key">Scope</span><span>~15-25 LOC in 1 file + tests</span></div>
-  </div>
+<h2>Verdict</h2>
+<div class="highlight highlight-green">
+  <strong>Accepted &mdash; and already fixed, pending review.</strong> The request is legitimate and uncontested; the issue's own closure was a routine stale-bot timeout, not a rejection. An open PR, <a href="https://github.com/kubernetes-sigs/prow/pull/782">#782</a>, already implements the fix with green CI, but as an opt-in config flag rather than the unconditional behavior the original discussion agreed was correct &mdash; that gap is the one thing worth resolving before merge.
 </div>
 
-<h2>Since Previous Triage (2026-05-03)</h2>
-
+<h2>What the issue reports</h2>
 <ul>
-  <li><strong>2026-05-07</strong>: <code>k8s-triage-robot</code> applied <code>lifecycle/stale</code> due to 90d inactivity; <code>good-first-issue</code> label removed in the same sweep.</li>
-  <li><strong>2026-06-06</strong>: <code>k8s-triage-robot</code> applied <code>lifecycle/rotten</code>. Issue will be <strong>auto-closed in ~30 days</strong> (around 2026-07-06) if no activity.</li>
-  <li>No new substantive comments or linked PRs. Analysis and recommended fix unchanged.</li>
+  <li>Pushing a merge commit to a PR causes <code>owners-label</code> to add a flood of unrelated <code>sig/*</code>/<code>area/*</code> labels, based on every file touched by the merged branch.</li>
+  <li><code>mergecommitblocker</code> separately flags the offending commit and the user force-pushes to remove it &mdash; but the spurious labels from <code>owners-label</code> never go away, because it only adds labels and never removes them.</li>
+  <li>Reporter (danwinship) and maintainer (BenTheElder) converged, across 6 comments, on skipping labeling unconditionally for merge commits &mdash; there is no workflow where labeling off a merge's aggregate diff makes sense.</li>
+  <li>Reporter proposed a per-commit approach; ruled out during research because per-commit file lists require additional <code>GetCommit</code>/<code>GetSingleCommit</code> API calls that the coarser DCO-style check avoids.</li>
 </ul>
 
-<h2>Discussion Summary</h2>
+<h2>Since Previous Triage (2026-06-08)</h2>
+
+<ul>
+  <li><strong>2026-06-30</strong>: contributor <strong>carterpewpew</strong> opened <a href="https://github.com/kubernetes-sigs/prow/pull/782"><strong>PR #782</strong></a> (&ldquo;owners-label: add ignore_merge_commits config option&rdquo;), explicitly <code>Fixes: #610</code>. The triaging maintainer ran <code>/ok-to-test</code> the same day.</li>
+  <li><strong>2026-07-02</strong>: reviewer <strong>Prucek</strong> left a <code>COMMENTED</code> review (not yet lgtm/approve).</li>
+  <li><strong>2026-07-06</strong>: <code>k8s-triage-robot</code> ran its rotten-timeout close (<code>/close not-planned</code>); <code>kubernetes-prow[bot]</code> closed the issue as &ldquo;Not Planned&rdquo; seconds later &mdash; a routine bot action, not a maintainer decision, and nothing tied PR #782 back to the issue's lifecycle timers to prevent it.</li>
+  <li>PR #782 CI is fully green (unit, race-detector, integration, lint, image-build) and mergeable, but not yet lgtm/approved &mdash; tide reports &ldquo;Not mergeable. Needs approved, lgtm labels.&rdquo;</li>
+</ul>
+
+<h2>Discussion Summary (original issue thread)</h2>
 
 <p>6 comments between <strong>danwinship</strong> (reporter) and <strong>BenTheElder</strong> (maintainer). Key points:</p>
 
@@ -100,86 +99,78 @@
   <li><strong>Key insight</strong>: Merging master into a PR would label every file changed upstream since branch point &mdash; never useful</li>
 </ul>
 
-<h2>Root Cause</h2>
-
-<div class="card">
-  <p><code>owners-label</code> calls <code>GetPullRequestChanges</code> which hits GitHub's <code>GET /pulls/{n}/files</code> endpoint. This returns the <strong>full diff</strong> between PR head and base branch &mdash; no per-commit breakdown. When a merge commit is present, all files from the merged branch appear in the diff.</p>
-  <p style="margin-top:0.5rem">Since <code>owners-label</code> only adds labels and never removes them, the erroneous labels persist even after the user force-pushes to remove the merge commit.</p>
+<div class="highlight highlight-purple">
+  <strong>Tension with PR #782:</strong> the PR implements this as an <em>opt-in</em> per-repo config flag (<code>ignore_merge_commits</code>), reviving BenTheElder's earlier framing rather than the unconditional behavior the thread settled on. Worth raising explicitly in review.
 </div>
 
-<h2>Code Paths</h2>
+<h2>Analysis</h2>
+
+<h3>Reproducibility / observed behavior</h3>
+<div class="card">
+  <p>Unchanged since the original report, confirmed still true against current <code>main</code>: push a merge commit onto a PR &rarr; <code>owners-label</code> fires on <code>synchronize</code>, labels every file in the merge's diff &rarr; force-pushing the merge commit away does not remove the labels.</p>
+</div>
+
+<h3>Probable cause</h3>
+<div class="card">
+  <p><code>owners-label</code> calls <code>GetPullRequestChanges</code> which hits GitHub's <code>GET /pulls/{n}/files</code> endpoint. This returns the <strong>full diff</strong> between PR head and base branch &mdash; no per-commit breakdown. When a merge commit is present, all files from the merged branch appear in the diff.</p>
+  <p style="margin-top:0.5rem">Since <code>owners-label</code>'s <code>githubClient</code> interface has no <code>RemoveLabel</code> method at all, the erroneous labels persist even after the user force-pushes to remove the merge commit.</p>
+</div>
+
+<h3>Related code</h3>
 
 <table>
   <tr><th>What</th><th>Where</th><th>Role</th></tr>
-  <tr><td>Event handler</td><td><code>owners-label.go:58-69</code></td><td>Filters to opened/reopened/synchronize</td></tr>
+  <tr><td>Event handler</td><td><code>owners-label.go:58-61</code></td><td>Filters to opened/reopened/synchronize</td></tr>
   <tr><td>File fetching</td><td><code>owners-label.go:77-84</code></td><td>Gets ALL changed files, maps to labels</td></tr>
-  <tr><td>Label application</td><td><code>owners-label.go:109-116</code></td><td>Only adds, never removes</td></tr>
-  <tr><td>DCO precedent</td><td><code>dco.go:156-161</code></td><td><code>len(commit.Parents) &gt; 1</code> to skip merges</td></tr>
-  <tr><td>GitHub client</td><td><code>client.go:4616</code></td><td><code>ListPullRequestCommits</code> &mdash; returns commits with <code>Parents</code></td></tr>
+  <tr><td>Label application</td><td><code>owners-label.go:108-117</code></td><td>Only adds via <code>AddLabel</code>, never removes</td></tr>
+  <tr><td>DCO precedent</td><td><code>dco.go:156-160</code></td><td><code>len(commit.Parents) &gt; 1</code> to skip merges</td></tr>
+  <tr><td>GitHub client</td><td><code>client.go:4810</code></td><td><code>ListPullRequestCommits</code> &mdash; returns commits with <code>Parents</code></td></tr>
+  <tr><td>Single-commit fetch</td><td><code>client.go:2789</code> (<code>GetSingleCommit</code>)</td><td>Only entry point populating <code>Files</code>/<code>Stats</code> (<code>types.go:1354-1369</code>)</td></tr>
 </table>
 
-<h2>Recommended Solution</h2>
+<pre><code>// pkg/plugins/dco/dco.go:156-160
+isMerge := len(commit.Parents) > 1
+if !isMerge && !testRe.MatchString(commit.Commit.Message) {
+    commitsMissingDCO = append(commitsMissingDCO, commit)
+}</code></pre>
 
-<h3>Approach: Skip labeling when merge commits are present</h3>
+<h3>Related issues / PRs</h3>
 
-<p>Before processing files, call <code>ListPullRequestCommits()</code>. If any commit has <code>len(Parents) &gt; 1</code>, return early. Labels are applied correctly on the subsequent <code>synchronize</code> event after force-push.</p>
-
-<div class="grid">
-  <div class="card">
-    <div class="card-header pros">Pros</div>
-    <ul>
-      <li>~10-15 lines of code</li>
-      <li>Follows DCO plugin pattern exactly</li>
-      <li>One additional API call total</li>
-      <li>Self-correcting: labels applied after force-push</li>
-    </ul>
-  </div>
-  <div class="card">
-    <div class="card-header cons">Cons</div>
-    <ul>
-      <li>Skips all labeling for that event (coarse-grained)</li>
-      <li>Permanent merge commits = no labels ever (rare edge case)</li>
-    </ul>
-  </div>
+<div class="card">
+  <div class="card-header">PR <a href="https://github.com/kubernetes-sigs/prow/pull/782">kubernetes-sigs/prow#782</a> &mdash; owners-label: add ignore_merge_commits config option</div>
+  <ul>
+    <li>By <strong>carterpewpew</strong>, opened 2026-06-30, <code>Fixes: #610</code>.</li>
+    <li>Adds <code>Owners.IgnoreMergeCommits []string</code> config; skips labeling in <code>handle()</code> when a commit has <code>len(Parents) &gt; 1</code> <strong>and</strong> the repo opted in.</li>
+    <li>CI fully green; mergeable per GitHub, but not yet lgtm/approved (one <code>COMMENTED</code> review from Prucek).</li>
+    <li>+107/&minus;3 across <code>pkg/plugins/config.go</code>, <code>pkg/plugins/owners-label/owners-label.go</code>, <code>pkg/plugins/owners-label/owners-label_test.go</code>; includes <code>TestHandleIgnoreMergeCommits</code> covering both merge and non-merge cases.</li>
+  </ul>
 </div>
 
-<details>
-<summary>Why not danwinship's per-commit approach?</summary>
-<div class="card" style="margin-top:0.5rem">
-  <p><code>ListPullRequestCommits</code> doesn't populate the <code>Files</code> field on <code>RepositoryCommit</code> (only <code>GetCommit</code> does, per <code>types.go:1354-1355</code>). The per-commit approach would require N additional <code>GetCommit</code> API calls &mdash; expensive and unnecessary for what is always a transient state that users fix by force-pushing.</p>
-</div>
-</details>
-
-<h3>Implementation Checklist</h3>
+<h2>What I checked</h2>
 <ul>
-  <li>Add <code>ListPullRequestCommits</code> to the local <code>githubClient</code> interface in <code>owners-label.go</code></li>
-  <li>Add merge commit check early in <code>handle()</code>, before <code>GetPullRequestChanges</code></li>
-  <li>Log when skipping labeling due to merge commits</li>
-  <li>Add test: PR with merge commits &rarr; no labels added</li>
-  <li>Add test: PR without merge commits &rarr; labels added normally</li>
+  <li>Re-verified every code-path claim from the prior triage against current <code>main</code> (<code>ea9e703</code>) &mdash; line numbers shifted slightly, behavior unchanged.</li>
+  <li>Confirmed no partial/alternate fix landed on <code>main</code> since the last triage (zero relevant commits to <code>owners-label.go</code>; no merge/parent references in the file).</li>
+  <li>Found PR #782 via the issue's GitHub cross-reference timeline event.</li>
+  <li>Confirmed PR #782's CI status and review/approval state directly via <code>gh pr checks</code> / <code>gh api .../reviews</code>.</li>
+  <li>Briefed the maintainer through all findings; no objections to the recommended plan.</li>
 </ul>
 
-<h2>Labels to Apply</h2>
-
+<h2>Recommended next steps</h2>
 <table>
-  <tr><th>Command</th><th>Rationale</th></tr>
-  <tr><td><code>/area plugins</code></td><td>Change is in <code>pkg/plugins/owners-label/</code></td></tr>
-  <tr><td><code>/remove-lifecycle rotten</code></td><td>Issue is valid and actionable; reset triage-bot clock</td></tr>
-  <tr><td><code>/good-first-issue</code></td><td>Level 1: small scope, clear pattern, minimal expertise (was removed with stale lifecycle)</td></tr>
-  <tr><td><span class="meta">kind/feature already applied</span></td><td>&mdash;</td></tr>
+  <tr><th>Action</th><th>Rationale</th></tr>
+  <tr><td><code>/reopen</code></td><td>Closed by bot inactivity timeout, not resolved or rejected</td></tr>
+  <tr><td><code>/remove-lifecycle rotten</code></td><td>Reset stale-bot clock once reopened, while #782 is under review</td></tr>
+  <tr><td>Review PR #782</td><td>Raise the opt-in-vs-unconditional discrepancy explicitly before approving</td></tr>
+  <tr><td>Close #610 on merge</td><td>Reference PR #782 instead of leaving it as &ldquo;not planned&rdquo;</td></tr>
 </table>
 
-<h2>Draft Comment</h2>
+<h2>Open questions</h2>
+<div class="comment-box">Should ignore_merge_commits ship as opt-in (as implemented in #782), or should we push for the unconditional skip the original discussion agreed was correct?
 
-<div class="comment-box">The root cause is that `owners-label` uses `GetPullRequestChanges` (the GitHub `GET /pulls/{n}/files` endpoint), which returns the full diff between the PR head and base branch without distinguishing which commits introduced which files. When a merge commit is present, all files from the merged branch appear in this diff, producing a flood of irrelevant labels. Since `owners-label` only adds labels and never removes them, these persist even after the merge commit is force-pushed away.
-
-The simplest fix is to call `ListPullRequestCommits` before processing files and skip labeling entirely if any commit has multiple parents (i.e., is a merge commit). This pattern is already established in the DCO plugin (`pkg/plugins/dco/dco.go`), which uses `len(commit.Parents) > 1` to detect and skip merge commits. Labels would be applied correctly on the subsequent `synchronize` event after the user force-pushes to remove the merge commit. The per-commit file analysis approach discussed above would be more precise, but `ListPullRequestCommits` doesn't populate per-commit `Files` (only `GetCommit` does per the types), so it would require N additional API calls — unnecessarily expensive for what is always a transient state.
-
-/area plugins
-/good-first-issue</div>
+Is there a repo using mergecommitblocker today that should be defaulted into ignore_merge_commits at rollout, to avoid a second follow-up PR?</div>
 
 <hr class="separator">
-<p class="meta">Triage completed 2026-05-03 &middot; Refreshed 2026-06-08 &middot; Full triage: <a href="https://github.com/petr-muller/prow/blob/610-triage/TRIAGE.md">TRIAGE.md</a></p>
+<p class="meta">Triage completed 2026-05-03 &middot; Refreshed 2026-06-08 &middot; Full re-triage 2026-07-27 &middot; See <a href="https://github.com/petr-muller/prow/blob/610-triage/TRIAGE.md">TRIAGE.md</a></p>
 
 </body>
 </html>

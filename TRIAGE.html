@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Triage: kubernetes-sigs/prow#789</title>
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+    color: #1a1a1a;
+    max-width: 900px;
+    margin: 2rem auto;
+    padding: 0 1.5rem;
+    background: #fdfdfd;
+  }
+  code, pre {
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 0.9em;
+  }
+  pre {
+    background: #f4f4f4;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 0.8rem 1rem;
+    overflow-x: auto;
+  }
+  code {
+    background: #f0f0f0;
+    padding: 0.1em 0.35em;
+    border-radius: 4px;
+  }
+  pre code { background: none; padding: 0; }
+  h1 { font-size: 1.5rem; margin-bottom: 0.2rem; }
+  h2 {
+    font-size: 1.15rem;
+    margin-top: 2.2rem;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 0.3rem;
+  }
+  h3 { font-size: 1rem; margin-top: 1.4rem; }
+  .meta {
+    background: #f4f4f4;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 1rem 1.2rem;
+    font-size: 0.92rem;
+  }
+  .meta table { border-collapse: collapse; width: 100%; }
+  .meta td { padding: 0.15rem 0.5rem 0.15rem 0; vertical-align: top; }
+  .meta td.k { color: #666; white-space: nowrap; width: 1%; }
+  .verdict {
+    display: inline-block;
+    font-weight: 600;
+    padding: 0.2rem 0.7rem;
+    border-radius: 999px;
+    background: #dff0d8;
+    color: #2b6a2f;
+    border: 1px solid #b7ddb8;
+  }
+  .finding { margin-bottom: 1.1rem; }
+  .tag {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    padding: 0.1rem 0.5rem;
+    border-radius: 4px;
+    background: #e8eefc;
+    color: #2554c7;
+    margin-right: 0.5rem;
+  }
+  .tag.cause { background: #fdecea; color: #b3261e; }
+  .tag.related-pr { background: #f2e8fd; color: #6a1fb0; }
+  ul { padding-left: 1.4rem; }
+  a { color: #2554c7; }
+  .file { color: #555; font-size: 0.88rem; }
+</style>
+</head>
+<body>
+
+<h1>Triage: Override plugin follow-up cleanup</h1>
+<p><a href="https://github.com/kubernetes-sigs/prow/issues/789">kubernetes-sigs/prow#789</a></p>
+
+<div class="meta">
+<table>
+<tr><td class="k">Issue</td><td>kubernetes-sigs/prow#789</td></tr>
+<tr><td class="k">Title</td><td>Override plugin: follow-up cleanup from sticky override work</td></tr>
+<tr><td class="k">State</td><td>open</td></tr>
+<tr><td class="k">Labels</td><td><em>(none)</em></td></tr>
+<tr><td class="k">Main SHA</td><td><code>e601a1ffafd7d8d3a781238a4c5f4233d6248f68</code></tr>
+<tr><td class="k">Triaged at</td><td>2026-07-27T00:34:55Z</td></tr>
+<tr><td class="k">Effort</td><td>Level 2 - Moderate</td></tr>
+<tr><td class="k">Recommended labels</td><td><code>help-wanted</code>, <code>kind/cleanup</code>, <code>area/plugins</code></td></tr>
+</table>
+</div>
+
+<h2>Verdict</h2>
+<p><span class="verdict">ACCEPTED</span></p>
+<p>Legitimate, maintainer-authored follow-up cleanup for the <code>/override</code> plugin, filed by the same engineer (smg247) who authored PR #778, with precise, verified code references. Splits into two independent, moderate-effort (help-wanted) items: dropping now-redundant synthetic ProwJob creation, and reusing an already-embedded BaseSHA instead of always fetching the current one.</p>
+
+<h2>What the issue reports</h2>
+<ul>
+<li>Item 1: now that overrides embed <code>BaseSHA:</code> in the GitHub status description and Tide reads it via <code>BaseSHAFromContextDescription</code>, the synthetic passing ProwJob that <code>/override</code> creates may no longer be necessary — it previously existed only so Tide wouldn't force a retest, but gets reaped by Sinker after <code>max_prowjob_age</code> anyway.</li>
+<li>Item 2: <code>/override</code> calls <code>baseSHAGetter</code> to fetch the <em>current</em> base branch SHA at command time, which may not match the BaseSHA the original overridden job actually ran against (already embedded in its status description). Proposes extracting the embedded value first, falling back to a fresh fetch only when none exists.</li>
+<li>Both items reference specific review comment permalinks from PR #778's review thread.</li>
+</ul>
+
+<h2>Analysis</h2>
+
+<h3>Why this is now possible</h3>
+<p>PR #778 ("sticky-override-for-head", merged as <code>0633879af</code>) added <code>prowJobsFromContexts</code> to Tide, which reconstructs an in-memory (non-persisted) passing ProwJob for merge-eligibility purposes directly from a GitHub status description's embedded BaseSHA — no real cluster ProwJob required.</p>
+
+<h3>Related code</h3>
+
+<div class="finding">
+<span class="tag related-code">related-code</span><span class="file">pkg/plugins/override/override.go:543-561</span> — synthetic ProwJob creation, candidate for removal (item 1)
+<pre><code>if pre != nil {
+    pj := pjutil.NewPresubmit(*pr, baseSHA, *pre, e.GUID, nil)
+    now := metav1.Now()
+    pj.Status = prowapi.ProwJobStatus{
+        StartTime:      now,
+        CompletionTime: &amp;now,
+        State:          prowapi.SuccessState,
+        Description:    descFn(user),
+        URL:            e.HTMLURL,
+    }
+    log.WithFields(pjutil.ProwJobFields(&amp;pj)).Info("Creating a new prowjob.")
+    if _, err := oc.Create(context.TODO(), &amp;pj, metav1.CreateOptions{}); err != nil {
+        resp := fmt.Sprintf("Failed to create override job for %s", status.Context)
+        log.WithError(err).Warn(resp)
+        return oc.CreateComment(org, repo, number, plugins.FormatResponseRaw(e.Body, e.HTMLURL, user, resp))
+    }
+    contextsWithCreatedJobs.Insert(status.Context)
+}</code></pre>
+</div>
+
+<div class="finding">
+<span class="tag related-code">related-code</span><span class="file">pkg/plugins/override/override.go:518</span> — baseSHA fetched once per invocation, unconditionally (item 2)
+<pre><code>baseSHA, err := baseSHAGetter()
+if err != nil {
+    resp := "Cannot get base ref of PR"</code></pre>
+</div>
+
+<div class="finding">
+<span class="tag related-code">related-code</span><span class="file">pkg/plugins/override/override.go:564</span> — BaseSHA is already embedded on every override
+<pre><code>status.Description = config.ContextDescriptionWithBaseSha(descFn(user), baseSHA)</code></pre>
+</div>
+
+<div class="finding">
+<span class="tag related-code">related-code</span><span class="file">pkg/tide/tide.go:1049-1075</span> — Tide reconstructs a synthetic in-memory ProwJob straight from the status description
+<pre><code>for _, headContext := range headContexts {
+    if headContext.State != githubql.StatusStateSuccess {
+        continue
+    }
+    desc := string(headContext.Description)
+    baseSHAForContext := config.BaseSHAFromContextDescription(desc)
+    if config.IsSkipRetest(desc) || (baseSHAForContext != "" &amp;&amp; baseSHAForContext == baseSHA) {
+        passingCurrentContexts = append(passingCurrentContexts, string(headContext.Context))
+    }
+}</code></pre>
+</div>
+
+<div class="finding">
+<span class="tag related-code">related-code</span><span class="file">pkg/tide/tide.go:1274-1298</span> — Tide's only live ProwJob lookup is gated on Pending state, so it never fires for overridden (Success) contexts
+<pre><code>if headContext.State == githubql.StatusStatePending {
+    ... c.prowJobClient.List(...) // isRetestEligible
+}</code></pre>
+</div>
+
+<div class="finding">
+<span class="tag related-code">related-code</span><span class="file">cmd/sinker/main.go:353-369</span> — confirms the reaping-after-max_prowjob_age mechanism the issue references
+<pre><code>isFinished.Insert(prowJob.ObjectMeta.Name)
+if time.Since(prowJob.Status.StartTime.Time) &lt;= maxProwJobAge {
+    continue
+}
+if err := c.prowJobClient.Delete(c.ctx, &amp;prowJob); err == nil {</code></pre>
+</div>
+
+<div class="finding">
+<span class="tag related-code">related-code</span><span class="file">pkg/config/config.go:3416-3441</span> — BaseSHA embed/extract helpers already exist and are used by both override and Tide
+<pre><code>func ContextDescriptionWithBaseSha(humanReadable, baseSHA string) string { ... }
+func BaseSHAFromContextDescription(description string) string { ... }</code></pre>
+</div>
+
+<h3>Related issues / PRs</h3>
+<div class="finding">
+<span class="tag related-pr">related-pr</span> <a href="https://github.com/kubernetes-sigs/prow/pull/778">kubernetes-sigs/prow#778</a> — "sticky-override-for-head", merged as <code>0633879af</code>. Introduced BaseSHA embedding in status descriptions and <code>prowJobsFromContexts</code>. Both items in #789 were split out of its review thread.
+</div>
+
+<h2>What I checked</h2>
+<ul>
+<li>Confirmed both issue claims against current code at the main SHA above: BaseSHA embedding, synthetic ProwJob creation, and the unconditional <code>baseSHAGetter()</code> call are all still present exactly as described.</li>
+<li>Verified Tide's <code>accumulate()</code> (individual-PR merge path, <code>pkg/tide/tide.go:1080-1132</code>) does not require a real cluster ProwJob for overridden contexts.</li>
+<li>Verified Tide's only live ProwJob lookup (<code>isRetestEligible</code>) is gated on Pending state and never fires for overridden (Success) contexts.</li>
+<li>Searched for other consumers of override-created ProwJobs (metrics, spyglass, statusreconciler, crier) — none found; only Deck's live job-listing UI displays them until Sinker reaps them.</li>
+<li>Reviewed <code>pkg/plugins/override/override_test.go</code> fixtures — confirmed no test exercises an input status with a pre-existing embedded BaseSHA differing from the fetched one; item 2 is a genuine test-coverage gap.</li>
+</ul>
+
+<h2>Recommended next steps</h2>
+<ul>
+<li>Apply labels: <code>/area plugins</code>, <code>/kind cleanup</code>, <code>/help-wanted</code>.</li>
+<li>Land as two separate, independent PRs: (1) remove synthetic ProwJob creation, (2) reuse embedded baseSHA with fallback.</li>
+<li>For PR (1): call out in the description that overridden contexts will stop appearing as a distinct job row in Deck's job list — an observable UX change, not just internal cleanup.</li>
+<li>For PR (2): add new test fixtures for the embedded-BaseSHA-differs-from-current scenario, and structure the change per-context (not per-call), since different contexts can carry different embedded BaseSHAs.</li>
+</ul>
+
+<h2>Open questions</h2>
+<ul>
+<li>"Should checkrun-only overrides (the app-auth path) also get baseSHA-reuse treatment, or is item 2 scoped only to the status-based path?"</li>
+<li>"Does anyone rely on Deck's job list showing override actions as a distinct job row (e.g. for auditing purposes)? Worth confirming before merging item 1."</li>
+</ul>
+
+</body>
+</html>

@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Review: prow#758</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; line-height: 1.6; color: #1a1a1a; max-width: 860px; margin: 2rem auto; padding: 0 1.5rem; }
+  code, pre { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; }
+  header { border-bottom: 2px solid #ddd; padding-bottom: 1rem; margin-bottom: 1.5rem; }
+  header h1 { margin-bottom: 0.25rem; font-size: 1.4rem; }
+  .meta { color: #555; font-size: 0.95rem; }
+  .meta code { background: #f2f2f2; padding: 0.1rem 0.3rem; border-radius: 3px; }
+  .verdict { background: #eefaf0; border-left: 4px solid #2ea043; padding: 0.75rem 1rem; margin: 1rem 0 1.5rem; border-radius: 4px; }
+  .verdict strong { text-transform: uppercase; }
+  h2 { border-bottom: 1px solid #eee; padding-bottom: 0.3rem; margin-top: 2rem; }
+  h3 { margin-top: 1.5rem; }
+  .finding { margin: 1rem 0; padding: 0.75rem 1rem; border-left: 4px solid #ccc; background: #fafafa; border-radius: 4px; }
+  .finding.nit { border-left-color: #f0ad4e; }
+  .finding.question { border-left-color: #6f9be0; }
+  .finding .loc { color: #555; font-size: 0.9rem; margin-bottom: 0.3rem; }
+  .finding pre { background: #f2f2f2; padding: 0.6rem; border-radius: 4px; overflow-x: auto; font-size: 0.85rem; }
+  ul { padding-left: 1.3rem; }
+  a { color: #0969da; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>kubernetes-sigs/prow#758 — Fix expiring token handling gaps in secret agent</h1>
+  <div class="meta">
+    <div>PR: <a href="https://github.com/kubernetes-sigs/prow/pull/758">kubernetes-sigs/prow#758</a></div>
+    <div>Head SHA: <code>188a2e4d130ef7f172e2e170602865e3a6f231d7</code></div>
+    <div>Base: <code>main</code></div>
+    <div>Reviewed at: <code>2026-07-27T00:26:40Z</code></div>
+  </div>
+</header>
+
+<div class="verdict">
+  <strong>Verdict: Approve</strong>
+  <p>Small, well-scoped, well-tested followup fixing three real gaps in expiring-token handling. Cross-checked with a separate 3-perspective maintainer review (code quality / maintainability / deployment risk) — all three independently reached APPROVE with no critical or blocking issues. Remaining items below are nits and questions, not blockers.</p>
+</div>
+
+<h2>What this PR does</h2>
+<ul>
+  <li><code>Start()</code> now resets <code>expiringTokens</code> alongside <code>secretsMap</code>/<code>ReloadingCensorer</code>, so a restart no longer leaves stale expiring tokens live (<code>pkg/config/secret/agent.go:49</code>).</li>
+  <li><code>getSecrets()</code> now inserts <code>expiringTokens</code> keys, so the legacy one-shot <code>CensoringFormatter</code> path (built via <code>logrusutil.NewCensoringFormatter</code>, used in <code>pkg/pod-utils/clone/clone.go</code>) censors expiring tokens too — previously excluded entirely (<code>pkg/config/secret/agent.go:198-205</code>).</li>
+  <li>Adds <code>TestStartResetsExpiringTokens</code>, <code>TestExpiringTokenCensoring</code> (active + expired sub-tests), <code>TestGetSecretsIncludesExpiringTokens</code>.</li>
+  <li>Followup to #696 (<code>73b371825</code>), which introduced expiring token support.</li>
+  <li>Net security effect: closes a redaction gap — active expiring tokens (e.g. GitHub App installation tokens) were previously left unredacted in logs written through the legacy <code>CensoringFormatter</code> path; no case regresses from redacted to unredacted.</li>
+</ul>
+
+<h2>Findings</h2>
+
+<h3>Nits</h3>
+<div class="finding nit">
+  <div class="loc"><code>pkg/config/secret/agent.go:198-205</code> — getSecrets() does not filter already-expired tokens</div>
+  <p><code>getSecrets()</code> inserts every key in <code>a.expiringTokens</code> unconditionally, without the <code>exp.After(now)</code> check that <code>refreshCensorer()</code> already applies (agent.go:160). Expiry pruning only happens lazily inside <code>refreshCensorer()</code> (triggered by <code>Add</code>/<code>setSecret</code>/<code>addExpiringToken</code>), so an expired token can still appear in <code>getSecrets()</code>'s result until the next write prunes it. Harmless today since the only consumer, <code>logrusutil.NewCensoringFormatter</code>, snapshots the set once at construction (worst case: over-censoring, never under-censoring) — would matter if <code>getSecrets</code> is ever wired into a live/reloading path.</p>
+  <pre>for token := range a.expiringTokens {
+    secrets.Insert(token)
+}</pre>
+</div>
+
+<div class="finding nit">
+  <div class="loc"><code>pkg/config/secret/agent.go:47-53</code> — Start does not explicitly re-trigger refreshCensorer after resetting expiringTokens</div>
+  <p><code>Start</code> resets <code>expiringTokens</code> to a fresh map but does not call <code>refreshCensorer</code>/<code>RefreshBytes</code> directly — it relies on the <code>Add</code> loop triggering <code>setSecret</code> → <code>refreshCensorer</code> for each path. If <code>paths</code> is empty this is still fine, since <code>ReloadingCensorer</code> was just re-constructed via <code>secretutil.NewCensorer()</code> two lines above, but the implicit dependency is non-obvious to a future reader.</p>
+  <pre>a.secretsMap = make(map[string]secretReloader, len(paths))
+a.expiringTokens = make(map[string]time.Time)
+a.ReloadingCensorer = secretutil.NewCensorer()</pre>
+</div>
+
+<h3>Questions</h3>
+<div class="finding question">
+  <div class="loc"><code>pkg/config/secret/agent.go:49</code> — Worth a comment explaining the restart-leak rationale?</div>
+  <p>The reason <code>expiringTokens</code> must be reset alongside <code>secretsMap</code> (preventing stale tokens from a previous <code>Start</code> from surviving a restart) is only documented in the PR description, not in code. A one-line comment would make the intent self-evident two years from now.</p>
+</div>
+
+<div class="finding question">
+  <div class="loc">operational — Release note for the redaction-gap fix?</div>
+  <p>This fix closes a secret-leakage gap in the legacy <code>CensoringFormatter</code> log path — active expiring tokens (e.g. GitHub App installation tokens) were previously unredacted there. Worth a release-note mention so security-conscious operators know logs predating this fix may contain unredacted expiring tokens. Not a merge blocker.</p>
+</div>
+
+<h2>Things I checked and was fine with</h2>
+<ul>
+  <li><code>Start()</code> reset ordering and zero-value safety of <code>agent{}</code> literals used directly in tests (<code>sync.RWMutex</code> zero value is valid).</li>
+  <li><code>NewCensoringFormatter</code> call sites (<code>clone.go</code>, <code>agent_test.go</code>, <code>logrusutil_test.go</code>) confirm <code>getSecrets()</code> is a one-shot snapshot, not a live/reloading path — makes the expiry-pruning nit above low-risk.</li>
+  <li>New tests actually exercise the fixed gaps (reset, censoring of active vs. expired token, <code>getSecrets</code> inclusion) rather than just re-testing existing behavior; they assert on <code>Censor()</code> output content, not just absence of error.</li>
+  <li>No lock-ordering or deadlock changes; <code>Start()</code>/<code>addExpiringToken</code> locking pattern unchanged.</li>
+  <li>No exported API, config schema (<code>json</code>/<code>yaml</code> tags), CLI flags, or RBAC/permission changes — purely internal unexported-state fix, no deployment/upgrade risk.</li>
+  <li>Cross-checked via a separate 3-perspective maintainer review (code quality / maintainability / deployment risk) — all three independently reached APPROVE with no critical or blocking issues; findings above consolidate their nits.</li>
+</ul>
+
+<h2>Open questions for the author</h2>
+<ul>
+  <li>Should <code>getSecrets()</code> (or <code>refreshCensorer</code>) prune expired entries eagerly on every read, in case a future caller wires it into a live-refresh path instead of a one-shot snapshot?</li>
+  <li>Would a short comment on the <code>expiringTokens</code> reset line in <code>Start</code> be worth adding for future readers?</li>
+  <li>Should a release note flag that logs predating this fix may contain unredacted expiring tokens?</li>
+</ul>
+
+</body>
+</html>

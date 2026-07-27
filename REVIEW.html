@@ -31,6 +31,8 @@
   ul { padding-left: 1.4rem; }
   li { margin-bottom: 0.3rem; }
   .file-ref { font-size: 0.82rem; color: #57606a; margin-bottom: 0.4rem; }
+  .source-tags { font-size: 0.72rem; color: #57606a; margin-top: 0.4rem; }
+  .source-tag { display: inline-block; background: #eaeef2; border-radius: 10px; padding: 0.05em 0.5em; margin-right: 0.3em; }
   a { color: #0969da; }
 </style>
 </head>
@@ -45,24 +47,24 @@
     <tr><td>Title</td><td>trigger: add hierarchical <code>trusted_apps</code> config with global/org/repo levels</td></tr>
     <tr><td>Author</td><td>petr-muller</td></tr>
     <tr><td>Base</td><td><code>main</code></td></tr>
-    <tr><td>Head SHA</td><td><code>55e4ec4e25ae945a4ebf5143cb93b6549c1210e0</code></td></tr>
-    <tr><td>Reviewed at</td><td>2026-06-15T17:02:56Z</td></tr>
-    <tr><td>Refresh</td><td>Updated from <code>18779e8</code>: 1-line test fix. Hold lifted 2026-06-15.</td></tr>
+    <tr><td>Head SHA</td><td><code>e3758df16ccef2a553ff8dfab99c6ceb617b0825</code></td></tr>
+    <tr><td>Reviewed at</td><td>2026-07-27T00:19:13Z</td></tr>
+    <tr><td>Refresh</td><td>Same head as the last technical review. This pass adds a 3-perspective maintainer review (code quality / maintainability / deployment risk) plus advisor synthesis on top of it — no new code to review, but new findings surfaced.</td></tr>
   </table>
 </div>
 
 <!-- VERDICT -->
 <div class="verdict-box">
   <div class="verdict-label">REQUEST CHANGES</div>
-  <p>The resolution mechanics are clean and well-tested, and backward-compatible parsing is handled correctly. But the PR changes the behavior of <em>existing</em> configs in ways that silently expand trust (previously-inert empty-<code>repos</code> triggers become global; repo triggers no longer shadow org-level trusted apps), and the <code>locked</code> guarantee can be silently defeated by an unvalidated duplicate at the same level. These need at minimum explicit migration callouts and validation before merge; the rest is polish.</p>
+  <p>The core resolution logic is well-designed and well-tested, and the previous round's biggest issue (silent global activation via empty <code>repos</code>) is fixed. But a 3-perspective maintainer review converged, independently, on the same conclusion: the generated <code>plugin-config-documented.yaml</code> now documents disproven semantics, and this redesign introduces new silent, security-relevant trust-widening behavior on upgrade — repo-level configs merging instead of shadowing, previously-inert <code>Repos: ["*"]</code> entries becoming live global grants, and no scope validation preventing a supplemental config from self-escalating to instance-wide trust. Deployment risk is rated HIGH.</p>
 </div>
 
 <!-- WHAT THIS PR DOES -->
 <h2>What this PR does</h2>
 <ul>
   <li>Replaces <code>TrustedApps []string</code> on <code>Trigger</code> with a structured <code>TrustedApp</code> type (<code>name</code>, <code>untrusted</code>, <code>locked</code>); custom <code>UnmarshalJSON</code> keeps legacy string lists parsing, including mixed arrays.</li>
-  <li>Rewrites <code>TriggerFor</code> as a single pass that both picks the most specific trigger (repo &gt; org &gt; defaults, first match wins) and accumulates trusted apps at global (empty <code>repos</code>), org, and repo levels.</li>
-  <li>Adds <code>resolveTrustedApps</code>: lower levels override upper ones per app unless the upper level set <code>locked</code>; repo level can never lock. The flat resolved list is stored in unexported <code>resolvedTrustedApps</code> and read via <code>GetTrustedApps()</code>.</li>
+  <li>Rewrites <code>TriggerFor</code> as a single pass that both picks the most specific trigger (repo &gt; org &gt; defaults, first match wins) and accumulates trusted apps at global (<code>Repos: ["*"]</code>), org, and repo levels.</li>
+  <li>Adds <code>resolveTrustedApps</code>: lower levels override upper ones per app unless the upper level set <code>locked</code>, and same-level duplicates can no longer clobber an already-locked entry. Repo level can never lock. The flat resolved list is stored in unexported <code>resolvedTrustedApps</code> and read via <code>GetTrustedApps()</code>.</li>
   <li>Migrates all five call sites (<code>generic-comment.go</code>, <code>pull-request.go</code>, <code>verify-owners.go</code>, <code>welcome.go</code>, <code>retitle.go</code>) to the accessor.</li>
   <li>Adds <code>ValidateLockedTrustedApps()</code> wired into <code>checkconfig</code> as the optional <code>validate-locked-trusted-apps</code> warning, flagging lower-level entries that mention apps locked above them.</li>
 </ul>
@@ -73,55 +75,119 @@
 <div class="finding">
   <div class="finding-header">
     <span class="badge badge-blocking">blocking</span>
-    <span>Existing configs silently expand trust on upgrade</span>
+    <span>plugin-config-documented.yaml not regenerated, describes obsolete semantics</span>
   </div>
   <div class="finding-body">
-    <p class="file-ref"><code>pkg/plugins/config.go:1139-1177</code> — <code>TriggerFor</code></p>
-    <p>Two behavior changes hit unmodified existing configs. <strong>(a)</strong> Triggers with empty <code>repos</code> were previously inert — the old <code>TriggerFor</code> set lookups never matched an empty set, and no validation rejects such entries — but now become the <em>global level</em> and grant trust instance-wide. A forgotten or mistaken entry that was harmless for years activates on upgrade. <strong>(b)</strong> A repo-level trigger previously shadowed the org trigger entirely; now trusted apps merge across levels, so a repo that deliberately defined a narrow list also inherits every org/global app.</p>
-    <p>Trusted apps gate automatic CI execution on PRs, so both broaden trust implicitly. Needs at least a prominent release-note/migration callout; ideally the global level requires explicit opt-in (a distinct config key) rather than reinterpreting previously-dead entries.</p>
-    <pre><span class="highlight">case len(trigger.Repos) == 0:
-    globalApps = append(globalApps, trigger.TrustedApps...)</span></pre>
+    <p class="file-ref"><code>pkg/plugins/plugin-config-documented.yaml:660-1078</code></p>
+    <p>This file is generated purely from Go doc comments via <code>hack/gen-prow-documented</code> (confirmed: it globs <code>pkg/plugins/*.go</code> through <code>genyaml.NewCommentMap</code>, no other input). It still says <span class="highlight">"A trigger entry with an empty repos field is treated as the global level for trusted_apps resolution"</span> and shows example <code>repos: - ""</code> — text that doesn't exist anywhere in the current Go source (grepped across <code>pkg/plugins</code>, no hits). It describes the pre-redesign behavior this PR replaced with the <code>Repos: ["*"]</code> opt-in. Anyone configuring <code>trusted_apps</code> from this generated reference will write an inert empty-<code>repos</code> entry expecting global scope.</p>
+    <pre># Repos is either of the form org/repos or just org.
+<span class="highlight"># A trigger entry with an empty repos field is treated as the global level
+# for trusted_apps resolution. Trust is resolved hierarchically:
+# global (empty repos) -> org-level -> repo-level.</span>
+repos:
+  - ""</pre>
+    <p>Needs <code>hack/gen-prow-documented</code> rerun before merge.</p>
+    <div class="source-tags"><span class="source-tag">code quality</span><span class="source-tag">maintainability</span><span class="source-tag">deployment risk</span> — flagged independently by all three perspectives</div>
+  </div>
+</div>
+
+<div class="finding">
+  <div class="finding-header">
+    <span class="badge badge-blocking">blocking</span>
+    <span>Repo-level trigger still silently merges with org/global trust instead of shadowing</span>
+  </div>
+  <div class="finding-body">
+    <p class="file-ref"><code>pkg/plugins/config.go:1134-1174</code> — <code>TriggerFor</code></p>
+    <p><em>Unaddressed from previous review.</em> A repo-level trigger that previously fully shadowed its org's <code>trusted_apps</code> (old code returned the first matching trigger outright) now has its trust list merged with org/global apps instead. An existing repo config that deliberately scoped a narrow trusted-apps list now silently inherits every org/global app too, with no operator-facing signal. The deployment-risk perspective rates this HIGH severity — it silently widens automatic-CI-trust on upgrade. Needs a migration callout, a checkconfig signal, or an explicit way to opt out of inheritance.</p>
+    <div class="source-tags"><span class="source-tag">deployment risk: HIGH</span></div>
+  </div>
+</div>
+
+<div class="finding">
+  <div class="finding-header">
+    <span class="badge badge-blocking">blocking</span>
+    <span><code>Repos: ["*"]</code> flips previously-inert entries into live global grants</span>
+  </div>
+  <div class="finding-body">
+    <p class="file-ref"><code>pkg/plugins/config.go:1140-1163</code> — <code>TriggerFor</code> switch</p>
+    <p>Pre-PR, no <code>Repos</code> value — including a literal <code>"*"</code> string — ever matched the old lookup (<code>sets.NewString(trigger.Repos...).Has(fullName)</code>/<code>.Has(org)</code>), so any existing config with <code>"*"</code> in a <code>Repos</code> list (copy-paste, template placeholder, accidental leftover) was a harmless no-op. Post-PR, <code>repos.Has("*")</code> makes that same entry an active global rule merged into every org and repo instance-wide — activating purely as a side effect of upgrading the binary, no config change, no warning, no error.</p>
+    <div class="source-tags"><span class="source-tag">deployment risk: HIGH (primary concern)</span></div>
+  </div>
+</div>
+
+<div class="finding">
+  <div class="finding-header">
+    <span class="badge badge-blocking">blocking</span>
+    <span>Supplemental/per-repo config aggregation has no scope validation</span>
+  </div>
+  <div class="finding-body">
+    <p class="file-ref"><code>pkg/plugins/config.go:2459</code> — <code>mergeFrom</code></p>
+    <p><code>mergeFrom</code> appends a supplemental config's <code>Triggers</code> directly onto <code>c.Triggers</code> with no validation that <code>Repos</code> values stay scoped to the org/repo that owns that supplemental file. This aggregation mechanism predates the PR, but pre-PR the worst a careless supplemental entry could do was claim trust for the specific org/repo string it listed. Post-PR, the same mechanism lets any supplemental config (e.g. a per-org self-service plugin-config file, a common decentralized-config pattern) declare <code>Repos: ["*"]</code> and grant its chosen app global, instance-wide trust — a materially larger escalation surface introduced by this PR.</p>
+    <div class="source-tags"><span class="source-tag">deployment risk</span></div>
   </div>
 </div>
 
 <div class="finding">
   <div class="finding-header">
     <span class="badge badge-should-fix">should fix</span>
-    <span>Same-level duplicates silently drop locks</span>
+    <span><code>ValidateLockedTrustedApps</code> still flags agreement as violation</span>
   </div>
   <div class="finding-body">
-    <p class="file-ref"><code>pkg/plugins/config.go:1188-1204</code> — <code>resolveTrustedApps</code></p>
-    <p>The lock check only protects against <em>lower</em> levels; within a level, entries overwrite unconditionally. Two global triggers both naming <code>app1</code> — first <code>{locked: true}</code>, second <code>{untrusted: true}</code> (perhaps added later in a different config file) — the second wins and the lock vanishes. <code>validateTrustedApps</code> only dedupes within a single trigger's list; cross-trigger same-level duplicates are unvalidated. Since <code>locked</code> is a security guarantee, it being defeatable by an unflagged duplicate undermines the feature. Either honor locks within a level or validate cross-trigger duplicates per level.</p>
-    <pre>for _, app := range globalApps {
-    <span class="highlight">state[app.Name] = &amp;trustedAppState{  // no lock check — last wins</span>
-        trusted: !app.Untrusted,
-        locked:  app.Locked,
+    <p class="file-ref"><code>pkg/plugins/config.go:1692-1758</code> — <code>ValidateLockedTrustedApps</code></p>
+    <p><em>Unaddressed from previous review.</em> It still checks only name membership, not whether the lower level's value actually <em>conflicts</em> with the locked value. A lower-level entry repeating the same trust value as the lock is still flagged, and no new test exercises the agreement case. Noisy for an opt-in warning.</p>
+    <pre>for _, app := range trigger.TrustedApps {
+    <span class="highlight">if globalLocked[app.Name] {  // no comparison of the actual trust value</span>
+        errs = append(errs, fmt.Errorf("trigger for org %q configures trusted app %q which is locked at global level", r, app.Name))
     }
 }</pre>
+    <div class="source-tags"><span class="source-tag">code quality</span></div>
   </div>
 </div>
 
 <div class="finding">
   <div class="finding-header">
     <span class="badge badge-should-fix">should fix</span>
-    <span><code>ValidateLockedTrustedApps</code> flags agreement as violation</span>
+    <span><code>locked: true</code> at repo level is still silently ignored without validation</span>
   </div>
   <div class="finding-body">
-    <p class="file-ref"><code>pkg/plugins/config.go</code> — <code>ValidateLockedTrustedApps</code></p>
-    <p>It checks only name membership, not whether the lower level actually <em>conflicts</em> with the locked value. Global locks <code>app1</code> as trusted; an org also lists <code>app1</code> as trusted (same value) — flagged anyway. Noisy for a warning users opt into. Also a self-flagging edge: a single trigger with <code>Repos: ["myorg", "myorg/myrepo"]</code> and a locked app populates <code>orgLocked</code> from itself, then its own repo entry is flagged against its own lock. Comparing effective trust values instead of name presence fixes both.</p>
+    <p class="file-ref"><code>pkg/plugins/config.go:1210-1218</code> (resolve) and <code>1651-1660</code> (<code>validateTrustedApps</code>)</p>
+    <p><em>Unaddressed from previous review.</em> The repo-level arm of <code>resolveTrustedApps</code> still drops <code>Locked</code> by design (commented), but <code>validateTrustedApps</code> neither errors nor warns when a repo-level entry sets it. The user gets no feedback that the field is meaningless there.</p>
   </div>
 </div>
 
 <div class="finding">
   <div class="finding-header">
     <span class="badge badge-should-fix">should fix</span>
-    <span><code>locked: true</code> at repo level is silently ignored without validation</span>
+    <span>Global/org/repo classification logic reimplemented independently in three places</span>
   </div>
   <div class="finding-body">
-    <p class="file-ref"><code>pkg/plugins/config.go:1205-1213</code> (resolve) and <code>validateTrustedApps</code></p>
-    <p>The repo-level arm of <code>resolveTrustedApps</code> drops <code>Locked</code> by design (commented), but <code>validateTrustedApps</code> neither errors nor warns when a repo-level entry sets it. The user gets no feedback that the field is meaningless there.</p>
-    <pre><span class="highlight">// locked is not set here: repo is the lowest level, so there is nothing to lock against.</span>
-state[app.Name] = &amp;trustedAppState{trusted: !app.Untrusted}</pre>
+    <p class="file-ref"><code>pkg/plugins/config.go</code> — <code>TriggerFor</code> (~1143-1160), <code>validateTrigger</code> (~1646), <code>ValidateLockedTrustedApps</code> (~1697-1758)</p>
+    <p>The rule for what counts as global (<code>Repos</code> contains <code>"*"</code>) vs. org (no slash) vs. repo (has slash) is implemented independently three times, with slightly different mechanics each time (a <code>sets.Set</code> lookup, a raw <code>sets.New[string](...).Has("*")</code> call, and manual <code>r == "*"</code>/<code>strings.Contains(r, "/")</code>/<code>strings.SplitN</code> string logic). If the classification rule ever changes, all three sites need to be kept in sync by hand with no shared helper enforcing it.</p>
+    <div class="source-tags"><span class="source-tag">code quality</span><span class="source-tag">maintainability</span></div>
+  </div>
+</div>
+
+<div class="finding">
+  <div class="finding-header">
+    <span class="badge badge-should-fix">should fix</span>
+    <span>Same-level conflicting unlocked entries resolve by iteration order, not content</span>
+  </div>
+  <div class="finding-body">
+    <p class="file-ref"><code>pkg/plugins/config.go:1185-1226</code> — <code>resolveTrustedApps</code></p>
+    <p>When two triggers match the same level (e.g. two global <code>Repos: ["*"]</code> blocks, or two org-level blocks for the same org) with conflicting <code>untrusted</code> values for the same app and neither is <code>locked</code>, the last one encountered in <code>c.Triggers</code> iteration order wins via plain map overwrite. Reordering the <code>triggers:</code> list (config generator, alphabetical re-sort, supplemental-dir concatenation order) can silently flip which value takes effect with zero change to the actual trust values.</p>
+    <div class="source-tags"><span class="source-tag">deployment risk</span></div>
+  </div>
+</div>
+
+<div class="finding">
+  <div class="finding-header">
+    <span class="badge badge-should-fix">should fix</span>
+    <span><code>resolvedTrustedApps</code> is hidden derived state requiring a cmpopts workaround</span>
+  </div>
+  <div class="finding-body">
+    <p class="file-ref"><code>pkg/plugins/config.go:599-603</code> (<code>GetTrustedApps</code>), <code>pkg/plugins/config.go:2464</code> (<code>mergeFrom</code>)</p>
+    <p><code>Trigger</code> gained an unexported field populated only as a side effect of <code>TriggerFor</code>; any <code>Trigger</code> value constructed another way silently returns "no apps trusted" via <code>GetTrustedApps()</code>, indistinguishable from a real empty-trust config. This forced <code>cmpopts.IgnoreUnexported(Trigger{})</code> into both production <code>mergeFrom</code> code and <code>TestMergeFrom</code> — the hidden state leaked into diffing/merging logic project-wide. A plain value-returning resolution function (or a distinct <code>ResolvedTrigger</code> type) would avoid derived state living inside the config struct.</p>
+    <div class="source-tags"><span class="source-tag">code quality</span><span class="source-tag">maintainability</span></div>
   </div>
 </div>
 
@@ -131,11 +197,10 @@ state[app.Name] = &amp;trustedAppState{trusted: !app.Untrusted}</pre>
     <span>Indentation error in test</span>
   </div>
   <div class="finding-body">
-    <p class="file-ref"><code>pkg/plugins/config_test.go</code> — <code>TestResolveTrustedApps</code> loop body (~line 749)</p>
-    <p><code>got := trigger.GetTrustedApps()</code> has an extra leading tab relative to the surrounding lines.</p>
+    <p class="file-ref"><code>pkg/plugins/config_test.go:781-782</code> — <code>TestResolveTrustedApps</code> loop body</p>
+    <p><em>Unaddressed.</em> <code>got := trigger.GetTrustedApps()</code> has an extra leading tab relative to the preceding line. Not gofmt-clean; would fail CI formatting checks.</p>
     <pre>trigger := tc.config.TriggerFor(tc.org, tc.repo)
-<span class="highlight">    got := trigger.GetTrustedApps()  // ← extra tab</span>
-if diff := cmp.Diff(tc.expected, got); diff != "" {</pre>
+<span class="highlight">    got := trigger.GetTrustedApps()  // ← extra tab</span></pre>
   </div>
 </div>
 
@@ -146,9 +211,20 @@ if diff := cmp.Diff(tc.expected, got); diff != "" {</pre>
   </div>
   <div class="finding-body">
     <p class="file-ref"><code>cmd/checkconfig/main.go:128</code></p>
-    <p>The new constant's padding breaks the column alignment of the surrounding const block.</p>
+    <p><em>Unaddressed.</em> The new constant's padding breaks the column alignment of the surrounding const block (one extra space vs. its same-length neighbor). Not gofmt-clean; would fail CI formatting checks.</p>
     <pre>validateConfigUpdaterACLsWarning               = "validate-config-updater-acls"
 <span class="highlight">validateLockedTrustedAppsWarning                = "validate-locked-trusted-apps"</span></pre>
+  </div>
+</div>
+
+<div class="finding">
+  <div class="finding-header">
+    <span class="badge badge-question">question</span>
+    <span><code>Repos: ["*", "someorg"]</code> collapses entirely to global</span>
+  </div>
+  <div class="finding-body">
+    <p class="file-ref"><code>pkg/plugins/config.go:1143-1160</code> — <code>TriggerFor</code> switch</p>
+    <p>The switch checks <code>repos.Has("*")</code> first, so a trigger mixing <code>"*"</code> with a specific org/repo name is classified purely as global for bucket selection; the org/repo-specific name never picks the org/repo match. Compounds the mixed-<code>repos</code> question below. Likely a non-issue in practice, but worth a doc note or a <code>validateTrigger</code> warning.</p>
   </div>
 </div>
 
@@ -170,10 +246,7 @@ if diff := cmp.Diff(tc.expected, got); diff != "" {</pre>
   </div>
   <div class="finding-body">
     <p class="file-ref"><code>pkg/plugins/config.go:599-603</code></p>
-    <p><code>resolvedTrustedApps</code> is only populated by <code>TriggerFor</code>; a directly constructed <code>Trigger</code> returns nil even with <code>TrustedApps</code> set. It fails <em>closed</em> (no apps trusted) — the correct security default, so low risk — but a doc comment on the <code>TrustedApps</code> field warning against reading it directly would help future callers.</p>
-    <pre>func (t *Trigger) GetTrustedApps() []string {
-    return t.resolvedTrustedApps
-}</pre>
+    <p><code>resolvedTrustedApps</code> is only populated by <code>TriggerFor</code>; a directly constructed <code>Trigger</code> returns nil even with <code>TrustedApps</code> set. It fails <em>closed</em> (no apps trusted) — the correct security default, so low risk — but a doc comment on the <code>TrustedApps</code> field warning against reading it directly would help future callers. See also the should-fix finding above on the hidden-state design itself.</p>
   </div>
 </div>
 
@@ -188,13 +261,28 @@ if diff := cmp.Diff(tc.expected, got); diff != "" {</pre>
   </div>
 </div>
 
+<div class="finding">
+  <div class="finding-header">
+    <span class="badge badge-question">question</span>
+    <span>Adopting object-form trusted_apps is a one-way street for binary rollback</span>
+  </div>
+  <div class="finding-body">
+    <p class="file-ref"><code>pkg/plugins/config.go</code> — <code>TrustedApps.UnmarshalJSON</code></p>
+    <p>Once a config is edited to use the new <code>{name, untrusted, locked}</code> object form (even for a single entry), it can no longer be loaded by a pre-PR Prow binary — only the reverse (legacy strings loaded by the new binary) is supported. Worth calling out explicitly in the PR description/changelog as an operational rollback caveat.</p>
+    <div class="source-tags"><span class="source-tag">deployment risk</span></div>
+  </div>
+</div>
+
 <!-- SINCE PREVIOUS REVIEW -->
-<h2>Since previous review (2026-06-09)</h2>
+<h2>Since previous review (2026-06-15)</h2>
 <ul>
-  <li>One new commit <code>55e4ec4e2</code>: adds <code>cmpopts.IgnoreUnexported(Trigger{})</code> to the <code>TestMergeFrom</code> assertion (was already present in the <code>mergeFrom</code> production code; this aligns the test). 1 file, 1 line changed.</li>
-  <li>Author ran <code>/retest</code> (2026-06-15) and <code>/hold cancel</code> (2026-06-15) — the <code>do-not-merge/hold</code> label is now removed. PR is merge-eligible pending LGTM.</li>
-  <li>No review comments or formal reviews since last review. The earlier COMMENTED review by jmguzik (2026-04-15) predates our review.</li>
-  <li>No findings from our review were addressed by the new commit; all blocking/should-fix items remain open.</li>
+  <li>Branch was force-pushed/rebased: old head <code>55e4ec4e2</code> is not an ancestor of new head <code>e3758df16</code> (same two commit messages, recreated hashes, rebased onto current <code>main</code>).</li>
+  <li>Global level redesigned: now requires explicit <code>Repos: ["*"]</code> instead of inferring global from empty <code>Repos</code>. Resolves the prior blocking finding's part (a), silent trust expansion — an empty-<code>Repos</code> trigger stays inert, matching its old (dead) behavior. Part (b), merge-across-levels for previously-shadowing repo triggers, remains unaddressed and is now tracked as its own blocking finding above.</li>
+  <li>Same-level lock protection added to all three levels in <code>resolveTrustedApps</code> (a lock check now guards the global, org, <em>and</em> repo loops, not just cross-level). Resolves the prior should-fix finding on same-level duplicates dropping locks; new test <code>"same-level duplicate cannot override lock"</code> covers it.</li>
+  <li><code>plugin-config-documented.yaml</code> was not regenerated after the <code>Repos</code> doc comment changed, so it still documents the old empty-repos-is-global semantics (blocking finding above).</li>
+  <li>The <code>cmpopts.IgnoreUnexported(Trigger{})</code> test fix survived the rebase (folded into the recreated commit).</li>
+  <li>CI: one <code>pull-prow-integration</code> failure notice posted 2026-06-16, not yet retested since. No new PR reviews or inline comments since last review; labels unchanged (<code>approved</code>, no hold).</li>
+  <li>Ran a 3-perspective maintainer review (code quality, maintainability, deployment risk) plus advisor synthesis, same head. Surfaced the <code>"*"</code>-activation risk, the supplemental-config escalation gap, the triplicated classification logic, the order-dependent same-level conflict resolution, and the hidden-state design concern — all new, on top of confirming the earlier findings. All three reviewers and the advisor independently concluded request-changes; deployment risk rated HIGH.</li>
 </ul>
 
 <!-- CHECKED -->
@@ -203,20 +291,25 @@ if diff := cmp.Diff(tc.expected, got); diff != "" {</pre>
   <li>All call sites migrated to <code>GetTrustedApps()</code>: <code>generic-comment.go</code>, <code>pull-request.go</code>, <code>verify-owners.go</code>, <code>welcome.go</code>, <code>retitle.go</code>. No remaining direct reads of the trigger field outside <code>config.go</code> (the <code>dco.go:301</code> hit is DCO's own field).</li>
   <li><code>UnmarshalJSON</code> handles legacy string, new object, and mixed arrays; YAML path verified via <code>sigs.k8s.io/yaml</code>'s JSON conversion (<code>TestTrustedAppsUnmarshalYAML</code>).</li>
   <li><code>sort.Strings(result)</code> makes resolution deterministic despite map iteration order.</li>
-  <li>First-match-wins semantics for non-trusted-apps trigger fields (<code>OnlyOrgMembers</code>, <code>TrustedOrg</code>, etc.) preserved exactly by the single-pass rewrite; the no-match path still calls <code>SetDefaults()</code>.</li>
-  <li><code>cmpopts.IgnoreUnexported(Trigger{})</code> correctly added in both <code>mergeFrom</code> (<code>config.go:2464</code>) and <code>TestMergeFrom</code>; <code>cmpopts</code> was already imported in the test file. <code>append(config.DefaultDiffOpts, ...)</code> is safe today (the literal has len==cap), though <code>slices.Clone</code> would be more defensive.</li>
-  <li><code>ValidateLockedTrustedApps</code> wired as an <em>optional</em> checkconfig warning, not a hard error — right call for upgrade safety.</li>
-  <li>Test coverage: UnmarshalJSON/YAML, <code>resolveTrustedApps</code> (locks, untrusted, inheritance, three levels), <code>validateTrustedApps</code>, <code>GetTrustedApps</code> nil behavior, <code>ValidateLockedTrustedApps</code> aggregate error counts.</li>
+  <li>First-match-wins semantics for non-trusted-apps trigger fields (<code>OnlyOrgMembers</code>, <code>TrustedOrg</code>, etc.) preserved exactly by the single-pass rewrite; the no-match path still calls <code>SetDefaults()</code>. Note this is inconsistent with <code>TrustedApps</code>' merge-across-levels semantics — see should-fix findings above.</li>
+  <li><code>cmpopts.IgnoreUnexported(Trigger{})</code> correctly present in both <code>mergeFrom</code> and <code>TestMergeFrom</code>; <code>cmpopts</code> was already imported in the test file. <code>append(config.DefaultDiffOpts, ...)</code> is safe today (the literal has len==cap), though <code>slices.Clone</code> would be more defensive.</li>
+  <li><code>ValidateLockedTrustedApps</code> wired as an <em>optional</em> checkconfig warning, not a hard error — right call for upgrade safety, though this means operators get no automatic signal unless they opt in.</li>
+  <li>Test coverage: UnmarshalJSON/YAML, <code>resolveTrustedApps</code> (locks, untrusted, inheritance, three levels, same-level duplicate-lock), <code>validateTrustedApps</code>, <code>GetTrustedApps</code> nil behavior, <code>ValidateLockedTrustedApps</code> aggregate error counts.</li>
+  <li>Rollback: legacy <code>[]string</code> config remains loadable by the new binary; the reverse (new object-form config on an old binary) is not — see open question below.</li>
 </ul>
 
 <!-- OPEN QUESTIONS -->
 <h2>Open questions for the author</h2>
 <ul>
-  <li>Should the global level require explicit opt-in (a distinct config key) instead of reinterpreting previously-inert empty-<code>repos</code> triggers?</li>
+  <li>Can <code>hack/gen-prow-documented</code> be rerun before merge so <code>plugin-config-documented.yaml</code> reflects the <code>Repos: ["*"]</code> opt-in?</li>
   <li>Is merge-across-levels intended to apply to existing repo triggers that previously shadowed org <code>trusted_apps</code>? If so, should release notes call out the trust expansion?</li>
-  <li>Should locks be honored (or duplicates rejected) within the same level, given two same-level triggers can currently drop a lock silently?</li>
-  <li>Should <code>ValidateLockedTrustedApps</code> compare effective trust values rather than flagging any name overlap (which flags agreement and can self-flag mixed-<code>repos</code> triggers)?</li>
+  <li>Should existing configs be scanned/warned for stray <code>Repos: ["*"]</code> entries before upgrade, given they silently activate?</li>
+  <li>Should supplemental/per-repo plugin config files be restricted from declaring a global (<code>Repos: ["*"]</code>) trigger, or scoped to the org/repo they belong to?</li>
+  <li>Should <code>ValidateLockedTrustedApps</code> compare effective trust values rather than flagging any name overlap?</li>
   <li>Should <code>locked: true</code> on a repo-level entry be a validation error?</li>
+  <li>Should a trigger mixing <code>"*"</code> with specific org/repo names in <code>Repos</code> be rejected or warned on?</li>
+  <li>Should same-level unlocked conflicts error out instead of silently resolving by list order?</li>
+  <li>Should the global/org/repo classification rule be extracted into one shared helper instead of three independent implementations?</li>
   <li>Should DCO's separate <code>TrustedApps []string</code> eventually adopt the hierarchical type? (Separate PR, just flagging.)</li>
 </ul>
 

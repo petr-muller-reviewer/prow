@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Triage: kubernetes-sigs/prow#651</title>
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+    color: #1a1a1a;
+    max-width: 860px;
+    margin: 2rem auto;
+    padding: 0 1.5rem;
+    background: #fdfdfd;
+  }
+  h1, h2, h3 { line-height: 1.3; }
+  h1 { font-size: 1.5rem; }
+  h2 {
+    font-size: 1.2rem;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 0.3rem;
+    margin-top: 2.2rem;
+  }
+  h3 { font-size: 1rem; margin-bottom: 0.3rem; }
+  code, pre {
+    font-family: "SF Mono", Consolas, Monaco, monospace;
+    font-size: 0.88rem;
+  }
+  pre {
+    background: #f4f4f4;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    padding: 0.8rem 1rem;
+    overflow-x: auto;
+  }
+  code { background: #f0f0f0; padding: 0.1em 0.3em; border-radius: 3px; }
+  .meta {
+    background: #f6f8fa;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    padding: 1rem 1.4rem;
+  }
+  .meta table { border-collapse: collapse; width: 100%; }
+  .meta td { padding: 0.2rem 0.5rem 0.2rem 0; vertical-align: top; }
+  .meta td.k { font-weight: 600; width: 9rem; color: #555; }
+  .verdict {
+    display: inline-block;
+    font-weight: 700;
+    padding: 0.2rem 0.7rem;
+    border-radius: 4px;
+    background: #dcfce7;
+    color: #166534;
+  }
+  .finding {
+    border-left: 3px solid #ccc;
+    padding: 0.2rem 0 0.2rem 1rem;
+    margin: 1rem 0;
+  }
+  .finding.cause { border-color: #dc2626; }
+  .finding.reproducibility { border-color: #2563eb; }
+  .finding.related-code { border-color: #7c3aed; }
+  .tag {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: #666;
+    font-weight: 700;
+  }
+  ul { margin-top: 0.3rem; }
+  a { color: #1d4ed8; }
+</style>
+</head>
+<body>
+
+<h1>Triage: kubernetes-sigs/prow#651</h1>
+
+<div class="meta">
+<table>
+<tr><td class="k">Issue</td><td><a href="https://github.com/kubernetes-sigs/prow/issues/651">kubernetes-sigs/prow#651</a></td></tr>
+<tr><td class="k">Title</td><td>`tide`: batch triggered containing an already-merged PR</td></tr>
+<tr><td class="k">State</td><td>open</td></tr>
+<tr><td class="k">Labels</td><td>kind/bug, lifecycle/rotten, area/tide</td></tr>
+<tr><td class="k">Main SHA</td><td><code>e601a1ffafd7d8d3a781238a4c5f4233d6248f68</code></td></tr>
+<tr><td class="k">Triaged at</td><td>2026-07-27T00:31:45Z</td></tr>
+<tr><td class="k">Legitimacy</td><td>LEGITIMATE</td></tr>
+<tr><td class="k">Effort</td><td>2 (moderate, help-wanted)</td></tr>
+<tr><td class="k">Verdict</td><td><span class="verdict">accepted</span></td></tr>
+</table>
+</div>
+
+<h2>Verdict</h2>
+<p><strong>Accepted.</strong> This is a legitimate, reproducible bug in tide's pool-building and batch-trigger logic: stale GitHub search results for just-merged PRs are trusted with no independent merged-state check anywhere in the pipeline, and a merge's base-SHA bump invalidates the whole subpool's job-match state at once, causing the stale PR to be swept into a freshly picked batch. Confirmed independently by two reporters and by a maintainer's own investigation. A small, additive fix (post-query merged-state filter) is well-defined and ready for a contributor to pick up; effort assessed at Level 2 (help-wanted).</p>
+
+<h2>What the issue reports</h2>
+<ul>
+<li>Tide fired a <code>TRIGGER_BATCH</code> ProwJob that included PR #4297 on Azure/ARO-HCP just 3 minutes after that PR was manually merged.</li>
+<li>Reporter expected a merged PR to never be included in a batch.</li>
+<li>A second maintainer (raelga) independently observed the same pattern recur consistently on the same repo (PR #4488).</li>
+<li>Maintainer petr-muller confirmed, after his own investigation, that this happens more often than the team realized, and traces back to around November 2025.</li>
+<li>A prior AI-assisted investigation (referenced but not directly available here) proposed adding a <code>merged</code> field as a post-query filter, and floated merge-attempt backoff via the existing <code>history</code> package as a possible complementary fix.</li>
+</ul>
+
+<h2>Analysis</h2>
+
+<h3>Reproducibility / observed behavior</h3>
+<div class="finding reproducibility">
+<span class="tag">reproducibility</span>
+<p>Confirmed independently by two reporters with concrete tide-history timeline evidence (9:50 merge → 9:53 <code>TRIGGER_BATCH</code> including the merged PR), and by the maintainer's own follow-up investigation, which found the issue is more frequent than initially assumed and dates back to roughly November 2025.</p>
+</div>
+
+<h3>Probable cause</h3>
+<div class="finding cause">
+<span class="tag">cause</span>
+<h4>No merged/closed-state check anywhere in tide's pool pipeline</h4>
+<p>The <code>PullRequest</code> GraphQL struct tide uses (<code>pkg/tide/tide.go:1990-2026</code>) has no <code>Merged</code>/<code>MergedAt</code>/<code>State</code>/<code>Closed</code> field — only <code>Mergeable</code>, <code>MergeStateStatus</code>, <code>CanBeRebased</code>, contexts, commits, labels. <code>filterPR()</code> (<code>pkg/tide/tide.go:755-793</code>) and <code>mergeChecker.isAllowedToMerge()</code> (<code>pkg/tide/github.go:600-627</code>) never check merge/closed state either. The only "Merged" occurrence in <code>pkg/tide/*.go</code> is a post-merge log line at <code>pkg/tide/github.go:289</code> — not derived from any query result. So a stale GitHub search result that still reports <code>state:open</code> for an already-merged PR is trusted at face value and enters the pool unfiltered.</p>
+</div>
+<div class="finding cause">
+<span class="tag">cause</span>
+<h4>Batch-trigger branch evaluated before single-retest branch</h4>
+<p><code>dividePool()</code> (<code>pkg/tide/tide.go:1938-1967</code>) recomputes each subpool's base SHA fresh every sync via <code>c.provider.GetRef(...)</code>. ProwJobs are matched into the subpool only by exact <code>(org, repo, branch, sha)</code> (<code>pkg/tide/tide.go:1974</code>). A merge bumps this SHA, invalidating job-match state for <em>every</em> PR in the subpool simultaneously — not just the merged one — so several PRs look "missing" at once (<code>accumulate()</code>, <code>pkg/tide/tide.go:1080-1136</code>; <code>accumulateBatch()</code>, <code>pkg/tide/tide.go:946-1038</code>). <code>takeAction()</code> (<code>pkg/tide/tide.go:1545-1588</code>) checks the batch condition <code>len(sp.prs) &gt; 1 &amp;&amp; len(batchPending) == 0</code> before the single-PR retrigger condition, so the batch path wins and sweeps in the stale merged PR. This matches the maintainer's own observation that a just-merged PR shows up in <code>TRIGGER_BATCH</code> but essentially never in a plain <code>TRIGGER</code>.</p>
+</div>
+
+<h3>Related code</h3>
+<div class="finding related-code">
+<span class="tag">related-code</span>
+<h4><code>pkg/tide/history/history.go</code> — no per-PR merge-attempt tracking</h4>
+<pre>type Record struct {
+    Time      time.Time
+    Action    string // e.g. "TRIGGER", "TRIGGER_BATCH", "MERGE", "MERGE_BATCH"
+    BaseSHA   string
+    Target    []prowapi.Pull
+    Err       string
+    TenantIDs []string
+}</pre>
+<p>Floated in the issue thread as a possible basis for merge-attempt/backoff tracking. It is a pure append-only audit log keyed per subpool (<code>org/repo:branch</code>), written once per sync from <code>syncSubpool()</code> (<code>pkg/tide/tide.go:1809-1818</code>). No per-PR lookup capability exists today — reusing it for backoff would need new indexing, not just consumption.</p>
+</div>
+<div class="finding related-code">
+<span class="tag">related-code</span>
+<h4>Natural insertion point for a fix — <code>pkg/tide/github.go:102-151</code></h4>
+<p><code>GitHubProvider.Query()</code> converts every raw GraphQL search node into the pool unconditionally. This is the cheapest place to add a <code>Merged</code>-state guard, before the PR ever reaches <code>filterPR()</code> or subpool division.</p>
+</div>
+
+<h3>Related issues / PRs</h3>
+<p>None found. No PR currently addresses this issue.</p>
+
+<h2>What I checked</h2>
+<ul>
+<li><code>filterPR()</code> / <code>isAllowedToMerge()</code> for any merge/closed-state check — none exists.</li>
+<li>Whether the <code>PullRequest</code> GraphQL struct already fetches merged state reusable for a filter — it does not; would require adding a new field.</li>
+<li>Whether <code>pkg/tide/history</code> already tracks per-PR merge attempts as floated in the thread — it does not; pool-level audit log only.</li>
+<li>Whether a broad GitHub Search API regression explains the Nov 2025 frequency increase — the maintainer ruled this out since vanilla k8s.io tide doesn't exhibit the same pattern as strongly; no alternative explanation confirmed yet.</li>
+</ul>
+
+<h2>Recommended next steps</h2>
+<ul>
+<li>Post a comment summarizing the confirmed root cause and recommended fix: add a <code>Merged</code>/<code>MergedAt</code> field to the <code>PullRequest</code> GraphQL struct (<code>pkg/tide/tide.go:1990-2026</code>) and filter it out in <code>GitHubProvider.Query()</code>/<code>search()</code> (<code>pkg/tide/github.go:102-212</code>), inviting a contributor to pick it up.</li>
+<li>Apply <code>/help-wanted</code>.</li>
+<li>Consider <code>/remove-lifecycle rotten</code> — the issue remains active and actionable; the staleness is calendar-only, not a sign the report lacks substance.</li>
+<li>File the merge-attempt-backoff idea (extending <code>pkg/tide/history</code>) as a separate, lower-priority follow-up issue rather than bundling it with the primary fix.</li>
+</ul>
+
+<h2>Open questions</h2>
+<ul>
+<li>"Do we have any more data on why the frequency of this seems to have increased since around November 2025? We considered and set aside a broad GitHub Search API regression since vanilla k8s.io tide doesn't show the same pattern as strongly, but haven't found an alternative explanation."</li>
+<li>"Does the exact GraphQL query type we use expose a cheap <code>merged</code>/<code>mergedAt</code> field directly on the <code>PullRequest</code> node, or would the query need restructuring to get it?"</li>
+</ul>
+
+</body>
+</html>

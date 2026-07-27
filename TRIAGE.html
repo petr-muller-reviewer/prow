@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Triage: kubernetes-sigs/prow#662 — Switch From logrus To slog</title>
+<style>
+  :root {
+    color-scheme: light dark;
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+    max-width: 860px;
+    margin: 2rem auto;
+    padding: 0 1.5rem;
+    color: #1a1a1a;
+    background: #fff;
+  }
+  code, pre {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    background: #f2f2f2;
+    border-radius: 4px;
+  }
+  code { padding: 0.1em 0.35em; font-size: 0.92em; }
+  pre {
+    padding: 0.9em 1em;
+    overflow-x: auto;
+    font-size: 0.88em;
+    line-height: 1.5;
+  }
+  pre code { background: none; padding: 0; }
+  h1 { font-size: 1.5rem; margin-bottom: 0.2rem; }
+  h2 {
+    font-size: 1.15rem;
+    margin-top: 2.2rem;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 0.3rem;
+  }
+  h3 { font-size: 1rem; margin-top: 1.4rem; }
+  .meta {
+    background: #f7f7f9;
+    border: 1px solid #e2e2e6;
+    border-radius: 8px;
+    padding: 1rem 1.2rem;
+    font-size: 0.92rem;
+  }
+  .meta table { border-collapse: collapse; width: 100%; }
+  .meta td { padding: 0.15rem 0.5rem 0.15rem 0; vertical-align: top; }
+  .meta td.k { font-weight: 600; white-space: nowrap; width: 9em; color: #444; }
+  .verdict-box {
+    border-left: 4px solid #2563eb;
+    background: #eef4ff;
+    padding: 0.9rem 1.2rem;
+    border-radius: 0 6px 6px 0;
+  }
+  .verdict-line {
+    font-weight: 700;
+    font-size: 1.05rem;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    color: #1d4ed8;
+    margin-bottom: 0.4rem;
+  }
+  .tag {
+    display: inline-block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.05em 0.5em;
+    border-radius: 999px;
+    background: #ddebff;
+    color: #1d4ed8;
+    margin-right: 0.4em;
+    text-transform: lowercase;
+  }
+  .finding { margin-bottom: 1.3rem; }
+  .finding .where, .finding .detail, .finding .ref, .finding .relevance {
+    font-size: 0.94rem;
+    margin: 0.15rem 0;
+  }
+  .finding .label { font-weight: 600; color: #444; }
+  ul { padding-left: 1.4rem; }
+  li { margin-bottom: 0.35rem; }
+  a { color: #1d4ed8; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  @media (prefers-color-scheme: dark) {
+    body { background: #16161a; color: #e5e5e5; }
+    code, pre { background: #232327; }
+    .meta { background: #1d1d22; border-color: #303038; }
+    .meta td.k { color: #a0a0a8; }
+    .verdict-box { background: #16233f; border-left-color: #4d8dff; }
+    .verdict-line { color: #7fb0ff; }
+    .tag { background: #1c2c4d; color: #7fb0ff; }
+    h2 { border-bottom-color: #303038; }
+    a { color: #7fb0ff; }
+  }
+</style>
+</head>
+<body>
+
+<h1>Switch From logrus To slog</h1>
+<p><a href="https://github.com/kubernetes-sigs/prow/issues/662">kubernetes-sigs/prow#662</a></p>
+
+<div class="meta">
+<table>
+<tr><td class="k">Issue</td><td>kubernetes-sigs/prow#662</td></tr>
+<tr><td class="k">State</td><td>open</td></tr>
+<tr><td class="k">Labels</td><td>kind/cleanup, area/dependency, lifecycle/stale</td></tr>
+<tr><td class="k">Main SHA</td><td><code>e601a1ffafd7d8d3a781238a4c5f4233d6248f68</code></td></tr>
+<tr><td class="k">Triaged at</td><td>2026-07-27T00:35:40Z</td></tr>
+<tr><td class="k">Verdict</td><td>accepted</td></tr>
+</table>
+</div>
+
+<h2>Verdict</h2>
+<div class="verdict-box">
+<div class="verdict-line">Accepted — effort level 4 (Very Large)</div>
+<p style="margin:0">Legitimate, well-scoped cleanup proposal. 376 files import <code>sirupsen/logrus</code>, and migration requires breaking changes to four public interfaces
+(<code>crier.ReportClient</code>, <code>WithFields(logrus.Fields)</code> on <code>github</code>/<code>bugzilla</code>/<code>jira</code>/<code>repoowners</code>, <code>plugins.Agent.Logger</code>)
+that are consumed by code outside this repo. Recommend tracking as an epic with sequenced sub-issues rather than a single PR.</p>
+</div>
+
+<h2>What the issue reports</h2>
+<ul>
+<li>Proposes migrating Prow's logging from <code>sirupsen/logrus</code> (unmaintained upstream, 6 years without a major release) to stdlib <code>log/slog</code>.</li>
+<li>Not a bug report — a cleanup / dependency-modernization proposal.</li>
+<li>Already labeled <code>kind/cleanup</code>, <code>area/dependency</code>; picked up <code>lifecycle/stale</code> from k8s-triage-robot on 2026-06-27 due to inactivity.</li>
+<li>A prior triage comment (petr-muller, 2026-03-29) already scoped the problem in detail; this triage independently verified that scoping against current code and found it slightly understated.</li>
+</ul>
+
+<h2>Analysis</h2>
+
+<h3>Related code</h3>
+
+<div class="finding">
+<span class="tag">related-code</span><strong>logrusutil package</strong>
+<div class="where"><span class="label">where:</span> <code>pkg/logrusutil/logrusutil.go:37-155</code> (only source file; <code>logrusutil_test.go</code> alongside)</div>
+<pre><code>ComponentInit()  // :60, sugar over Init(), sets DefaultFieldsFormatter{PrintLineNumber: true, DefaultFields: {"component": &lt;binary name&gt;}}; called from 37 cmd/* entry points
+Init()           // :45, configures logrus formatter/ReportCaller; wires controller-runtime logger via log.SetLogger(logrusr.New(logrus.StandardLogger())) at :56
+DefaultFieldsFormatter  // :37-86, renames "level" -&gt; "severity" at :74-75 (comment: GCP log collection expects "severity"), injects component name
+CensoringFormatter      // :88-125, scrubs secrets from message and raw formatter output via secretutil.Censorer
+ThrottledWarnf          // :127-155, rate-limits logrus.Warnf via throttleCheck/throttleLock</code></pre>
+</div>
+
+<div class="finding">
+<span class="tag">related-code</span><strong>crier.ReportClient interface</strong>
+<div class="where"><span class="label">where:</span> <code>pkg/crier/controller.go:38-47</code></div>
+<pre><code>Report(ctx, log *logrus.Entry, pj) ...
+ShouldReport(ctx, log *logrus.Entry, pj) ...</code></pre>
+<div class="detail">Implemented by 7 reporter packages: <code>pkg/crier/reporters/{pubsub,slack,gcs,gcs/kubernetes,gerrit,github,resultstore}/reporter.go</code>.</div>
+</div>
+
+<div class="finding">
+<span class="tag">related-code</span><strong>WithFields(logrus.Fields) interface methods</strong>
+<div class="where"><span class="label">where:</span> <code>pkg/github/client.go:299</code> (interface) / <code>:387</code> (impl); <code>pkg/bugzilla/client.go:97</code> / <code>:204</code>; <code>pkg/jira/jira.go:96</code> / <code>:642</code>; <code>pkg/repoowners/repoowners.go:148</code> / <code>:178</code></div>
+<div class="detail">Four independent public interfaces all expose <code>logrus.Fields</code> directly in their method signatures.</div>
+</div>
+
+<div class="finding">
+<span class="tag">related-code</span><strong>plugins.Agent.Logger</strong>
+<div class="where"><span class="label">where:</span> <code>pkg/plugins/plugins.go:209</code></div>
+<pre><code>type Agent struct {
+    ...
+    Logger *logrus.Entry
+    ...
+}</code></pre>
+<div class="detail">Highest blast-radius exposure — referenced in ~54 files under <code>pkg/plugins/</code> (<code>pc.Logger</code>, <code>.Logger.With(...)</code>), and consumed by plugin implementations that can live outside this repo. This is the sharpest edge of the whole migration.</div>
+</div>
+
+<div class="finding">
+<span class="tag">related-code</span><strong>bombsimon/logrusr/v4 bridge</strong>
+<div class="where"><span class="label">where:</span> <code>go.mod:20</code> (v4.1.0), single usage at <code>pkg/logrusutil/logrusutil.go:25,56</code></div>
+<div class="detail">Bridges logrus to logr for controller-runtime. Replaceable by <code>logr.FromSlogHandler()</code> (available in <code>go-logr/logr</code> since v1.4) once <code>Init()</code> no longer needs a logrus-backed <code>log.SetLogger</code> — an early, low-risk win that drops a dependency without touching the four public interfaces.</div>
+</div>
+
+<h3>Probable cause / difficulty driver</h3>
+<div class="finding">
+<span class="tag">cause</span><strong>why this is hard</strong>
+<div class="detail">Not algorithmic difficulty — structural. The GCP <code>severity</code>-field rename and secret-censoring behavior must be preserved exactly, and the four public interfaces need coordinated, atomic conversion across every implementer/caller, including code outside this repo (plugin implementations). Effort is dominated by breaking-change surface area, not line count.</div>
+</div>
+
+<h3>Related issues / PRs</h3>
+<div class="finding">
+<span class="tag">related-issue</span><strong>prior triage comment</strong>
+<div class="ref"><span class="label">ref:</span> <a href="https://github.com/kubernetes-sigs/prow/issues/662#issuecomment-4149115466">kubernetes-sigs/prow#662 comment (petr-muller, 2026-03-29)</a></div>
+<div class="relevance"><span class="label">relevance:</span> Did the initial scoping (~250 files, <code>ComponentInit</code> 31+ call sites, same four interfaces) that this triage verified against current code and found modestly larger (376 files, 37 call sites). Full detail at <a href="https://github.com/petr-muller/prow/blob/issue-triage-662/ISSUE-TRIAGE.md">petr-muller/prow@issue-triage-662/ISSUE-TRIAGE.md</a>.</div>
+</div>
+
+<h2>What I checked</h2>
+<ul>
+<li>Verified logrus file-count and <code>ComponentInit()</code> call-site counts against current code: 376 files (<code>grep -rl "sirupsen/logrus"</code>), 37 call sites — both higher than the prior triage comment's ~250/31+.</li>
+<li>Confirmed <code>bombsimon/logrusr/v4</code> bridge is still in use, single call site, replaceable by <code>logr.FromSlogHandler()</code>.</li>
+<li>Searched for any existing partial slog migration (<code>grep -rl "log/slog"</code>) — none found; greenfield.</li>
+<li>Reviewed <code>pkg/logrusutil/logrusutil_test.go</code> — covers only <code>CensoringFormatter</code> (4 test functions); <code>DefaultFieldsFormatter</code> and <code>ThrottledWarnf</code> have zero test coverage today.</li>
+<li>Effort-assessed at level 4 (Very Large): scope (376 files), breaking changes to 4 public interfaces including one consumed by external plugin code, and required expertise in Prow's plugin architecture and production log-collection requirements all point to level 4 despite the underlying goal being architecturally uncontroversial.</li>
+</ul>
+
+<h2>Recommended next steps</h2>
+<ul>
+<li>Comment on the issue proposing decomposition into sub-issues: (a) add missing <code>logrusutil</code> tests for <code>DefaultFieldsFormatter</code>/<code>ThrottledWarnf</code>, (b) replace the <code>logrusr</code> bridge with <code>logr.FromSlogHandler()</code>, (c) one sub-issue per public interface (<code>crier.ReportClient</code>, the four <code>WithFields</code> methods, <code>plugins.Agent.Logger</code>).</li>
+<li>Resolve the <code>logrus.Fields</code> → slog-attrs-vs-shim design question explicitly (issue comment or short design note) before the bulk internal-file conversion starts.</li>
+<li>Loudly flag the <code>plugins.Agent.Logger</code> breaking change for anyone maintaining plugin implementations outside this repo.</li>
+<li>Consider removing/resetting <code>lifecycle/stale</code> once an epic/sub-issue plan is posted — the staleness reflects lack of scoping, not lack of validity.</li>
+<li>Recommended labels going forward: keep <code>kind/cleanup</code>, <code>area/dependency</code>; do not add <code>good-first-issue</code> or <code>help-wanted</code> as-is.</li>
+</ul>
+
+<h2>Open questions</h2>
+<ul>
+<li>Should <code>logrus.Fields</code>-shaped call sites convert to idiomatic slog <code>Attr</code>/<code>...any</code> pairs, or route through a compatibility shim? This determines how mechanical the internal-file conversion can be.</li>
+<li>Is there existing precedent/policy for handling breaking changes to interfaces consumed by external plugin implementations (deprecation window, major-version signal, etc.)?</li>
+</ul>
+
+</body>
+</html>

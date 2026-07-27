@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Triage: kubernetes-sigs/prow#797</title>
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+    color: #1a1a1a;
+    max-width: 880px;
+    margin: 2rem auto;
+    padding: 0 1.5rem;
+    background: #fff;
+  }
+  code, pre {
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 0.92em;
+  }
+  pre {
+    background: #f5f5f5;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    padding: 0.75rem 1rem;
+    overflow-x: auto;
+  }
+  code {
+    background: #f0f0f0;
+    padding: 0.1em 0.35em;
+    border-radius: 3px;
+  }
+  pre code { background: none; padding: 0; }
+  h1 { font-size: 1.4rem; margin-bottom: 0.25rem; }
+  h2 { font-size: 1.15rem; margin-top: 2rem; border-bottom: 1px solid #ddd; padding-bottom: 0.3rem; }
+  h3 { font-size: 1rem; margin-top: 1.25rem; }
+  table.meta { border-collapse: collapse; margin: 1rem 0 1.5rem 0; }
+  table.meta td { padding: 0.15rem 0.75rem 0.15rem 0; vertical-align: top; }
+  table.meta td.k { color: #666; white-space: nowrap; }
+  .verdict-box {
+    background: #fff8e6;
+    border: 1px solid #e8d9a0;
+    border-radius: 6px;
+    padding: 1rem 1.25rem;
+    margin: 1rem 0;
+  }
+  .verdict-box .line { font-weight: 600; font-size: 1.05rem; }
+  ul { padding-left: 1.4rem; }
+  li { margin-bottom: 0.3rem; }
+  .tag {
+    display: inline-block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: #555;
+    background: #eee;
+    border-radius: 3px;
+    padding: 0.1em 0.5em;
+    margin-right: 0.5em;
+  }
+  a { color: #0b5fae; }
+</style>
+</head>
+<body>
+
+<h1>Triage: kubernetes-sigs/prow#797</h1>
+<table class="meta">
+  <tr><td class="k">Issue</td><td><a href="https://github.com/kubernetes-sigs/prow/issues/797">kubernetes-sigs/prow#797</a></td></tr>
+  <tr><td class="k">Title</td><td>Feature Request: PR Dependencies</td></tr>
+  <tr><td class="k">State</td><td>closed</td></tr>
+  <tr><td class="k">Labels</td><td>kind/feature</td></tr>
+  <tr><td class="k">Triaged at</td><td>2026-07-27T00:19:19Z</td></tr>
+  <tr><td class="k">Main SHA</td><td><code>e601a1ffafd7d8d3a781238a4c5f4233d6248f68</code></td></tr>
+</table>
+
+<h2>Verdict</h2>
+<div class="verdict-box">
+  <div class="line">wontfix — already correctly closed, no action needed.</div>
+  <p style="margin-bottom:0;">
+    The issue is a legitimate, well-specified feature request (a <code>/depend #NNN</code> command for
+    stacked-PR merge gating) that was already fully triaged and closed by the community: maintainer
+    <strong>Prucek</strong> wrote up a complete design and concluded the reliability cost — new
+    cross-PR reconciliation machinery needed to survive missed merge webhooks — outweighs the benefit
+    over the existing manual <code>/hold</code> + comment workaround, and author <strong>tallclair</strong>
+    agreed to close in favor of waiting on GitHub-native stacked PRs. Independent code research
+    confirms this rationale holds.
+  </p>
+</div>
+
+<h2>What the issue reports</h2>
+<ul>
+  <li>Requests first-class support for stacked PRs: a <code>/depend #1111</code> command on PR #2222 would block #2222 from merging until #1111 merges.</li>
+  <li>Proposes a companion <code>/undepend</code> (or <code>/depend cancel</code>) to remove the link manually.</li>
+  <li>Motivated by a common Kubernetes workflow: opening PR B that builds on PR A, currently handled manually via <code>/hold</code> plus a comment noting the dependency.</li>
+  <li>Maintainer <strong>Prucek</strong> proposed a concrete design in comments: new label-based plugin, <code>do-not-merge/has-unmerged-dependency</code> label, a merge-event handler to release dependents — but flagged reliability/complexity concerns as reasons not to build it.</li>
+  <li>Author <strong>tallclair</strong> agreed to close, pointing to <a href="https://github.github.com/gh-stack/">GitHub-native stacked PRs</a> as a likely-sufficient alternative.</li>
+</ul>
+
+<h2>Analysis</h2>
+
+<h3>Probable outcome if built (feasibility)</h3>
+<p>
+The "block" half of the proposal is trivial: a new <code>do-not-merge/*</code> label plus Tide's
+already-generic <code>missingLabels</code> filter (<code>pkg/tide/status.go:209-216</code>,
+config field <code>pkg/config/tide.go:550,583</code>) — no Tide code changes required.
+</p>
+<p>
+The "auto-unblock when the dependency merges" half is the hard part. It requires a
+<code>PullRequestHandler</code> that, on a merge event, looks up and mutates <em>other</em> PRs'
+labels — a pattern that does not exist anywhere in the current plugin codebase. Grepping for
+<code>GetPullRequests</code>/<code>Search(</code> across <code>pkg/plugins/*</code> returned nothing.
+Checked every plugin registering <code>PullRequestHandler</code> (<code>branchcleaner</code>,
+<code>bugzilla</code>, <code>releasenote</code>, <code>milestoneapplier</code>, <code>lgtm</code>,
+<code>reward-owners</code>, <code>updateconfig</code>) — none of them search or mutate other PRs on
+an event. The closest analog is Tide's own sync loop (<code>pkg/tide</code>), a large, purpose-built
+subsystem, not a lightweight pattern other plugins reuse.
+</p>
+<p>
+This means reliably auto-releasing dependents would also need a periodic reconciliation pass to cover
+missed merge webhooks — exactly the concern <strong>Prucek</strong> raised in the issue thread.
+</p>
+
+<h3>Related code</h3>
+<ul>
+  <li>
+    <code>pkg/plugins/hold/hold.go:41-108</code> — the <code>/hold</code> plugin, precedent for the
+    "block" half only:
+    <pre><code>RegisterGenericCommentHandler(pluginName, handleGenericComment, helpProvider)
+// matches /hold and /hold cancel via regex, then AddLabel/RemoveLabel(labels.Hold)</code></pre>
+    Purely comment-driven; no <code>PullRequestHandler</code>, no merge-event reaction, no
+    reconciliation loop at all.
+  </li>
+  <li>
+    <code>pkg/tide/status.go:209-216</code> and <code>pkg/config/tide.go:550,583</code> — Tide's
+    <code>missingLabels</code> filter is a generic string list; confirms a new blocking label needs
+    zero Tide changes.
+  </li>
+  <li>
+    <code>pkg/labels/labels.go:22-54</code> — established <code>do-not-merge/*</code> naming
+    convention (<code>BlockedPaths</code>, <code>CpUnapproved</code>, <code>Hold</code>,
+    <code>InvalidOwners</code>, <code>MergeCommits</code>, <code>WorkInProgress</code>) a new label
+    would fit cleanly.
+  </li>
+</ul>
+
+<h3>Related issues / PRs</h3>
+<ul>
+  <li>None found — no other issue references <code>/depend</code> or PR-dependency tracking, and no PR attempted an implementation.</li>
+</ul>
+
+<h2>What I checked</h2>
+<ul>
+  <li>Whether Tide needs code changes to support a new blocking label — no, confirmed generic config.</li>
+  <li>Whether any existing plugin already does cross-PR lookup/mutation on merge events — no, checked all 7 <code>PullRequestHandler</code> plugins.</li>
+  <li>Whether a PR or related issue already implements or tracks this — none found.</li>
+  <li>Whether the issue's own closure rationale holds up against the current codebase — yes, independently confirmed.</li>
+</ul>
+
+<h2>Recommended next steps</h2>
+<ul>
+  <li>No maintainer action required — issue is already closed with a sound, community-agreed rationale.</li>
+  <li>Optional: apply the <code>wontfix</code> label for tracker hygiene (issue currently only carries <code>kind/feature</code>).</li>
+  <li>If GitHub-native stacked PRs later prove insufficient, point any future requester toward filing a new, narrowly-scoped issue rather than reopening #797.</li>
+</ul>
+
+<h2>Open questions</h2>
+<ul>
+  <li>None — the original author and a maintainer reached explicit agreement in-thread; nothing outstanding to ask.</li>
+</ul>
+
+</body>
+</html>

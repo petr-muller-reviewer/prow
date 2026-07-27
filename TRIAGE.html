@@ -36,10 +36,10 @@
 <h1>Triage: kubernetes-sigs/prow#603</h1>
 <div class="meta">
   <a href="https://github.com/kubernetes-sigs/prow/issues/603">flaking test: <code>TestAddWithParser</code></a><br>
-  <span>State: <strong>open</strong></span>
+  <span>State: <strong>closed</strong> (auto-closed by lifecycle bot — see note below)</span>
   <span>Labels: <code>kind/bug</code>, <code>lifecycle/rotten</code></span><br>
-  <span>Triaged: <strong>2026-06-01T10:55:35Z</strong></span>
-  <span>Main SHA: <code>71428b9c282ee8c9e7e9512068fccce86e7915da</code></span><br>
+  <span>Triaged: <strong>2026-07-27T00:27:41Z</strong></span>
+  <span>Main SHA: <code>1f90b1805b30a2d3c2e8b43d5791de9772a0521b</code></span><br>
   <span class="badge b-green">accepted</span>
   <span class="badge b-green">Level 1 — Easy</span>
   <span class="badge b-yellow">kind/flake</span>
@@ -51,6 +51,10 @@
   <p><strong>Accepted.</strong> Legitimate flaky test caused by a race in the test's own synchronization — production code is correct. Test-only fix, good-first-issue.</p>
 </div>
 
+<div class="card" style="border-left-color: var(--yellow);">
+  <p><strong>Note on closure:</strong> This issue was auto-closed as "Not Planned" by <code>k8s-triage-robot</code> on 2026-06-25 purely because the <code>lifecycle/rotten</code> staleness timer expired — no maintainer reviewed and rejected it. Recommendation is to reopen.</p>
+</div>
+
 <h2>What the Issue Reports</h2>
 <ul>
   <li>Unit test <code>TestAddWithParser</code> in <code>pkg/config/secret</code> flakes intermittently in CI.</li>
@@ -59,10 +63,11 @@
   <li>Log output also shows "no such file or directory" warnings for temp files from the parallel test instance and the expected <code>strconv.Atoi</code> error for the "not-a-number" phase.</li>
   <li>Reported 2026-01-26, went stale with no fix.</li>
 </ul>
-<p style="margin-top:.8rem;color:var(--muted);font-size:.88rem"><strong>Since previous triage (2026-05-30):</strong></p>
+<p style="margin-top:.8rem;color:var(--muted);font-size:.88rem"><strong>Since previous triage (2026-06-01):</strong></p>
 <ul>
-  <li>Lifecycle label progressed from <code>lifecycle/stale</code> to <code>lifecycle/rotten</code> (automated bot). Issue will auto-close in ~30 days without activity.</li>
-  <li>No new comments, no linked PRs, no cross-references.</li>
+  <li>Auto-closed as "Not Planned" by <code>k8s-triage-robot</code> on 2026-06-25 after the <code>lifecycle/rotten</code> timer expired — a pure automation timeout, not a maintainer decision.</li>
+  <li>No new human comments, no linked PRs, no cross-references.</li>
+  <li>Confirmed on current main (<code>1f90b1805</code>): the only intervening change to <code>pkg/config/secret/</code> is unrelated commit <code>188a2e4d1</code> ("Fix expiring token handling gaps in secret agent") — <code>reloader.go</code> and <code>TestAddWithParser</code> are untouched, so this analysis still holds.</li>
 </ul>
 
 <h2>Analysis</h2>
@@ -138,6 +143,7 @@ p.lock.Unlock()</pre>
 
 <h2>Recommended Next Steps</h2>
 <ol>
+  <li><code>/reopen</code> the issue — it was auto-closed by lifecycle automation, not on its merits</li>
   <li>Post comment with root cause analysis and fix approach (draft prepared below)</li>
   <li>Apply labels: <code>/remove-lifecycle rotten</code>, <code>/kind flake</code>, <code>/good-first-issue</code></li>
   <li>Wait for contributor pickup — or fix it yourself (30 min)</li>

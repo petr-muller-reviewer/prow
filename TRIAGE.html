@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Triage: kubernetes-sigs/prow#559</title>
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+    color: #1a1a1a;
+    max-width: 860px;
+    margin: 2rem auto;
+    padding: 0 1.5rem;
+    background: #fdfdfd;
+  }
+  h1, h2, h3 { line-height: 1.3; }
+  h1 { font-size: 1.6rem; margin-bottom: 0.2rem; }
+  h2 { font-size: 1.2rem; margin-top: 2.2rem; border-bottom: 1px solid #ddd; padding-bottom: 0.3rem; }
+  h3 { font-size: 1rem; margin-bottom: 0.3rem; }
+  code, pre {
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 0.88rem;
+  }
+  pre {
+    background: #f4f4f4;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    padding: 0.8rem 1rem;
+    overflow-x: auto;
+  }
+  code {
+    background: #f0f0f0;
+    padding: 0.1rem 0.3rem;
+    border-radius: 3px;
+  }
+  a { color: #0969da; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .meta-block {
+    background: #f6f8fa;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    padding: 1rem 1.2rem;
+    font-size: 0.92rem;
+  }
+  .meta-block table { border-collapse: collapse; width: 100%; }
+  .meta-block td { padding: 0.15rem 0.5rem 0.15rem 0; vertical-align: top; }
+  .meta-block td.k { color: #57606a; white-space: nowrap; width: 1%; }
+  .verdict-banner {
+    background: #dafbe1;
+    border: 1px solid #2da44e;
+    border-radius: 6px;
+    padding: 0.9rem 1.2rem;
+    margin: 1rem 0;
+  }
+  .verdict-banner .label {
+    font-weight: 700;
+    color: #116329;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+    letter-spacing: 0.03em;
+  }
+  .finding { margin-bottom: 1.4rem; }
+  .tag {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding: 0.1rem 0.5rem;
+    border-radius: 3px;
+    margin-right: 0.4rem;
+    background: #e7e9eb;
+    color: #444;
+  }
+  .tag.cause { background: #ffebe9; color: #82071e; }
+  .tag.reproducibility { background: #fff8c5; color: #7d4e00; }
+  .tag.related-code { background: #ddf4ff; color: #0550ae; }
+  .tag.related-pr { background: #dafbe1; color: #116329; }
+  .tag.related-issue { background: #fbefff; color: #6639ba; }
+  ul { padding-left: 1.3rem; }
+  li { margin-bottom: 0.3rem; }
+  .q { font-style: italic; }
+</style>
+</head>
+<body>
+
+<h1>Triage: Update Base Prow Images</h1>
+<p><a href="https://github.com/kubernetes-sigs/prow/issues/559">kubernetes-sigs/prow#559</a></p>
+
+<div class="meta-block">
+<table>
+<tr><td class="k">Issue</td><td>kubernetes-sigs/prow#559</td></tr>
+<tr><td class="k">Title</td><td>Update Base Prow Images</td></tr>
+<tr><td class="k">State</td><td>open</td></tr>
+<tr><td class="k">Labels</td><td>lifecycle/rotten</td></tr>
+<tr><td class="k">Triaged at</td><td>2026-07-27T00:32:02Z</td></tr>
+<tr><td class="k">Main SHA</td><td><code>e601a1ffafd7d8d3a781238a4c5f4233d6248f68</code></td></tr>
+</table>
+</div>
+
+<div class="verdict-banner">
+<div class="label">Verdict: Accepted</div>
+<p style="margin-bottom:0">
+Legitimate build-infra request. The immediate symptom (stale base images) has already been patched twice by hand (PR #567, PR #747), but the automation the issue actually asks for isn't in place yet. PR #796 supplies half of it — a <code>generic-autobumper</code> config — but is unreviewed, and the other half (a periodic job in <code>kubernetes/test-infra</code> to invoke it) doesn't exist. Keep open; the path to closing it is concrete and small.
+</p>
+</div>
+
+<h2>What the issue reports</h2>
+<ul>
+<li>Prow's base images (pinned in <code>.ko.yaml</code>) hadn't been updated since July 2025, so images built for Prow components carried an outdated <code>gcr.io</code>-registry base.</li>
+<li>Reporter asked whether these could be refreshed and, implicitly, kept refreshed going forward.</li>
+<li>Follow-up discussion (petr-muller, upodroid, BenTheElder) converged on a plan: get dependabot bumping enabled upstream in <code>kubernetes/test-infra</code> first, then add a <code>generic-autobumper</code> config in this repo to auto-bump <code>.ko.yaml</code>.</li>
+<li>BenTheElder separately floated a longer-term idea: move Prow-only base images into this repo so their lifecycle isn't tied to test-infra's larger, unrelated CI image set.</li>
+<li>The bot marked the issue <code>lifecycle/rotten</code> after 90+30 days of inactivity — but there has been real activity (two manual bumps, one open fix PR) the bot doesn't see as issue comments.</li>
+</ul>
+
+<h2>Analysis</h2>
+
+<h3>Reproducibility / observed behavior</h3>
+<p>The staleness described in the issue has already recurred once since filing, confirming it's a systemic gap rather than a one-off:</p>
+<pre>da4351c35 Update base container images to v20251206-8481528a19   (2025-12-15)
+6312f82b3 Update base container images to v20260512-1f34ef0df3   (2026-06-09)</pre>
+<p>Both are human-authored PRs (prad9192, valen-mascarenhas14) — not bot commits — meaning nothing currently keeps <code>.ko.yaml</code> current on its own.</p>
+
+<h3>Probable cause</h3>
+<p><code>hack/autobump.yaml</code> (added by PR #796) configures <code>generic-autobumper</code> correctly, but a config file alone does nothing — it needs a periodic ProwJob to invoke <code>generic-autobumper --config=hack/autobump.yaml</code> on a schedule. Job definitions for this repo live in a different repository, <code>kubernetes/test-infra</code>, under <code>config/jobs/kubernetes-sigs/prow/</code>. A search of that path today turns up <code>prow-periodics.yaml</code>, <code>prow-presubmits.yaml</code>, and <code>prow-postsubmits.yaml</code> — none of which reference <code>generic-autobumper</code> or <code>hack/autobump.yaml</code>. So the automation is half-built.</p>
+
+<h3>Related code</h3>
+
+<p><strong><code>.ko.yaml:7-56</code></strong> — the base image pins this issue is about:</p>
+<pre>baseImageOverrides:
+  sigs.k8s.io/prow/cmd/branchprotector: gcr.io/k8s-staging-test-infra/alpine:v20260512-1f34ef0df3
+  sigs.k8s.io/prow/cmd/checkconfig: gcr.io/k8s-staging-test-infra/git:v20260512-1f34ef0df3
+  ...</pre>
+
+<p><strong><code>hack/autobump.yaml</code></strong> (new file from PR #796, not yet on <code>main</code>):</p>
+<pre>gitHubLogin: "k8s-infra-ci-robot"
+gitHubToken: "/etc/github-token/token"
+gitHubOrg: "kubernetes-sigs"
+gitHubRepo: "prow"
+targetVersion: "latest"
+extraFiles:
+  - ".ko.yaml"
+prefixes:
+  - name: "k8s-staging-test-infra GCR images"
+    prefix: "gcr.io/k8s-staging-test-infra"
+    repo: "https://github.com/kubernetes/test-infra"</pre>
+
+<p><strong><code>kubernetes/test-infra:config/jobs/kubernetes/sig-k8s-infra/trusted/sig-k8s-infra-test-infra.yaml</code></strong> — the template periodic job pattern to copy for the missing piece:</p>
+<pre>image: us-docker.pkg.dev/k8s-infra-prow/images/generic-autobumper:v20260714-0633879af
+command: [generic-autobumper]
+args: [--config=config/prow/autobump-config/prow-job-autobump-config.yaml]
+volumeMounts:
+- name: github
+  mountPath: /etc/github-token
+  readOnly: true
+volumes:
+- name: github
+  secret:
+    secretName: k8s-infra-ci-robot-github-token</pre>
+
+<h3>Related issues / PRs</h3>
+<ul>
+<li><span class="tag related-pr">related-pr</span> <a href="https://github.com/kubernetes-sigs/prow/pull/567">kubernetes-sigs/prow#567</a> — "Update base images", merged 2025-12-22, first manual response.</li>
+<li><span class="tag related-pr">related-pr</span> <a href="https://github.com/kubernetes-sigs/prow/pull/747">kubernetes-sigs/prow#747</a> — "Update base container images to v20260512-1f34ef0df3", merged 2026-06-10; staleness recurs without automation.</li>
+<li><span class="tag related-pr">related-pr</span> <a href="https://github.com/kubernetes-sigs/prow/pull/796">kubernetes-sigs/prow#796</a> — "autobump prow base images", open since 2026-07-09, body says <code>Fixes: #559</code>, adds <code>hack/autobump.yaml</code>, unreviewed.</li>
+<li><span class="tag related-issue">related-issue</span> <a href="https://github.com/kubernetes/test-infra/pull/35799">kubernetes/test-infra#35799</a> — "enable dependabot bumping of docker images", merged 2025-12-04, upstream prerequisite.</li>
+<li><span class="tag related-issue">related-issue</span> <a href="https://github.com/kubernetes/test-infra/pull/35968">kubernetes/test-infra#35968</a> — "Update base images and dependencies to address vulnerabilities", merged 2025-12-05.</li>
+</ul>
+
+<h2>What I checked</h2>
+<ul>
+<li>Current <code>.ko.yaml</code> pins (<code>v20260512-1f34ef0df3</code>) — not stale right now; original symptom already patched manually, twice.</li>
+<li><code>kubernetes/test-infra</code> job configs under <code>config/jobs/kubernetes-sigs/prow/</code> for an existing autobump periodic — none found.</li>
+<li><code>generic-autobumper</code> usage across <code>kubernetes/test-infra</code> for a template to copy — found <code>sig-k8s-infra-test-infra.yaml</code>.</li>
+<li>PR #796's diff, mergeability, and review/CI state — 1 file / 19 lines, mergeable, no reviews, no failing checks.</li>
+<li>Whether this repo has its own GitHub Actions/dependabot config — no, <code>kubernetes-sigs/prow</code> uses Prow itself for CI.</li>
+</ul>
+
+<h2>Recommended next steps</h2>
+<ul>
+<li>Review and merge PR #796.</li>
+<li>File (or recruit a contributor for) a companion PR in <code>kubernetes/test-infra</code> adding a periodic job in <code>config/jobs/kubernetes-sigs/prow/prow-periodics.yaml</code>, modeled on <code>sig-k8s-infra-test-infra.yaml</code>.</li>
+<li>Label <code>/help-wanted</code>; run <code>/remove-lifecycle rotten</code> once work resumes.</li>
+<li>If pursuing BenTheElder's "move base images into this repo" idea, split it into its own tracking issue — it's a larger, separate effort.</li>
+</ul>
+
+<h2>Open questions</h2>
+<ul>
+<li class="q">"Does the missing periodic job belong to sig-testing/test-infra ownership, or can prow maintainers add it directly in test-infra's trusted cluster?"</li>
+<li class="q">"Should #796 merge on its own, or would it be cleaner to land it together with the companion test-infra periodic job, since the config does nothing until both exist?"</li>
+</ul>
+
+</body>
+</html>

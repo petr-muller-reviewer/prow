@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Triage: kubernetes-sigs/prow#541</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; line-height: 1.6; color: #1a1a1a; max-width: 860px; margin: 2rem auto; padding: 0 1.5rem; background: #fff; }
+  code, pre { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace; font-size: 0.92em; }
+  pre { background: #f4f4f5; padding: 0.9rem 1rem; border-radius: 6px; overflow-x: auto; border: 1px solid #e4e4e7; }
+  code { background: #f4f4f5; padding: 0.1em 0.35em; border-radius: 4px; }
+  pre code { background: none; padding: 0; }
+  h1, h2, h3 { line-height: 1.3; }
+  h1 { font-size: 1.5rem; }
+  h2 { font-size: 1.2rem; margin-top: 2.2rem; border-bottom: 1px solid #e4e4e7; padding-bottom: 0.3rem; }
+  h3 { font-size: 1rem; margin-top: 1.4rem; }
+  .meta { background: #f4f4f5; border: 1px solid #e4e4e7; border-radius: 8px; padding: 1rem 1.25rem; font-size: 0.92em; }
+  .meta table { border-collapse: collapse; width: 100%; }
+  .meta td { padding: 0.2rem 0.5rem 0.2rem 0; vertical-align: top; }
+  .meta td.k { color: #666; white-space: nowrap; font-weight: 600; width: 9em; }
+  .verdict { border-left: 4px solid #d97706; background: #fffbeb; padding: 0.8rem 1.1rem; border-radius: 0 6px 6px 0; margin: 1rem 0; }
+  .verdict .line { font-weight: 700; font-size: 1.05em; }
+  .tag { display: inline-block; font-size: 0.75em; font-weight: 700; text-transform: uppercase; letter-spacing: 0.02em; padding: 0.1em 0.5em; border-radius: 4px; margin-right: 0.4em; }
+  .tag.cause { background: #fee2e2; color: #991b1b; }
+  .tag.reproducibility { background: #dbeafe; color: #1e3a8a; }
+  .tag.related-code { background: #ede9fe; color: #5b21b6; }
+  .tag.related-issue { background: #dcfce7; color: #166534; }
+  .tag.related-pr { background: #fef9c3; color: #854d0e; }
+  ul { padding-left: 1.4rem; }
+  li { margin: 0.3rem 0; }
+  a { color: #1d4ed8; }
+  .finding { margin-bottom: 1.3rem; }
+</style>
+</head>
+<body>
+
+<h1>Triage: kubernetes-sigs/prow#541</h1>
+
+<div class="meta">
+<table>
+<tr><td class="k">Issue</td><td><a href="https://github.com/kubernetes-sigs/prow/issues/541">kubernetes-sigs/prow#541</a></td></tr>
+<tr><td class="k">Title</td><td>Tide should force retest a suspiciously passing required job on mergeable PRs</td></tr>
+<tr><td class="k">State</td><td>closed</td></tr>
+<tr><td class="k">Labels</td><td>kind/feature, lifecycle/rotten, area/plugins, area/tide</td></tr>
+<tr><td class="k">Main SHA</td><td><code>e601a1ffafd7d8d3a781238a4c5f4233d6248f68</code></td></tr>
+<tr><td class="k">Triaged at</td><td>2026-07-27T00:32:25Z</td></tr>
+<tr><td class="k">Verdict</td><td>needs-discussion</td></tr>
+</table>
+</div>
+
+<div class="verdict">
+<div class="line">Bottom line: reopen and verify by test before deciding — the fix it asks for may already exist.</div>
+<p>#541 was auto-closed on 2026-07-04 by the stale-issue bot purely on inactivity, never judged on the merits. A prior full triage (2026-02-04) concluded Tide's <code>accumulate()</code> trusts unverified passing statuses and proposed a two-part fix. Re-checking against current <code>main</code>, the baseSHA-verification gate the fix would have added already exists in <code>prowJobsFromContexts()</code> and traces back to 2022 — three years before this issue and its motivating incident (#540) were filed. Applying that gate to #540's actual reproduction (a status description with no baseSHA) shows it would already force a retest rather than merge on the false status. Separately, the one real gap the prior triage found — the override plugin not encoding baseSHA — was fixed incidentally by unrelated work (PR #778) after #541 was closed. Recommend reopening and landing one regression test to confirm this by execution rather than by inspection, then closing with a citation-backed explanation (or re-scoping, if the test surprises us).</p>
+</div>
+
+<h2>What the issue reports</h2>
+<ul>
+<li>Companion to #540, where a haywire <code>status-reconciler</code> falsely marked required job contexts as passing on in-flight PRs.</li>
+<li>Requests that Tide force a retest of a required job whose passing status is "suspiciously" green — not backed by an actual passing ProwJob or a legitimate <code>/override</code>.</li>
+<li>Author (a project maintainer) explicitly flagged uncertainty: they hadn't verified how Tide actually behaves today, and heard Tide did <em>not</em> retest the falsely-retired jobs during the #540 incident.</li>
+<li>Filed with <code>area/tide</code> and <code>kind/feature</code>, well-scoped to a real component in this repository.</li>
+</ul>
+
+<h2>Analysis</h2>
+
+<h3>Reproducibility / observed behavior</h3>
+<p>Not independently reproduced by running a test in this pass. #540's log shows the actual status description used by the buggy reconciler: <code>"Context retired without replacement."</code> — no baseSHA encoding at all. By inspection, feeding that description through current <code>prowJobsFromContexts()</code> logic, it fails the baseSHA/skip-retest gate and would <strong>not</strong> be treated as a verified passing context.</p>
+
+<h3>Probable cause (of the confusion, not a code bug)</h3>
+<p>The prior 2026-02-04 triage asserted <code>accumulate()</code> doesn't validate already-passing required contexts before trusting them. That claim doesn't hold up: <code>prowJobsFromContexts()</code> (<code>pkg/tide/tide.go:1044-1076</code>) only synthesizes a ProwJob for a passing context when its description carries a matching baseSHA (via <code>config.BaseSHAFromContextDescription</code>) or an explicit skip-retest sentinel (<code>config.IsSkipRetest</code>). <code>accumulate()</code> (<code>pkg/tide/tide.go:1080-1138</code>) builds its state map purely from real and synthesized ProwJobs — anything that doesn't clear that bar lands in <code>missingTests</code> and forces a retest.</p>
+<p>Git blame traces this exact gate back to commit <code>a1e8b25f4</code> ("Tide Controller interacts with GitHub by interfaces", 2022-06-02) — over three years before the issue (2025-10-31) and #540 (2025-10-14) were filed.</p>
+
+<h3>Related code</h3>
+<div class="finding">
+<p><code>pkg/tide/tide.go:1050-1059</code> — the verification gate in <code>prowJobsFromContexts</code>:</p>
+<pre><code>desc := string(headContext.Description)
+baseSHAForContext := config.BaseSHAFromContextDescription(desc)
+if config.IsSkipRetest(desc) || (baseSHAForContext != "" && baseSHAForContext == baseSHA) {
+    passingCurrentContexts = append(passingCurrentContexts, string(headContext.Context))
+}</code></pre>
+</div>
+<div class="finding">
+<p><code>pkg/tide/tide.go:1112-1115</code> — unverified/missing contexts force a retest:</p>
+<pre><code>if s, ok := psStates[ps.Context]; !ok {
+    // No PJ with correct baseSHA+headSHA exists
+    missingTests[pr.Number] = append(missingTests[pr.Number], ps)
+    log.WithFields(pr.logFields()).Debugf("missing presubmit %s", ps.Context)
+}</code></pre>
+</div>
+<div class="finding">
+<p><code>pkg/tide/tide.go:845-889</code> (<code>isPassingTests</code> / <code>unsuccessfulContexts</code>) — the raw, unverified GitHub-status check. Used only by <code>filterPR</code> to decide <strong>pool membership</strong>, never to decide a merge.</p>
+</div>
+<div class="finding">
+<p><code>pkg/tide/tide.go:1545,1561-1562,1783</code> (<code>takeAction</code>) — merges are only picked from the <code>successes</code> bucket returned by the baseSHA-verified <code>accumulate()</code>, confirming the unverified path never gates a merge.</p>
+</div>
+<div class="finding">
+<p><code>pkg/plugins/override/override.go:564</code> — the override plugin now also encodes baseSHA (this was the one real gap the prior triage found):</p>
+<pre><code>status.Description = config.ContextDescriptionWithBaseSha(descFn(user), baseSHA)</code></pre>
+<p>Landed via commit <code>c8a0d6bc3</code> (2026-06-30), part of unrelated PR #778 merged 2026-07-14 — 10 days after #541 was auto-closed.</p>
+</div>
+
+<h3>Related issues / PRs</h3>
+<ul>
+<li><a href="https://github.com/kubernetes-sigs/prow/issues/540">#540</a> — the motivating incident (haywire <code>status-reconciler</code> falsely retiring job contexts). Still open.</li>
+<li><a href="https://github.com/kubernetes-sigs/prow/pull/778">#778</a> — "Add /override-sticky command for persistent overrides"; incidentally shipped the override-plugin baseSHA-encoding fix the prior triage recommended, after #541 was already closed.</li>
+<li><code>origin/issue-triage-541:ISSUE-TRIAGE.md</code> — a prior, differently-formatted full triage of this same issue (2026-02-04), used as a research starting point for this triage; its Part 2 root-cause claim did not survive re-verification against current code.</li>
+</ul>
+
+<h2>What I checked</h2>
+<ul>
+<li>Confirmed <code>override.go:564</code> currently encodes baseSHA (prior triage's Part 1 fix already shipped).</li>
+<li>Blamed the baseSHA-matching condition in <code>prowJobsFromContexts</code> back through <code>c8a0d6bc3</code> → <code>5a3782943</code> → <code>a1e8b25f4</code> (2022) to establish it predates both the issue and PR #778.</li>
+<li>Read <code>filterPR</code>/<code>isPassingTests</code>/<code>unsuccessfulContexts</code> to confirm the unverified check only affects pool membership, not merge eligibility.</li>
+<li>Matched #540's logged status description against the current baseSHA-matching logic by inspection (not by executing a test).</li>
+<li>Located and used the prior full triage on <code>origin/issue-triage-541</code> as a starting point, not at face value.</li>
+<li>Confirmed via <code>gh issue view</code> that #541 was closed 2026-07-04 by <code>k8s-triage-robot</code> as <code>not-planned</code> on inactivity alone — no maintainer judged it invalid.</li>
+</ul>
+
+<h2>Recommended next steps</h2>
+<ul>
+<li>Reopen #541 — it was closed on staleness, not on the merits.</li>
+<li>Write a regression test in <code>pkg/tide/tide_test.go</code> reproducing #540's exact context description (no baseSHA) against <code>accumulate()</code>/<code>prowJobsFromContexts()</code>, to confirm by execution that it forces a retest.</li>
+<li>If confirmed: close #541 with a comment citing <code>tide.go:1044-1076</code>, the <code>a1e8b25f4</code> history, and PR #778's incidental fix, landing the new regression test as the closing contribution.</li>
+<li>If the test reveals a gap instead: narrow down which code path lets an unverified context through to <code>takeAction</code>, and re-scope a fix accordingly.</li>
+<li>Drop <code>lifecycle/rotten</code>; apply <code>priority/backlog</code> rather than <code>important-soon</code> — this is not an active vulnerability given the findings above.</li>
+</ul>
+
+<h2>Open questions</h2>
+<ul>
+<li>Is there a scenario (e.g. non-required contexts becoming required mid-flight, or <code>Tide.RequiredStatuses</code>-style config) where <code>accumulate()</code>'s ProwJob-matching is bypassed and raw GitHub state ends up gating the merge decision?</li>
+<li>Did you intend "suspiciously passing" to cover more than the baseSHA-mismatch case already handled — e.g. a context with a stale-but-matching baseSHA that's otherwise wrong?</li>
+</ul>
+
+</body>
+</html>

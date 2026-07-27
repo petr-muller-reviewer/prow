@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Triage: kubernetes-sigs/prow#800</title>
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+    color: #1a1a1a;
+    background: #fff;
+    max-width: 900px;
+    margin: 2rem auto;
+    padding: 0 1.5rem;
+  }
+  code, pre {
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.9em;
+  }
+  pre {
+    background: #f6f8fa;
+    border: 1px solid #e1e4e8;
+    border-radius: 6px;
+    padding: 0.9rem 1rem;
+    overflow-x: auto;
+  }
+  code {
+    background: #f6f8fa;
+    padding: 0.15em 0.35em;
+    border-radius: 4px;
+  }
+  pre code { background: none; padding: 0; }
+  h1 { font-size: 1.5rem; margin-bottom: 0.2rem; }
+  h2 {
+    font-size: 1.15rem;
+    margin-top: 2.2rem;
+    border-bottom: 1px solid #e1e4e8;
+    padding-bottom: 0.3rem;
+  }
+  h3 { font-size: 1rem; margin-top: 1.4rem; }
+  .meta {
+    background: #f6f8fa;
+    border: 1px solid #e1e4e8;
+    border-radius: 6px;
+    padding: 1rem 1.2rem;
+    margin: 1rem 0 1.5rem;
+    font-size: 0.92rem;
+  }
+  .meta dl { display: grid; grid-template-columns: 140px 1fr; gap: 0.35rem 0.8rem; margin: 0; }
+  .meta dt { color: #57606a; }
+  .meta dd { margin: 0; }
+  .verdict {
+    background: #dafbe1;
+    border: 1px solid #2da44e;
+    border-radius: 6px;
+    padding: 0.9rem 1.2rem;
+    margin: 1rem 0 2rem;
+  }
+  .verdict .bottom-line { font-weight: 600; font-size: 1.05rem; margin-bottom: 0.4rem; }
+  .finding { margin-bottom: 1.3rem; }
+  .tag {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    background: #ddf4ff;
+    color: #0969da;
+    border-radius: 4px;
+    padding: 0.1em 0.5em;
+    margin-right: 0.5em;
+  }
+  ul { padding-left: 1.4rem; }
+  li { margin-bottom: 0.3rem; }
+  a { color: #0969da; }
+</style>
+</head>
+<body>
+
+<h1>Triage: publisher.Commit panics (nil pointer) when GitUser is unset, and GitHubOptions.GitClientFactory can't set it</h1>
+
+<div class="meta">
+  <dl>
+    <dt>Issue</dt><dd><a href="https://github.com/kubernetes-sigs/prow/issues/800">kubernetes-sigs/prow#800</a></dd>
+    <dt>State</dt><dd>open</dd>
+    <dt>Labels</dt><dd>(none)</dd>
+    <dt>Triaged at</dt><dd>2026-07-27T00:05:00Z</dd>
+    <dt>Main SHA</dt><dd><code>e601a1ffafd7d8d3a781238a4c5f4233d6248f68</code></dd>
+    <dt>Verdict</dt><dd><strong>accepted</strong></dd>
+  </dl>
+</div>
+
+<div class="verdict">
+  <div class="bottom-line">✅ Accepted — legitimate bug, effort level 1, author has volunteered a PR.</div>
+  <p style="margin:0">This is a precisely-diagnosed nil-pointer panic in <code>pkg/git/v2/publisher.go</code> plus a small usability gap in <code>pkg/flagutil/github.go</code>, both confirmed by reading current <code>main</code>. The fix is small, well-scoped, backwards compatible, and matches an existing "fail-with-error, not panic" contract elsewhere in the same package.</p>
+</div>
+
+<h2>What the issue reports</h2>
+<ul>
+  <li><code>RepoClient.Commit</code> panics with a nil pointer dereference when the underlying <code>GitUser</code> getter was never configured.</li>
+  <li>The panic hits specifically for clients built via <code>flagutil.GitHubOptions.GitClientFactory(...)</code>, the common in-repo helper — it wires <code>Username</code>/<code>Token</code> for clone/push but never <code>GitUser</code> for commit.</li>
+  <li><code>WithGitUser</code> (added in #507) exists and works, but is only reachable via the lower-level <code>gitv2.NewClientFactory</code>/<code>NewLocalClientFactory</code> constructors, not through <code>GitHubOptions.GitClientFactory</code>.</li>
+  <li>Author's workaround: build two factories on the same working tree — the GitHub-authenticated one for clone/push, and a second manual <code>gitv2.NewClientFactory(WithGitUser(...))</code> used only for <code>.Commit()</code>.</li>
+  <li>Author proposes nil-guarding <code>publisher.Commit</code> and letting <code>GitHubOptions.GitClientFactory</code> accept/forward a <code>GitUser</code> getter; offered to send a PR.</li>
+</ul>
+
+<h2>Analysis</h2>
+
+<h3>Reproducibility / observed behavior</h3>
+<p>Reproduces unconditionally, no timing dependency: any client built via <code>GitHubOptions.GitClientFactory(...)</code> has <code>GitUser</code> unset, so calling <code>.Commit(...)</code> panics every time — no special config beyond "don't have GitUser set," which is the only state reachable through that helper today.</p>
+
+<h3>Probable cause</h3>
+<p><code>p.info</code> is a <code>GitUserGetter</code> (<code>func() (name, email string, err error)</code>), non-nil only if <code>clientFactory.gitUser</code> was set. <code>ClientFactoryOpts.GitUser</code> is applied only <code>if cfo.GitUser != nil</code> (<code>client_factory.go:177-178</code>) — the chain is designed to tolerate an absent <code>GitUser</code>, deferring failure to first use. <code>Commit</code> violates that "fail-with-error" contract by panicking instead of returning an error. Separately, <code>GitHubOptions.GitClientFactory</code> (<code>github.go:340-365</code>) sets <code>Censor</code>, <code>CookieFilePath</code>, <code>Host</code>, <code>Persist</code>, <code>SigningKeyPath</code>, and conditionally <code>Username</code>/<code>Token</code> — never <code>GitUser</code> — and offers no parameter to supply one.</p>
+
+<h3>Related code</h3>
+
+<div class="finding">
+  <span class="tag">related-code</span><strong>publisher.Commit (panic site)</strong>
+  <p><code>pkg/git/v2/publisher.go:53-64</code></p>
+<pre><code>func (p *publisher) Commit(title, body string) error {
+    p.logger.Infof("Committing changes with title %q", title)
+    name, email, err := p.info()
+    if err != nil {
+        return err
+    }
+    commands := [][]string{
+        {"add", "--all"},
+        {"commit", "--message", title, "--message", body, "--author", fmt.Sprintf("%s &lt;%s&gt;", name, email)},
+    }</code></pre>
+</div>
+
+<div class="finding">
+  <span class="tag">related-code</span><strong>ClientFactoryOpts.GitUser and WithGitUser</strong>
+  <p><code>pkg/git/v2/client_factory.go:102-120,177-178,251-255</code></p>
+<pre><code>// client_factory.go:120
+GitUser GitUserGetter
+
+// client_factory.go:177-178
+if cfo.GitUser != nil {
+    target.GitUser = cfo.GitUser
+}
+
+// client_factory.go:251-255
+func WithGitUser(getter GitUserGetter) ClientFactoryOpt {
+    return func(o *clientFactoryOpts) {
+        o.GitUser = getter
+    }
+}</code></pre>
+</div>
+
+<div class="finding">
+  <span class="tag">related-code</span><strong>GitHubOptions.GitClientFactory — missing GitUser wiring</strong>
+  <p><code>pkg/flagutil/github.go:340-365</code></p>
+<pre><code>func (o *GitHubOptions) GitClientFactory(cookieFilePath string, cacheDir *string, dryRun, persistCache bool) (gitv2.ClientFactory, error) {
+    opts := gitv2.ClientFactoryOpts{
+        Censor:         secret.Censor,
+        CookieFilePath: cookieFilePath,
+        Host:           o.Host,
+        Persist:        &persistCache,
+        SigningKeyPath: o.SigningKeyPath,
+    }
+    ...
+    if cookieFilePath == "" &amp;&amp; (o.TokenPath != "" || o.AppPrivateKeyPath != "") {
+        opts.Username = func() (string, error) { return user, nil }
+        opts.Token = generator
+    }
+    // GitUser is never set here</code></pre>
+</div>
+
+<div class="finding">
+  <span class="tag">related-code</span><strong>No caller hits the panic today, but none can use Commit through this helper either</strong>
+  <p><code>pkg/git/v2/publisher_test.go:28-138</code> (no <code>info == nil</code> case); <code>cmd/generic-autobumper/bumper/bumper.go:613,638</code> (<code>gitCommit</code>/<code>MakeGitCommit</code> bypass <code>Publisher.Commit</code> entirely with raw exec calls — same style of workaround the issue author describes, done independently). A repo-wide grep of <code>.Commit(</code> on <code>GitClientFactory</code>-derived clients across <code>cmd/</code> and <code>pkg/</code> returns no non-test hits.</p>
+</div>
+
+<h3>Related issues / PRs</h3>
+<ul>
+  <li><span class="tag">related-issue</span><a href="https://github.com/kubernetes-sigs/prow/issues/507">kubernetes-sigs/prow#507</a> — introduced <code>WithGitUser</code>/<code>GitUserGetter</code> on the lower-level <code>gitv2</code> constructors; #800 is about making that reachable from <code>GitHubOptions.GitClientFactory</code> too.</li>
+</ul>
+
+<h2>What I checked</h2>
+<ul>
+  <li>All file/line references in the issue body verified against current <code>main</code> (HEAD <code>e601a1f</code>) — accurate.</li>
+  <li>Repo-wide grep of <code>GitHubOptions.GitClientFactory(</code> callers (deck, cherrypicker, gerrit, generic-autobumper/bumper, hook, gangway, moonraker, sub, tide, plus pubsub/subscriber tests) — none call <code>.Commit(...)</code>; no current production impact, but blocks any new adopter.</li>
+  <li><code>publisher_test.go</code>'s existing <code>TestPublisher_Commit</code> table (success / add-fails / info-fails / commit-fails) has no nil-<code>info</code> case — panic path is untested.</li>
+  <li><code>github_test.go</code> has zero coverage of <code>GitClientFactory</code>.</li>
+  <li>Other <code>publisher</code>/<code>clientFactory</code> methods (<code>PushToFork</code>, <code>PushToNamedFork</code>, <code>PushToCentral</code>) get dependencies via resolver funcs always wired at construction — <code>Commit</code>/<code>info</code> is the sole nil-dereference risk in this package.</li>
+</ul>
+
+<h2>Recommended next steps</h2>
+<ul>
+  <li>Comment inviting the author to submit the proposed PR (nil-guard on <code>Commit</code> + optional <code>GitUser</code> plumbing through <code>GitHubOptions</code>).</li>
+  <li>Ask that the PR include a <code>publisher_test.go</code> regression case for <code>info == nil</code> (expect error, not panic), and new <code>github_test.go</code> coverage asserting <code>GitClientFactory</code> forwards <code>GitUser</code> when configured.</li>
+  <li>Apply labels manually: <code>kind/bug</code>, <code>area/git</code>, <code>good-first-issue</code>.</li>
+</ul>
+
+<h2>Open questions</h2>
+<ul>
+  <li>"What's the preferred way to expose the <code>GitUser</code> getter on <code>GitHubOptions</code> — a plain field, a setter method, or something else? Happy to leave that to your judgment in the PR."</li>
+</ul>
+
+</body>
+</html>

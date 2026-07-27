@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Review: kubernetes-sigs/prow#809</title>
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+    max-width: 860px;
+    margin: 2rem auto;
+    padding: 0 1.5rem;
+    color: #1a1a1a;
+    background: #fdfdfd;
+  }
+  code, pre {
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 0.92em;
+    background: #f2f2f2;
+    border-radius: 4px;
+  }
+  code { padding: 0.1em 0.35em; }
+  pre {
+    padding: 0.8em 1em;
+    overflow-x: auto;
+    border-left: 3px solid #ccc;
+  }
+  header {
+    border-bottom: 2px solid #ddd;
+    padding-bottom: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  header dl {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 0.2rem 1rem;
+    margin: 0.5rem 0;
+  }
+  header dt { font-weight: 600; color: #555; }
+  h1 { font-size: 1.5rem; margin-bottom: 0.2rem; }
+  h2 {
+    font-size: 1.15rem;
+    border-bottom: 1px solid #e0e0e0;
+    padding-bottom: 0.3rem;
+    margin-top: 2rem;
+  }
+  .verdict {
+    display: inline-block;
+    padding: 0.3em 0.8em;
+    border-radius: 6px;
+    font-weight: 600;
+    background: #dff0d8;
+    color: #2d6a2d;
+    border: 1px solid #b8dcb8;
+  }
+  .finding {
+    border: 1px solid #e5e5e5;
+    border-radius: 6px;
+    padding: 0.9rem 1.1rem;
+    margin-bottom: 1rem;
+    background: #fff;
+  }
+  .finding h3 { margin: 0 0 0.4rem 0; font-size: 1.02rem; }
+  .badge {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding: 0.15em 0.5em;
+    border-radius: 4px;
+    margin-right: 0.5em;
+    vertical-align: middle;
+  }
+  .badge.should-fix { background: #fcefdc; color: #92600a; }
+  .badge.question { background: #e6effc; color: #1a4d99; }
+  .badge.nit { background: #eee; color: #555; }
+  .badge.blocking { background: #fbdada; color: #9b1c1c; }
+  .loc { font-size: 0.85rem; color: #666; margin-bottom: 0.5rem; }
+  ul { padding-left: 1.3rem; }
+  a { color: #1a5fb4; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>kubernetes-sigs/prow#809</h1>
+  <p style="font-size:1.1rem; margin-top:0;">Add dependabot config for dep grouping</p>
+  <dl>
+    <dt>PR</dt><dd><a href="https://github.com/kubernetes-sigs/prow/pull/809">github.com/kubernetes-sigs/prow/pull/809</a></dd>
+    <dt>Base</dt><dd><code>main</code></dd>
+    <dt>Head SHA</dt><dd><code>65d166901b7a01f8958335d75d7902e88933472b</code></dd>
+    <dt>Reviewed at</dt><dd><code>2026-07-27T22:40:31Z</code></dd>
+  </dl>
+</header>
+
+<section>
+  <h2>Verdict</h2>
+  <p><span class="verdict">Approve</span></p>
+  <p>Low-risk, additive CI config. No blocking issues. There's a real gap — <code>hack/tools/go.mod</code> isn't covered by the grouping, which will let the exact churn problem this PR is meant to solve recur for that module — but it doesn't make the change wrong or unsafe to merge, just incomplete. Worth raising as a comment / follow-up.</p>
+</section>
+
+<section>
+  <h2>What this PR does</h2>
+  <ul>
+    <li>Adds <code>.github/dependabot.yaml</code> — the first dependabot config in this repo.</li>
+    <li>Enables weekly <code>gomod</code> version updates for the root module (<code>directory: "/"</code>).</li>
+    <li>Defines four dependency groups — <code>kubernetes</code>, <code>prometheus</code>, <code>aws</code>, <code>golang-x</code> — via glob patterns, so dependabot bundles correlated bumps into one PR instead of one-per-package.</li>
+    <li>Goal per PR description: avoid the merge-conflict churn seen when e.g. AWS SDK submodules or <code>golang.org/x/*</code> packages release together and each gets its own PR.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Findings</h2>
+
+  <div class="finding">
+    <span class="badge should-fix">should-fix</span><h3>hack/tools/go.mod not covered by grouping</h3>
+    <div class="loc"><code>.github/dependabot.yaml:1-20</code></div>
+    <p>The repo has three Go modules: <code>/</code>, <code>/hack/tools</code>, <code>/site</code>. Only <code>directory: "/"</code> is configured here. <code>hack/tools/go.mod</code> vendors <code>k8s.io/code-generator</code>, <code>sigs.k8s.io/*</code>, and many <code>github.com/aws/aws-sdk-go-v2/*</code> indirect deps &mdash; exactly the families this PR groups. In fact, the two PRs merged immediately before this one (<strong>#806</strong>, <strong>#807</strong>) were separate <code>golang.org/x/crypto</code> bumps in <code>/</code> and <code>/hack/tools</code> landing at the same time &mdash; precisely the duplicate-PR/churn scenario this change is meant to prevent, and it will still happen for <code>hack/tools</code> since it's unconfigured.</p>
+    <pre>version: 2
+updates:
+  - package-ecosystem: "gomod"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      kubernetes:
+        patterns:
+          - "*k8s.io*"
+      ...</pre>
+  </div>
+
+  <div class="finding">
+    <span class="badge question">question</span><h3>site/go.mod left unconfigured</h3>
+    <div class="loc"><code>.github/dependabot.yaml:1-20</code></div>
+    <p><code>site/go.mod</code> currently has no overlap with the defined groups, so leaving it out is low-impact today &mdash; but it also means the site module gets no automated version updates at all (only security-alert-driven ones). Worth confirming this is intentional.</p>
+  </div>
+
+  <div class="finding">
+    <span class="badge nit">nit</span><h3>No <code>open-pull-requests-limit</code> set</h3>
+    <div class="loc"><code>.github/dependabot.yaml:1-20</code></div>
+    <p>Defaults to 5 concurrent version-update PRs. Likely fine given grouping reduces volume, but since this is the repo's first gomod config, it's worth being a deliberate choice rather than an implicit default.</p>
+  </div>
+</section>
+
+<section>
+  <h2>Things I checked and was fine with</h2>
+  <ul>
+    <li>Group glob patterns (<code>*k8s.io*</code>, <code>*github.com/aws*</code>, <code>*github.com/prometheus*</code>, <code>*golang.org/x*</code>) are valid dependabot syntax and correctly match the intended package families in the root <code>go.mod</code> (53 matching dependency lines).</li>
+    <li>Confirmed via git history that no <code>.github/dependabot.yaml</code>/<code>.yml</code> existed before this PR &mdash; this is a clean, config-only addition with nothing to regress.</li>
+    <li>Change has no code/security surface; worst case of an imperfect group definition is suboptimal PR batching, not a functional or security issue.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Open questions for the author</h2>
+  <ul>
+    <li>Was omitting <code>hack/tools</code> from the grouped config intentional, or should a second <code>gomod</code> entry (<code>directory: "hack/tools"</code>) with matching groups be added to fully close the churn gap seen in #806/#807?</li>
+    <li>Any plan to add <code>site/go.mod</code> for version updates, or is that module intentionally left to security-alert-only updates?</li>
+  </ul>
+</section>
+
+</body>
+</html>

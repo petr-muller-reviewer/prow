@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Review: kubernetes-sigs/prow#794</title>
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+    max-width: 860px;
+    margin: 2rem auto;
+    padding: 0 1.5rem;
+    color: #1a1a1a;
+    background: #fff;
+  }
+  code, pre {
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    background: #f4f4f4;
+    border-radius: 4px;
+  }
+  code { padding: 0.1rem 0.35rem; }
+  pre { padding: 0.75rem 1rem; overflow-x: auto; }
+  h1 { font-size: 1.5rem; }
+  h2 { font-size: 1.2rem; border-bottom: 1px solid #ddd; padding-bottom: 0.3rem; margin-top: 2rem; }
+  .meta { background: #f8f8f8; border: 1px solid #e0e0e0; border-radius: 6px; padding: 1rem 1.25rem; font-size: 0.95rem; }
+  .meta dt { font-weight: 600; float: left; width: 110px; clear: left; }
+  .meta dd { margin-left: 110px; }
+  .verdict { font-size: 1.1rem; font-weight: 600; }
+  .verdict.approve { color: #1a7f37; }
+  .badge { display: inline-block; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; border-radius: 4px; padding: 0.15rem 0.5rem; margin-right: 0.5rem; }
+  .badge.blocking { background: #ffe0e0; color: #a40e26; }
+  .badge.should-fix { background: #fff3cd; color: #8a6300; }
+  .badge.nit { background: #e3f2fd; color: #0b5394; }
+  .badge.question { background: #ece3fd; color: #4b2ea6; }
+  .finding { border: 1px solid #e0e0e0; border-radius: 6px; padding: 1rem 1.25rem; margin-bottom: 1rem; }
+  .finding h3 { margin-top: 0; }
+  .loc { font-size: 0.85rem; color: #555; }
+  ul { padding-left: 1.3rem; }
+  a { color: #0b5394; }
+  .converge { font-size: 0.85rem; color: #8a6300; font-style: italic; }
+</style>
+</head>
+<body>
+
+<h1>Review: kubernetes-sigs/prow#794</h1>
+
+<div class="meta">
+  <dl>
+    <dt>PR</dt><dd><a href="https://github.com/kubernetes-sigs/prow/pull/794">kubernetes-sigs/prow#794</a></dd>
+    <dt>Title</dt><dd>fix(trigger): verify [bot] suffix before trimming trusted app name</dd>
+    <dt>Head SHA</dt><dd><code>0d3414e56d8e6b3967058a4fe9863fb4598d75ef</code></dd>
+    <dt>Base</dt><dd>main</dd>
+    <dt>Reviewed at</dt><dd>2026-07-27T00:26:18Z</dd>
+  </dl>
+</div>
+
+<h2>Verdict</h2>
+<p class="verdict approve">Approve</p>
+<p>The change closes a real privilege-escalation path (a non-bot account whose username matched a configured trusted app was previously granted trust) and adds targeted regression tests. Already merged. A follow-up 3-perspective maintainer review (code quality, maintainability, deployment risk) independently corroborates this: all three verdicts agree the logic is correct and strictly more restrictive, with the only converging concern being a cosmetic formatting defect.</p>
+
+<h2>What this PR does</h2>
+<ul>
+  <li>Fixes <code>TrustedUser</code> in <code>pkg/plugins/trigger/trigger.go</code> so the <code>trusted_apps</code> allowlist only matches usernames that genuinely end in <code>[bot]</code>, instead of trusting any username that equals a configured trusted-app name once <code>[bot]</code> is (potentially no-op) trimmed.</li>
+  <li>Previously, <code>strings.TrimSuffix(user, "[bot]")</code> is a no-op when the suffix is absent, so a plain human/org account named e.g. <code>github-app</code> would be treated as trusted if <code>github-app</code> was configured in <code>trusted_apps</code> — bypassing collaborator/org-membership checks entirely.</li>
+  <li>Adds <code>strings.HasSuffix(user, "[bot]")</code> as a precondition before trimming and comparing.</li>
+  <li>Adds two unit tests: a non-suffixed username exactly matching a trusted app name (now correctly untrusted), and a username where <code>[bot]</code> appears but not as a trailing suffix (also correctly untrusted).</li>
+</ul>
+
+<h2>Findings</h2>
+
+<div class="finding">
+  <h3><span class="badge should-fix">Should fix</span>Mixed tabs/spaces in new code</h3>
+  <p class="loc"><code>pkg/plugins/trigger/trigger.go:281-282</code></p>
+  <pre><span>        	return okResponse, nil</span>
+<span>    	}</span></pre>
+  <p>The two new lines use spaces (with a trailing tab) instead of pure tab indentation, inconsistent with the rest of the tab-indented file. Not <code>gofmt</code>-clean. A future <code>gofmt -w</code>/IDE autoformat would churn this hunk with unrelated diff noise in whatever PR touches it next.</p>
+  <p class="converge">Converging concern: independently flagged by all three maintainer-review perspectives (code quality, maintainability, deployment risk).</p>
+</div>
+
+<div class="finding">
+  <h3><span class="badge question">Question</span>PR description undersells the security angle</h3>
+  <p class="loc">PR description / commit message</p>
+  <p>The description ("Ensure that the incoming username actually has the <code>[bot]</code> suffix before trimming it") reads like a correctness nit, but the actual effect is closing a privilege-escalation path where a non-bot account with a matching username could gain trusted-app status. Worth confirming with the author whether this was found by inspection or via an actual incident.</p>
+</div>
+
+<div class="finding">
+  <h3><span class="badge question">Question</span>Release note for behavioral tightening</h3>
+  <p class="loc">Process / release notes</p>
+  <p>Any installation relying on the old loose match for a non-bot account will silently lose that trust grant post-upgrade. No config migration needed, but a short release-note callout would help infrequent-upgrade operators avoid surprise <code>/ok-to-test</code> requirements.</p>
+</div>
+
+<h2>Things I checked and was fine with</h2>
+<ul>
+  <li>Logic correctness: <code>HasSuffix</code> + <code>TrimSuffix</code> + equality now only matches genuine <code>[bot]</code>-suffixed usernames against the configured base name.</li>
+  <li>Test coverage: the two added cases directly target the vulnerability class being fixed and assert the correct (untrusted) outcome.</li>
+  <li>Other callers of <code>TrustedUser</code> (<code>pull-request.go</code>, <code>generic-comment.go</code>) are unaffected since the function signature is unchanged.</li>
+  <li>Deployment risk: no config schema/API/struct changes; change is strictly more restrictive, cannot cause new false-trust cases; rollback trivial. Risk level LOW.</li>
+  <li>Maintainability: no new abstractions/dependencies/coupling introduced; burden LOW.</li>
+</ul>
+
+<h2>Open questions for the author</h2>
+<ul>
+  <li>Was this found via code audit or an actual incident/report? That affects whether a CVE-style disclosure or a backport to release branches is warranted.</li>
+  <li>Mind pushing a <code>gofmt</code>-only cleanup for the two misindented lines in <code>trigger.go</code>?</li>
+  <li>Should a release note be added calling out the stricter <code>trusted_apps</code> matching semantics?</li>
+</ul>
+
+</body>
+</html>

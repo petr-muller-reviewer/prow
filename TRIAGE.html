@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Triage: kubernetes-sigs/prow#767</title>
+<style>
+  :root {
+    color-scheme: light dark;
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+    max-width: 860px;
+    margin: 2rem auto;
+    padding: 0 1.5rem;
+    color: #1a1a1a;
+    background: #fff;
+  }
+  @media (prefers-color-scheme: dark) {
+    body { color: #e6e6e6; background: #14161a; }
+    code, pre { background: #23262d !important; color: #e6e6e6 !important; }
+    .header, .section { border-color: #333 !important; }
+    a { color: #7db4ff; }
+  }
+  code, pre {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+    background: #f4f4f4;
+    border-radius: 4px;
+  }
+  pre {
+    padding: 0.75rem 1rem;
+    overflow-x: auto;
+  }
+  code { padding: 0.15em 0.35em; }
+  h1 { font-size: 1.5rem; margin-bottom: 0.25rem; }
+  h2 { font-size: 1.2rem; margin-top: 2rem; border-bottom: 1px solid #ddd; padding-bottom: 0.3rem; }
+  h3 { font-size: 1.02rem; margin-bottom: 0.3rem; }
+  .header {
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.5rem;
+    font-size: 0.92rem;
+  }
+  .header dl { display: grid; grid-template-columns: max-content 1fr; gap: 0.25rem 1rem; margin: 0; }
+  .header dt { font-weight: 600; color: #666; }
+  .header dd { margin: 0; }
+  .verdict-line {
+    font-size: 1.1rem;
+    font-weight: 600;
+    padding: 0.75rem 1rem;
+    border-radius: 6px;
+    background: #eef7ee;
+    border: 1px solid #bfe3bf;
+  }
+  @media (prefers-color-scheme: dark) {
+    .verdict-line { background: #1c2b1c; border-color: #2f4f2f; }
+  }
+  .tag {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding: 0.1em 0.5em;
+    border-radius: 3px;
+    background: #e5e5e5;
+    color: #333;
+    margin-right: 0.5em;
+  }
+  @media (prefers-color-scheme: dark) {
+    .tag { background: #333; color: #ddd; }
+  }
+  ul { margin-top: 0.3rem; }
+  .finding { margin-bottom: 1.25rem; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Triage: kubernetes-sigs/prow#767</h1>
+  <dl>
+    <dt>Title</dt><dd>Prow bot didn't check CLA in multiple repos</dd>
+    <dt>Issue</dt><dd><a href="https://github.com/kubernetes-sigs/prow/issues/767" target="_blank">kubernetes-sigs/prow#767</a></dd>
+    <dt>State</dt><dd>closed</dd>
+    <dt>Labels</dt><dd>(none)</dd>
+    <dt>Main SHA</dt><dd><code>e601a1ffafd7d8d3a781238a4c5f4233d6248f68</code></dd>
+    <dt>Triaged at</dt><dd>2026-07-27T00:10:39Z</dd>
+    <dt>Verdict</dt><dd>duplicate</dd>
+  </dl>
+</div>
+
+<h2>Verdict</h2>
+<p class="verdict-line">Duplicate — the reported bug was already fixed by PR #764 before/shortly after this issue was filed; no residual action needed.</p>
+<p>The reporter hit a panic-induced CLA-label sync failure caused by a bug in the <code>cla</code> plugin that had already been fixed in <a href="https://github.com/kubernetes-sigs/prow/pull/764" target="_blank">#764</a> (merged 2026-06-20), likely before the fix had fully rolled out to all affected deployments. The reporter closed the issue themselves once the fix took effect, and a follow-up commenter confirmed the root cause. This triage exists purely as a record linking the symptom to its fix.</p>
+
+<h2>What the issue reports</h2>
+<ul>
+  <li>PRs across several repos (kubernetes/test-infra, kubernetes-sigs/agent-sandbox, kubernetes/kubernetes) weren't getting CLA labels applied automatically.</li>
+  <li>Reporter (janetkuo) observed this on 2026-06-22 and gave three example PRs exhibiting the symptom.</li>
+  <li>Workaround at the time: manually commenting <code>/check-cla</code> to force a recheck.</li>
+  <li>Reporter closed the issue the next day (2026-06-23) with "Fixed now".</li>
+  <li>A commenter (Prucek) asked for confirmation and janetkuo confirmed the fix was <a href="https://github.com/kubernetes-sigs/prow/pull/764" target="_blank">#764</a>, linking an internal Slack thread for more context.</li>
+</ul>
+
+<h2>Analysis</h2>
+
+<h3>Probable cause</h3>
+<p>The <code>cla</code> plugin's status-event handler called <code>gc.FindIssues(query, sort, asc)</code> without an org argument. When the target installation used GitHub Apps auth, this panicked inside the apps-auth round-tripper:</p>
+<pre>BUG apps auth requested but empty org, please report this to the test-infra repo</pre>
+<p>The panic aborted CLA-label sync for that webhook event, so PRs were left without an up-to-date <code>cncf-cla-yes</code>/<code>cncf-cla-no</code> label until someone manually forced a recheck.</p>
+
+<h3>Related code</h3>
+<div class="finding">
+  <span class="tag">related-code</span><code>pkg/github/app_auth_roundtripper.go:156</code> — panic site requiring a non-empty org when apps auth is used.
+</div>
+<div class="finding">
+  <span class="tag">related-code</span><code>pkg/plugins/cla/cla.go:105</code> — call site, now fixed to pass org:
+  <pre>issues, err = gc.FindIssuesWithOrg(org, fmt.Sprintf("%s repo:%s/%s type:pr state:open", se.SHA, org, repo), "", false)</pre>
+</div>
+<div class="finding">
+  <span class="tag">related-code</span><code>pkg/plugins/cla/cla.go:73</code> — interface method, now fixed:
+  <pre>FindIssuesWithOrg(org, query, sort string, asc bool) ([]github.Issue, error)</pre>
+</div>
+
+<h3>Related issues / PRs</h3>
+<div class="finding">
+  <span class="tag">related-pr</span><a href="https://github.com/kubernetes-sigs/prow/pull/764" target="_blank">kubernetes-sigs/prow#764</a> — "fix a bug with cla and github apps auth". Merged 2026-06-20, single-file 2-line diff switching <code>gc.FindIssues(...)</code> to <code>gc.FindIssuesWithOrg(org, ...)</code>. This is the exact root-cause fix for #767 and is already present on <code>main</code>.
+</div>
+
+<h2>What I checked</h2>
+<ul>
+  <li><code>pkg/plugins/cla/cla.go</code> on current <code>main</code> (HEAD <code>e601a1ffafd7d8d3a781238a4c5f4233d6248f68</code>) already uses <code>FindIssuesWithOrg</code>, matching #764's diff.</li>
+  <li><code>grep -rn "FindIssues(" pkg/plugins/cla/</code> — no remaining org-less call sites.</li>
+  <li>Issue thread and timeline: closed by reporter with confirmation the fix (#764) resolved it; no reopen requests since.</li>
+</ul>
+
+<h2>Recommended next steps</h2>
+<ul>
+  <li>None — no maintainer action required. Issue is closed and correctly root-caused.</li>
+  <li>If the same panic signature (<code>BUG apps auth requested but empty org</code>) resurfaces in a different plugin, reuse the #764 fix pattern: thread the event's org through to any <code>FindIssues</code>-style GitHub search call made under apps auth.</li>
+</ul>
+
+<h2>Open questions</h2>
+<ul>
+  <li>None.</li>
+</ul>
+
+</body>
+</html>

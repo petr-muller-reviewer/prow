@@ -251,6 +251,7 @@
     <li><a href="#suggestions">Suggestions</a></li>
     <li><a href="#verdict">Advisor verdict</a></li>
     <li><a href="#checklist">Review checklist</a></li>
+    <li><a href="#followups">Followups</a></li>
   </ul>
 </div>
 
@@ -561,6 +562,162 @@
   <li>Consistent <code>botUser</code> setup in new tests</li>
   <li>Tests pass (<code>go test ./cmd/external-plugins/cherrypicker/...</code>)</li>
 </ul>
+
+<hr>
+
+<!-- FOLLOWUPS -->
+<h2 id="followups">Followups</h2>
+<p style="font-size:0.88rem; color:var(--text-muted); margin-bottom:0.8rem;">
+  PR #614 merged as <span class="file-ref">0ea29c45b5093eb6085cc1f6f777e927918cc65f</span> on 2026-04-20.
+  Post-merge followups identified and accepted on 2026-04-27.
+</p>
+
+<div class="card suggestion">
+  <div class="card-title">
+    <span class="severity sev-medium">should</span>
+    1. Unify membership-checking strategy between the label-added and merge-processing paths
+  </div>
+  <p>
+    Flagged by: <strong>petr-muller</strong> (review thread, deferred twice)
+  </p>
+  <p>
+    <code>handlePullRequestLabelAdded</code> (new in #614) checks membership with a single
+    <code>IsMember(org, user)</code> call. <code>handlePullRequestClosed</code> (pre-existing)
+    still checks membership by fetching the entire org roster via
+    <code>ListOrgMembers(org, "all")</code> and scanning it per requester. The reviewer flagged
+    this inconsistency twice (&ldquo;Could be an opportunity for a followup - but pls not in this
+    PR, it&rsquo;s already a bit involved to review&rdquo; / &ldquo;fair enough. could be worth a
+    followup&rdquo;) and explicitly deferred it rather than block the PR.
+  </p>
+  <p><span class="file-ref">server.go: handlePullRequestClosed</span></p>
+  <pre><code>In kubernetes-sigs/prow, following PR #614 ("external-plugins/cherrypicker: comment when label
+is ignored for non-org member", merged as 0ea29c45b5093eb6085cc1f6f777e927918cc65f), unify the
+membership-checking strategy in cmd/external-plugins/cherrypicker/server.go.
+
+Context: handlePullRequestLabelAdded checks membership with a single ghc.IsMember(org, prAuthor)
+call. handlePullRequestClosed still checks membership by calling ghc.ListOrgMembers(org, "all")
+and scanning the full result with slices.ContainsFunc for each requester in requesterToComments.
+This was called out during PR #614's review as an intentionally deferred followup (the reviewer
+did not want an additional refactor in that PR).
+
+Task: In handlePullRequestClosed, replace the ListOrgMembers(org, "all") + slices.ContainsFunc
+scan with a per-requester ghc.IsMember(org, requester) call, matching the approach already used
+in handlePullRequestLabelAdded. Preserve existing behavior: requesters that are not members must
+still be deleted from requesterToComments before cherry-picks are processed. Remove the now-unused
+ListOrgMembers call/import if nothing else in the file needs it.
+
+Acceptance criteria:
+- handlePullRequestClosed no longer calls ListOrgMembers; it calls IsMember per requester instead.
+- Existing tests for handlePullRequestClosed (including non-member rejection scenarios) still pass.
+- Add/update a test asserting a non-member's merge-time cherry-pick request is still filtered out
+  under the new IsMember-based check.
+- go test ./cmd/external-plugins/cherrypicker/... passes.
+
+Out of scope: changing the label-added path, changing behavior for s.allowAll, any comment/label
+UX changes (that's a separate followup for the same PR).</code></pre>
+</div>
+
+<div class="card suggestion">
+  <div class="card-title">
+    <span class="severity sev-medium">should</span>
+    2. Remove the rejected cherry-pick label after a non-org-member rejection
+  </div>
+  <p>
+    Flagged by: <strong>REVIEW.md issue #1</strong> (non-blocking observation)
+  </p>
+  <p>
+    When a non-member&rsquo;s cherry-pick label triggers a rejection comment, the
+    <code>cherrypick/XXX</code> label itself is never removed &mdash;
+    <code>handlePullRequestLabelAdded</code> only posts a comment and returns. If the PR later
+    merges, <code>handlePullRequestClosed</code> re-derives cherry-pick intent from scratch
+    (current comments + current labels), picks up the same still-attached label again, keyed by
+    the PR author, runs its own membership check, and silently deletes that requester entry
+    &mdash; no second comment, no visible action. The label lingers on the PR forever with no
+    further explanation.
+  </p>
+  <p><span class="file-ref">server.go:366-371</span></p>
+  <pre><code>In kubernetes-sigs/prow, following PR #614 ("external-plugins/cherrypicker: comment when label
+is ignored for non-org member", merged as 0ea29c45b5093eb6085cc1f6f777e927918cc65f), fix a UX
+rough edge in cmd/external-plugins/cherrypicker/server.go's handlePullRequestLabelAdded.
+
+Context: when a cherry-pick label is added by/for a non-org-member PR author,
+handlePullRequestLabelAdded posts a rejection comment (using notOrgMemberMessageTemplate) but
+never removes the triggering label. The label stays on the PR. If the PR is later merged,
+handlePullRequestClosed re-scans PR labels, finds the same cherrypick/XXX label still attached,
+and silently filters it out again during its own membership check — with no further comment.
+The label is effectively permanently ignored but never cleaned up or explained.
+
+Task: in the non-member branch of handlePullRequestLabelAdded (immediately after posting the
+rejection comment via s.createComment), remove the triggering label from the PR via
+s.ghc.RemoveLabel(org, repo, num, pre.Label.Name). On error, log it (WithError) rather than
+returning it — mirror the existing "log, don't fail" treatment of the createComment error just
+above it, since the label removal is best-effort cleanup, not the primary action.
+
+Acceptance criteria:
+- After a non-member rejection, the label is removed via RemoveLabel in addition to the existing
+  comment.
+- A RemoveLabel failure is logged and does not change the function's return value (log, nil).
+- Add a test (extending or alongside TestHandlePullRequestLabelAdded_NonMemberRejected) that
+  asserts RemoveLabel was called with the correct org/repo/num/label after rejection.
+- go test ./cmd/external-plugins/cherrypicker/... passes.
+
+Out of scope: the targetBranch == baseBranch rejection path (same PR's suggestion mentioned this
+case too, but scope this followup to the non-member rejection only unless trivially shared code
+makes it natural to cover both); the membership-check unification (that's a separate followup).</code></pre>
+</div>
+
+<div class="card suggestion">
+  <div class="card-title">
+    <span class="severity sev-low">could</span>
+    3. Wire PR-description cherry-pick commands into the <code>Opened</code> event
+  </div>
+  <p>
+    Flagged by: <strong>petr-muller</strong> (review thread, speculative)
+  </p>
+  <p>
+    During review, petr-muller asked why <code>PullRequestActionOpened</code> handling was
+    dropped. Investigating history, he found it was added long ago so PR authors could embed
+    <code>/cherrypick release-X</code> commands directly in the PR description at open time
+    &mdash; but it never actually triggered anything immediately (it always bailed on the
+    <code>!pr.Merged</code> check), so removing it in PR #614 was a functional no-op. He noted:
+    &ldquo;If we wanted to fix this we&rsquo;d probably need to wire the comment handler behavior
+    to the PR opened event (no need to do it here in this PR).&rdquo; PR-description commands
+    still only take effect at merge time, with no early feedback the way labels now get.
+  </p>
+  <p><span class="file-ref">server.go:338 (discussion)</span></p>
+  <pre><code>In kubernetes-sigs/prow, following PR #614 ("external-plugins/cherrypicker: comment when label
+is ignored for non-org member", merged as 0ea29c45b5093eb6085cc1f6f777e927918cc65f), consider
+extending early-feedback handling in cmd/external-plugins/cherrypicker/server.go to PR-description
+cherry-pick commands, not just labels.
+
+Context: PR authors can embed /cherrypick release-X commands directly in a PR description. This
+has existed for a long time but only ever takes effect at merge time, via handlePullRequestClosed
+replaying the PR body as a synthetic comment through parseComment. Unlike the label path added in
+PR #614 (handlePullRequestLabelAdded), there is no immediate feedback when the PR is opened: no
+early membership check, no early rejection comment if the author isn't an org member. This was
+flagged during PR #614's review as a pre-existing, unrelated gap — explicitly out of scope for
+that PR, and speculative rather than requested by anyone as urgent.
+
+Task: add a handler for github.PullRequestActionOpened that parses the PR body for /cherrypick
+commands via parseComment, and applies the same immediate-feedback treatment as
+handlePullRequestLabelAdded: an early IsMember-based membership check (respecting s.allowAll)
+with a notOrgMemberMessageTemplate-based rejection comment if the author is not a member, and a
+"once this merges, I will cherry-pick" acknowledgement comment otherwise (mirroring the
+handlePullRequestLabelAdded flow). Actual cherry-pick execution should remain deferred to merge
+time via handlePullRequestClosed's existing comment-replay path, unchanged.
+
+Acceptance criteria:
+- Opening a PR whose description contains a valid /cherrypick command produces an immediate
+  comment (rejection or acknowledgement) without waiting for merge.
+- No duplicate cherry-pick or duplicate comment occurs at merge time for the same command.
+- New tests cover: non-member author with a /cherrypick command in the description at open time;
+  member author with a /cherrypick command in the description at open time.
+- go test ./cmd/external-plugins/cherrypicker/... passes.
+
+Out of scope: changing comment-based /cherrypick handling for already-open PRs (handleIssueComment
+is unaffected); changing label-based handling; any change to merge-time cherry-pick execution
+itself, only what happens at Opened time before merge.</code></pre>
+</div>
 
 <hr>
 <p style="font-size:0.78rem; color:var(--text-muted); text-align:center;">

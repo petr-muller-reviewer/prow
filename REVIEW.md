@@ -242,6 +242,51 @@ disable comment is missing here. Add it to signal intent.
 > right approach but please verify CI kind image compatibility before
 > merging.
 
+## Followups
+
+Identified post-merge, 2026-04-14. PR merged as
+6691f5affe688fe6c8a07b5356329009059381ee. Two accepted; four other
+candidates (phony.sh silent failure/hardcoded context, shared dev/integration
+cluster name, undocumented Podman friction, PROW_DEPLOYMENT_ORDER_CORE
+duplication) were considered and skipped.
+
+### [Bug, must] Fix phantom `-add=` flag reference in lib.sh
+`test/integration/lib.sh:281`
+
+```
+In kubernetes-sigs/prow, following PR #667 ("Add helpers to reduce friction local development", merged as 6691f5affe688fe6c8a07b5356329009059381ee), fix a stale comment in test/integration/lib.sh.
+
+Task: At test/integration/lib.sh:281, the comment describing PROW_COMPONENTS_CORE says components "can be added individually with hack/dev-env.sh -add=". hack/dev-env.sh has no -add= flag (its actual flags are -no-build, -rebuild=, -profile=, -kind-config=, -teardown — see hack/dev-env.sh usage()). This was flagged independently by two reviewers during PR #667's review and never fixed before merge.
+
+Read hack/dev-env.sh and test/integration/setup-prow-components.sh to determine the actual current mechanism for adding/rebuilding a single component in the core profile (likely something along the lines of `hack/dev-env.sh -rebuild=<component>` or `test/integration/setup-prow-components.sh -profile=core -build=<component>`), then rewrite the comment at lib.sh:281 to describe that mechanism accurately.
+
+Acceptance criteria: the comment no longer references a nonexistent -add= flag, and instead accurately describes how a developer adds/rebuilds an individual component under the core profile. No behavioral/script changes — comment-only fix.
+
+Out of scope: do not add a new -add= flag to dev-env.sh, do not touch PROW_COMPONENTS_CORE or PROW_DEPLOYMENT_ORDER_CORE themselves, do not touch any other file.
+```
+
+### [Bug, must] Fix `prow_component()` doc/code mismatch in Tiltfile docs
+`site/content/en/docs/local-dev-tilt.md:138-140`, `Tiltfile:133`
+
+```
+In kubernetes-sigs/prow, following PR #667 ("Add helpers to reduce friction local development", merged as 6691f5affe688fe6c8a07b5356329009059381ee), fix a broken documentation example for Tilt personal overrides.
+
+Task: site/content/en/docs/local-dev-tilt.md:138-140 documents this example for a tilt.d/ personal override file:
+
+    # tilt.d/narrow-hook-deps.tiltfile
+    prow_component('hook', ['cmd/hook/', 'pkg/github/', 'pkg/plugins/'])
+
+But the actual prow_component() function in Tiltfile:133 only accepts a single `name` argument (`def prow_component(name):`), looking up its source dirs and yaml files from the fixed COMPONENT_DEFS table. Running the documented example produces a Tilt runtime error. This was flagged independently by two reviewers during PR #667's review and never fixed before merge.
+
+Read Tiltfile (COMPONENT_DEFS, prow_component()) and local-dev-tilt.md in full to understand the intended extensibility story for tilt.d/ overrides, then fix the mismatch using whichever of these two approaches fits that story better (pick one — don't do both):
+(a) Change the doc example to the pattern that actually works today: modifying/extending COMPONENT_DEFS directly from a tilt.d/*.tiltfile (e.g. `load_dynamic` or direct dict mutation, whatever Tilt/Starlark idiom the existing Tiltfile already uses elsewhere).
+(b) Add an optional second parameter to prow_component() (e.g. `override_src_dirs`) that lets a caller override the watched source directories for an already-defined component, and keep the doc example as-is.
+
+Acceptance criteria: the documented tilt.d/ override example, followed verbatim, works without a Tilt runtime error. If you changed the doc (option a), verify the new example is syntactically valid Starlark and consistent with the rest of local-dev-tilt.md's style. If you changed the Tiltfile (option b), keep the change minimal and backward-compatible with existing single-argument prow_component() calls elsewhere in the Tiltfile.
+
+Out of scope: broader refactoring of COMPONENT_DEFS or the component-registration system; changes to hack/tilt-build.sh or other Tilt-adjacent scripts.
+```
+
 ---
 
 Multi-perspective maintainer review generated 2026-04-03 · Reviewers: Code

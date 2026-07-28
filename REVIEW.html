@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Review: kubernetes-sigs/prow#813</title>
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+    color: #1a1a1a;
+    max-width: 900px;
+    margin: 2rem auto;
+    padding: 0 1.5rem;
+    background: #fafafa;
+  }
+  code, pre {
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 0.9em;
+  }
+  code {
+    background: #eef0f2;
+    padding: 0.1em 0.35em;
+    border-radius: 3px;
+  }
+  pre {
+    background: #1e1e1e;
+    color: #d4d4d4;
+    padding: 1em;
+    border-radius: 6px;
+    overflow-x: auto;
+    line-height: 1.4;
+  }
+  header {
+    border-bottom: 2px solid #ddd;
+    padding-bottom: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  header dl {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 0.25rem 1rem;
+    margin: 0.5rem 0;
+  }
+  header dt { font-weight: 600; color: #555; }
+  header a { color: #0969da; }
+  h1 { font-size: 1.4rem; margin-bottom: 0.25rem; }
+  h2 {
+    margin-top: 2.5rem;
+    border-left: 4px solid #6c5ce7;
+    padding-left: 0.6rem;
+  }
+  .verdict-box {
+    padding: 1rem 1.25rem;
+    border-radius: 6px;
+    background: #fff8e1;
+    border: 1px solid #f0d580;
+    margin-bottom: 1.5rem;
+  }
+  .verdict-box .label {
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: #8a6d00;
+  }
+  .finding {
+    background: #fff;
+    border: 1px solid #e2e2e2;
+    border-radius: 6px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1rem;
+  }
+  .finding h3 { margin: 0 0 0.5rem 0; font-size: 1.05rem; }
+  .sev {
+    display: inline-block;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 0.15em 0.5em;
+    border-radius: 4px;
+    margin-right: 0.5em;
+  }
+  .sev-blocking { background: #ffd7d5; color: #86181d; }
+  .sev-should-fix { background: #fff2cc; color: #7a5c00; }
+  .sev-nit { background: #e2e2e2; color: #444; }
+  .sev-question { background: #d3e5ff; color: #0a3069; }
+  .loc { color: #666; font-size: 0.85em; margin-bottom: 0.5em; }
+  ul.plain { padding-left: 1.2em; }
+  .highlight { background: #ffec99; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Review: chore(deps): bump the golang-x group across 1 directory with 5 updates</h1>
+  <dl>
+    <dt>PR</dt><dd><a href="https://github.com/kubernetes-sigs/prow/pull/813">kubernetes-sigs/prow#813</a></dd>
+    <dt>Head SHA</dt><dd><code>ce1142d8bd3e64f1bdbbb9167a35e5ff991dae9e</code></dd>
+    <dt>Base</dt><dd><code>main</code></dd>
+    <dt>Reviewed at</dt><dd>2026-07-28T23:45:03Z</dd>
+  </dl>
+</header>
+
+<div class="verdict-box">
+  <div class="label">Verdict: Needs discussion</div>
+  <p>The dependency bump itself is safe on every axis checked (freshness, provenance, changelog exposure) — nothing here argues against merging it. But <code>pull-prow-verify-lint</code> is currently red on this PR's head SHA, from golangci-lint's <code>modernize</code> analyzer flagging four pre-existing <code>strings.Split</code> call sites unrelated to this diff. The PR can't merge until that's resolved, either as a quick fix folded in here or a separate PR this one rebases onto.</p>
+</div>
+
+<h2>What this PR does</h2>
+<ul class="plain">
+  <li>Dependabot group bump of 5 <code>golang.org/x/*</code> modules in <code>go.mod</code>/<code>go.sum</code> (root) and <code>hack/tools/go.mod</code>/<code>go.sum</code>.</li>
+  <li>Direct deps bumped: <code>x/net</code> v0.54.0→v0.57.0, <code>x/oauth2</code> v0.34.0→v0.36.0, <code>x/sync</code> v0.20.0→v0.22.0, <code>x/text</code> v0.37.0→v0.40.0, <code>x/time</code> v0.12.0→v0.15.0.</li>
+  <li>Indirect deps bumped along with them: <code>x/crypto</code>, <code>x/mod</code>, <code>x/sys</code>, <code>x/term</code>, <code>x/tools</code>.</li>
+  <li>No project source touched — pure manifest/lockfile diff.</li>
+  <li>All new releases are real tags (no pseudo-versions), 21-52 days old as of review, no CVEs in any changelog range.</li>
+</ul>
+
+<h2>Findings</h2>
+
+<div class="finding">
+  <h3><span class="sev sev-blocking">Blocking</span>CI red: pull-prow-verify-lint fails, but unrelated to this diff</h3>
+  <div class="loc"><code>cmd/checkconfig/main.go:1008,1545</code>, <code>cmd/deck/configured_jobs.go:83</code>, <code>cmd/deck/tide.go:193</code></div>
+  <p>golangci-lint's <code>modernize</code> analyzer (<code>stringscut</code>) flags 4 pre-existing <code>strings.Split</code>/<code>SplitN(...)[0]</code> sites that should use <code>strings.Cut</code>. None are touched by this PR's diff, and <code>hack/tools/go.mod</code> still pins <code>golangci-lint/v2 v2.12.2</code> unchanged — this bump didn't move the linter. This is pre-existing debt on <code>main</code> surfacing here only because this PR has no other diff to blame; it will block every PR until fixed.</p>
+  <pre>cmd/checkconfig/main.go:1008:11: stringscut: strings.SplitN call can be simplified using strings.Cut (modernize)
+		<span class="highlight">org := strings.SplitN(repo, "/", 2)[0]</span>
+
+cmd/checkconfig/main.go:1545:13: stringscut: strings.Split call can be simplified using strings.Cut (modernize)
+	<span class="highlight">if org := strings.Split(repo, "/")[0]; !orgsWithInstalledApp.Has(org) {</span>
+
+cmd/deck/configured_jobs.go:83:9: stringscut: strings.Split call can be simplified using strings.Cut (modernize)
+		<span class="highlight">o := strings.Split(r, "/")[0]</span>
+
+cmd/deck/tide.go:193:14: stringscut: strings.Split call can be simplified using strings.Cut (modernize)
+	<span class="highlight">orgRepo := strings.Split(pool, ":")[0]</span></pre>
+</div>
+
+<div class="finding">
+  <h3><span class="sev sev-question">Question</span>How to unblock merge</h3>
+  <p>Should the 4 <code>strings.Cut</code> modernizations be a separate follow-up PR (keeps this one a pure dep bump), or folded into this PR to go green? Either way it can't merge as-is.</p>
+</div>
+
+<h2>Dependency analysis detail</h2>
+<ul class="plain">
+  <li><b>x/net</b> — used via <code>net/html</code> (spyglass HTML lens) and <code>xsrftoken</code> (githuboauth CSRF). Changelog only touches <code>http2</code>/<code>quic</code> internals, not our import surface. Light exposure.</li>
+  <li><b>x/oauth2</b> — direct, heavy usage (deck, generic-autobumper, github client, githuboauth, prstatus, gangway/google). New safer <code>CredentialsFromJSONWithType*</code> helpers mitigate a credential-injection risk, but we use <code>googleOAuth.JWTAccessTokenSourceFromJSON</code>, unaffected. Safe.</li>
+  <li><b>x/sync</b> — direct, <code>errgroup</code> (bugzilla, pubsub) and <code>semaphore</code> (shardedlock, ghcache, gcs upload, sidecar censor). Changelog: <code>semaphore.Weighted</code> now panics on negative weight — defensive only, we never pass negative weights.</li>
+  <li><b>x/text</b> — direct, golint suggestion formatting + spyglass links lens. Changelog fixes (<code>unicode/norm</code> infinite loop, IDNA punycode strictness) are in packages we don't import.</li>
+  <li><b>x/time</b> — direct, only <code>pkg/kube/ratelimiter.go</code>. Changelog is cosmetic (<code>Equal</code> vs <code>==</code>) plus toolchain-directive bumps.</li>
+  <li><b>x/crypto, x/mod, x/sys, x/term, x/tools</b> — indirect, no direct imports found outside vendor tooling. No exposure.</li>
+</ul>
+
+<h2>Things I checked and was fine with</h2>
+<ul class="plain">
+  <li>Freshness/provenance of all 10 bumped modules via proxy.golang.org — all real tags, 21-52 days old, no security advisories in commit ranges.</li>
+  <li>Import surface of every direct dep (<code>net</code>, <code>oauth2</code>, <code>sync</code>, <code>text</code>, <code>time</code>) across the whole repo, excluding vendor.</li>
+  <li>Whether this PR's bump changed the golangci-lint tool version — it did not; the lint failure predates this PR.</li>
+  <li><code>pull-prow-unit-test</code>, <code>pull-prow-unit-test-race-detector-nonblocking</code>, <code>pull-prow-integration</code>, <code>pull-prow-image-build-test</code> — all green.</li>
+</ul>
+
+<h2>Open questions for the author</h2>
+<ul class="plain">
+  <li>Is there existing tracking for the pre-existing <code>modernize</code>/<code>stringscut</code> lint debt on <code>main</code>, or should this PR (or a quick immediate follow-up) fix it directly so CI goes green?</li>
+</ul>
+
+</body>
+</html>

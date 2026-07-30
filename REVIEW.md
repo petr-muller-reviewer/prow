@@ -3,8 +3,12 @@ pr: kubernetes-sigs/prow#801
 title: "Add nil guard to publisher.Commit and set GitUser in GithubOptions.GitClientFactory"
 head_sha: b8efacee1b5d98e1647b21dd97608647b8c6d301
 base: main
-reviewed_at: 2026-07-27T10:37:38Z
-verdict: approve
+reviewed_at: 2026-07-30T12:55:12Z
+verdict: request-changes
+refresh_log:
+  - from: b8efacee1b5d98e1647b21dd97608647b8c6d301
+    to: b8efacee1b5d98e1647b21dd97608647b8c6d301
+    summary: "No code changes. Maintainer ylink-lfs submitted CHANGES_REQUESTED review 2026-07-29T16:03:39Z with inline comment on publisher.go:56 re: error message lacking remediation guidance."
 ---
 
 ## What this PR does
@@ -12,8 +16,17 @@ verdict: approve
 - `pkg/git/v2/publisher.go`: adds `if p.info == nil` guard in `Commit`, returns wrapped error instead of panicking.
 - `pkg/flagutil/github.go`: `GitClientFactory` now sets `opts.GitUser` (using the same `user` login as `opts.Username`, empty email) in the token/app-auth branch, root-causing the panic for the real-world construction path.
 - No test changes included.
+- Since previous review: no code changes (head SHA unchanged). A maintainer (`ylink-lfs`, MEMBER) submitted a CHANGES_REQUESTED review with one inline comment, escalating the tone on the error-message finding below from a style nit to a blocking ask.
 
 ## Findings
+
+### [blocking] error message doesn't explain remedy
+- where: `pkg/git/v2/publisher.go:55-57`
+- concern: maintainer `ylink-lfs` (MEMBER) requested changes on 2026-07-29, commenting inline that "the returned error doesn't explain the remedy for developers." The message `"error committing %q: GitUser is not set"` tells the caller what's wrong but not how to fix it (e.g. set `GitUser` via `WithGitUser`/`ClientFactoryOpts.GitUser`, or which flag/option is responsible when reached via `GitClientFactory`). Needs a revision that names the fix, not just the symptom, before this can merge.
+- excerpt: |
+    if p.info == nil {
+        return fmt.Errorf("error committing %q: GitUser is not set", title)
+    }
 
 ### [should-fix] missing test for nil `info` guard
 - where: `pkg/git/v2/publisher_test.go:28-133`
@@ -50,5 +63,6 @@ verdict: approve
 - Multi-perspective maintainer review (code quality, maintainability, deployment risk) independently converged on the same two findings below; deployment risk assessed LOW, maintenance burden assessed LOW.
 
 ## Open questions
+- Can you revise the nil-guard error message in `publisher.go:56` to point the caller at the fix (e.g. mention `WithGitUser`/`ClientFactoryOpts.GitUser`), per ylink-lfs's review comment?
 - Can you add a `TestPublisher_Commit` case covering `info == nil` to lock in the new guard?
 - Can you add/extend a test in `pkg/flagutil/github_test.go` verifying `GitClientFactory` populates `opts.GitUser` when token/app auth is configured?

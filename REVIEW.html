@@ -21,6 +21,9 @@
   .badge.should-fix { background: #fff4e0; color: #8a5a00; }
   .badge.question { background: #eef2ff; color: #33379e; }
   .badge.nit { background: #f0f0f0; color: #555; }
+  .badge.blocking { background: #fde2e2; color: #9c1c1c; }
+  .verdict.request-changes-active { background: #fff5f5; border: 1px solid #f3caca; color: #8a1f1f; }
+  .refresh-log { font-size: 0.85rem; color: #555; background: #f8f9fb; border: 1px solid #e3e6ea; border-radius: 6px; padding: 0.6rem 1rem; margin-top: 0.6rem; }
   .loc { color: #555; font-size: 0.85rem; }
   ul { padding-left: 1.3rem; }
   a { color: #0a5bd0; }
@@ -34,12 +37,13 @@
   <div><strong>Title:</strong> Add nil guard to publisher.Commit and set GitUser in GithubOptions.GitClientFactory</div>
   <div><strong>Head SHA:</strong> <code>b8efacee1b5d98e1647b21dd97608647b8c6d301</code></div>
   <div><strong>Base:</strong> main</div>
-  <div><strong>Reviewed at:</strong> 2026-07-27T10:37:38Z</div>
+  <div><strong>Reviewed at:</strong> 2026-07-30T12:55:12Z</div>
+  <div class="refresh-log"><strong>Refresh log:</strong> b8efacee1 &rarr; b8efacee1 (no code change) &mdash; maintainer ylink-lfs submitted CHANGES_REQUESTED review 2026-07-29T16:03:39Z with inline comment on publisher.go:56 re: error message lacking remediation guidance.</div>
 </div>
 
 <h2>Verdict</h2>
-<div class="verdict approve">Approve (with suggestions) &mdash; correct, well-scoped fix; add regression tests for the new guard when convenient, but nothing here should block merge.</div>
-<p>The fix correctly addresses the panic from #800 both defensively (nil guard in <code>publisher.Commit</code>) and at the root cause (populating <code>GitUser</code> in <code>GitClientFactory</code>). A follow-up multi-perspective maintainer review (code quality, maintainability, deployment risk) independently converged on the same conclusion: small, low-risk, idiomatic change with no config/API surface impact and LOW deployment risk. The main remaining gap is test coverage &mdash; neither new code path has an accompanying test case &mdash; which is worth asking for but doesn't warrant blocking a change this size and risk.</p>
+<div class="verdict request-changes-active">Request changes &mdash; maintainer ylink-lfs requested changes on the nil-guard error message; fix that, and the earlier test-coverage suggestions remain non-blocking.</div>
+<p>The fix correctly addresses the panic from #800 both defensively (nil guard in <code>publisher.Commit</code>) and at the root cause (populating <code>GitUser</code> in <code>GitClientFactory</code>). No code has changed since the previous pass, but a project maintainer has since requested changes: the nil-guard error message states that <code>GitUser</code> is unset but doesn't tell the developer how to fix it. That's a small, concrete ask and should be addressed before merge. The test-coverage gaps and the noreply-email suggestion from the earlier review remain open but non-blocking.</p>
 
 <h2>What this PR does</h2>
 <ul>
@@ -47,9 +51,19 @@
   <li><code>pkg/git/v2/publisher.go</code>: adds an <code>if p.info == nil</code> guard in <code>Commit</code>, returning a wrapped error instead of panicking.</li>
   <li><code>pkg/flagutil/github.go</code>: <code>GitClientFactory</code> now sets <code>opts.GitUser</code> in the token/app-auth branch, using the same <code>user</code> login as <code>opts.Username</code> and an empty email &mdash; this is the actual root-cause fix for real-world callers.</li>
   <li>No test changes included.</li>
+  <li>Since previous review: no code changes (head SHA unchanged). Maintainer <code>ylink-lfs</code> (MEMBER) submitted a CHANGES_REQUESTED review with one inline comment.</li>
 </ul>
 
 <h2>Findings</h2>
+
+<div class="finding">
+  <h3><span class="badge blocking">blocking</span>Error message doesn't explain remedy</h3>
+  <div class="loc"><code>pkg/git/v2/publisher.go:55-57</code></div>
+  <p>Maintainer <code>ylink-lfs</code> (MEMBER) requested changes on 2026-07-29, commenting inline that &ldquo;the returned error doesn't explain the remedy for developers.&rdquo; The message tells the caller what's wrong but not how to fix it (e.g. set <code>GitUser</code> via <code>WithGitUser</code>/<code>ClientFactoryOpts.GitUser</code>). Needs a revision naming the fix, not just the symptom, before this can merge.</p>
+  <pre>if p.info == nil {
+    return fmt.Errorf("error committing %q: GitUser is not set", title)
+}</pre>
+</div>
 
 <div class="finding">
   <h3><span class="badge should-fix">should-fix</span>Missing test for nil <code>info</code> guard</h3>
@@ -95,6 +109,7 @@ opts.Token = generator</pre>
 
 <h2>Open questions for the author</h2>
 <ul>
+  <li>Could you revise the nil-guard error message in <code>publisher.go:56</code> to point the caller at the fix (e.g. mention <code>WithGitUser</code>/<code>ClientFactoryOpts.GitUser</code>), per ylink-lfs's review comment?</li>
   <li>Could you add a <code>TestPublisher_Commit</code> case covering <code>info == nil</code> to lock in the new guard?</li>
   <li>Could you add/extend a test in <code>pkg/flagutil/github_test.go</code> verifying <code>GitClientFactory</code> populates <code>opts.GitUser</code> when token/app auth is configured?</li>
 </ul>

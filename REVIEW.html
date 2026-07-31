@@ -65,6 +65,21 @@
     margin-bottom: 0.25rem;
   }
   .verdict-banner p { color: var(--text-muted); font-size: 0.95rem; }
+  .gate-banner {
+    background: var(--surface);
+    border: 1px solid var(--accent-yellow);
+    border-left: 4px solid var(--accent-yellow);
+    border-radius: 6px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 2rem;
+  }
+  .gate-banner.gate-merge { border-color: var(--accent-green); border-left-color: var(--accent-green); }
+  .gate-banner.gate-donotmerge { border-color: var(--accent-red); border-left-color: var(--accent-red); }
+  .gate-banner h2 { font-size: 1.1rem; margin-bottom: 0.25rem; }
+  .gate-banner.gate-hold h2 { color: var(--accent-yellow); }
+  .gate-banner.gate-merge h2 { color: var(--accent-green); }
+  .gate-banner.gate-donotmerge h2 { color: var(--accent-red); }
+  .gate-banner p { color: var(--text-muted); font-size: 0.95rem; }
   .section {
     background: var(--surface);
     border: 1px solid var(--border);
@@ -166,6 +181,22 @@
     <li>The remaining open comment (external Go tools / <code>RepoMetadata</code> embedding) got a question back from hoxhaeris asking whether the <code>org</code> package's Go API is considered stable for external importers &mdash; awaiting an answer from petr-muller.</li>
     <li>Diff scoped to peribolos: +665/&minus;245 across <code>main.go</code>, <code>main_test.go</code> (substantially expanded test coverage), <code>org.go</code>.</li>
     <li>PR is <code>OPEN</code>; existing approvals from petr-muller and Prucek (Jan 2026) predate this round of changes.</li>
+  </ul>
+</div>
+
+<!-- Gate -->
+<div class="gate-banner gate-merge">
+  <h2>Gate: MERGE</h2>
+  <p>Gated 2026-07-31, head unchanged at <code>af38ab180</code>.</p>
+  <p>All eight posted review comments have a disposition: seven are fixed in commits <code>2479e7c74</code>/<code>a513e7421</code>/<code>9c74482e9</code>/<code>af38ab180</code>, verified in the current code. The eighth (external Go tools / <code>org</code> package API stability, <code>pkg/config/org/org.go:99</code>) is an open question addressed directly to petr-muller &mdash; unanswered since 2026-07-13 &mdash; but it doesn't gate merge: the underlying change (<code>RepoMetadata</code> extraction) is already in place as an independently-revertible commit, YAML/JSON config compatibility is preserved either way, and hoxhaeris's own analysis (porting is mechanical, only Go struct-literal construction breaks) stands regardless of how the question is answered. No unaddressed blocking or should-fix findings remain. Independent risk scan of the diff found nothing that would break existing deployments without an already-acceptable mitigation.</p>
+  <hr>
+  <p><strong>Gating list:</strong> none &mdash; no item currently blocks merge on substance.</p>
+  <p><strong>Open item worth resolving, non-blocking:</strong> posted comment #1 (<code>pkg/config/org/org.go:99</code>) &mdash; petr-muller should reply on whether the <code>org</code> package's Go API is considered stable for external importers, for the record, but this can happen before or after merge.</p>
+  <p><strong>Independent merge risk:</strong></p>
+  <ul>
+    <li><strong>Go API break</strong>: <code>Repo</code> embeds <code>RepoMetadata</code> (<code>pkg/config/org/org.go</code>) instead of declaring those fields directly. YAML/JSON config is unaffected (embedded fields flatten identically). Only external Go code constructing <code>org.Repo{Description: ...}</code> struct literals directly breaks, with a compile-time error (not a silent runtime change). Within kubernetes-sigs/prow, <code>cmd/peribolos</code> is the only importer. Blast radius on external consumers (e.g. OpenShift's machine-produced peribolos configs) is unknown but the fix is mechanical and self-evident at compile time &mdash; acceptable without a migration path, though a release note flagging the breaking Go API change would help external importers (none currently in the PR body).</li>
+    <li><strong><code>--fix-forks</code> inherits from <code>--fix-repos</code> when not explicitly set</strong> (<code>cmd/peribolos/main.go:101-119</code>): confirmed in code &mdash; no practical behavior change for existing users, since <code>configureForks</code> returns early with zero API calls when no <code>repos[].fork</code> entries exist in config (<code>len(upstreamToConfig) == 0</code>). Opt-in in practice.</li>
+    <li>No CRD, wire-format, or other cross-cluster compatibility changes found; this is peribolos-local (a CLI tool run out-of-cluster against the GitHub API).</li>
   </ul>
 </div>
 

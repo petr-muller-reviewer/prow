@@ -12,6 +12,11 @@ refresh_log:
   - sha: af38ab18086a3616d75b7901410cb06694f1267d
     refreshed_at: "2026-07-26T22:35:58Z"
     summary: "hoxhaeris pushed 4 commits (2479e7c, a513e74, 9c74482, af38ab1) addressing 7 of the 8 posted comments; replied inline on each with the fixing commit. One comment (external Go tools / org API stability) got a clarifying question back to petr-muller, not yet answered."
+gate:
+  decision: merge
+  gated_at: "2026-07-31T16:37:44Z"
+  gated_head_sha: af38ab18086a3616d75b7901410cb06694f1267d
+  reviewed_head_sha: af38ab18086a3616d75b7901410cb06694f1267d
 ---
 
 # PR #583 — peribolos: Add Repository Fork Management Support
@@ -32,6 +37,23 @@ Review posted on PR. No blocking issues found after closer inspection — the pr
 - The remaining open comment (external Go tools / `RepoMetadata` embedding) got a reply from hoxhaeris asking petr-muller whether the `org` package's Go API is considered stable for external importers — awaiting an answer, no code change expected either way.
 - Diff (scoped to `cmd/peribolos/main.go`, `cmd/peribolos/main_test.go`, `pkg/config/org/org.go`): +665/−245, including substantially expanded unit test coverage in `main_test.go`.
 - PR is `OPEN`; existing approvals from petr-muller (Jan 14) and Prucek (Jan 15) predate this round of changes and were not re-affirmed since.
+
+---
+
+## Gate
+
+**Decision: MERGE** (gated 2026-07-31, head unchanged at `af38ab180`)
+
+All eight posted review comments have a disposition: seven are fixed in commits `2479e7c74`/`a513e7421`/`9c74482e9`/`af38ab180`, verified in the current code. The eighth (external Go tools / `org` package API stability, `pkg/config/org/org.go:99`) is an open question addressed directly to petr-muller — unanswered since 2026-07-13 — but it doesn't gate merge: the underlying change (`RepoMetadata` extraction) is already in place as an independently-revertible commit, YAML/JSON config compatibility is preserved either way, and hoxhaeris's own analysis (porting is mechanical, only Go struct-literal construction breaks) stands regardless of how the question is answered. No unaddressed blocking or should-fix findings remain. Independent risk scan of the diff found nothing that would break existing deployments without an already-acceptable mitigation.
+
+**Gating list:** none — no item currently blocks merge on substance.
+
+**Open item worth resolving, non-blocking:** posted comment #1 (`pkg/config/org/org.go:99`) — petr-muller should reply on whether the `org` package's Go API is considered stable for external importers, for the record, but this can happen before or after merge.
+
+**Independent merge risk (Area 2):**
+- **Go API break**: `Repo` embeds `RepoMetadata` (`pkg/config/org/org.go`) instead of declaring those fields directly. YAML/JSON config is unaffected (embedded fields flatten identically). Only external Go code constructing `org.Repo{Description: ...}` struct literals directly breaks, with a compile-time error (not a silent runtime change). Within kubernetes-sigs/prow, `cmd/peribolos` is the only importer. Blast radius on external consumers (e.g. OpenShift's machine-produced peribolos configs, per petr-muller's original comment) is unknown but the fix is mechanical and self-evident at compile time — acceptable without a migration path, though a release note flagging the breaking Go API change would help external importers (none currently in the PR body).
+- **`--fix-forks` inherits from `--fix-repos` when not explicitly set** (`cmd/peribolos/main.go:101-119`): confirmed in code — no practical behavior change for existing users, because `configureForks` returns early with zero API calls when no `repos[].fork` entries exist in config (`len(upstreamToConfig) == 0`). Opt-in in practice; not a silent behavior change for anyone not already using the new `fork:` config key.
+- No CRD, wire-format, or other cross-cluster compatibility changes found; this is peribolos-local (a CLI tool run out-of-cluster against the GitHub API).
 
 ---
 

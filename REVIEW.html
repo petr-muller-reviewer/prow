@@ -23,282 +23,264 @@
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
     background: var(--bg);
     color: var(--text);
-    line-height: 1.6;
-    padding: 2rem;
-    max-width: 960px;
+    line-height: 1.65;
+    padding: 2rem 1.5rem 4rem;
+    max-width: 900px;
     margin: 0 auto;
   }
   h1 {
-    font-size: 1.75rem;
+    font-size: 1.6rem;
     border-bottom: 1px solid var(--border);
     padding-bottom: 0.75rem;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.6rem;
   }
   h1 a { color: var(--accent-blue); text-decoration: none; }
   h1 a:hover { text-decoration: underline; }
-  .subtitle {
-    color: var(--text-muted);
-    font-size: 0.9rem;
-    margin-bottom: 1rem;
+  h2 {
+    font-size: 1.15rem;
+    margin: 2.25rem 0 0.85rem;
+    padding-bottom: 0.35rem;
+    border-bottom: 1px solid var(--border);
   }
-  .review-badge {
-    display: inline-block;
-    background: var(--accent-purple);
-    color: var(--bg);
-    font-size: 0.75rem;
-    font-weight: 600;
-    padding: 0.25rem 0.6rem;
-    border-radius: 12px;
-    margin-bottom: 1rem;
-  }
-  .verdict-banner {
-    background: var(--surface);
-    border: 1px solid var(--accent-blue);
-    border-left: 4px solid var(--accent-blue);
-    border-radius: 6px;
-    padding: 1rem 1.25rem;
-    margin-bottom: 2rem;
-  }
-  .verdict-banner h2 {
-    color: var(--accent-blue);
-    font-size: 1.1rem;
-    margin-bottom: 0.25rem;
-  }
-  .verdict-banner p { color: var(--text-muted); font-size: 0.95rem; }
-  .gate-banner {
-    background: var(--surface);
-    border: 1px solid var(--accent-yellow);
-    border-left: 4px solid var(--accent-yellow);
-    border-radius: 6px;
-    padding: 1rem 1.25rem;
-    margin-bottom: 2rem;
-  }
-  .gate-banner.gate-merge { border-color: var(--accent-green); border-left-color: var(--accent-green); }
-  .gate-banner.gate-donotmerge { border-color: var(--accent-red); border-left-color: var(--accent-red); }
-  .gate-banner h2 { font-size: 1.1rem; margin-bottom: 0.25rem; }
-  .gate-banner.gate-hold h2 { color: var(--accent-yellow); }
-  .gate-banner.gate-merge h2 { color: var(--accent-green); }
-  .gate-banner.gate-donotmerge h2 { color: var(--accent-red); }
-  .gate-banner p { color: var(--text-muted); font-size: 0.95rem; }
-  .section {
+  h3 { font-size: 0.98rem; margin: 0 0 0.4rem; }
+  .meta {
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 6px;
+    padding: 0.85rem 1.1rem;
     margin-bottom: 1.5rem;
-    overflow: hidden;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 0.3rem 1.1rem;
   }
-  .section-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.75rem 1.25rem;
-    border-bottom: 1px solid var(--border);
-    cursor: pointer;
-    user-select: none;
+  .meta dt { color: var(--text-muted); font-weight: 600; }
+  .meta dd { color: var(--text); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.82rem; word-break: break-all; }
+  .verdict {
+    background: var(--surface);
+    border: 1px solid var(--accent-green);
+    border-left: 4px solid var(--accent-green);
+    border-radius: 6px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1rem;
   }
-  .section-header:hover { background: rgba(255,255,255,0.02); }
-  .section-header h3 { font-size: 1rem; }
-  .section-header .toggle { color: var(--text-muted); font-size: 0.8rem; }
-  .section-body { padding: 1rem 1.25rem; }
-  .section-body.collapsed { display: none; }
+  .verdict h2 { color: var(--accent-green); font-size: 1.1rem; margin: 0 0 0.4rem; border: none; padding: 0; }
+  .verdict p { color: var(--text-muted); font-size: 0.94rem; }
+  .finding {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.9rem 1.15rem;
+    margin-bottom: 0.9rem;
+  }
+  .finding.blocking { border-left: 4px solid var(--accent-red); }
+  .finding.should-fix { border-left: 4px solid var(--accent-yellow); }
+  .finding.nit { border-left: 4px solid var(--accent-blue); }
+  .finding.question { border-left: 4px solid var(--accent-purple); }
+  .finding p { font-size: 0.93rem; color: var(--text-muted); margin-top: 0.45rem; }
+  .where {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.8rem;
+    color: var(--accent-blue);
+    display: block;
+    margin-bottom: 0.2rem;
+  }
   .badge {
     display: inline-block;
-    font-size: 0.75rem;
-    font-weight: 600;
-    padding: 0.15rem 0.5rem;
-    border-radius: 12px;
-    margin-left: 0.5rem;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    padding: 0.1rem 0.45rem;
+    border-radius: 10px;
+    margin-right: 0.5rem;
     vertical-align: middle;
+    text-transform: uppercase;
   }
-  .badge-approve { background: rgba(63,185,80,0.15); color: var(--accent-green); }
-  .badge-comment { background: rgba(88,166,255,0.15); color: var(--accent-blue); }
-  .badge-request { background: rgba(248,81,73,0.15); color: var(--accent-red); }
-  .badge-medium { background: rgba(210,153,34,0.15); color: var(--accent-yellow); }
-  .badge-low { background: rgba(63,185,80,0.15); color: var(--accent-green); }
-  .badge-high { background: rgba(248,81,73,0.15); color: var(--accent-red); }
-  .badge-critical { background: rgba(248,81,73,0.25); color: var(--accent-red); font-weight: 700; }
-  .badge-corrected { background: rgba(188,140,255,0.15); color: var(--accent-purple); }
-  ul { padding-left: 1.25rem; margin: 0.5rem 0; }
-  ol { padding-left: 1.25rem; margin: 0.5rem 0; }
-  li { margin-bottom: 0.5rem; }
-  li strong { color: var(--accent-blue); }
+  .badge.blocking { background: rgba(248,81,73,0.18); color: var(--accent-red); }
+  .badge.should-fix { background: rgba(210,153,34,0.18); color: var(--accent-yellow); }
+  .badge.nit { background: rgba(88,166,255,0.18); color: var(--accent-blue); }
+  .badge.question { background: rgba(188,140,255,0.18); color: var(--accent-purple); }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 0.65rem 0.85rem;
+    margin-top: 0.55rem;
+    overflow-x: auto;
+    font-size: 0.8rem;
+    line-height: 1.5;
+  }
   code {
     background: var(--code-bg);
-    padding: 0.15rem 0.4rem;
+    padding: 0.1rem 0.35rem;
     border-radius: 4px;
     font-size: 0.85em;
     color: var(--accent-purple);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   }
-  .required {
-    border-left: 4px solid var(--accent-red);
-  }
-  .suggestions-section {
-    border-left: 4px solid var(--accent-blue);
-  }
-  .posted-section {
-    border-left: 4px solid var(--accent-green);
-  }
-  .corrections-section {
-    border-left: 4px solid var(--accent-purple);
-  }
-  .positive { color: var(--accent-green); }
-  .concern { color: var(--accent-yellow); }
-  .critical { color: var(--accent-red); }
-  .corrected { color: var(--accent-purple); }
-  .pr-comment {
-    background: var(--code-bg);
+  pre code { background: none; padding: 0; color: var(--text); }
+  .hl { color: var(--accent-yellow); }
+  ul, ol { padding-left: 1.35rem; margin: 0.5rem 0; }
+  li { margin-bottom: 0.4rem; font-size: 0.93rem; }
+  .muted { color: var(--text-muted); }
+  .note {
+    font-size: 0.88rem;
+    color: var(--text-muted);
+    background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 6px;
-    padding: 1rem 1.25rem;
-    margin-top: 1.5rem;
-    font-size: 0.95rem;
-    white-space: pre-wrap;
+    padding: 0.8rem 1.1rem;
+    margin-bottom: 1rem;
   }
-  .pr-comment-label {
-    font-size: 0.8rem;
-    color: var(--text-muted);
-    margin-bottom: 0.5rem;
-  }
-  hr { border: none; border-top: 1px solid var(--border); margin: 1.5rem 0; }
-  h4 { margin-top: 1rem; margin-bottom: 0.5rem; font-size: 0.95rem; }
-  .strikethrough { text-decoration: line-through; color: var(--text-muted); }
 </style>
 </head>
 <body>
 
-<h1><a href="https://github.com/kubernetes-sigs/prow/pull/583">#583</a> peribolos: Add Repository Fork Management Support</h1>
-<p class="subtitle">Author: hoxhaeris &middot; Branch: feature/peribolos-fork-management &rarr; main &middot; +1273 / &minus;115 across 6 files</p>
-<span class="review-badge">REVIEWED &mdash; May 11, 2026 &middot; REFRESHED Jul 26, 2026</span>
+<h1><a href="https://github.com/kubernetes-sigs/prow/pull/583">kubernetes-sigs/prow#583</a> — <code>peribolos</code>: Add Repository Fork Management Support</h1>
 
-<div class="verdict-banner">
-  <h2>Recommendation: COMMENT (review posted)</h2>
-  <p>Review posted on PR. No blocking issues found after closer inspection &mdash; the previously flagged "critical nil pointer dereference" is not a crash (Parent is a value type, not a pointer). The main actionable items are moving <code>GetRepos</code> after validation, propagating <code>configureForks</code> errors, and considering a <code>ForkConfig</code> sub-struct.</p>
-  <hr>
-  <p><strong>Since previous review (refreshed 2026-07-26, code changed 298aa76c &rarr; af38ab180):</strong></p>
-  <ul>
-    <li>hoxhaeris pushed 4 new commits (2026-07-13) addressing 7 of the 8 posted comments: <code>2479e7c74</code> (ForkConfig struct), <code>a513e7421</code> (propagate fork errors, drop nil-map guards), <code>9c74482e9</code> (gate GetRepos on validation), <code>af38ab180</code> (fix Parent.FullName capture, normalize case handling, extract collision check).</li>
-    <li>hoxhaeris replied inline on each of the 7 addressed comments citing the fixing commit; see "Posted Review Comments" below, now split into Open/Resolved.</li>
-    <li>The remaining open comment (external Go tools / <code>RepoMetadata</code> embedding) got a question back from hoxhaeris asking whether the <code>org</code> package's Go API is considered stable for external importers &mdash; awaiting an answer from petr-muller.</li>
-    <li>Diff scoped to peribolos: +665/&minus;245 across <code>main.go</code>, <code>main_test.go</code> (substantially expanded test coverage), <code>org.go</code>.</li>
-    <li>PR is <code>OPEN</code>; existing approvals from petr-muller and Prucek (Jan 2026) predate this round of changes.</li>
-  </ul>
+<dl class="meta">
+  <dt>PR</dt><dd>kubernetes-sigs/prow#583</dd>
+  <dt>Head SHA</dt><dd>af38ab18086a3616d75b7901410cb06694f1267d</dd>
+  <dt>Base</dt><dd>main</dd>
+  <dt>Reviewed at</dt><dd>2026-07-31T17:10:17Z</dd>
+  <dt>Author</dt><dd>hoxhaeris</dd>
+</dl>
+
+<div class="verdict">
+  <h2>Verdict: approve</h2>
+  <p>Full-source re-review at <code>af38ab180</code>, re-deriving every claim from the code rather than from the earlier summary. No blocking findings. The fork logic is careful — the <code>parentResult</code> caching correctly avoids double-reporting a failed <code>GetRepo</code>, and the unvalidated <code>parts[1]</code> index is safe because the validation loop hard-returns first. Build and the <code>cmd/peribolos</code> + <code>pkg/config/org</code> suites pass, and YAML backward compatibility was confirmed empirically rather than argued. The substantive gap the earlier pass missed is the <code>--dump</code> path: it auto-populates <code>fork:</code>, so "opt-in via a new config key" holds only until an operator re-dumps, after which <code>--fix-repos</code> quietly starts reconciling forks. That is release-note material, not a merge blocker.</p>
 </div>
 
-<!-- Gate -->
-<div class="gate-banner gate-merge">
-  <h2>Gate: MERGE</h2>
-  <p>Gated 2026-07-31, head unchanged at <code>af38ab180</code>.</p>
-  <p>All eight posted review comments have a disposition: seven are fixed in commits <code>2479e7c74</code>/<code>a513e7421</code>/<code>9c74482e9</code>/<code>af38ab180</code>, verified in the current code. The eighth (external Go tools / <code>org</code> package API stability, <code>pkg/config/org/org.go:99</code>) is an open question addressed directly to petr-muller &mdash; unanswered since 2026-07-13 &mdash; but it doesn't gate merge: the underlying change (<code>RepoMetadata</code> extraction) is already in place as an independently-revertible commit, YAML/JSON config compatibility is preserved either way, and hoxhaeris's own analysis (porting is mechanical, only Go struct-literal construction breaks) stands regardless of how the question is answered. No unaddressed blocking or should-fix findings remain. Independent risk scan of the diff found nothing that would break existing deployments without an already-acceptable mitigation.</p>
-  <hr>
-  <p><strong>Gating list:</strong> none &mdash; no item currently blocks merge on substance.</p>
-  <p><strong>Open item worth resolving, non-blocking:</strong> posted comment #1 (<code>pkg/config/org/org.go:99</code>) &mdash; petr-muller should reply on whether the <code>org</code> package's Go API is considered stable for external importers, for the record, but this can happen before or after merge.</p>
-  <p><strong>Independent merge risk:</strong></p>
-  <ul>
-    <li><strong>Go API break</strong>: <code>Repo</code> embeds <code>RepoMetadata</code> (<code>pkg/config/org/org.go</code>) instead of declaring those fields directly. YAML/JSON config is unaffected (embedded fields flatten identically). Only external Go code constructing <code>org.Repo{Description: ...}</code> struct literals directly breaks, with a compile-time error (not a silent runtime change). Within kubernetes-sigs/prow, <code>cmd/peribolos</code> is the only importer. Blast radius on external consumers (e.g. OpenShift's machine-produced peribolos configs) is unknown but the fix is mechanical and self-evident at compile time &mdash; acceptable without a migration path, though a release note flagging the breaking Go API change would help external importers (none currently in the PR body).</li>
-    <li><strong><code>--fix-forks</code> inherits from <code>--fix-repos</code> when not explicitly set</strong> (<code>cmd/peribolos/main.go:101-119</code>): confirmed in code &mdash; no practical behavior change for existing users, since <code>configureForks</code> returns early with zero API calls when no <code>repos[].fork</code> entries exist in config (<code>len(upstreamToConfig) == 0</code>). Opt-in in practice.</li>
-    <li>No CRD, wire-format, or other cross-cluster compatibility changes found; this is peribolos-local (a CLI tool run out-of-cluster against the GitHub API).</li>
-  </ul>
+<div class="note">
+  This review supersedes an earlier summary-derived pass that contained four factual errors; they are listed under <a href="#corrections" style="color:var(--accent-blue)">Corrections</a>.
 </div>
 
-<!-- Corrections from earlier automated review -->
-<div class="section corrections-section">
-  <div class="section-header" onclick="toggle(this)">
-    <h3>Corrections to Earlier Automated Review <span class="badge badge-corrected">3 CORRECTED</span></h3>
-    <span class="toggle">collapse</span>
-  </div>
-  <div class="section-body">
-    <p>The automated re-review (Apr 20) flagged three "required" changes. Manual inspection revised the severity and accuracy of all three:</p>
-    <ol>
-      <li>
-        <strong class="strikethrough">Nil pointer dereference at main.go:1328</strong> <span class="badge badge-corrected">NOT A BUG</span>
-        <p>The automated review claimed <code>fullRepo.Parent.FullName</code> would panic on error. This is incorrect: <code>GetRepo</code> returns <code>(FullRepo, error)</code> by value (not pointer), and <code>Parent</code> is a <code>ParentRepo</code> value field (not a pointer). On error, <code>fullRepo</code> is a zero-value struct and <code>Parent.FullName</code> is simply <code>""</code> &mdash; no panic. The code is logically incorrect (captures an empty string before the error check), but it does not crash. Posted as a minor observation in the review.</p>
-      </li>
-      <li>
-        <strong class="strikethrough">Change <code>--fix-forks</code> default to <code>false</code></strong> <span class="badge badge-corrected">DOWNGRADED</span>
-        <p>Previously flagged as required. After analysis: if no <code>fork_from</code> entries exist in config, <code>configureForks</code> returns an empty map and creates no forks. The inheritance has no practical impact for users without fork config. The only real cost is the unnecessary <code>GetRepos</code> API call, which is addressed by the early-return suggestion. Dropped from required to non-blocking. Note: the inheritance behavior was originally suggested by the maintainer (petr-muller) in the Jan 14 comment thread.</p>
-      </li>
-      <li>
-        <strong>Early return in <code>configureForks</code></strong> <span class="badge badge-comment">REFINED</span>
-        <p>Still valid but better articulated in the posted review: move the <code>GetRepos</code> call <em>after</em> the validation block and gate it with <code>len(upstreamToConfig) == 0</code>. This saves a potentially paginated API call for all users who don't use fork management, which is important given that <code>--fix-forks</code> inherits from <code>--fix-repos</code>.</p>
-      </li>
-    </ol>
-  </div>
+<h2>What this PR does</h2>
+<ul>
+  <li>Adds a <code>fork:</code> block to the peribolos org-config <code>repos:</code> surface (<code>ForkConfig{From, DefaultBranchOnly}</code>), reconciled by a new <code>configureForks</code> that runs before <code>configureRepos</code>.</li>
+  <li>Adds <code>CreateForkInOrg</code> to the GitHub client, passing the config key as GitHub's fork <code>name</code> parameter so fork naming is explicit rather than GitHub-selected.</li>
+  <li>Adds <code>--fix-forks</code>, defaulting to whatever <code>--fix-repos</code> is unless explicitly passed.</li>
+  <li>Extracts the GitHub-API-shaped fields of <code>org.Repo</code> into an embedded <code>RepoMetadata</code> struct — serialization-transparent, Go-source breaking.</li>
+  <li>Teaches <code>--dump</code> to emit <code>fork:</code> for any repo whose GitHub parent is set.</li>
+</ul>
+
+<h2>Findings</h2>
+
+<p class="muted" style="font-size:0.9rem;margin-bottom:0.9rem;">No blocking findings.</p>
+
+<div class="finding should-fix">
+  <h3><span class="badge should-fix">should fix</span><code>--dump</code> auto-populates <code>fork:</code>, silently widening what <code>--fix-repos</code> reconciles</h3>
+  <span class="where">cmd/peribolos/main.go:402-406</span>
+  <p>This is the mechanism by which fork reconciliation reaches operators who never opted in. Combined with <code>--fix-forks</code> inheriting from <code>--fix-repos</code>, a config regenerated by <code>--dump</code> after upgrading starts reconciling every fork in the org — one extra <code>GetRepos</code> plus one <code>GetRepo</code> per fork, and the hard-failure paths below become reachable. Behaviourally a no-op for a faithful dump, but "opt-in via the new config key" holds only until the next re-dump. Worth a release note.</p>
+  <pre><code>// If repo is a fork, record the upstream
+if full.Fork &amp;&amp; full.Parent.FullName != "" {
+    <span class="hl">repoConfig.Fork = &amp;org.ForkConfig{From: full.Parent.FullName}</span></code></pre>
 </div>
 
-<!-- Posted Review Comments -->
-<div class="section posted-section">
-  <div class="section-header" onclick="toggle(this)">
-    <h3>Posted Review Comments <span class="badge badge-comment">1 OPEN</span> <span class="badge badge-approve">7 RESOLVED</span></h3>
-    <span class="toggle">collapse</span>
-  </div>
-  <div class="section-body">
-    <h4>Open</h4>
-    <ol>
-      <li>
-        <strong>External Go tools concern (org.go)</strong>
-        <p>The <code>Repo</code> &rarr; <code>RepoMetadata</code> embedding is a compile-time break for struct literals in out-of-tree Go code. Flagged as an observation &mdash; porting is mechanical but worth noting. YAML/JSON serialization is unaffected.</p>
-        <p><em>hoxhaeris (2026-07-13) replied asking whether the <code>org</code> package's Go API is considered stable for external importers &mdash; question for petr-muller, unanswered.</em></p>
-      </li>
-    </ol>
-    <h4>Resolved</h4>
-    <ol start="2">
-      <li>
-        <strong>ForkConfig sub-struct suggestion (org.go)</strong> <span class="badge badge-approve">fixed in 2479e7c74</span>
-        <p>Suggested grouping <code>ForkFrom</code> + <code>DefaultBranchOnly</code> into a <code>ForkConfig</code> struct to make the coupling explicit and prevent the invalid state of <code>DefaultBranchOnly</code> without <code>ForkFrom</code>. Changes YAML surface to a nested <code>fork:</code> key. Implemented as <code>Fork *ForkConfig{From, DefaultBranchOnly}</code>; <code>nil</code> now means "not a fork".</p>
-      </li>
-      <li>
-        <strong>Propagate <code>configureForks</code> error (main.go)</strong> <span class="badge badge-approve">fixed in a513e7421</span>
-        <p>Currently logs the error and continues but never propagates to a non-zero exit. <code>configureOrg</code> now saves the fork error, continues with other subsystems, and returns it at the end if nothing else failed first.</p>
-      </li>
-      <li>
-        <strong>Nil map initialization unnecessary (main.go)</strong> <span class="badge badge-approve">fixed in a513e7421</span>
-        <p>Both consumers of <code>forkNames</code> only read from the map. Reading from a nil map in Go is safe. Both <code>make(map[string]string)</code> guards removed.</p>
-      </li>
-      <li>
-        <strong>Move <code>GetRepos</code> after validation + early return (main.go)</strong> <span class="badge badge-approve">fixed in 9c74482e9</span>
-        <p>Gate <code>GetRepos</code> by <code>len(upstreamToConfig) == 0</code> early return. Validation now runs first, so format errors also surface before any network activity.</p>
-      </li>
-      <li>
-        <strong><code>fullRepo.Parent.FullName</code> on error (main.go)</strong> <span class="badge badge-approve">fixed in af38ab180</span>
-        <p>Not a panic (Parent is a value type), but captures an empty string on error. <code>fullName</code> is now only captured when <code>GetRepo</code> succeeds.</p>
-      </li>
-      <li>
-        <strong>Case-insensitivity observation (main.go)</strong> <span class="badge badge-approve">fixed in af38ab180</span>
-        <p>The mix of <code>ToLower</code> and <code>EqualFold</code> usage was inconsistent and fragile. Normalized into <code>repoNameLower</code>/<code>upstreamRepoNameLower</code>/<code>expectedUpstream</code> computed once per loop iteration; original-case <code>repoName</code> kept only for logs/errors and the <code>forkNames</code> key.</p>
-      </li>
-      <li>
-        <strong>Nested conditionals (main.go)</strong> <span class="badge badge-approve">fixed in af38ab180</span>
-        <p>The fork conflict detection section with three levels of nesting was hard to follow. Extracted to <code>checkExistingRepoConflict</code>.</p>
-      </li>
-    </ol>
-  </div>
+<div class="finding should-fix">
+  <h3><span class="badge should-fix">should fix</span>Upstream rename or transfer turns a previously-working config into a non-zero exit</h3>
+  <span class="where">cmd/peribolos/main.go:1342, :1465-1468</span>
+  <p>A dumped <code>from:</code> pins the upstream's <code>FullName</code> at dump time. If that upstream is later renamed or transferred, <code>expectedUpstream</code> stops matching <code>Parent.FullName</code>, <code>checkExistingRepoConflict</code> produces a conflict error, and the whole run exits non-zero. Pre-PR there was no fork tracking to disagree with reality. The error is accurate and actionable, so this is acceptable — but it is a new way for an untouched config to start failing.</p>
+  <pre><code>return fmt.Errorf("repo %s exists as fork of %s, but config specifies %s",
+    repoName, cachedResult.fullName, expectedUpstream)</code></pre>
 </div>
 
-<!-- Additional Observations -->
-<div class="section suggestions-section">
-  <div class="section-header" onclick="toggle(this)">
-    <h3>Additional Observations (not posted)</h3>
-    <span class="toggle">collapse</span>
-  </div>
-  <div class="section-body">
-    <ul>
-      <li><strong><code>CreateForkInOrg</code> redundant dry-run check</strong>: The function explicitly checks <code>c.dry</code> at line 4353, but the underlying <code>requestRawWithContext</code> (line 932) already short-circuits non-GET requests when <code>c.dry</code> is set. The existing <code>CreateFork</code> does not have its own dry-run check. Not harmful, but inconsistent.</li>
-      <li><strong><code>EnsureFork</code> pattern duplication</strong>: The new <code>configureForks</code> reimplements the "check if fork exists, create if not, wait until ready" pattern from <code>EnsureFork</code>, but for the org case using <code>CreateForkInOrg</code>. Refactoring <code>EnsureFork</code> to support org targets would reduce duplication but may be out of scope for this PR.</li>
-      <li><strong>Hardcoded timeout/interval values (main.go:1408)</strong>: <code>5*time.Minute</code> and <code>10*time.Second</code> could be named constants. Minor maintainability improvement.</li>
-      <li><strong>Config key as fork name</strong>: Eris's Jan 15 comment explains the config key is now passed as the explicit fork name to GitHub's API <code>name</code> parameter. This addresses the earlier concern about implicit naming, but the implementation is not visible in the current PR diff &mdash; may be in unpushed commits.</li>
-      <li><strong>Backwards compatibility</strong>: The <code>RepoMetadata</code> embedding preserves JSON/YAML serialization (embedded fields serialize flat). Existing configs work unchanged. New fields (<code>fork_from</code>, <code>default_branch_only</code>) are <code>omitempty</code> pointers, defaulting to nil.</li>
-    </ul>
-  </div>
+<div class="finding should-fix">
+  <h3><span class="badge should-fix">should fix</span>Duplicate-upstream validation hard-returns, making dump&rarr;apply non-idempotent</h3>
+  <span class="where">cmd/peribolos/main.go:1369-1371</span>
+  <p>Unlike the format errors just below it (which accumulate into an aggregate), this is a bare <code>return nil, err</code> that aborts all fork handling. An org holding two repos with the same GitHub parent — reachable by transferring a fork in, even if the fork API refuses a second fork — dumps to a config that peribolos then rejects outright. It fails loudly rather than corrupting anything, but <code>peribolos --dump | peribolos --fix-repos</code> should not be able to produce a config peribolos won't accept.</p>
+  <pre><code>if existing, ok := upstreamToConfig[upstream]; ok {
+    <span class="hl">return nil, fmt.Errorf(</span>"multiple config entries (%s, %s) fork from the same upstream %s, only one fork per upstream is allowed per org", existing, repoName, repoCfg.Fork.From)
+}</code></pre>
 </div>
 
-<script>
-function toggle(header) {
-  const body = header.nextElementSibling;
-  const label = header.querySelector('.toggle');
-  body.classList.toggle('collapsed');
-  label.textContent = body.classList.contains('collapsed') ? 'expand' : 'collapse';
-}
-</script>
+<div class="finding should-fix">
+  <h3><span class="badge should-fix">should fix</span>Fork error is dropped from the message when another subsystem fails first</h3>
+  <span class="where">cmd/peribolos/main.go:1009-1013, :1054-1056</span>
+  <p><code>forkErr</code> is deliberately deferred so other subsystems still run, then returned at the end. But <code>configureRepos</code>, <code>configureCollaborators</code> and <code>configureTeams</code> all <code>return</code> directly on failure, discarding <code>forkErr</code>. Exit status is still non-zero so the stated guarantee holds, but the fork failure becomes invisible — the operator sees only the repos/teams error. Wrapping into an aggregate at each return would preserve both.</p>
+  <pre><code>} else if err := configureRepos(opt, client, orgName, orgConfig, forkNames); err != nil {
+    <span class="hl">return fmt.Errorf("failed to configure %s repos: %w", orgName, err)</span>
+}</code></pre>
+</div>
+
+<div class="finding should-fix">
+  <h3><span class="badge should-fix">should fix</span>New user-facing config surface and flag ship with no documentation</h3>
+  <span class="where">site/content/en/docs/components/cli-tools/peribolos.md</span>
+  <p>The PR touches zero docs. <code>--fix-forks</code>'s inheritance from <code>--fix-repos</code> is non-obvious behaviour documented only in the flag help string and the PR body. Mitigating: that page does not document the <code>repos:</code> surface at all today, so this matches an existing gap rather than creating a regression — but the inheritance semantics in particular will surprise operators.</p>
+</div>
+
+<div class="finding nit">
+  <h3><span class="badge nit">nit</span>Unreachable fallback in <code>checkExistingRepoConflict</code></h3>
+  <span class="where">cmd/peribolos/main.go:1344-1348</span>
+  <p>Dead code. The only call site is <code>main.go:1465</code>, reached only when <code>byName[repoNameLower]</code> exists. If that repo is not a fork the function already returned at <code>:1335-1337</code>; if it is a fork, <code>configNameResult</code> was necessarily set in the candidate loop at <code>:1436-1442</code>; and if it matched the expected upstream the loop already <code>continue</code>d at <code>:1459-1461</code>. So <code>cachedResult</code> is never nil here and this <code>GetRepo</code> never runs.</p>
+  <pre><code><span class="hl">fullRepo, err := client.GetRepo(orgName, existingRepo.Name)</span>
+if err != nil {
+    return fmt.Errorf("failed to get full repo info for %s: %w", repoName, err)
+}</code></pre>
+</div>
+
+<div class="finding nit">
+  <h3><span class="badge nit">nit</span>Empty-string return conflates dry-run with a nameless 202</h3>
+  <span class="where">cmd/peribolos/main.go:1480-1486, pkg/github/client.go:4598-4600</span>
+  <p><code>createdName == ""</code> is the sentinel for "dry run, nothing created". A real non-dry 202 whose body lacks <code>name</code> would take the same branch, log <code>dry-run: fork creation skipped</code>, record a fork name that does not exist, and skip <code>waitForFork</code>. GitHub does return the repo object, so this is theoretical — but a bool return or an explicit dry check in the caller would remove the ambiguity.</p>
+  <pre><code>if <span class="hl">createdName == ""</span> {
+    repoLogger.Info("dry-run: fork creation skipped")
+    forkNames[repoName] = repoName
+    continue
+}</code></pre>
+</div>
+
+<div class="finding nit">
+  <h3><span class="badge nit">nit</span>Hardcoded fork-wait timeout and interval</h3>
+  <span class="where">cmd/peribolos/main.go:1490</span>
+  <p>Named constants would document intent and make the worst case — serial waits across N forks in one run — easier to reason about.</p>
+  <pre><code>if err := waitForFork(client, orgName, createdName, <span class="hl">5*time.Minute, 10*time.Second</span>); err != nil {</code></pre>
+</div>
+
+<div class="finding question">
+  <h3><span class="badge question">question</span>Is the <code>org</code> package's Go API considered stable for external importers?</h3>
+  <span class="where">pkg/config/org/org.go:88-99</span>
+  <p>Open thread from petr-muller (2026-05-11), answered with a question by hoxhaeris (2026-07-13), still unanswered. The <code>RepoMetadata</code> extraction is a compile-time break for out-of-tree code building <code>org.Repo{Description: ...}</code> literals. No code change rides on the answer — the extraction is an independently-revertible commit — but the answer determines whether this warrants a release note.</p>
+</div>
+
+<div class="finding question">
+  <h3><span class="badge question">question</span>Can one org actually hold two forks of the same upstream?</h3>
+  <span class="where">cmd/peribolos/main.go:1369-1371</span>
+  <p>The PR body asserts "GitHub only allows one fork per upstream per org", which is what justifies the hard <code>return</code>. Fork <em>creation</em> is restricted, but repo <em>transfer</em> appears able to produce the state. If reachable, the duplicate-upstream finding above is real; if genuinely impossible, the validation is belt-and-braces and that finding drops to a nit. I could not confirm either way from the code.</p>
+</div>
+
+<h2>Things I checked and was fine with</h2>
+<ul>
+  <li><code>configureForks</code> early return at <code>main.go:1377-1379</code> genuinely precedes the <code>GetRepos</code> call at <code>:1382</code> — no API cost for configs without <code>fork:</code> entries.</li>
+  <li><code>RepoMetadata</code> embedding is serialization-transparent. Verified <em>empirically</em>, not by reasoning: a pre-PR config with flat <code>description</code>/<code>private</code>/<code>default_branch</code>/<code>previously</code>/<code>on_create</code>/<code>collaborators</code> parses through <code>sigs.k8s.io/yaml</code>, all fields promote, and re-marshals flat with no <code>repometadata</code> nesting key.</li>
+  <li><code>cmd/peribolos</code> is the only in-tree importer of <code>pkg/config/org</code>.</li>
+  <li><code>parts[1]</code> indexing in the second <code>configureForks</code> loop (<code>main.go:1408-1410</code>) is safe — the validation loop hard-returns on any malformed <code>from</code> before it is reached.</li>
+  <li><code>parentResult</code> caching correctly avoids double-reporting: a failed <code>GetRepo</code> on the config-named repo is recorded once in the candidate loop, and <code>checkExistingRepoConflict</code> returns nil for that case (<code>main.go:1338-1341</code>).</li>
+  <li><code>append([]string{wantName}, wantRepo.Previously...)</code> at <code>main.go:1207</code> and <code>:1209</code> allocate fresh backing arrays — no slice aliasing into config state.</li>
+  <li>Fork/rename mapping is threaded correctly: <code>configureRepos</code> uses <code>actualName</code> for the update to avoid spurious renames (<code>main.go:1266-1269</code>), and <code>configureCollaborators</code> remaps via <code>forkNames</code> (<code>main.go:1522</code>).</li>
+  <li><code>--fix-repos --fix-forks=false</code> leaves fork-configured repos unmanaged rather than creating them as empty repos (<code>main.go:1238-1241</code>). Consistent with opting out.</li>
+  <li><code>waitForFork</code> distinguishes 404 from other errors and surfaces the latter immediately (<code>main.go:1320-1322</code>) — ivankatliarchuk's March point, confirmed fixed.</li>
+  <li>Fork detection is not O(repos): one <code>GetRepos</code> plus at most two <code>GetRepo</code> per configured fork (<code>main.go:1421-1424</code>) — ivankatliarchuk's other point, confirmed fixed.</li>
+  <li><code>go build ./...</code> succeeds; <code>cmd/peribolos</code> and <code>pkg/config/org</code> suites pass.</li>
+  <li>No PR template or release-note requirement exists in this repo.</li>
+</ul>
+
+<h2 id="corrections">Corrections to the earlier pass</h2>
+<ol>
+  <li>"New fields <code>fork_from</code>, <code>default_branch_only</code> are <code>omitempty</code> pointers" — describes the pre-<code>2479e7c74</code> shape. Current surface is nested <code>fork: {from, default_branch_only}</code>; <code>ForkConfig.From</code> is a plain <code>string</code>, not a pointer and not <code>omitempty</code>.</li>
+  <li>"Config key as fork name … not visible in the current PR diff — may be in unpushed commits" — it <em>is</em> in the diff: <code>main.go:1473</code> passes <code>repoName</code> to <code>CreateForkInOrg</code>, serialized as <code>name</code> at <code>client.go:4602-4610</code>.</li>
+  <li>Release-note framing was presented as a missed repo convention; no such convention exists here.</li>
+  <li>The independent risk scan did not examine the <code>--dump</code> path, which is where this feature actually reaches existing operators.</li>
+</ol>
+
+<h2>Open questions for the author</h2>
+<ul>
+  <li>Is <code>pkg/config/org</code> a supported Go API for out-of-tree importers, or effectively internal to peribolos? Determines whether the <code>RepoMetadata</code> extraction needs a release note.</li>
+  <li>Should the duplicate-upstream check accumulate into the aggregate like the format errors beside it, rather than aborting all fork handling?</li>
+  <li>Should <code>--dump</code> emit <code>fork:</code> at all, given it activates reconciliation on the next <code>--fix-repos</code> for operators who never asked for fork management? An opt-in dump flag would keep the round-trip inert.</li>
+  <li>Is losing the fork error message (when repos/teams fail first) acceptable, or should those returns aggregate <code>forkErr</code>?</li>
+</ul>
 
 </body>
 </html>

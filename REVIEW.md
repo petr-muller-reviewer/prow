@@ -1,9 +1,9 @@
 ---
 pr: kubernetes-sigs/prow#810
 title: "chore(deps): bump the kubernetes group across 2 directories with 6 updates"
-head_sha: 32b1b38a18e2aa4e26ed49da4fcb96b715ef8f7e
+head_sha: 26bd2e37d3316d2fe9133aaaa98f4a4c913abb32
 base: main
-reviewed_at: 2026-07-28T22:42:21Z
+reviewed_at: 2026-08-05T21:47:16Z
 verdict: request-changes
 ---
 

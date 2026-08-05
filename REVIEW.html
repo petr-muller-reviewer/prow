@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Review: kubernetes-sigs/prow#810</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; line-height: 1.6; color: #1a1a1a; max-width: 900px; margin: 2rem auto; padding: 0 1.5rem; background: #fafafa; }
+  header { border-bottom: 2px solid #ddd; padding-bottom: 1rem; margin-bottom: 1.5rem; }
+  header h1 { font-size: 1.4rem; margin: 0 0 0.5rem 0; }
+  header dl { display: grid; grid-template-columns: max-content 1fr; gap: 0.2rem 1rem; font-size: 0.9rem; color: #444; }
+  header dt { font-weight: 600; }
+  code, pre { font-family: "SF Mono", Consolas, Monaco, monospace; font-size: 0.88rem; }
+  code { background: #eee; padding: 0.1rem 0.3rem; border-radius: 3px; }
+  pre { background: #272822; color: #f8f8f2; padding: 0.8rem 1rem; border-radius: 6px; overflow-x: auto; }
+  section { margin-bottom: 2rem; }
+  h2 { border-bottom: 1px solid #ddd; padding-bottom: 0.3rem; }
+  .verdict { padding: 1rem; border-radius: 6px; background: #fff3f2; border-left: 4px solid #c0392b; }
+  .verdict .label { font-weight: 700; text-transform: uppercase; color: #c0392b; }
+  .finding { margin-bottom: 1.5rem; padding: 1rem; border-radius: 6px; background: white; border: 1px solid #e0e0e0; }
+  .finding h3 { margin-top: 0; font-size: 1.05rem; }
+  .sev { display: inline-block; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; padding: 0.15rem 0.5rem; border-radius: 3px; margin-right: 0.5rem; vertical-align: middle; }
+  .sev-blocking { background: #c0392b; color: white; }
+  .sev-should-fix { background: #e67e22; color: white; }
+  .sev-nit { background: #7f8c8d; color: white; }
+  .sev-question { background: #2980b9; color: white; }
+  .loc { color: #555; font-size: 0.85rem; margin: 0.3rem 0; }
+  ul.plain { padding-left: 1.2rem; }
+  ul.plain li { margin-bottom: 0.4rem; }
+  a { color: #2980b9; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>kubernetes-sigs/prow#810</h1>
+  <dl>
+    <dt>Title</dt><dd>chore(deps): bump the kubernetes group across 2 directories with 6 updates</dd>
+    <dt>Head SHA</dt><dd><code>32b1b38a18e2aa4e26ed49da4fcb96b715ef8f7e</code></dd>
+    <dt>Base</dt><dd>main</dd>
+    <dt>Reviewed at</dt><dd>2026-07-28T22:42:21Z</dd>
+    <dt>Link</dt><dd><a href="https://github.com/kubernetes-sigs/prow/pull/810">github.com/kubernetes-sigs/prow/pull/810</a></dd>
+  </dl>
+</header>
+
+<section class="verdict">
+  <div class="label">Request changes</div>
+  <p>This dependency bump does not build. CI is red on all three Go jobs (unit test, race-detector, verify-lint) with genuine compile failures caused by API removals in the bumped versions of <code>k8s.io/apimachinery</code> and <code>sigs.k8s.io/controller-runtime</code> — not flakes. It needs accompanying code fixes before it can land, which is unusual for a dependabot group bump and means this can't be treated as a rubber-stamp merge.</p>
+</section>
+
+<section>
+  <h2>What this PR does</h2>
+  <ul class="plain">
+    <li>Bumps the root <code>go.mod</code> "kubernetes" dependabot group: <code>k8s.io/api</code>, <code>k8s.io/apimachinery</code>, <code>k8s.io/client-go</code> v0.33.11 → v0.36.3, <code>k8s.io/utils</code> pseudo-version, and <code>sigs.k8s.io/controller-runtime</code> v0.21.0 → v0.24.1.</li>
+    <li>Bumps <code>hack/tools/go.mod</code>: <code>k8s.io/code-generator</code> v0.32.8 → v0.36.3 and <code>sigs.k8s.io/controller-tools</code> v0.17.3 → v0.21.0.</li>
+    <li>Pulls a large tail of indirect dependency churn consistent with these major version jumps (structured-merge-diff v4→v6, kube-openapi, klog, gnostic-models, etc.).</li>
+    <li>Touches only manifest/lockfile content — no project source is changed by the PR itself.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Findings</h2>
+
+  <div class="finding">
+    <h3><span class="sev sev-blocking">blocking</span>apimachinery removed legacy <code>util/diff</code> helpers, breaking ~20 packages</h3>
+    <p class="loc">Many files, e.g. <code>pkg/simplifypath/simplify_test.go:146</code>, <code>pkg/config/branch_protection_test.go:318,474-490</code>, <code>pkg/git/v2/executor_test.go:195-215</code>, <code>pkg/plugins/config_test.go:150-975</code>, <code>cmd/branchprotector/protect_test.go:1660</code>, <code>cmd/deck/main_test.go:372</code>, <code>cmd/pipeline/controller_test.go:944-1135</code>, <code>pkg/bugzilla/client_test.go:807</code>, <code>pkg/clonerefs/parse_test.go:166</code>, <code>pkg/config/org/org_test.go:129</code>, <code>pkg/crier/reporters/gerrit/reporter_test.go:2475</code>, <code>pkg/gerrit/adapter/*_test.go</code>, <code>pkg/ghcache/coalesce_test.go:114,219</code>, <code>pkg/git/v2/interactor_test.go:90-469</code>, <code>pkg/kube/config_test.go:112</code>, <code>pkg/kube/metrics_test.go:138</code>, <code>pkg/pjutil/filter_test.go:414</code>, <code>pkg/pjutil/pjutil_test.go:830-1503</code>, <code>pkg/config/config_test.go:9536</code>, <code>pkg/config/tide_test.go:1288,1579</code></p>
+    <p><code>k8s.io/apimachinery/pkg/util/diff</code> dropped <code>StringDiff</code>/<code>ObjectDiff</code>/<code>ObjectReflectDiff</code>/<code>ObjectGoPrintDiff</code>/<code>ObjectGoPrintSideBySide</code> between v0.33.11 and v0.36.3, replacing them with a single <code>Diff(a, b any) string</code>. Every listed test file calls one of the removed names and fails to compile. This list isn't exhaustive — CI truncated some packages with "too many errors".</p>
+    <pre>pkg/simplifypath/simplify_test.go:146:
+    t.Errorf("%s: got incorrect simplification: %v", diff.StringDiff(actual, expected))
+&gt; undefined: diff.StringDiff</pre>
+  </div>
+
+  <div class="finding">
+    <h3><span class="sev sev-blocking">blocking</span>controller-runtime fake informer field became unexported</h3>
+    <p class="loc"><code>pkg/plank/reconciler_test.go:153-154</code></p>
+    <p>Build fails with <code>unknown field Synced in struct literal of type controllertest.FakeInformer, but does have unexported synced</code>. The internal <code>controllertest.FakeInformer</code> type changed shape between controller-runtime v0.21.0 and v0.24.1; the exported <code>Synced</code> field is gone.</p>
+  </div>
+
+  <div class="finding">
+    <h3><span class="sev sev-question">question</span>freshness of the k8s.io/* trio</h3>
+    <p class="loc"><code>go.mod</code> — <code>k8s.io/api</code>, <code>k8s.io/apimachinery</code>, <code>k8s.io/client-go</code>, <code>k8s.io/code-generator</code></p>
+    <p>These releases (v0.36.3) were all cut 2026-07-23 — about 6 days old at review time. Not the primary blocker, but worth factoring into timing once the code fixes are ready.</p>
+  </div>
+</section>
+
+<section>
+  <h2>Things I checked and was fine with</h2>
+  <ul class="plain">
+    <li>No project code changed outside dependency manifests — genuinely dep-only, no separate code review needed for the diff itself.</li>
+    <li>No usage of controller-runtime's webhook <code>Validator</code>/<code>Defaulter</code> signature change (0.23) or <code>GetEventRecorderFor</code> events-API migration in the tree — those breaking changes don't add further blast radius beyond the <code>FakeInformer</code> issue above.</li>
+    <li><code>sigs.k8s.io/controller-runtime</code> v0.24.1 (2026-05-11) and <code>sigs.k8s.io/controller-tools</code> v0.21.0 (2026-05-06) are ~11 weeks old — fine on freshness.</li>
+    <li><code>k8s.io/utils</code> bump is a pseudo-version (untagged commit, 2026-02-10) — normal for that module, not a provenance concern.</li>
+    <li>Import surface confirmed heavy/core for all root direct deps (<code>client-go</code> 76 files, <code>controller-runtime</code> 54 files, <code>apimachinery</code> 276 files) — consistent with how broadly the breakage landed.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Open questions for the author</h2>
+  <ul class="plain">
+    <li>Is there a companion PR (or does one need to be opened) to migrate the <code>diff.ObjectReflectDiff</code>/<code>diff.StringDiff</code>/<code>diff.ObjectDiff</code> call sites to the new <code>diff.Diff</code> API, or to <code>cmp.Diff</code>/testify assertions?</li>
+    <li>Same question for <code>pkg/plank/reconciler_test.go</code>'s use of the now-unexported <code>FakeInformer.Synced</code> field.</li>
+    <li>Given the k8s.io/* releases are only 6 days old, is there a preference to wait a bit longer before re-attempting this bump once the code fixes are ready?</li>
+  </ul>
+</section>
+
+</body>
+</html>

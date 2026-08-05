@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Review of kubernetes-sigs/prow#820</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; line-height: 1.6; color: #1a1a1a; max-width: 860px; margin: 2rem auto; padding: 0 1.5rem; background: #fdfdfd; }
+  code, .code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; background: #f1f1f1; padding: 0.1em 0.35em; border-radius: 3px; font-size: 0.92em; }
+  pre { background: #f1f1f1; padding: 0.75rem 1rem; border-radius: 6px; overflow-x: auto; }
+  header { border-bottom: 2px solid #ddd; padding-bottom: 1rem; margin-bottom: 1.5rem; }
+  header dl { display: grid; grid-template-columns: max-content 1fr; gap: 0.25rem 1rem; margin: 0.5rem 0; }
+  header dt { font-weight: 600; color: #555; }
+  h1 { font-size: 1.4rem; margin-bottom: 0.25rem; }
+  h2 { font-size: 1.15rem; border-bottom: 1px solid #eee; padding-bottom: 0.3rem; margin-top: 2rem; }
+  .verdict { font-size: 1.1rem; font-weight: 700; padding: 0.75rem 1rem; border-radius: 6px; margin: 1rem 0; }
+  .verdict.request-changes { background: #fdecea; color: #a13b2c; border: 1px solid #f3c2ba; }
+  .finding { border: 1px solid #e2e2e2; border-radius: 6px; padding: 0.9rem 1.1rem; margin-bottom: 0.9rem; }
+  .finding h3 { margin: 0 0 0.4rem 0; font-size: 1rem; }
+  .badge { display: inline-block; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; padding: 0.15em 0.5em; border-radius: 4px; margin-right: 0.5em; vertical-align: middle; }
+  .badge.blocking { background: #a13b2c; color: white; }
+  .badge.should-fix { background: #b8860b; color: white; }
+  .badge.nit { background: #607d8b; color: white; }
+  .badge.question { background: #3a6ea5; color: white; }
+  ul { padding-left: 1.3rem; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Review of kubernetes-sigs/prow#820</h1>
+  <dl>
+    <dt>Title</dt><dd>Update dependabot.yaml</dd>
+    <dt>PR</dt><dd><a href="https://github.com/kubernetes-sigs/prow/pull/820">kubernetes-sigs/prow#820</a></dd>
+    <dt>Base</dt><dd><code>main</code></dd>
+    <dt>Head SHA</dt><dd><code>e7494f176daccab6ea27fda9c8af77c6205f90ef</code></dd>
+    <dt>Reviewed at</dt><dd>2026-08-04T21:12:16Z</dd>
+  </dl>
+</header>
+
+<div class="verdict request-changes">Verdict: Request changes — the PR contains no code changes to review.</div>
+<p>The diff is empty (0 files changed), the PR's head and base branches are both named <code>main</code>, and the PR body ("testing") doesn't match its title. There is nothing here to evaluate as a code change. The author should push actual commits to a dedicated branch and sign the CNCF CLA before this can move forward.</p>
+
+<h2>What this PR does</h2>
+<ul>
+  <li>Nothing — 0 additions, 0 deletions, 0 changed files.</li>
+  <li>Title claims "Update dependabot.yaml" but no file in the repo is touched.</li>
+  <li>PR body simply reads "testing", suggesting this may have been opened by accident or as an experiment.</li>
+  <li>Head branch (<code>main</code>) and base branch (<code>main</code>) point at the same content, so there's no divergence to diff.</li>
+</ul>
+
+<h2>Findings</h2>
+
+<div class="finding">
+  <h3><span class="badge blocking">Blocking</span>Empty diff, nothing to review</h3>
+  <p><code>gh pr diff 820</code> returns no output and <code>changedFiles: 0</code>. There is no code to assess for correctness, style, or risk. Likely the author opened the PR from their own unmodified <code>main</code> branch rather than a feature branch with real changes.</p>
+</div>
+
+<div class="finding">
+  <h3><span class="badge blocking">Blocking</span>CNCF CLA not signed</h3>
+  <p>The PR carries the <code>cncf-cla: no</code> label. This must be resolved before any future content pushed to this PR can be merged.</p>
+</div>
+
+<div class="finding">
+  <h3><span class="badge question">Question</span>Title/body mismatch and unclear intent</h3>
+  <p>Title says "Update dependabot.yaml" but the body just says "testing" and no file is changed. Worth asking the author directly what they intended before spending further review cycles.</p>
+</div>
+
+<h2>Things I checked and was fine with</h2>
+<ul>
+  <li>Confirmed via <code>gh pr diff 820</code> that the diff is genuinely empty (not a tooling artifact on my end).</li>
+  <li>Confirmed head/base branch names, CLA status, and labels via <code>gh pr view --json</code>.</li>
+</ul>
+
+<h2>Open questions for the author</h2>
+<ul>
+  <li>"What was this PR meant to change? The title references <code>dependabot.yaml</code> but no such file (or any file) appears in the diff."</li>
+  <li>"It looks like this was opened from your <code>main</code> branch rather than a topic branch — was that intentional?"</li>
+  <li>"Could you sign the CNCF CLA so future pushes to this PR are mergeable?"</li>
+</ul>
+
+</body>
+</html>

@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Review of kubernetes-sigs/prow#576</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; line-height: 1.5; color: #1a1a1a; max-width: 900px; margin: 2rem auto; padding: 0 1.5rem; background: #fff; }
+  code, pre { font-family: "SF Mono", Menlo, Consolas, monospace; }
+  header.meta { background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 6px; padding: 1rem 1.5rem; margin-bottom: 1.5rem; }
+  header.meta table { border-collapse: collapse; }
+  header.meta td { padding: 2px 8px 2px 0; vertical-align: top; }
+  header.meta td.k { color: #57606a; font-weight: 600; white-space: nowrap; }
+  h1 { font-size: 1.4rem; }
+  h2 { font-size: 1.15rem; border-bottom: 1px solid #d0d7de; padding-bottom: 4px; margin-top: 2rem; }
+  h3 { font-size: 1rem; margin-bottom: 0.3rem; }
+  .verdict { font-size: 1.05rem; font-weight: 700; padding: 0.6rem 1rem; border-radius: 6px; display: inline-block; margin-bottom: 0.5rem; }
+  .verdict.request-changes { background: #ffebe9; color: #82071e; border: 1px solid #ff8182; }
+  .finding { border: 1px solid #d0d7de; border-radius: 6px; padding: 0.9rem 1.1rem; margin-bottom: 1rem; }
+  .finding .loc { font-family: monospace; font-size: 0.85rem; color: #57606a; margin-bottom: 0.4rem; }
+  .badge { display: inline-block; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; padding: 2px 8px; border-radius: 10px; margin-right: 6px; }
+  .badge.blocking { background: #ffebe9; color: #82071e; }
+  .badge.should-fix { background: #fff8c5; color: #7d5a00; }
+  .badge.nit { background: #ddf4ff; color: #0969da; }
+  .badge.question { background: #eee; color: #444; }
+  pre { background: #f6f8fa; border-radius: 6px; padding: 0.7rem 1rem; overflow-x: auto; font-size: 0.85rem; }
+  ul { padding-left: 1.3rem; }
+  a { color: #0969da; }
+</style>
+</head>
+<body>
+
+<header class="meta">
+  <h1>kubernetes-sigs/prow#576 — deck: add base path plumbing and helper APIs</h1>
+  <table>
+    <tr><td class="k">PR</td><td><a href="https://github.com/kubernetes-sigs/prow/pull/576">kubernetes-sigs/prow#576</a></td></tr>
+    <tr><td class="k">Head SHA</td><td><code>61dfbb14a1a2ec5bd1de73b5b1ab81cdb04d345b</code></td></tr>
+    <tr><td class="k">Base branch</td><td><code>main</code></td></tr>
+    <tr><td class="k">Reviewed at</td><td>2026-07-26T23:44:43Z</td></tr>
+  </table>
+</header>
+
+<h2>Verdict</h2>
+<div class="verdict request-changes">Request changes</div>
+<p>The core stripping/rewriting mechanism (<code>normalizeBasePath</code> / <code>withBasePath</code> / <code>absolutePath</code>) is sound in design, but the PR as shipped appears to break Deck entirely: <code>base.html</code> calls a template function (<code>deckPathIfRelative</code>) that is never registered in the <code>FuncMap</code>, and since <code>base.html</code> is parsed on every page render, this should fail template parsing for every installation — not just ones using the new <code>--base-path</code> flag. On top of that, only <code>base.html</code>'s chrome was migrated to base-aware links; every other template and several frontend API calls still hardcode root-relative paths, so even after the parsing bug is fixed, enabling <code>--base-path</code> would 404 most of the app.</p>
+
+<h2>What this PR does</h2>
+<ul>
+  <li>Adds a <code>--base-path</code> flag to Deck (<code>cmd/deck/main.go</code>) so it can be served from a sub-URL.</li>
+  <li>New <code>cmd/deck/basepath.go</code>: <code>normalizeBasePath</code>, <code>withBasePath</code> (an <code>http.Handler</code> wrapper that strips/rejects by prefix), and <code>options.absolutePath</code>/<code>absolutePathIfRelative</code> helpers.</li>
+  <li>Rewrites a subset of Spyglass/job-history/PR-history link fields to be base-aware via <code>absolutePathIfRelative</code>.</li>
+  <li>Extracts the HTTP→HTTPS redirect out of <code>prodOnlyMain</code> into a standalone <code>withHTTPRedirect</code> middleware, changing middleware ordering.</li>
+  <li>Adds <code>deckBasePath</code>/<code>deckPath</code> template funcs and new TS exports (<code>deckURL</code>, <code>absoluteDeckURL</code>) — wired into <code>base.html</code> only (and even there, a third function it calls, <code>deckPathIfRelative</code>, was never registered); the TS helpers are unused elsewhere.</li>
+</ul>
+
+<h2>Findings</h2>
+
+<h3>Blocking</h3>
+
+<div class="finding">
+  <span class="badge blocking">Blocking</span><strong>base.html calls deckPathIfRelative, which is never registered in the template FuncMap</strong>
+  <div class="loc">cmd/deck/template/base.html:49, cmd/deck/templates.go:74-81 (prepareBaseTemplate FuncMap)</div>
+  <p><code>base.html</code> renders <code>{{deckPathIfRelative (or branding.Logo $defaultLogo)}}</code>, but the <code>FuncMap</code> only defines <code>deckBasePath</code> and <code>deckPath</code> — not <code>deckPathIfRelative</code>. Go's <code>html/template</code> fails at parse time when a template references an undefined function, and <code>base.html</code> is parsed on every call to <code>prepareBaseTemplate</code>, which every Deck page render goes through. This is not gated behind <code>--base-path</code> — it should break page rendering for every installation. This is the single highest-priority fix; nothing else matters until Deck can render a page.</p>
+  <pre>&lt;a href="{{deckPath "/"}}"
+   class="logo"&gt;&lt;img src="{{deckPathIfRelative (or branding.Logo $defaultLogo)}}?v={{deckVersion}}" ...
+// templates.go FuncMap:
+"deckBasePath":     func() string { return o.basePath },
+"deckPath":         func(p string) string { return o.absolutePath(p) },
+// no "deckPathIfRelative" entry</pre>
+</div>
+
+<div class="finding">
+  <span class="badge blocking">Blocking</span><strong>New templates_test.go assertions do not match what the referenced templates emit</strong>
+  <div class="loc">cmd/deck/templates_test.go:47-71 vs cmd/deck/template/index.html:4</div>
+  <p>The test asserts the rendered body contains base-prefixed paths like <code>href="/prow/static/prow_bundle.min.js?v="</code>, but <code>index.html</code> (unmodified by this PR) hardcodes <code>&lt;script src="/static/prow_bundle.min.js?v={{deckVersion}}"&gt;</code> and a bare relative <code>prowjobs.js?...</code> — neither goes through <code>deckPath</code>. Combined with the FuncMap bug above, this test cannot pass as written; any reported "green CI" on this PR should be treated with suspicion until re-verified.</p>
+  <pre>expectedSnippets := []string{
+    `window.prowBasePath = "\/prow";`,
+    `href="/prow/static/style.css?v=`,
+    ...
+    `src="/prow/static/prow_bundle.min.js?v=`,
+}</pre>
+</div>
+
+<div class="finding">
+  <span class="badge blocking">Blocking</span><strong>Only base.html is base-path-aware; every other template still hardcodes root paths</strong>
+  <div class="loc">cmd/deck/template/{command-help,configured-jobs,configured-jobs-index,tide,tide-history,spyglass,index,plugins,pr,job-history,github-login}.html</div>
+  <p>These templates still emit <code>href="/static/..."</code>, <code>src="/static/..."</code>, and internal links like <code>href="/configured-jobs/{{.Org.Name}}"</code> without going through <code>deckPath</code>. Since <code>withBasePath</code> 404s any request not prefixed with the configured base path, every one of these page-specific assets/links breaks as soon as <code>--base-path</code> is set to anything other than <code>/</code>. Only the shared chrome in <code>base.html</code> was migrated — and even that is currently broken by the FuncMap bug above.</p>
+  <pre>&lt;link rel="stylesheet" href="/static/dialog-polyfill.css?v={{deckVersion}}"&gt;
+&lt;script type="text/javascript" src="/static/configured_jobs_bundle.min.js?v={{deckVersion}}"&gt;&lt;/script&gt;
+&lt;a href="/configured-jobs/{{.Org.Name}}/{{.Name}}"&gt;{{.Org.Name}}/{{.Name}}&lt;/a&gt;</pre>
+</div>
+
+<div class="finding">
+  <span class="badge blocking">Blocking</span><strong>Frontend API calls bypass the new deckURL helper entirely</strong>
+  <div class="loc">cmd/deck/static/pr/pr.ts:113, cmd/deck/static/common/rerun.ts:27, cmd/deck/static/common/abort.ts:5</div>
+  <p><code>deckURL</code>/<code>deckBasePath</code> are added to <code>urls.ts</code> but never called from any other file. <code>/pr-data.js</code>, <code>/rerun</code>, and <code>/abort</code> are still built as absolute root paths, so under a configured base path these requests will be rejected (404) by <code>withBasePath</code>. This contradicts the PR description's claim that "APIs" are made base-path-safe.</p>
+  <pre>const url = "/pr-data.js";
+return `${location.protocol}//${location.host}/rerun?mode=${mode}&prowjob=${prowjob}`;
+const url = `${location.protocol}//${location.host}/abort?prowjob=${prowjob}`;</pre>
+</div>
+
+<h3>Should fix</h3>
+
+<div class="finding">
+  <span class="badge should-fix">Should fix</span><strong>withBasePath's RawPath handling can corrupt percent-encoded paths</strong>
+  <div class="loc">cmd/deck/basepath.go, withBasePath closure (approx lines 49-61)</div>
+  <p>After stripping the base path prefix, <code>r.URL.RawPath</code> is set equal to the unescaped trimmed <code>Path</code> rather than being trimmed independently from the original <code>RawPath</code>. If the remainder contained percent-encoded characters (e.g. a Spyglass artifact key with an encoded <code>%2F</code>), this collapses the encoding, and <code>EscapedPath()</code> will subsequently mis-escape the path for downstream consumers. stdlib's <code>http.StripPrefix</code> trims <code>RawPath</code> independently for exactly this reason.</p>
+  <pre>r.URL.Path = trimmed
+if r.URL.RawPath != "" {
+    r.URL.RawPath = trimmed
+}</pre>
+</div>
+
+<div class="finding">
+  <span class="badge should-fix">Should fix</span><strong>HTTP→HTTPS redirect middleware reordered as unrelated, undocumented scope creep</strong>
+  <div class="loc">cmd/deck/main.go:507-519 (new handler chain), withHTTPRedirect</div>
+  <p>Previously the redirect wrapped the raw mux inside <code>prodOnlyMain</code>, running before <code>traceHandler</code>/CSRF. Now the chain is <code>mux → withBasePath → traceHandler → CSRF → withHTTPRedirect</code>, making the redirect outermost. Plausibly an improvement, but it also means 301 redirects for <code>--redirect-http-to</code> deployments are no longer observed by <code>traceHandler</code>, so they vanish from <code>httpRequestDuration</code>/<code>httpResponseSize</code> metrics — a quiet dashboard/alerting shift, not called out anywhere.</p>
+  <pre>var handler http.Handler = mux
+handler = withBasePath(o.basePath, handler)
+handler = traceHandler(handler)
+if csrfToken != nil {
+    handler = CSRF(handler)
+}
+if o.redirectHTTPTo != "" {
+    handler = withHTTPRedirect(handler, o.redirectHTTPTo)
+}</pre>
+</div>
+
+<div class="finding">
+  <span class="badge should-fix">Should fix</span><strong>No unit tests for basepath.go's core logic</strong>
+  <div class="loc">cmd/deck/basepath.go (whole file)</div>
+  <p><code>normalizeBasePath</code>, <code>stripBasePath</code>, <code>absolutePath</code>, <code>absolutePathIfRelative</code> carry the most intricate, edge-case-prone new logic in the PR (trailing slashes, query/fragment splitting, prefix-vs-exact matching), yet there is no <code>basepath_test.go</code>. A table-driven test would have caught the <code>RawPath</code> issue above.</p>
+</div>
+
+<div class="finding">
+  <span class="badge should-fix">Should fix</span><strong>traceHandler observes the unstripped path under a configured base path</strong>
+  <div class="loc">cmd/deck/main.go:507-511 (handler chain ordering)</div>
+  <p><code>traceHandler</code>'s route simplifier was authored against unprefixed paths (e.g. <code>/static</code>, <code>/tide</code>). Since it runs outside <code>withBasePath</code>, it sees paths like <code>/prow/static/...</code> under a non-root base path, which will likely fall into a catch-all bucket instead of the expected route label — degrading per-endpoint metrics/tracing for base-path deployments.</p>
+</div>
+
+<h3>Nits</h3>
+
+<div class="finding">
+  <span class="badge nit">Nit</span><strong>Leftover tooling artifact comment</strong>
+  <div class="loc">cmd/deck/templates_test.go (end of file)</div>
+  <p>Trailing <code>// Made with Bob</code> comment looks like leftover output from an AI coding tool and should be removed before merge.</p>
+</div>
+
+<div class="finding">
+  <span class="badge nit">Nit</span><strong>absolutePath("/") returns basePath without a trailing slash</strong>
+  <div class="loc">cmd/deck/basepath.go, absolutePath</div>
+  <p><code>o.absolutePath("/")</code> returns <code>o.basePath</code> (e.g. <code>/prow</code>), not <code>/prow/</code>. Round-trips correctly with <code>stripBasePath</code>, but worth confirming it's intentional.</p>
+</div>
+
+<div class="finding">
+  <span class="badge nit">Nit</span><strong>absolutePathIfRelative treats protocol-relative strings as relative</strong>
+  <div class="loc">cmd/deck/basepath.go, absolutePathIfRelative</div>
+  <p>Any string starting with <code>/</code> is treated as relative and prefixed, including protocol-relative strings like <code>//evil.com/x</code>. Currently harmless given internal-only inputs, but worth a guard if reused for user-influenced values.</p>
+</div>
+
+<h3>Questions</h3>
+
+<div class="finding">
+  <span class="badge question">Question</span><strong>Was the deckPathIfRelative FuncMap gap caught by CI, or is CI actually red?</strong>
+  <p>Given <code>base.html</code> cannot parse without <code>deckPathIfRelative</code> registered, either CI is failing or there's a registration path this review missed. Worth confirming directly against the PR's CI status.</p>
+</div>
+
+<h2>Things I checked and was fine with</h2>
+<ul>
+  <li><code>normalizeBasePath</code> correctly forces a leading slash and runs through <code>path.Clean</code>, preventing <code>..</code>-based prefix escape.</li>
+  <li><code>csrf.Path(o.basePath)</code> correctly scopes the CSRF cookie to the base path instead of hardcoding <code>/</code>.</li>
+  <li><code>withBasePath</code> fails closed (404) on any request path not matching the configured prefix, rather than falling through to unprefixed routes.</li>
+  <li><code>stripBasePath</code> prefix-matching correctly requires <code>basePath + "/"</code> (or exact match), so a sibling path like <code>/prowfoo</code> under base path <code>/prow</code> is not falsely accepted.</li>
+  <li><code>--base-path</code> defaults to <code>/</code> in both <code>gatherOptions</code> and <code>normalizeBasePath</code>, and <code>withBasePath</code> is a true no-op at root — non-adopters should see no behavior change once the FuncMap bug is fixed.</li>
+  <li>License headers on new files match repo convention (Apache 2026 boilerplate).</li>
+</ul>
+
+<h2>Open questions for the author</h2>
+<ul>
+  <li>Is CI actually green or red on this PR? The <code>deckPathIfRelative</code> gap should make <code>base.html</code> fail to parse — can you confirm you've re-run <code>go test ./cmd/deck/...</code> and manually loaded a page after the latest commit?</li>
+  <li>Was the HTTP→HTTPS redirect reordering (now outermost, ahead of CSRF/tracing) deliberate, or an incidental side effect of the refactor?</li>
+  <li>Given <code>deckURL</code>/<code>deckBasePath</code> exist but are unused, is a follow-up planned to wire them into <code>pr.ts</code>, <code>rerun.ts</code>, <code>abort.ts</code>, <code>spyglass.ts</code>, and the other templates — or should this PR be rescoped and its description corrected to not claim full API/asset coverage?</li>
+  <li>Is there a plan to add a table-driven test that renders every template (not just <code>index.html</code>) with a non-root base path and asserts no raw <code>/static</code> or root-relative hrefs remain?</li>
+</ul>
+
+</body>
+</html>

@@ -14,7 +14,42 @@ refresh_log:
     to: 9eb853108e
     at: 2026-06-09T19:57:29Z
     summary: "no new commits; @stmcginnis gave /lgtm Jun 5 with one nit (regex as global); nit added to findings"
+gate:
+  decision: do-not-merge
+  gated_at: 2026-08-08T20:15:47Z
+  gated_head_sha: 9eb853108e6622d085265d7ac44a077633701d4e
+  reviewed_head_sha: 9eb853108e6622d085265d7ac44a077633701d4e
 ---
+
+## Gate
+
+**Verdict: do-not-merge** (gated 2026-08-08 against `9eb853108e`, unchanged since the review).
+
+No code has landed since the review, so the blocking `os/exec` finding stands verbatim. On its own that is an architectural objection a maintainer could reasonably wave through — but it is what makes the rest of the risk possible, and the rest is what actually gates: the feature is **on by default** for every existing cherrypicker deployment, it runs an unbounded `git rebase -i` over every cherry-pick inside a cached shared clone, and **every failure mode is warn-only** — the PR is still pushed and opened as if nothing went wrong. Operators who never asked for this feature inherit its failure modes silently. The two unblockers are small and do not require abandoning the rebase approach.
+
+### Retracted from the original review
+
+- **`[blocking]` shell injection via unquoted variables** — **not reproducible at this head.** The generated script at `server.go:851-855` does quote `"$ORIGINAL_SHA"` and `"$CURRENT_MSG"`. The only unquoted expansion left is `-f$COMMIT_NUM`, fed from `git rev-list --count` (always a bare integer), and `baseSHA` is `git rev-parse` output (hex). This finding was wrong when written — it does not gate merge, and should not be raised on the PR.
+
+### Gating list
+
+- `cmd/external-plugins/cherrypicker/main.go:76` (REVIEW.md `should-fix`) — `--add-original-commit-id` defaults `true`. Not addressed. Both sibling feature flags (`--allow-all`, `--create-issue-on-conflict`) default `false`. **Blocks:** flip to `false`, or justify default-on with a release note.
+- `cmd/external-plugins/cherrypicker/server.go:646` (independent) — `appendCherryPickMessages` failure logs `Warn` and falls through to `p.Push` at `:656`. A failed `--exec` step leaves `git rebase -i` stopped mid-flight with detached HEAD and `.git/rebase-merge` in the cached clone; `PushToNamedFork` pushes by branch name, so the un-amended commits are published and the requester sees a normal PR. **Blocks:** `git rebase --abort` on failure and surface it (PR comment or hard error).
+- `cmd/external-plugins/cherrypicker/server.go:25,838-878` (REVIEW.md `blocking`) — raw `exec.Command` bypasses the `pkg/git/v2` `Interactor`. Not addressed. **Does not independently block** if the two above are fixed, but it is the root of findings 3-6 below and the patch-modification approach in the original review's open question removes all of them at once.
+
+### Independent merge risk
+
+Diff is confined to `cmd/external-plugins/cherrypicker/` (`main.go` +23, `server.go` +110, `server_test.go` +236). No repo skill applies — the two overlaid skills are review/triage workflows, not compatibility checkers.
+
+- **API:** none. `package main`; no exported surface, no CRD, no proto, no config-file schema change.
+- **Configuration:** one new flag, `--add-original-commit-id`, defaulting `true`. Blast radius: every cherrypicker instance in every Prow deployment starts rewriting cherry-pick commit messages on upgrade with no opt-in. Not gated, not release-noted.
+- **Behavioral:** cherry-pick commit bodies change shape (trailer appended) for all users; `--amend -m` applies `cleanup=whitespace`, so bodies are additionally reflowed (trailing whitespace stripped, consecutive blank lines collapsed) — real `git cherry-pick -x` preserves them byte-for-byte (`server.go:853`).
+- **Environment sensitivity:** `GIT_CONFIG_NOSYSTEM=1` only suppresses `/etc/gitconfig`; `$HOME/.gitconfig` still applies (`server.go:878`). `commit.gpgsign=true` breaks the in-script amend on every cherry-pick; `rebase.autoSquash=true` makes `rebase -i` reorder and squash any `fixup!`/`squash!` commit, so the cherry-pick PR would silently carry fewer commits than the source PR. Recommend `GIT_CONFIG_GLOBAL=/dev/null`.
+- **Reliability:** `extractOriginalSHAs` uses `bufio.NewScanner` with no `Buffer()` (`server.go:810`) — `ErrTooLong` on any patch line over 64 KiB (lockfiles, minified assets, base64 fixtures), which silently disables the trailer for those PRs. The rebase subprocess has no `context` timeout and runs while holding the per-org/repo `lock.Lock()`, so a wedged `git` stalls that repo's cherry-pick queue indefinitely (`server.go:878`). The 0755 temp script also fails on a `noexec` `TMPDIR`, and `--exec` shell-parses its path (`server.go:872`).
+
+### Reviewer state
+
+@stmcginnis gave `/lgtm` twice (Apr 23, Jun 5) and dispositioned his own regex nit as "fine to leave it" (Jun 9), explicitly deferring to @petr-muller: "we'll see what others think as well." No `CHANGES_REQUESTED` on the PR. The gate is therefore driven entirely by the local review plus this pass, not by unresolved reviewer feedback.
 
 ## Findings
 

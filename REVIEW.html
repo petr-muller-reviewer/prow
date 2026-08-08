@@ -152,6 +152,41 @@
   </div>
 </div>
 
+<!-- ─── Gate ─── -->
+
+<div class="verdict-box" id="gate">
+  <div class="verdict-line"><span class="verdict-label">Gate: Do Not Merge</span> Gated 2026-08-08 against <code>9eb853108e</code> — unchanged since the review.</div>
+  <div class="verdict-rationale">
+    <p style="margin-bottom:0.6rem;">
+      No code has landed since the review, so the blocking <code>os/exec</code> finding stands verbatim. On its own that is an architectural objection a maintainer could reasonably wave through &mdash; but it is what makes the rest of the risk possible, and the rest is what actually gates: the feature is <strong style="color:var(--text);">on by default</strong> for every existing cherrypicker deployment, it runs an unbounded <code>git rebase -i</code> over every cherry-pick inside a cached shared clone, and <strong style="color:var(--text);">every failure mode is warn-only</strong> &mdash; the PR is still pushed and opened as if nothing went wrong. Operators who never asked for this feature inherit its failure modes silently. The two unblockers are small and do not require abandoning the rebase approach.
+    </p>
+
+    <p style="margin-bottom:0.35rem;"><strong style="color:var(--text);">Retracted from the original review</strong></p>
+    <ul style="margin-bottom:0.7rem;">
+      <li><span class="badge badge-blocking">Blocking</span> <strong style="color:var(--text);">shell injection via unquoted variables</strong> &mdash; <strong style="color:var(--text);">not reproducible at this head.</strong> The generated script at <span class="loc">server.go:851-855</span> does quote <code>"$ORIGINAL_SHA"</code> and <code>"$CURRENT_MSG"</code>. The only unquoted expansion left is <code>-f$COMMIT_NUM</code>, fed from <code>git rev-list --count</code> (always a bare integer), and <code>baseSHA</code> is <code>git rev-parse</code> output (hex). This finding was wrong when written &mdash; it does not gate merge, and should not be raised on the PR.</li>
+    </ul>
+
+    <p style="margin-bottom:0.35rem;"><strong style="color:var(--text);">Gating list</strong></p>
+    <ul style="margin-bottom:0.7rem;">
+      <li><span class="loc">main.go:76</span> (REVIEW.md <em>should-fix</em>) &mdash; <code>--add-original-commit-id</code> defaults <code>true</code>. Not addressed. Both sibling feature flags (<code>--allow-all</code>, <code>--create-issue-on-conflict</code>) default <code>false</code>. <strong style="color:var(--text);">Blocks:</strong> flip to <code>false</code>, or justify default-on with a release note.</li>
+      <li><span class="loc">server.go:646</span> (independent) &mdash; <code>appendCherryPickMessages</code> failure logs <code>Warn</code> and falls through to <code>p.Push</code> at <span class="loc">:656</span>. A failed <code>--exec</code> step leaves <code>git rebase -i</code> stopped mid-flight with detached HEAD and <code>.git/rebase-merge</code> in the cached clone; <code>PushToNamedFork</code> pushes by branch name, so the un-amended commits are published and the requester sees a normal PR. <strong style="color:var(--text);">Blocks:</strong> <code>git rebase --abort</code> on failure and surface it (PR comment or hard error).</li>
+      <li><span class="loc">server.go:25,838-878</span> (REVIEW.md <em>blocking</em>) &mdash; raw <code>exec.Command</code> bypasses the <code>pkg/git/v2</code> <code>Interactor</code>. Not addressed. <strong style="color:var(--text);">Does not independently block</strong> if the two above are fixed, but it is the root of the risks below, and the patch-modification approach in the original review's open question removes all of them at once.</li>
+    </ul>
+
+    <p style="margin-bottom:0.35rem;"><strong style="color:var(--text);">Independent merge risk</strong></p>
+    <p style="margin-bottom:0.4rem;">Diff is confined to <code>cmd/external-plugins/cherrypicker/</code> (<code>main.go</code> +23, <code>server.go</code> +110, <code>server_test.go</code> +236). No repo skill applies &mdash; the two overlaid skills are review/triage workflows, not compatibility checkers.</p>
+    <ul style="margin-bottom:0.7rem;">
+      <li><strong style="color:var(--text);">API:</strong> none. <code>package main</code>; no exported surface, no CRD, no proto, no config-file schema change.</li>
+      <li><strong style="color:var(--text);">Configuration:</strong> one new flag, <code>--add-original-commit-id</code>, defaulting <code>true</code>. Blast radius: every cherrypicker instance in every Prow deployment starts rewriting cherry-pick commit messages on upgrade with no opt-in. Not gated, not release-noted.</li>
+      <li><strong style="color:var(--text);">Behavioral:</strong> cherry-pick commit bodies change shape (trailer appended) for all users; <code>--amend -m</code> applies <code>cleanup=whitespace</code>, so bodies are additionally reflowed (trailing whitespace stripped, consecutive blank lines collapsed) &mdash; real <code>git cherry-pick -x</code> preserves them byte-for-byte (<span class="loc">server.go:853</span>).</li>
+      <li><strong style="color:var(--text);">Environment sensitivity:</strong> <code>GIT_CONFIG_NOSYSTEM=1</code> only suppresses <code>/etc/gitconfig</code>; <code>$HOME/.gitconfig</code> still applies (<span class="loc">server.go:878</span>). <code>commit.gpgsign=true</code> breaks the in-script amend on every cherry-pick; <code>rebase.autoSquash=true</code> makes <code>rebase -i</code> reorder and squash any <code>fixup!</code>/<code>squash!</code> commit, so the cherry-pick PR would silently carry fewer commits than the source PR. Recommend <code>GIT_CONFIG_GLOBAL=/dev/null</code>.</li>
+      <li><strong style="color:var(--text);">Reliability:</strong> <code>extractOriginalSHAs</code> uses <code>bufio.NewScanner</code> with no <code>Buffer()</code> (<span class="loc">server.go:810</span>) &mdash; <code>ErrTooLong</code> on any patch line over 64&nbsp;KiB (lockfiles, minified assets, base64 fixtures), silently disabling the trailer for those PRs. The rebase subprocess has no <code>context</code> timeout and runs while holding the per-org/repo <code>lock.Lock()</code>, so a wedged <code>git</code> stalls that repo's cherry-pick queue indefinitely (<span class="loc">server.go:878</span>). The 0755 temp script also fails on a <code>noexec</code> <code>TMPDIR</code>, and <code>--exec</code> shell-parses its path (<span class="loc">server.go:872</span>).</li>
+    </ul>
+
+    <p style="margin-bottom:0;"><strong style="color:var(--text);">Reviewer state:</strong> @stmcginnis gave <code>/lgtm</code> twice (Apr 23, Jun 5) and dispositioned his own regex nit as "fine to leave it" (Jun 9), explicitly deferring to @petr-muller: "we'll see what others think as well." No <code>CHANGES_REQUESTED</code> on the PR. The gate is therefore driven entirely by the local review plus this pass, not by unresolved reviewer feedback.</p>
+  </div>
+</div>
+
 <!-- ─── What this PR does ─── -->
 
 <h2>What this PR does</h2>

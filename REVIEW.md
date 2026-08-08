@@ -3,7 +3,7 @@ pr: kubernetes-sigs/prow#576
 title: "deck: add base path plumbing and helper APIs"
 head_sha: 61dfbb14a1a2ec5bd1de73b5b1ab81cdb04d345b
 base: main
-reviewed_at: 2026-07-26T23:44:43Z
+reviewed_at: 2026-08-07T19:52:58Z
 verdict: request-changes
 ---
 
@@ -47,12 +47,14 @@ verdict: request-changes
     <a href="/configured-jobs/{{.Org.Name}}/{{.Name}}">{{.Org.Name}}/{{.Name}}</a>
 
 ### [blocking] Frontend API calls bypass the new deckURL helper entirely
-- where: `cmd/deck/static/pr/pr.ts:113`, `cmd/deck/static/common/rerun.ts:27`, `cmd/deck/static/common/abort.ts:5`
-- concern: `deckURL`/`deckBasePath` are added to `urls.ts` but never called from any other file. `/pr-data.js`, `/rerun`, and `/abort` are still built as absolute root paths, so under a configured base path these requests will be rejected (404) by `withBasePath`. This contradicts the PR description's claim that "APIs" are made base-path-safe.
+- where: `cmd/deck/static/pr/pr.ts:113`, `cmd/deck/static/common/rerun.ts:27`, `cmd/deck/static/common/abort.ts:5`, `cmd/deck/static/spyglass/spyglass.ts:40`
+- concern: `deckURL`/`deckBasePath` are added to `urls.ts` but only `pr.ts`/`rerun.ts` were updated to use them (and see the separate templates finding below — even those two miss cases). `/pr-data.js`, `/abort`, and now also `urlForLensRequest()` in `spyglass.ts` (used by the lens iframe `src` plus its callback/rerender `fetch()` calls) are still built as absolute root paths, so under a configured base path these requests are rejected (404) by `withBasePath`. Every Spyglass lens breaks under a non-root base path even though the top-level SpyglassLink was correctly prefixed server-side. This contradicts the PR description's claim that "APIs" are made base-path-safe.
 - excerpt: |
     const url = "/pr-data.js";
     return `${location.protocol}//${location.host}/rerun?mode=${mode}&prowjob=${prowjob}`;
     const url = `${location.protocol}//${location.host}/abort?prowjob=${prowjob}`;
+    // spyglass.ts:40
+    return `/spyglass/lens/${lens}/${request}?...`;
 
 ### [should-fix] withBasePath's RawPath handling can corrupt percent-encoded paths
 - where: `cmd/deck/basepath.go`, `withBasePath` closure (approx lines 49-61)
@@ -85,6 +87,16 @@ verdict: request-changes
 - where: `cmd/deck/main.go:507-511` (handler chain ordering: `traceHandler` wraps `withBasePath`)
 - concern: `traceHandler`'s route simplifier was authored against unprefixed paths (e.g. `/static`, `/tide`). Since `traceHandler` runs outside `withBasePath`, it sees paths like `/prow/static/...` under a non-root base path, which will likely fall into a catch-all bucket instead of the expected route label — degrading per-endpoint metrics/tracing specifically for base-path deployments.
 
+### [should-fix] HTTP->HTTPS redirect is no longer scoped to non-local runs
+- where: `cmd/deck/main.go:517` (new unconditional `withHTTPRedirect` wiring in `main()`)
+- concern: Previously the redirect only applied inside `prodOnlyMain`, i.e. was skipped whenever `runLocal` was true. The refactor applies `withHTTPRedirect` in `main()` based solely on `o.redirectHTTPTo != ""`, with no `runLocal` check. Running deck locally (e.g. with `--pregenerated-data`, so `runLocal` is true) while `--redirect-http-to` is also set would now redirect local requests carrying `x-forwarded-proto: http` to the configured host over HTTPS instead of serving them locally — a behavior change from "never redirects locally" to "redirects locally too", uncovered by any test.
+
+### [should-fix] absolutePathIfRelative mishandles protocol-relative URLs, and this is reachable via config
+- where: `cmd/deck/basepath.go`, `absolutePathIfRelative`; reachable via `Deck.Spyglass.PRHistLinkTemplate` (`cmd/deck/main.go:1103`)
+- concern: Any string starting with `/` is treated as relative and prefixed, including protocol-relative strings like `//other-host/path`. This is reachable in practice, not just theoretical: an admin configuring `PRHistLinkTemplate` (or similar templated link fields) to a protocol-relative external URL gets it mangled into `/prow//other-host/pr-history?...`, turning an intended external/cross-host link into a broken same-origin path.
+- excerpt: |
+    strings.HasPrefix(rel, "/")  // true for "//other-host/path" too
+
 ### [nit] Leftover tooling artifact comment
 - where: `cmd/deck/templates_test.go` (end of file)
 - concern: Trailing `// Made with Bob` comment looks like leftover output from an AI coding tool and should be removed before merge.
@@ -99,9 +111,13 @@ verdict: request-changes
         return o.basePath + suffix
     }
 
-### [nit] absolutePathIfRelative treats protocol-relative strings as relative
-- where: `cmd/deck/basepath.go`, `absolutePathIfRelative`
-- concern: Any string starting with `/` is treated as "relative" and prefixed, including protocol-relative strings like `//evil.com/x`, which would become `basePath//evil.com/x`. Currently harmless since inputs come from internal job/artifact data, not attacker-controlled redirect targets, but worth a guard if these helpers are ever reused for user-influenced values.
+### [nit] Base-path prefixing is bolted on ad hoc at each call site instead of centralized
+- where: `cmd/deck/main.go` (8+ separate call sites across `handleConfiguredJobs`, `handleJobHistory`, `handlePRHistory`, the spyglass lens-link builder, `handleArtifactView`)
+- concern: Each handler individually calls `o.absolutePathIfRelative`/`o.absolutePath` on its own link fields rather than fixing link construction once at a shared point. Any new handler or link field added later must remember to wrap it, or it silently renders a base-path-unaware link — this is exactly how the `spyglass.ts` gap above happened.
+
+### [nit] Path/query splitting is hand-rolled and duplicated between Go and TS
+- where: `cmd/deck/basepath.go` (`absolutePath`, via `strings.IndexAny(rel, "?#")`), `cmd/deck/static/common/urls.ts` (`splitPathAndSuffix`)
+- concern: Both implementations hand-roll the same path/suffix split instead of reusing `net/url.Parse` (already used elsewhere in `main.go`) or the `URL` API (already used one function above by `relativeURL` in the same TS file). Two independent hand-rolled parsers now need to stay in sync with each other and with edge cases the standard parsers already handle, e.g. encoded characters.
 
 ### [question] Was the deckPathIfRelative FuncMap gap caught by CI, or is CI actually red?
 - concern: Given `base.html` cannot parse without `deckPathIfRelative` registered, either CI is failing (consistent with independent reports of red `pull-prow-unit-test`/`pull-prow-integration`/`pull-prow-verify-lint` on this PR) or there's a registration path this review missed. Needs a direct check of the PR's CI status before assuming the rest of the analysis is moot.
@@ -117,5 +133,6 @@ verdict: request-changes
 ## Open questions
 - Is CI actually green or red on this PR? The `deckPathIfRelative` gap should make `base.html` fail to parse — please confirm you've re-run `go test ./cmd/deck/...` and manually loaded a page after the latest commit.
 - Was the HTTP->HTTPS redirect reordering (now outermost, ahead of CSRF/tracing) deliberate, or an incidental side effect of the refactor?
-- Given `deckURL`/`deckBasePath` exist but are unused, is a follow-up planned to wire them into `pr.ts`, `rerun.ts`, `abort.ts`, `spyglass.ts`, and the other templates — or should this PR be expanded/rescoped to cover them before merge, and its description corrected to not claim full API/asset coverage?
+- Given `deckURL`/`deckBasePath` are only wired into a couple of call sites (`pr.ts`, `rerun.ts`), is a follow-up planned to cover `abort.ts`, `spyglass.ts`, and the other templates — or should this PR be expanded/rescoped to cover them before merge, and its description corrected to not claim full API/asset coverage?
+- Was the loss of `runLocal` scoping on the HTTP->HTTPS redirect (`cmd/deck/main.go:517`) deliberate?
 - Is there a plan to add a table-driven test that renders every template (not just `index.html`) with a non-root base path and asserts no raw `/static` or root-relative hrefs remain?

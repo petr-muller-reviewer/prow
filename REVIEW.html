@@ -35,7 +35,7 @@
     <tr><td class="k">PR</td><td><a href="https://github.com/kubernetes-sigs/prow/pull/576">kubernetes-sigs/prow#576</a></td></tr>
     <tr><td class="k">Head SHA</td><td><code>61dfbb14a1a2ec5bd1de73b5b1ab81cdb04d345b</code></td></tr>
     <tr><td class="k">Base branch</td><td><code>main</code></td></tr>
-    <tr><td class="k">Reviewed at</td><td>2026-07-26T23:44:43Z</td></tr>
+    <tr><td class="k">Reviewed at</td><td>2026-08-07T19:52:58Z</td></tr>
   </table>
 </header>
 
@@ -91,11 +91,13 @@
 
 <div class="finding">
   <span class="badge blocking">Blocking</span><strong>Frontend API calls bypass the new deckURL helper entirely</strong>
-  <div class="loc">cmd/deck/static/pr/pr.ts:113, cmd/deck/static/common/rerun.ts:27, cmd/deck/static/common/abort.ts:5</div>
-  <p><code>deckURL</code>/<code>deckBasePath</code> are added to <code>urls.ts</code> but never called from any other file. <code>/pr-data.js</code>, <code>/rerun</code>, and <code>/abort</code> are still built as absolute root paths, so under a configured base path these requests will be rejected (404) by <code>withBasePath</code>. This contradicts the PR description's claim that "APIs" are made base-path-safe.</p>
+  <div class="loc">cmd/deck/static/pr/pr.ts:113, cmd/deck/static/common/rerun.ts:27, cmd/deck/static/common/abort.ts:5, cmd/deck/static/spyglass/spyglass.ts:40</div>
+  <p><code>deckURL</code>/<code>deckBasePath</code> are added to <code>urls.ts</code> but only <code>pr.ts</code>/<code>rerun.ts</code> were updated to use them. <code>/pr-data.js</code>, <code>/abort</code>, and now also <code>urlForLensRequest()</code> in <code>spyglass.ts</code> (used by the lens iframe <code>src</code> plus its callback/rerender <code>fetch()</code> calls) are still built as absolute root paths, so under a configured base path these requests are rejected (404) by <code>withBasePath</code>. Every Spyglass lens breaks under a non-root base path even though the top-level SpyglassLink was correctly prefixed server-side. This contradicts the PR description's claim that "APIs" are made base-path-safe.</p>
   <pre>const url = "/pr-data.js";
 return `${location.protocol}//${location.host}/rerun?mode=${mode}&prowjob=${prowjob}`;
-const url = `${location.protocol}//${location.host}/abort?prowjob=${prowjob}`;</pre>
+const url = `${location.protocol}//${location.host}/abort?prowjob=${prowjob}`;
+// spyglass.ts:40
+return `/spyglass/lens/${lens}/${request}?...`;</pre>
 </div>
 
 <h3>Should fix</h3>
@@ -137,6 +139,19 @@ if o.redirectHTTPTo != "" {
   <p><code>traceHandler</code>'s route simplifier was authored against unprefixed paths (e.g. <code>/static</code>, <code>/tide</code>). Since it runs outside <code>withBasePath</code>, it sees paths like <code>/prow/static/...</code> under a non-root base path, which will likely fall into a catch-all bucket instead of the expected route label — degrading per-endpoint metrics/tracing for base-path deployments.</p>
 </div>
 
+<div class="finding">
+  <span class="badge should-fix">Should fix</span><strong>HTTP&rarr;HTTPS redirect is no longer scoped to non-local runs</strong>
+  <div class="loc">cmd/deck/main.go:517 (new unconditional withHTTPRedirect wiring in main())</div>
+  <p>Previously the redirect only applied inside <code>prodOnlyMain</code>, i.e. was skipped whenever <code>runLocal</code> was true. The refactor applies <code>withHTTPRedirect</code> in <code>main()</code> based solely on <code>o.redirectHTTPTo != ""</code>, with no <code>runLocal</code> check. Running deck locally (e.g. with <code>--pregenerated-data</code>, so <code>runLocal</code> is true) while <code>--redirect-http-to</code> is also set would now redirect local requests carrying <code>x-forwarded-proto: http</code> to the configured host over HTTPS instead of serving them locally — a behavior change uncovered by any test.</p>
+</div>
+
+<div class="finding">
+  <span class="badge should-fix">Should fix</span><strong>absolutePathIfRelative mishandles protocol-relative URLs, and this is reachable via config</strong>
+  <div class="loc">cmd/deck/basepath.go, absolutePathIfRelative; reachable via Deck.Spyglass.PRHistLinkTemplate (cmd/deck/main.go:1103)</div>
+  <p>Any string starting with <code>/</code> is treated as relative and prefixed, including protocol-relative strings like <code>//other-host/path</code>. This is reachable in practice: an admin configuring <code>PRHistLinkTemplate</code> (or similar templated link fields) to a protocol-relative external URL gets it mangled into <code>/prow//other-host/pr-history?...</code>, turning an intended external/cross-host link into a broken same-origin path.</p>
+  <pre>strings.HasPrefix(rel, "/")  // true for "//other-host/path" too</pre>
+</div>
+
 <h3>Nits</h3>
 
 <div class="finding">
@@ -152,9 +167,15 @@ if o.redirectHTTPTo != "" {
 </div>
 
 <div class="finding">
-  <span class="badge nit">Nit</span><strong>absolutePathIfRelative treats protocol-relative strings as relative</strong>
-  <div class="loc">cmd/deck/basepath.go, absolutePathIfRelative</div>
-  <p>Any string starting with <code>/</code> is treated as relative and prefixed, including protocol-relative strings like <code>//evil.com/x</code>. Currently harmless given internal-only inputs, but worth a guard if reused for user-influenced values.</p>
+  <span class="badge nit">Nit</span><strong>Base-path prefixing is bolted on ad hoc at each call site instead of centralized</strong>
+  <div class="loc">cmd/deck/main.go (8+ call sites across handleConfiguredJobs, handleJobHistory, handlePRHistory, the spyglass lens-link builder, handleArtifactView)</div>
+  <p>Each handler individually calls <code>o.absolutePathIfRelative</code>/<code>o.absolutePath</code> on its own link fields rather than fixing link construction once at a shared point. Any new handler or link field added later must remember to wrap it, or it silently renders a base-path-unaware link — this is exactly how the <code>spyglass.ts</code> gap above happened.</p>
+</div>
+
+<div class="finding">
+  <span class="badge nit">Nit</span><strong>Path/query splitting is hand-rolled and duplicated between Go and TS</strong>
+  <div class="loc">cmd/deck/basepath.go (absolutePath, via strings.IndexAny(rel, "?#")), cmd/deck/static/common/urls.ts (splitPathAndSuffix)</div>
+  <p>Both implementations hand-roll the same path/suffix split instead of reusing <code>net/url.Parse</code> (already used elsewhere in <code>main.go</code>) or the <code>URL</code> API (already used one function above by <code>relativeURL</code> in the same TS file). Two independent hand-rolled parsers now need to stay in sync with each other and with edge cases the standard parsers already handle.</p>
 </div>
 
 <h3>Questions</h3>
@@ -178,8 +199,9 @@ if o.redirectHTTPTo != "" {
 <ul>
   <li>Is CI actually green or red on this PR? The <code>deckPathIfRelative</code> gap should make <code>base.html</code> fail to parse — can you confirm you've re-run <code>go test ./cmd/deck/...</code> and manually loaded a page after the latest commit?</li>
   <li>Was the HTTP→HTTPS redirect reordering (now outermost, ahead of CSRF/tracing) deliberate, or an incidental side effect of the refactor?</li>
-  <li>Given <code>deckURL</code>/<code>deckBasePath</code> exist but are unused, is a follow-up planned to wire them into <code>pr.ts</code>, <code>rerun.ts</code>, <code>abort.ts</code>, <code>spyglass.ts</code>, and the other templates — or should this PR be rescoped and its description corrected to not claim full API/asset coverage?</li>
+  <li>Given <code>deckURL</code>/<code>deckBasePath</code> are only wired into a couple of call sites (<code>pr.ts</code>, <code>rerun.ts</code>), is a follow-up planned to cover <code>abort.ts</code>, <code>spyglass.ts</code>, and the other templates — or should this PR be rescoped and its description corrected to not claim full API/asset coverage?</li>
   <li>Is there a plan to add a table-driven test that renders every template (not just <code>index.html</code>) with a non-root base path and asserts no raw <code>/static</code> or root-relative hrefs remain?</li>
+  <li>Was the loss of <code>runLocal</code> scoping on the HTTP&rarr;HTTPS redirect (<code>cmd/deck/main.go:517</code>) deliberate?</li>
 </ul>
 
 </body>

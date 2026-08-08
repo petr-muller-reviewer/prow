@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PR #661 Review: Add support for git cherry-pick -x style commit messages</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface2: #1c2129;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text-muted: #8b949e;
+    --accent: #58a6ff;
+    --red: #f85149;
+    --orange: #d29922;
+    --green: #3fb950;
+    --purple: #bc8cff;
+    --cyan: #39d2c0;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    padding: 2rem;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  h1 { font-size: 1.5rem; border-bottom: 1px solid var(--border); padding-bottom: 0.75rem; margin-bottom: 0.5rem; }
+  h2 { font-size: 1.15rem; margin-top: 2rem; margin-bottom: 0.75rem; color: var(--accent); border-bottom: 1px solid var(--border); padding-bottom: 0.3rem; }
+  .meta { color: var(--text-muted); font-size: 0.875rem; margin-bottom: 1.75rem; line-height: 1.9; }
+  code {
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    background: rgba(110,118,129,0.15);
+    padding: 0.15em 0.4em;
+    border-radius: 3px;
+    font-size: 0.875em;
+  }
+  pre {
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.85rem 1rem;
+    font-size: 0.82em;
+    line-height: 1.6;
+    overflow-x: auto;
+    margin: 0.6rem 0 0.4rem;
+    white-space: pre;
+  }
+  .loc { color: var(--cyan); font-family: 'SFMono-Regular', Consolas, monospace; font-size: 0.82em; }
+  .verdict-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--red);
+    border-radius: 0 6px 6px 0;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.5rem;
+  }
+  .verdict-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    background: var(--red);
+    color: #fff;
+    padding: 0.2em 0.6em;
+    border-radius: 3px;
+    margin-right: 0.5rem;
+  }
+  .verdict-line { font-weight: 600; margin-bottom: 0.5rem; }
+  .verdict-rationale { color: var(--text-muted); font-size: 0.92em; }
+  .section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1rem;
+  }
+  .finding {
+    border-left: 3px solid var(--border);
+    border-radius: 0 6px 6px 0;
+    background: var(--surface);
+    padding: 0.9rem 1.1rem;
+    margin-bottom: 0.85rem;
+  }
+  .finding.blocking { border-left-color: var(--red); }
+  .finding.should-fix { border-left-color: var(--orange); }
+  .finding.nit { border-left-color: var(--text-muted); }
+  .finding.question { border-left-color: var(--purple); }
+  .badge {
+    display: inline-block;
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0.15em 0.55em;
+    border-radius: 3px;
+    margin-right: 0.4rem;
+    vertical-align: middle;
+  }
+  .badge-blocking { background: var(--red); color: #fff; }
+  .badge-should-fix { background: var(--orange); color: #000; }
+  .badge-nit { background: var(--border); color: var(--text); }
+  .badge-question { background: var(--purple); color: #000; }
+  .finding-title { font-weight: 600; margin-bottom: 0.3rem; }
+  .finding p { margin-top: 0.4rem; font-size: 0.93em; color: var(--text-muted); }
+  .finding p strong { color: var(--text); }
+  .hl { background: rgba(248,81,73,0.22); border-radius: 2px; }
+  ul, ol { padding-left: 1.5rem; }
+  li { margin-bottom: 0.3rem; font-size: 0.93em; }
+  .checked li { color: var(--text-muted); }
+  .checked li::marker { color: var(--green); }
+</style>
+</head>
+<body>
+
+<h1>PR <a href="https://github.com/kubernetes-sigs/prow/pull/661">#661</a>: Add support for git cherry-pick -x style commit messages</h1>
+<div class="meta">
+  <strong>Author:</strong> <a href="https://github.com/AaruniAggarwal">@AaruniAggarwal</a>
+  &nbsp;&middot;&nbsp;
+  <strong>Repo:</strong> <a href="https://github.com/kubernetes-sigs/prow">kubernetes-sigs/prow</a>
+  &nbsp;&middot;&nbsp;
+  <strong>Base:</strong> <code>main</code>
+  &nbsp;&middot;&nbsp;
+  <strong>Branch:</strong> <code>cherrypick-pr500</code>
+  <br>
+  <strong>Head SHA:</strong> <code>9eb853108e6622d085265d7ac44a077633701d4e</code>
+  &nbsp;&middot;&nbsp;
+  <strong>Reviewed:</strong> 2026-06-09T19:57:29Z
+  &nbsp;&middot;&nbsp;
+  <strong>Commits:</strong> 8
+  &nbsp;&middot;&nbsp;
+  <strong>Changes:</strong> +370 / &minus;12 across <code>main.go</code>, <code>server.go</code>, <code>server_test.go</code>
+  <br>
+  <strong>Resolves:</strong> <a href="https://github.com/kubernetes-sigs/prow/issues/500">#500</a>
+  &nbsp;&middot;&nbsp;
+  <strong>Prior reviewer:</strong> <a href="https://github.com/stmcginnis">@stmcginnis</a> (gave <code>/lgtm</code> Jun 5 — "overall looks good to me"; one nit on regex)
+</div>
+
+<!-- ─── Verdict ─── -->
+
+<div class="verdict-box">
+  <div class="verdict-line"><span class="verdict-label">Request Changes</span> Two blocking issues must be addressed before merge.</div>
+  <div class="verdict-rationale">
+    The feature itself is correct and well-motivated. The implementation has evolved through multiple review rounds and most minor issues are resolved. What remains are two structural problems: raw <code>os/exec</code> git calls bypassing the codebase's own git abstraction layer, and a shell script that executes unquoted commit message content. Both are fixable either by adopting the patch-modification approach (which eliminates both at once) or by targeted fixes to the current rebase approach. The flag defaulting to <code>true</code> is also a quiet breaking change for existing deployments.
+  </div>
+</div>
+
+<!-- ─── What this PR does ─── -->
+
+<h2>What this PR does</h2>
+<div class="section">
+  <ul>
+    <li>Adds <code>--add-original-commit-id</code> flag (default <code>true</code>) wired through <code>main.go</code> to a new <code>Server.addOriginalCommitID</code> field.</li>
+    <li>After <code>git am</code> applies the mbox patch, calls <code>extractOriginalSHAs()</code> to parse the patch file for <code>From &lt;40-char-sha&gt;</code> headers using a validated regex, then calls <code>appendCherryPickMessages()</code> to annotate each commit.</li>
+    <li><code>appendCherryPickMessages()</code> resolves the pre-am base SHA via <code>git rev-parse HEAD~N</code>, generates a temporary shell script, and runs <code>git rebase -i --exec</code> with <code>GIT_SEQUENCE_EDITOR=true</code> to amend each commit message with <code>(cherry picked from commit &lt;sha&gt;)</code>.</li>
+    <li>Adds five test functions: table-driven <code>TestExtractOriginalSHAs</code> (4 cases) and four <code>TestAppendCherryPickMessages_*</code> variants covering empty input, no-repo error, single commit, and multi-commit with ordering verification.</li>
+    <li>Replaces the original <code>git filter-branch --msg-filter</code> approach (deprecated, flagged by @stmcginnis in round 1) with <code>git rebase -i --exec</code>.</li>
+  </ul>
+  <p style="margin-top:0.75rem; font-size:0.9em; color:var(--text-muted);">
+    <strong style="color:var(--text);">Since previous review (Jun 5):</strong>
+    @stmcginnis gave <code>/lgtm</code> — "Thanks, overall looks good to me" — without flagging the two blocking findings (os/exec bypass, shell injection) or the default-true behavior change. His one substantive comment was that <code>regexp.MustCompile(...)</code> inside <code>extractOriginalSHAs</code> recompiles each call and could be a package-level var; he immediately added it's "relatively minor overhead." Author asked whether to fix it before merge; @stmcginnis said fine to leave it (Jun 9). No code changes since last review.
+  </p>
+</div>
+
+<!-- ─── Findings ─── -->
+
+<h2>Findings</h2>
+
+<div class="finding blocking">
+  <div class="finding-title"><span class="badge badge-blocking">Blocking</span> os/exec bypasses pkg/git/v2 abstraction layer</div>
+  <span class="loc">server.go:25, 796&ndash;833</span>
+  <p>Two raw <code>exec.Command("git", ...)</code> calls are added — one for <code>git rev-parse HEAD~N</code> and one for <code>git rebase -i --exec</code>. Every other git operation in this file goes through the <code>Interactor</code> interface (<code>r.Am()</code>, <code>r.CheckoutNewBranch()</code>, etc.) backed by <code>pkg/git/v2/executor.go</code>, which handles logging, credential censoring, and consistent error handling. These calls bypass all of that. The patch-modification approach would require zero additional git commands.</p>
+  <p><em>@stmcginnis gave <code>/lgtm</code> (Jun 5) without flagging this finding.</em></p>
+<pre>baseCmd := exec.Command("git", "-C", repoPath, "rev-parse", fmt.Sprintf("HEAD~%d", numCommits))
+baseSHABytes, err := baseCmd.Output()
+...
+cmd := exec.Command("git", "-C", repoPath, "rebase", "-i", baseSHA, "--exec", tmpPath)
+cmd.Env = append(os.Environ(), origEnv, "GIT_SEQUENCE_EDITOR=true", "GIT_CONFIG_NOSYSTEM=1")</pre>
+</div>
+
+<div class="finding blocking">
+  <div class="finding-title"><span class="badge badge-blocking">Blocking</span> Shell injection via unquoted variables in generated exec script</div>
+  <span class="loc">server.go:800&ndash;812</span>
+  <p><strong>(1)</strong> <code>$ORIGINAL_SHA</code> unquoted in <code>if [ -n $ORIGINAL_SHA ]</code> — word-splits on whitespace. <strong>(2)</strong> <code>$CURRENT_MSG</code> unquoted in <code>git commit --amend -m</code> — a commit message containing backticks, <code>$()</code>, or double quotes executes as shell code under <code>set -e</code>. <strong>(3)</strong> <code>baseSHA</code> (from <code>git rev-parse</code> output) interpolated directly into the script body via <code>fmt.Sprintf</code> without validation — this is a different value from the <code>ORIGINAL_SHAS</code> env var that the SHA regex guards. Quoting <code>"$ORIGINAL_SHA"</code> and <code>"$CURRENT_MSG"</code> throughout would close most of this surface if staying with the rebase approach.</p>
+  <p><em>@stmcginnis gave <code>/lgtm</code> (Jun 5) without flagging this finding.</em></p>
+<pre>ORIGINAL_SHA=$(echo "$ORIGINAL_SHAS" | cut -d',' -f$COMMIT_NUM)
+if [ -n <span class="hl">$ORIGINAL_SHA</span> ]; then
+    CURRENT_MSG=$(git log -1 --pretty=%%B)
+    git commit --amend -m "<span class="hl">$CURRENT_MSG</span>
+
+(cherry picked from commit $ORIGINAL_SHA)"
+fi</pre>
+</div>
+
+<div class="finding should-fix">
+  <div class="finding-title"><span class="badge badge-should-fix">Should Fix</span> Flag defaults to true — silent behavior change for existing deployments</div>
+  <span class="loc">main.go:76</span>
+  <p>Every existing cherrypicker deployment begins rewriting cherry-pick commit messages on upgrade without opt-in. All other new-feature flags in this file (<code>--allow-all</code>, <code>--create-issue-on-conflict</code>) default to <code>false</code>. Should default to <code>false</code>.</p>
+<pre>fs.BoolVar(&amp;o.addOriginalCommitID, "add-original-commit-id", <span class="hl">true</span>, "Add original commit ID...")</pre>
+</div>
+
+<div class="finding nit">
+  <div class="finding-title"><span class="badge badge-nit">Nit</span> fromPattern regex compiled per call — could be package-level var</div>
+  <span class="loc">server.go:811</span>
+  <p><code>regexp.MustCompile(`^From ([0-9a-f]{40}) `)</code> inside <code>extractOriginalSHAs</code> recompiles on every call. Since the pattern never changes, it could be a package-level <code>var</code>. @stmcginnis flagged this (Jun 5) and immediately noted "relatively minor overhead though, so I'm not too concerned about it." Author and @stmcginnis agreed it can be deferred to a follow-up if any further changes are needed.</p>
+<pre>fromPattern := regexp.MustCompile(`^From ([0-9a-f]{40}) `)</pre>
+</div>
+
+<div class="finding nit">
+  <div class="finding-title"><span class="badge badge-nit">Nit</span> Feature failures silently swallowed</div>
+  <span class="loc">server.go:578&ndash;594</span>
+  <p>Both SHA extraction failure and rebase failure log <code>Warn</code> and continue. The cherry-pick PR is created without the expected commit IDs and the requester has no indication anything went wrong. A PR comment on failure would provide visibility.</p>
+<pre>logger.WithError(err).Warn("Failed to extract original SHAs from patch")
+logger.WithError(err).Warn("Failed to append cherry-pick messages")</pre>
+</div>
+
+<div class="finding nit">
+  <div class="finding-title"><span class="badge badge-nit">Nit</span> Tests use os/exec instead of localgit helpers</div>
+  <span class="loc">server_test.go:1540&ndash;1695</span>
+  <p>The two integration-style test functions set up git repos via direct <code>exec.Command("git", ...)</code> calls rather than <code>localgit.Clients</code> used by the rest of the test file. Not wrong, but diverges from project convention and reinforces the os/exec dependency rather than isolating it.</p>
+</div>
+
+<div class="finding question">
+  <div class="finding-title"><span class="badge badge-question">Question</span> Would a pre-am patch modification approach be acceptable?</div>
+  <span class="loc">server.go:559 (r.Am() call site)</span>
+  <p>The mbox patch already contains <code>From &lt;sha&gt; Mon Sep 17 00:00:00 2001</code> headers before <code>r.Am()</code> is called. Inserting <code>(cherry picked from commit &lt;sha&gt;)</code> before the <code>diff --git</code> separator in each commit section — pure Go string manipulation on a file already on disk — would eliminate both blocking findings: no <code>os/exec</code>, no shell script, no injection surface, trivially testable with string literals. Raised as a question since the current approach produces correct results; happy to sketch the structure if useful.</p>
+</div>
+
+<!-- ─── Checked ─── -->
+
+<h2>Checked and fine with</h2>
+<div class="section checked">
+  <ul>
+    <li><code>extractOriginalSHAs</code> regex <code>^From ([0-9a-f]{40}) </code> correctly validates 40-char hex SHAs and avoids false positives from email-style <code>From </code> headers in commit message bodies.</li>
+    <li>Temp script file properly closed on both happy path and error path before passing path to <code>git rebase</code>; <code>defer os.Remove(tmpPath)</code> cleans it up after.</li>
+    <li><code>GIT_SEQUENCE_EDITOR=true</code> correctly suppresses the interactive editor; <code>GIT_CONFIG_NOSYSTEM=1</code> prevents interference from system git config.</li>
+    <li>Flag name and struct field follow existing naming conventions; wired correctly from <code>gatherOptions()</code> through <code>main()</code> to <code>Server</code> struct initialization.</li>
+    <li><code>TestExtractOriginalSHAs</code> covers single commit, multi-commit, invalid <code>From</code> lines filtered by regex, and empty patch returning an error.</li>
+    <li><code>TestAppendCherryPickMessages_MultiCommit</code> verifies correct SHA ordering — commit 1 gets SHA 1, commit 2 gets SHA 2.</li>
+    <li>Previously resolved: <code>filter-branch</code> &rarr; <code>rebase -i --exec</code>; SHA validation regex; temp file handle leak; dead-code tautology; space/tab indentation in new functions.</li>
+  </ul>
+</div>
+
+<!-- ─── Open questions ─── -->
+
+<h2>Open questions for the author</h2>
+<div class="section">
+  <ol>
+    <li>If the pre-am patch modification approach is acceptable, it resolves both blocking findings without additional complexity &mdash; worth a quick discussion before another revision round.</li>
+    <li>If staying with the rebase approach: quoting <code>"$ORIGINAL_SHA"</code> and <code>"$CURRENT_MSG"</code> throughout the shell script would close most of the injection surface. Would that targeted fix be acceptable?</li>
+    <li>Why does <code>extractOriginalSHAs</code> return an error on zero SHAs rather than an empty slice? An empty slice would naturally produce a no-op in the caller; returning an error forces a <code>Warn</code> log for what may be a normal condition. Is the assumption that every GitHub <code>.patch</code> response always contains at least one <code>From</code> line?</li>
+  </ol>
+</div>
+
+</body>
+</html>

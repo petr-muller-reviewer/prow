@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Review: kubernetes-sigs/prow#812</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; line-height: 1.6; max-width: 860px; margin: 2rem auto; padding: 0 1.5rem; color: #1a1a1a; }
+  code, pre { font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 0.9em; }
+  pre { background: #f5f5f5; padding: 0.75rem 1rem; border-radius: 6px; overflow-x: auto; }
+  header { border-bottom: 2px solid #333; padding-bottom: 1rem; margin-bottom: 1.5rem; }
+  header dl { display: grid; grid-template-columns: max-content 1fr; gap: 0.25rem 1rem; margin: 0.5rem 0 0; }
+  header dt { font-weight: 600; color: #555; }
+  .verdict { background: #eaf7ea; border-left: 4px solid #2e8b2e; padding: 0.75rem 1rem; border-radius: 4px; margin-bottom: 1.5rem; }
+  h2 { border-bottom: 1px solid #ddd; padding-bottom: 0.3rem; margin-top: 2rem; }
+  ul { padding-left: 1.4rem; }
+  .empty { color: #777; font-style: italic; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Review: kubernetes-sigs/prow#812</h1>
+  <dl>
+    <dt>Title</dt><dd>chore(deps): bump the aws group across 1 directory with 4 updates</dd>
+    <dt>Head SHA</dt><dd><code>47f845d7262b749e8facd8abeb4e176efdbfcd3a</code></dd>
+    <dt>Base</dt><dd>main</dd>
+    <dt>Reviewed at</dt><dd>2026-08-08T13:23:58Z</dd>
+    <dt>Link</dt><dd><a href="https://github.com/kubernetes-sigs/prow/pull/812">github.com/kubernetes-sigs/prow/pull/812</a></dd>
+  </dl>
+</header>
+
+<div class="verdict">
+  <strong>Verdict: Approve.</strong> Dep-only Dependabot bump of the AWS SDK v2 group. All four direct bumps come from the same upstream release commit (~18 days old at review time, real tags, no CVEs/security advisories in range). The only in-tree usage &mdash; the S3 blob-storage provider &mdash; exercises API surface unchanged across this range.
+</div>
+
+<h2>What this PR does</h2>
+<ul>
+  <li>Bumps <code>github.com/aws/aws-sdk-go-v2</code> 1.36.3 &rarr; 1.43.0 (direct)</li>
+  <li>Bumps <code>github.com/aws/aws-sdk-go-v2/config</code> 1.29.14 &rarr; 1.32.31 (direct)</li>
+  <li>Bumps <code>github.com/aws/aws-sdk-go-v2/credentials</code> 1.17.67 &rarr; 1.19.30 (direct)</li>
+  <li>Bumps <code>github.com/aws/aws-sdk-go-v2/service/s3</code> 1.66.3 &rarr; 1.106.0 (direct)</li>
+  <li>Drags along a long tail of indirect AWS SDK submodules (<code>internal/*</code>, <code>service/internal/*</code>, <code>service/sso</code>, <code>service/ssooidc</code>, <code>service/sts</code>, <code>smithy-go</code>, new <code>service/signin</code>) and a matching indirect-only bump in <code>hack/tools/go.mod</code></li>
+  <li>Only <code>go.mod</code>/<code>go.sum</code> files touched &mdash; no project code, no vendoring (module mode)</li>
+</ul>
+
+<h2>Findings</h2>
+
+<h3>Blocking</h3>
+<p class="empty">None.</p>
+
+<h3>Should fix</h3>
+<p class="empty">None.</p>
+
+<h3>Nits</h3>
+<p class="empty">None.</p>
+
+<h3>Questions</h3>
+<p class="empty">None.</p>
+
+<h2>Things I checked and was fine with</h2>
+<ul>
+  <li>Diff scope: confirmed only <code>go.mod</code>/<code>go.sum</code> (root) and <code>hack/tools/go.mod</code>/<code>go.sum</code> changed; the <code>hack/tools</code> bumps are indirect-only and consistent with the root bump (same upstream versions, pulled in via the ECR credential helper tool dep).</li>
+  <li>Release freshness: all four new direct versions tagged from the same upstream commit <code>4fef345</code>, released 2026-07-21 &mdash; ~18 days old at review time. Real tags via <code>proxy.golang.org</code>, not pseudo-versions.</li>
+  <li>Usage surface is narrow: direct import only in <code>pkg/io/providers/aws.go</code> (+ its test), the S3-compatible blob-storage artifact provider. Uses <code>config.LoadDefaultConfig</code>, <code>config.WithCredentialsProvider</code>, <code>credentials.NewStaticCredentialsProvider</code>, <code>s3.NewFromConfig</code> &mdash; API unchanged across this range. Blast radius is broad (reached from <code>pkg/io/opener.go</code>, <code>pkg/crier/reporters/gcs/*</code>, <code>pkg/pod-utils/gcs/upload.go</code>, <code>pkg/spyglass/*</code>, <code>cmd/deck/*</code>, <code>pkg/plank/reconciler.go</code>, <code>pkg/tide/codereview.go</code>) but via this single entry point only.</li>
+  <li>Read the <code>config</code>, <code>credentials</code>, and <code>service/s3</code> submodule CHANGELOGs across the full version range &mdash; no CVEs/security advisories. Notable items (login-cache file permission hardening to 0600, opt-in <code>AWS_RESTRICT_FILE_PERMISSIONS</code>, opt-in clock-skew-disable option) don't touch code paths Prow exercises &mdash; no logincreds/SSO cache usage, no custom checksum or clock-skew configuration.</li>
+</ul>
+
+<h2>Open questions for the author</h2>
+<p class="empty">None.</p>
+
+</body>
+</html>

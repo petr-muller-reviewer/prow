@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Review: kubernetes-sigs/prow#742</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; line-height: 1.6; max-width: 860px; margin: 2rem auto; padding: 0 1rem; color: #1a1a1a; }
+  code, pre { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; }
+  pre { background: #f5f5f5; padding: 0.75rem; border-radius: 6px; overflow-x: auto; }
+  header { border-bottom: 2px solid #333; padding-bottom: 1rem; margin-bottom: 1.5rem; }
+  header dl { display: grid; grid-template-columns: max-content 1fr; gap: 0.25rem 1rem; }
+  header dt { font-weight: 600; color: #555; }
+  .verdict { font-size: 1.1rem; font-weight: 600; padding: 0.75rem 1rem; border-radius: 6px; background: #e6f4ea; color: #1e6b2f; border: 1px solid #b7e0c1; }
+  h2 { border-bottom: 1px solid #ddd; padding-bottom: 0.3rem; margin-top: 2.5rem; }
+  ul { padding-left: 1.4rem; }
+  .empty { color: #777; font-style: italic; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Review: kubernetes-sigs/prow#742</h1>
+  <dl>
+    <dt>Title</dt><dd>chore(deps): bump github.com/in-toto/in-toto-golang from 0.9.0 to 0.11.0 in /hack/tools</dd>
+    <dt>Head SHA</dt><dd><code>5aa242d1ccb5be7f7555b1c4bf8bf485504d1963</code></dd>
+    <dt>Base</dt><dd>main</dd>
+    <dt>Reviewed at</dt><dd>2026-07-26T23:27:08Z</dd>
+    <dt>Link</dt><dd><a href="https://github.com/kubernetes-sigs/prow/pull/742">github.com/kubernetes-sigs/prow/pull/742</a></dd>
+  </dl>
+</header>
+
+<div class="verdict">Verdict: Approve</div>
+<p>Routine dependabot bump of an indirect, unimported dependency in the <code>hack/tools</code> module. No project code touched, release is well past soak time, and the upstream changelog has no bearing on our usage.</p>
+
+<h2>What this PR does</h2>
+<ul>
+  <li>Bumps <code>github.com/in-toto/in-toto-golang</code> from v0.9.0 to v0.11.0 in <code>hack/tools/go.mod</code> / <code>go.sum</code>.</li>
+  <li>The dependency is indirect within the <code>hack/tools</code> module (build/dev tooling), separate from the main <code>prow</code> module.</li>
+  <li>No project source code changes — only manifest/lockfile churn (3 additions / 3 deletions across 2 files).</li>
+</ul>
+
+<h2>Findings</h2>
+<p class="empty">None.</p>
+
+<h2>Things I checked and was fine with</h2>
+<ul>
+  <li>Release freshness: v0.11.0 tagged 2026-05-04 per proxy.golang.org (~83 days old at review time) — well past the soak-time threshold.</li>
+  <li>Direct usage: <code>grep -rln '"github.com/in-toto/in-toto-golang' hack --include='*.go'</code> returns nothing — not imported directly anywhere, not vendored.</li>
+  <li>Changelog v0.9.0..v0.11.0: mostly routine dependency bumps (grpc, x/sys, go-jose, testify); one functional fix (in-toto/in-toto-golang#462, negation-character-class matching in glob patterns) with no bearing on our code since we don't import the module directly.</li>
+  <li>Scope confirmed as manifest/lockfile-only in the <code>hack/tools</code> module; no vendored code touched.</li>
+</ul>
+
+<h2>Open questions for the author</h2>
+<p class="empty">None.</p>
+
+</body>
+</html>

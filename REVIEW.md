@@ -3,8 +3,12 @@ pr: kubernetes-sigs/prow#819
 title: "chore(deps): bump google.golang.org/protobuf from 1.36.10 to 1.36.11"
 head_sha: 958edd01962a1eddedca906380cfe3f55de4c9f4
 base: main
-reviewed_at: 2026-08-05T11:33:57Z
+reviewed_at: 2026-08-08T16:08:22Z
 verdict: approve
+refresh_log:
+  - from: 958edd01962a1eddedca906380cfe3f55de4c9f4
+    to: 958edd01962a1eddedca906380cfe3f55de4c9f4
+    summary: No code changes; elmiko commented "/ok-to-test" to trigger CI. No findings affected.
 ---
 
 ## Summary
@@ -30,3 +34,8 @@ Dependabot dep-only bump of `google.golang.org/protobuf` v1.36.10 -> v1.36.11. D
 
 ## Open questions
 (none)
+
+## Since previous review
+
+- No code changes (head SHA unchanged).
+- 2026-08-07: elmiko commented `/ok-to-test` to authorize CI for this Dependabot PR — administrative only, no bearing on findings.

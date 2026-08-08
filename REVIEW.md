@@ -3,7 +3,7 @@ pr: kubernetes-sigs/prow#702
 title: "plugins: move transfer-issue to issue management"
 head_sha: 1f6d66b17f471ab60d185494f5cb13c0ed27f789
 base: main
-reviewed_at: 2026-08-08T17:29:25Z
+reviewed_at: 2026-08-08T19:43:21Z
 verdict: approve
 refresh_log:
   - from_sha: ca47a5a623d51dd37e96f5e9fd68dc8df83c7afb
@@ -38,6 +38,10 @@ refresh_log:
     to_sha: 1f6d66b17f471ab60d185494f5cb13c0ed27f789
     at: 2026-08-08T17:29:25Z
     summary: "No code changes; Amulyam24 pinged petr-muller again (2026-08-04), still no response; gate blockers unchanged"
+  - from_sha: 1f6d66b17f471ab60d185494f5cb13c0ed27f789
+    to_sha: 1f6d66b17f471ab60d185494f5cb13c0ed27f789
+    at: 2026-08-08T19:43:21Z
+    summary: "No code changes; petr-muller answered the transition question (2026-08-08): announcements.md update can be post-merge, proposes a #prow message plus a direct config PR to the k8s Prow instance; transition-question blocker resolved, doc comment and approved label still outstanding"
 gate:
   decision: hold
   gated_at: 2026-06-01T17:51:12Z
@@ -53,17 +57,17 @@ One open reviewer concern is unanswered and a should-fix finding is unaddressed 
 
 **Findings disposition (Area 1):**
 
-- `[should-fix] Silent functionality loss for operators` — **not addressed / open question**. petr-muller posted a direct question (2026-06-01T16:58:10Z, after the last refresh): will instances with `transfer-issue` in `plugins.yaml` blow up with errors or silently lose functionality? The answer is the latter — silent loss, no error. This needs an author reply, and the PR should update `site/content/en/docs/announcements.md` to document the removal. Neither has happened.
+- `[should-fix] Silent functionality loss for operators` — **transition question answered, resolution plan agreed**. petr-muller's open question (2026-06-01T16:58:10Z) — will instances with `transfer-issue` in `plugins.yaml` blow up with errors or silently lose functionality — was confirmed as silent loss by Amulyam24 (2026-06-10). petr-muller replied (2026-08-08T19:44:38Z): the `announcements.md` update can happen post-merge, and proposed a communication plan — post a message to `#prow`, plus open a direct config PR against the k8s Prow instance so that consumer's transition is transparent. This is no longer a pre-merge blocker; tracking the post-merge announcement/communication follow-through is now on the author.
 - `[should-fix] Stale package doc comment` — **not addressed**. `transfer-issue.go:17-18` still reads `// Package transferissue implements the '/transfer-issue' command...` in the current head (`1f6d66b1`).
 - `[nit] IsPR test missing comment expectation` — still not addressed, low priority, does not gate.
 
 **Merge risk (Area 2):**
 
-- Plugin name change (`transfer-issue` → `issue-management`): silent functionality loss for any Prow installation with `transfer-issue` in `plugins.yaml` that hasn't also enabled `issue-management`. No error, no log, no config validation warning. No announcement in `site/content/en/docs/announcements.md`. Blast radius: any operator who adopted `transfer-issue` standalone and doesn't read release notes.
+- Plugin name change (`transfer-issue` → `issue-management`): silent functionality loss for any Prow installation with `transfer-issue` in `plugins.yaml` that hasn't also enabled `issue-management`. No error, no log, no config validation warning. Mitigation is now agreed (post-merge `announcements.md` update, `#prow` message, direct config PR to the k8s instance) but not yet executed. Blast radius: any other operator who adopted `transfer-issue` standalone and doesn't read release notes or `#prow`.
 
 **What unblocks merge:**
 
-1. Author responds to petr-muller's transition question and adds an entry to `site/content/en/docs/announcements.md` documenting the `transfer-issue` → `issue-management` migration.
+1. ~~Author responds to petr-muller's transition question~~ — done (2026-08-08); post-merge announcement/communication plan agreed, no longer blocking.
 2. Stale `// Package transferissue` doc comment removed from `transfer-issue.go:17-18`.
 3. `cjwagner` (or another OWNERS approver) gives `/approve` — `lgtm` is present, `approved` is not.
 
@@ -118,6 +122,12 @@ Moves the standalone `transfer-issue` plugin into the consolidated `issue-manage
 - **Amulyam24** (2026-08-04T11:45:51Z) pinged petr-muller again, noting the PR is "close to merging" and asking for input. No response yet.
 - Gate blockers remain unchanged: `announcements.md` not updated, stale doc comment unaddressed, no `approved` label.
 
+### Since previous refresh (2026-08-08T17:29)
+
+- No code changes; head SHA unchanged at `1f6d66b1`.
+- **petr-muller** (2026-08-08T19:44:38Z) replied to Amulyam24's outstanding questions: agreed the `announcements.md` update can be done post-merge, and proposed a communication plan — post to `#prow`, and open a direct config PR against the k8s Prow instance so the transition is transparent for that consumer.
+- The transition-question blocker is resolved; remaining blockers are the stale doc comment and the missing `approved` label.
+
 ## Findings
 
 ### [should-fix] Stale package doc comment
@@ -135,7 +145,8 @@ Moves the standalone `transfer-issue` plugin into the consolidated `issue-manage
 
 ### [should-fix] Silent functionality loss for operators
 - where: plugin registration
-- concern: The plugin handler registration changes from `transfer-issue` to `issue-management`. Operators who have `transfer-issue` in their `plugins.yaml` but not `issue-management` will silently lose the `/transfer-issue` command. No error, no log, no warning. Release notes must call this out prominently. A config validation warning (follow-up PR) would be ideal.
+- concern: The plugin handler registration changes from `transfer-issue` to `issue-management`. Operators who have `transfer-issue` in their `plugins.yaml` but not `issue-management` will silently lose the `/transfer-issue` command. No error, no log, no warning.
+- status (2026-08-08): resolution plan agreed between petr-muller and Amulyam24 — update `site/content/en/docs/announcements.md` post-merge, post a `#prow` message, and open a direct config PR against the k8s Prow instance. No longer a pre-merge blocker; tracking execution as a post-merge follow-up. A config validation warning (follow-up PR) would still be ideal.
 
 ### [nit] testClient could embed FakeClient
 - where: `pkg/plugins/issue-management/transfer-issue_test.go`
@@ -156,5 +167,5 @@ Moves the standalone `transfer-issue` plugin into the consolidated `issue-manage
 
 ## Open questions
 
-- How will operators currently using `transfer-issue` standalone be notified of the migration to `issue-management`? Release notes alone may not be sufficient for all consumers.
+- ~~How will operators currently using `transfer-issue` standalone be notified of the migration to `issue-management`?~~ **Answered (2026-08-08):** post-merge `announcements.md` entry, a `#prow` message, and a direct config PR to the k8s Prow instance.
 - Should the config loader emit a deprecation warning when it encounters `transfer-issue` as a plugin name? This could be a follow-up PR.

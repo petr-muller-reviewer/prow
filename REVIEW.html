@@ -24,7 +24,7 @@
     <dt>Title</dt><dd>chore(deps): bump github.com/in-toto/in-toto-golang from 0.9.0 to 0.11.0 in /hack/tools</dd>
     <dt>Head SHA</dt><dd><code>5aa242d1ccb5be7f7555b1c4bf8bf485504d1963</code></dd>
     <dt>Base</dt><dd>main</dd>
-    <dt>Reviewed at</dt><dd>2026-07-26T23:27:08Z</dd>
+    <dt>Reviewed at</dt><dd>2026-08-08T22:57:21Z</dd>
     <dt>Link</dt><dd><a href="https://github.com/kubernetes-sigs/prow/pull/742">github.com/kubernetes-sigs/prow/pull/742</a></dd>
   </dl>
 </header>
@@ -44,9 +44,10 @@
 
 <h2>Things I checked and was fine with</h2>
 <ul>
-  <li>Release freshness: v0.11.0 tagged 2026-05-04 per proxy.golang.org (~83 days old at review time) — well past the soak-time threshold.</li>
-  <li>Direct usage: <code>grep -rln '"github.com/in-toto/in-toto-golang' hack --include='*.go'</code> returns nothing — not imported directly anywhere, not vendored.</li>
-  <li>Changelog v0.9.0..v0.11.0: mostly routine dependency bumps (grpc, x/sys, go-jose, testify); one functional fix (in-toto/in-toto-golang#462, negation-character-class matching in glob patterns) with no bearing on our code since we don't import the module directly.</li>
+  <li>Release freshness: v0.11.0 tagged/released 2026-05-04T16:21:36Z per proxy.golang.org and the GitHub release — ~96 days old at this review, a real tagged release (not a pseudo-version), published by core maintainer <code>adityasaky</code>. Well past the soak-time threshold.</li>
+  <li>Direct usage: <code>grep -rln '"github.com/in-toto/in-toto-golang' --include='*.go' .</code> (excluding vendor) returns nothing — not imported anywhere in project Go source.</li>
+  <li>Changelog v0.9.0..v0.11.0: overwhelmingly routine transitive dependency bumps (grpc, x/sys, x/net, x/crypto, go-jose, testify, cobra, go-cmp, GH Actions versions). Substantive upstream changes: "Add match products feature" (#237), "Drop use of <code>any</code> for hash objects" (#238), "Deprecate Provenance v1 struct in favor of /attestation protobufs" (#267), "Fixes filepath pattern matching in windows" (#254), and in v0.11.0 specifically "match: Replace <code>^</code> with <code>!</code> for negation in character classes" (#462, in-toto artifact-rule matching bugfix). No CVEs/security advisories in either release's notes.</li>
+  <li>Exposure: since the module isn't imported by any project code (pulled in only transitively, in a build-tooling-only module that isn't shipped), none of the upstream changes — including the negation-matching fix — touch anything actually exercised. Exposure is effectively zero.</li>
   <li>Scope confirmed as manifest/lockfile-only in the <code>hack/tools</code> module; no vendored code touched.</li>
 </ul>
 

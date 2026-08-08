@@ -14,6 +14,11 @@
   h2 { border-bottom: 1px solid #ddd; padding-bottom: 0.3rem; margin-top: 2rem; }
   ul { padding-left: 1.4rem; }
   .empty { color: #777; font-style: italic; }
+  .badge { display: inline-block; font-size: 0.75em; font-weight: 600; padding: 0.15rem 0.5rem; border-radius: 999px; margin-left: 0.5rem; vertical-align: middle; }
+  .badge-category { background: #eef0ff; color: #3a3fa0; }
+  .badge-should { background: #fff4e0; color: #9a6a00; }
+  .followup { border: 1px solid #ddd; border-radius: 6px; padding: 1rem 1.25rem; margin-bottom: 1.5rem; }
+  .followup h3 { margin-top: 0; }
 </style>
 </head>
 <body>
@@ -67,6 +72,59 @@
 
 <h2>Open questions for the author</h2>
 <p class="empty">None.</p>
+
+<h2>Dependency followups</h2>
+
+<div class="followup">
+  <h3>Pin S3 checksum behavior for custom/S3-compatible endpoints
+    <span class="badge badge-category">default-change</span>
+    <span class="badge badge-should">should</span>
+  </h3>
+  <p><strong>Unlocked by:</strong> <code>github.com/aws/aws-sdk-go-v2/service/s3</code> v1.66.3 &rarr; v1.106.0 (and the root <code>github.com/aws/aws-sdk-go-v2</code> module, bumped in lockstep)</p>
+  <p><strong>Call sites:</strong> <code>pkg/io/providers/aws.go:52-86</code> (<code>newS3Client</code>) &mdash; builds the <code>s3.Client</code> via <code>config.LoadDefaultConfig</code> + <code>s3.NewFromConfig</code>; the surrounding <code>S3Credentials</code> struct (<code>pkg/io/providers/providers.go</code>) exposes <code>Endpoint</code>, <code>S3ForcePathStyle</code>, and <code>Insecure</code> &mdash; this path is purpose-built to target arbitrary S3-compatible backends, not just AWS S3.</p>
+  <p><strong>What the bump crosses:</strong> <code>service/s3</code> v1.73.0 (2025-01-15) &mdash; "S3 client behavior is updated to always calculate a checksum by default for operations that support it (such as <code>PutObject</code> or <code>UploadPart</code>), or require it (such as <code>DeleteObjects</code>). The checksum algorithm used by default now becomes CRC32..." followed by v1.74.1 enabling response-checksum <em>validation</em> by default. This is the well-known AWS SDK v2 default change that has broken uploads/downloads against third-party S3-compatible object stores (older MinIO, Ceph RGW, etc.) that don't correctly implement the new default checksum trailers.</p>
+  <p><strong>Handoff prompt:</strong></p>
+  <pre>In kubernetes-sigs/prow, PR #812 bumped github.com/aws/aws-sdk-go-v2/service/s3 from
+v1.66.3 to v1.106.0 (and the root github.com/aws/aws-sdk-go-v2 module in lockstep).
+Starting at service/s3 v1.73.0, the AWS SDK v2 changed its default behavior: S3 clients
+now always calculate a request checksum (CRC32) for operations that support it (e.g.
+PutObject, UploadPart) and, since v1.74.1, validate response checksums by default too.
+This is a well-documented compatibility break for non-AWS S3-compatible object stores
+(older MinIO, Ceph RGW, etc.) that don't correctly implement the new default checksum
+trailers.
+
+pkg/io/providers/aws.go's newS3Client() builds the S3 client used by Prow's blob-storage
+artifact provider via config.LoadDefaultConfig(ctx, opts...) followed by
+s3.NewFromConfig(cfg, s3Opts...). The surrounding S3Credentials struct
+(pkg/io/providers/providers.go) exposes Endpoint (custom BaseEndpoint), S3ForcePathStyle
+(UsePathStyle), and Insecure (skip TLS verify) &mdash; i.e. this code path is explicitly built
+to target arbitrary S3-compatible backends, not just AWS S3. Neither
+RequestChecksumCalculation nor ResponseChecksumValidation is currently set anywhere, so
+this code path silently inherited the new default behavior with this bump.
+
+Task: in newS3Client() (pkg/io/providers/aws.go), explicitly set the pre-v1.73.0 default
+behavior so existing S3-compatible deployments don't silently break:
+  opts = append(opts,
+      config.WithRequestChecksumCalculation(aws.RequestChecksumCalculationWhenRequired),
+      config.WithResponseChecksumValidation(aws.ResponseChecksumValidationWhenRequired),
+  )
+(add the github.com/aws/aws-sdk-go-v2/aws import). This restores "checksum only when the
+S3 API requires it" (e.g. DeleteObjects) instead of "always calculate/validate when
+supported", matching the SDK's pre-v1.73.0 behavior.
+
+Acceptance criteria:
+- newS3Client() explicitly sets RequestChecksumCalculationWhenRequired and
+  ResponseChecksumValidationWhenRequired via the config LoadOptions.
+- pkg/io/providers/aws_test.go continues to pass; add/adjust a test assertion that the
+  resulting s3.Client options carry these two values.
+- `go build ./...` and `go test ./pkg/io/...` pass.
+
+Scope guard: only touch newS3Client()'s config construction and its test. Don't touch
+credential loading, TLS/endpoint/path-style handling, or any other AWS SDK call site &mdash;
+this is the only place aws-sdk-go-v2 is imported in the project. Don't attempt to make
+this conditional on creds.Endpoint being set; apply it unconditionally for simplicity
+and predictable behavior across both AWS and S3-compatible targets.</pre>
+</div>
 
 </body>
 </html>

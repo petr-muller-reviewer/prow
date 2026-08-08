@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Review: kubernetes-sigs/prow#819</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; line-height: 1.6; color: #1a1a1a; max-width: 860px; margin: 2rem auto; padding: 0 1.5rem; }
+  code, pre { font-family: "SF Mono", Consolas, Menlo, monospace; background: #f4f4f4; padding: 0.1rem 0.35rem; border-radius: 4px; font-size: 0.9em; }
+  pre { padding: 0.75rem; overflow-x: auto; }
+  header { border-bottom: 2px solid #ddd; padding-bottom: 1rem; margin-bottom: 1.5rem; }
+  header dl { display: grid; grid-template-columns: max-content 1fr; gap: 0.25rem 1rem; margin: 0.5rem 0; }
+  header dt { font-weight: 600; color: #555; }
+  h2 { border-bottom: 1px solid #eee; padding-bottom: 0.3rem; margin-top: 2rem; }
+  .verdict { display: inline-block; padding: 0.3rem 0.8rem; border-radius: 6px; font-weight: 600; }
+  .verdict.approve { background: #d4f4dd; color: #16702b; }
+  ul { padding-left: 1.4rem; }
+  .finding { border: 1px solid #eee; border-radius: 6px; padding: 0.8rem 1rem; margin: 0.8rem 0; }
+  .finding .loc { color: #666; font-size: 0.9em; }
+  .empty { color: #777; font-style: italic; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Review: kubernetes-sigs/prow#819</h1>
+  <dl>
+    <dt>Title</dt><dd>chore(deps): bump google.golang.org/protobuf from 1.36.10 to 1.36.11</dd>
+    <dt>Head SHA</dt><dd><code>958edd01962a1eddedca906380cfe3f55de4c9f4</code></dd>
+    <dt>Base</dt><dd>main</dd>
+    <dt>Reviewed at</dt><dd>2026-08-05T11:33:57Z</dd>
+    <dt>Link</dt><dd><a href="https://github.com/kubernetes-sigs/prow/pull/819">github.com/kubernetes-sigs/prow/pull/819</a></dd>
+  </dl>
+</header>
+
+<h2>Verdict</h2>
+<p><span class="verdict approve">Approve</span></p>
+<p>Dep-only Dependabot bump of a direct dependency to a well-soaked (~8 month old), CVE-free release. No project code changes to review.</p>
+
+<h2>What this PR does</h2>
+<ul>
+  <li>Bumps <code>google.golang.org/protobuf</code> from v1.36.10 to v1.36.11 in <code>go.mod</code>/<code>go.sum</code>.</li>
+  <li>No other files touched — pure dependency-manifest change, nothing in project source.</li>
+</ul>
+
+<h2>Dependency analysis</h2>
+<ul>
+  <li><strong>Freshness</strong>: v1.36.11 tagged 2025-12-12, a real tag (not a pseudo-version). ~8 months old at review time — well past any reasonable soak window.</li>
+  <li><strong>Usage</strong>: direct dependency (no <code>// indirect</code> marker). Imported in 11 non-vendor files, concentrated in <code>pkg/gangway/*</code> (Prow's external-facing gRPC service, accepts untrusted input), <code>pkg/resultstore/*</code>, <code>hack/tools/tools.go</code>, and integration tests.</li>
+  <li><strong>Changelog</strong> (protocolbuffers/protobuf-go v1.36.10...v1.36.11): no CVE. One notable fix — <code>internal/impl: check recursion limit in lazy decoding validation</code> — closes a gap where lazily-unmarshaled messages/extensions could bypass the 10,000-depth recursion limit. Relevant to <code>pkg/gangway</code>, which decodes gRPC requests from external callers. A second fix (<code>internal/encoding/tag: use proto3 defaults if proto3</code>) addresses a <code>checkptr</code> fatal error under <code>-race</code>/<code>-asan</code>/<code>-msan</code> builds — not applicable to this project's normal build. The rest of the range is internal test/flake fixes and edition/Kythe tooling irrelevant here.</li>
+  <li><strong>Exposure</strong>: light-to-moderate. The recursion-limit fix is a mild positive for gangway's external-input exposure, not a response to a disclosed exploitable bug.</li>
+</ul>
+
+<h2>Findings</h2>
+<p class="empty">None — dep-only PR, no project code changed.</p>
+
+<h2>Things I checked and was fine with</h2>
+<ul>
+  <li>go.mod/go.sum diff limited to the single module bump; no incidental churn.</li>
+  <li>New version is a real tagged release, not a pseudo-version.</li>
+  <li>No CVE or security advisory tied to this bump.</li>
+  <li>Import surface traced and confirmed: gangway (external gRPC), resultstore, test-only files.</li>
+</ul>
+
+<h2>Open questions for the author</h2>
+<p class="empty">None.</p>
+
+</body>
+</html>

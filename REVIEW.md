@@ -1,15 +1,21 @@
 ---
 pr: kubernetes-sigs/prow#811
 title: "chore(deps): bump the prometheus group across 1 directory with 2 updates"
-head_sha: f8211615433853c3aa9472eb3df6be972b74b20a
+head_sha: efa0dd249310217482638e798cb79487052c2097
 base: main
-reviewed_at: 2026-07-29T00:06:38Z
+reviewed_at: 2026-08-09T14:06:31Z
 verdict: request-changes
+refresh_log:
+  - from: f8211615433853c3aa9472eb3df6be972b74b20a
+    to: efa0dd249310217482638e798cb79487052c2097
+    summary: "Branch rebased onto later main (picked up unrelated gopkg.in/ini.v1 bump merge, PR #814); no prometheus-bump content changed. Same lint failure persists on new SHA. New discussion: elmiko asked about the unrelated lint failures, petr-muller suggested a separate PR to fix lint then retest."
 ---
 
 ## Summary
 
 Dependabot dep-bump PR. Only `go.mod`/`go.sum` in `.` and `hack/tools` changed — no project source touched. CI is currently red: `pull-prow-verify-lint` fails due to a `staticcheck` deprecation flag caused directly by this bump (see Findings). All other checks (build, integration, unit, race detector) pass.
+
+Since previous review: the branch was rebased onto a later `main` (picking up the unrelated `gopkg.in/ini.v1` v1.67.0→v1.67.3 bump, PR #814, merged in the meantime) — the actual prometheus-group content is unchanged, and the same `pull-prow-verify-lint` failure persists on the new head SHA. `elmiko` asked in the PR thread (2026-08-07) whether the lint failures were related to this PR; `petr-muller` replied (2026-08-09) recommending a separate PR to fix the lint issues, merge it, then retest here.
 
 Direct bumps (dependabot "prometheus" group):
 - `github.com/prometheus/client_golang` v1.22.0 → v1.24.1 (main go.mod; hack/tools go.mod bumps v1.23.2 → v1.24.1, indirect there)

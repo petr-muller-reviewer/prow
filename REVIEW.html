@@ -115,9 +115,9 @@
   <dl>
     <dt>Title</dt><dd>chore(deps): bump the prometheus group across 1 directory with 2 updates</dd>
     <dt>PR</dt><dd><a href="https://github.com/kubernetes-sigs/prow/pull/811">github.com/kubernetes-sigs/prow/pull/811</a></dd>
-    <dt>Head SHA</dt><dd><code>f8211615433853c3aa9472eb3df6be972b74b20a</code></dd>
+    <dt>Head SHA</dt><dd><code>efa0dd249310217482638e798cb79487052c2097</code></dd>
     <dt>Base</dt><dd><code>main</code></dd>
-    <dt>Reviewed at</dt><dd><code>2026-07-29T00:06:38Z</code></dd>
+    <dt>Reviewed at</dt><dd><code>2026-08-09T14:06:31Z</code></dd>
   </dl>
 </header>
 
@@ -128,6 +128,7 @@
 </div>
 
 <h2>What this PR does</h2>
+<p><em>Since previous review:</em> the branch was rebased onto a later <code>main</code> (picking up the unrelated <code>gopkg.in/ini.v1</code> v1.67.0&rarr;v1.67.3 bump, PR #814, merged in the meantime) &mdash; the actual prometheus-group content is unchanged, and the same <code>pull-prow-verify-lint</code> failure persists on the new head SHA. <code>elmiko</code> asked in the PR thread (2026-08-07) whether the lint failures were related to this PR; <code>petr-muller</code> replied (2026-08-09) recommending a separate PR to fix the lint issues, merge it, then retest here.</p>
 <ul>
   <li>Dependabot-grouped bump of the "prometheus" dependency group: <code>github.com/prometheus/client_golang</code> v1.22.0 &rarr; v1.24.1 and <code>github.com/prometheus/common</code> v0.62.0 &rarr; v0.70.1, in both the main module and <code>hack/tools</code>.</li>
   <li>Dep-only change &mdash; only <code>go.mod</code>/<code>go.sum</code> in <code>.</code> and <code>hack/tools</code> are touched; no project source code changed.</li>

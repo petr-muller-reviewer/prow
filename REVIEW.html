@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Review: kubernetes-sigs/prow#811</title>
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+    color: #1a1a1a;
+    background: #fafafa;
+    margin: 0;
+    padding: 2rem;
+  }
+  .container {
+    max-width: 860px;
+    margin: 0 auto;
+    background: #fff;
+    padding: 2.5rem 3rem;
+    border-radius: 8px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  }
+  code, .code {
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 0.9em;
+    background: #f0f0f0;
+    padding: 0.1em 0.35em;
+    border-radius: 3px;
+  }
+  pre {
+    background: #f5f5f5;
+    padding: 1em;
+    border-radius: 6px;
+    overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 0.88em;
+    line-height: 1.5;
+  }
+  header {
+    border-bottom: 2px solid #eee;
+    padding-bottom: 1.2rem;
+    margin-bottom: 1.5rem;
+  }
+  header dl {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 0.3rem 1rem;
+    margin: 0.8rem 0 0 0;
+  }
+  header dt { color: #666; font-size: 0.9em; }
+  header dd { margin: 0; }
+  h1 { font-size: 1.4rem; margin: 0; }
+  h2 {
+    font-size: 1.15rem;
+    margin-top: 2.2rem;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 0.4rem;
+  }
+  h3 { font-size: 1.02rem; margin-bottom: 0.3rem; }
+  .verdict-box {
+    background: #fff8e1;
+    border-left: 4px solid #f5a623;
+    padding: 1rem 1.2rem;
+    border-radius: 4px;
+    margin: 1rem 0;
+  }
+  .verdict-label {
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.85em;
+    letter-spacing: 0.03em;
+    color: #b8720a;
+  }
+  .verdict-box.request-changes {
+    background: #fdecea;
+    border-left-color: #d32f2f;
+  }
+  .verdict-box.request-changes .verdict-label { color: #d32f2f; }
+  .finding {
+    border: 1px solid #eee;
+    border-radius: 6px;
+    padding: 1rem 1.2rem;
+    margin-bottom: 1rem;
+  }
+  .finding.blocking { border-left: 4px solid #d32f2f; }
+  .finding.should-fix { border-left: 4px solid #f5a623; }
+  .finding.nit { border-left: 4px solid #999; }
+  .finding.question { border-left: 4px solid #1976d2; }
+  .sev-tag {
+    display: inline-block;
+    font-size: 0.72em;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 0.15em 0.5em;
+    border-radius: 3px;
+    margin-right: 0.5em;
+    vertical-align: middle;
+  }
+  .sev-tag.blocking { background: #fdecea; color: #d32f2f; }
+  .sev-tag.should-fix { background: #fff4e0; color: #b8720a; }
+  .sev-tag.nit { background: #eee; color: #666; }
+  .sev-tag.question { background: #e3f2fd; color: #1976d2; }
+  ul { padding-left: 1.4rem; }
+  li { margin-bottom: 0.4rem; }
+  a { color: #1976d2; }
+  .empty { color: #888; font-style: italic; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<header>
+  <h1>Review: kubernetes-sigs/prow#811</h1>
+  <dl>
+    <dt>Title</dt><dd>chore(deps): bump the prometheus group across 1 directory with 2 updates</dd>
+    <dt>PR</dt><dd><a href="https://github.com/kubernetes-sigs/prow/pull/811">github.com/kubernetes-sigs/prow/pull/811</a></dd>
+    <dt>Head SHA</dt><dd><code>f8211615433853c3aa9472eb3df6be972b74b20a</code></dd>
+    <dt>Base</dt><dd><code>main</code></dd>
+    <dt>Reviewed at</dt><dd><code>2026-07-29T00:06:38Z</code></dd>
+  </dl>
+</header>
+
+<h2>Verdict</h2>
+<div class="verdict-box request-changes">
+  <div class="verdict-label">Request changes</div>
+  <p>CI is currently red: <code>pull-prow-verify-lint</code> fails because this bump deprecates a method (<code>model.LabelName.IsValid</code>) that <code>pkg/metrics/push.go:52</code> still calls, and <code>staticcheck</code> blocks on it. All other jobs (build, integration, unit tests, race detector) pass. On content alone both version bumps look safe &mdash; no CVEs, no breaking behavior hitting how Prow actually uses either library &mdash; but the PR cannot merge as-is and needs a follow-up commit fixing the deprecated call before this can be approved.</p>
+</div>
+
+<h2>What this PR does</h2>
+<ul>
+  <li>Dependabot-grouped bump of the "prometheus" dependency group: <code>github.com/prometheus/client_golang</code> v1.22.0 &rarr; v1.24.1 and <code>github.com/prometheus/common</code> v0.62.0 &rarr; v0.70.1, in both the main module and <code>hack/tools</code>.</li>
+  <li>Dep-only change &mdash; only <code>go.mod</code>/<code>go.sum</code> in <code>.</code> and <code>hack/tools</code> are touched; no project source code changed.</li>
+  <li>Pulls along a long tail of indirect version bumps via <code>go mod tidy</code> (<code>golang.org/x/net</code>, <code>x/sync</code>, <code>x/text</code>, <code>x/crypto</code>, <code>x/mod</code>, <code>x/sys</code>, <code>x/term</code>, <code>x/tools</code>, <code>google.golang.org/protobuf</code>, <code>prometheus/procfs</code>, <code>klauspost/compress</code>, <code>go.yaml.in/yaml/v2</code>) &mdash; all remain marked <code>// indirect</code> and none are imported directly by project code.</li>
+</ul>
+
+<h2>Findings</h2>
+
+<div class="finding blocking">
+  <span class="sev-tag blocking">Blocking</span>
+  <h3>pull-prow-verify-lint fails: staticcheck flags deprecated model.LabelName.IsValid</h3>
+  <p><code>pkg/metrics/push.go:52</code></p>
+  <pre>if !model.LabelName(ln).IsValid() {</pre>
+  <p><code>prometheus/common</code> v0.70.1 deprecates <code>model.LabelName.IsValid()</code> in favor of <code>ValidationScheme.IsValidLabelName()</code>. This is the only <code>prometheus/common</code> call site in the project, and <code>staticcheck</code> (SA1019) fails the <code>pull-prow-verify-lint</code> job on it &mdash; confirmed in the <a href="https://prow.k8s.io/view/gs/kubernetes-ci-logs/pr-logs/pull/kubernetes-sigs_prow/811/pull-prow-verify-lint/2081917474990723072">CI log</a>, not a hypothetical from the changelog. Needs a follow-up commit switching to <code>ValidationScheme.IsValidLabelName</code> before this can merge.</p>
+</div>
+
+<div class="finding nit">
+  <span class="sev-tag nit">Nit</span>
+  <h3>Unrelated modernize lint findings bundled in the same failing check</h3>
+  <p><code>cmd/checkconfig/main.go:1008</code>, <code>cmd/checkconfig/main.go:1545</code>, <code>cmd/deck/configured_jobs.go:83</code>, <code>cmd/deck/tide.go:193</code></p>
+  <pre>org := strings.SplitN(repo, "/", 2)[0]</pre>
+  <p>Four <code>modernize</code> (<code>stringscut</code>) findings suggesting <code>strings.Split(...)[0]</code> become <code>strings.Cut(...)</code> also show up in the same lint run, in files this PR doesn't touch &mdash; likely surfaced by a golangci-lint/Go toolchain version shift rather than the prometheus bump itself. They're bundled into the same failing check regardless and will need addressing (or suppressing) to get CI green.</p>
+</div>
+
+<div class="finding question">
+  <span class="sev-tag question">Question</span>
+  <h3>client_golang v1.24.1 is only 5 days old, with a 40-file blast radius</h3>
+  <p><code>go.mod:50</code></p>
+  <p>Released 2026-07-24 (v1.24.0, the substantive release, is 2026-07-20 &mdash; 9 days old; v1.24.1 is a 1-commit bugfix on top fixing a promhttp nil-URL panic). Both are proper tags, not pseudo-versions. This is the standard metrics client imported in 40 files across nearly every component (deck, hook, tide, crier, ghproxy, gerrit, github client/ghmetrics, moonraker, sinker, plugins/updateconfig, bugzilla, jenkins, jira, pubsub). Nothing in the changelog looks risky &mdash; min Go bumped to 1.25 (already satisfied, repo is on 1.25.8), a name-validation default change that doesn't affect prow (no use of <code>NameValidationScheme</code>/<code>LegacyValidation</code>), new opt-in promhttp features, and defensive bugfixes &mdash; but the combination of "very fresh" + "touches everything" is worth a deliberate call rather than default merge.</p>
+</div>
+
+<div class="finding question">
+  <span class="sev-tag question">Question</span>
+  <h3>prometheus/common v0.70.1 is 7 days old</h3>
+  <p><code>go.mod:52</code></p>
+  <p>Released 2026-07-22. Usage is light &mdash; single call site in <code>pkg/metrics/push.go</code> using only <code>expfmt.NewEncoder</code>/<code>expfmt.NewFormat</code> and <code>model</code>. The v0.66.0 breaking change (zero-value <code>TextParser</code> now panics, must use <code>NewTextParser</code>) doesn't apply since prow never constructs a <code>TextParser</code>. The v0.69.0 credential-on-redirect hardening in the <code>config</code> package also doesn't apply since prow doesn't import that package. Lower-stakes than the client_golang bump, but same soak-time question applies.</p>
+</div>
+
+<h2>Things I checked and was fine with</h2>
+<ul>
+  <li>Confirmed via <code>git diff --stat</code> against the merge-base with <code>upstream/main</code> that only <code>go.mod</code>/<code>go.sum</code> (main + <code>hack/tools</code>) changed &mdash; genuinely dep-only, no project code to review.</li>
+  <li><code>go.mod</code> already declares <code>go 1.25.8</code>, which satisfies client_golang v1.24.0's new Go 1.25 minimum requirement.</li>
+  <li>Grepped for <code>NameValidationScheme</code>/<code>LegacyValidation</code> (the client_golang v1.24.0 default-behavior change) &mdash; no references anywhere in project code.</li>
+  <li>Grepped for imports of <code>prometheus/common/config</code> (the package with the v0.69.0 cross-host-redirect credential fix) &mdash; not imported; prow's only prometheus/common usage is <code>expfmt</code>/<code>model</code> in <code>pkg/metrics/push.go</code>.</li>
+  <li>Verified <code>pkg/metrics/push.go</code> never constructs a bare <code>expfmt.TextParser</code>, so the v0.66.0 breaking change doesn't apply.</li>
+  <li>Remaining indirect version bumps in the diff (<code>x/net</code>, <code>x/sync</code>, <code>x/text</code>, <code>x/crypto</code>, etc.) are all marked <code>// indirect</code> and not imported directly by project code &mdash; treated as low-stakes tidy churn, not individually analyzed.</li>
+  <li>Ran <code>gh pr checks 811</code> and read the <code>pull-prow-verify-lint</code> build log to confirm the CI failure and its root cause.</li>
+  <li>Confirmed <code>pull-prow-image-build-test</code>, <code>pull-prow-integration</code>, <code>pull-prow-unit-test</code>, and <code>pull-prow-unit-test-race-detector-nonblocking</code> all pass &mdash; the bump doesn't break tests or the build, only the lint gate.</li>
+</ul>
+
+<h2>Open questions for the author</h2>
+<ul>
+  <li>Both new prometheus versions are 5&ndash;7 days old as of review. Given client_golang's reach into 40 files, do we want to wait a bit longer for soak time once the lint fix lands, or is dependabot's normal cadence fine here?</li>
+  <li>Are the 4 <code>modernize</code>/<code>stringscut</code> findings pre-existing (from an unrelated toolchain bump landing around the same time) or new fallout from this PR specifically? Worth checking whether <code>main</code> already fails lint independently of this PR.</li>
+</ul>
+
+</div>
+</body>
+</html>

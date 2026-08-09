@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Review of kubernetes-sigs/prow#803</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+         line-height: 1.6; color: #1a1a1a; max-width: 900px; margin: 2rem auto; padding: 0 1.5rem; background: #fff; }
+  code, pre { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; font-size: 0.9em; }
+  pre { background: #f6f8fa; padding: 0.75rem 1rem; border-radius: 6px; overflow-x: auto; }
+  code.inline { background: #f6f8fa; padding: 0.15em 0.4em; border-radius: 4px; }
+  h1 { font-size: 1.4rem; }
+  h2 { font-size: 1.15rem; border-bottom: 1px solid #e1e4e8; padding-bottom: 0.3rem; margin-top: 2rem; }
+  header { background: #f6f8fa; padding: 1rem 1.5rem; border-radius: 8px; margin-bottom: 1.5rem; }
+  header table { border-collapse: collapse; }
+  header td { padding: 0.15rem 0.6rem 0.15rem 0; vertical-align: top; }
+  header td.key { color: #57606a; font-weight: 600; white-space: nowrap; }
+  .verdict { padding: 1rem 1.5rem; border-radius: 8px; margin-bottom: 1.5rem; }
+  .verdict.approve { background: #f0fff4; border: 1px solid #7ee2a8; }
+  .finding { border: 1px solid #e1e4e8; border-radius: 8px; padding: 1rem 1.25rem; margin-bottom: 1rem; }
+  .finding h3 { margin-top: 0; font-size: 1rem; }
+  .sev { display: inline-block; font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+         letter-spacing: 0.03em; padding: 0.15em 0.6em; border-radius: 999px; margin-right: 0.5em; }
+  .sev.should-fix { background: #fff1cc; color: #9a6a00; }
+  .sev.nit { background: #eef1f4; color: #57606a; }
+  .sev.question { background: #e6f0ff; color: #1a4d99; }
+  .loc { color: #57606a; font-size: 0.85em; }
+  ul.plain li { margin-bottom: 0.4rem; }
+  .hl { background: #fff3b0; }
+  a { color: #0969da; }
+  .badge { display:inline-block; font-size:0.72rem; font-weight:700; padding:0.15em 0.6em; border-radius:999px; background:#eef1f4; color:#57606a; margin-left:0.4em; }
+</style>
+</head>
+<body>
+
+<header>
+  <table>
+    <tr><td class="key">PR</td><td><a href="https://github.com/kubernetes-sigs/prow/pull/803">kubernetes-sigs/prow#803</a></td></tr>
+    <tr><td class="key">Title</td><td>append the release note if there is no release note block</td></tr>
+    <tr><td class="key">Head SHA</td><td><code>94c6c56b65a3e5e0d9db39c77c2e8d6baebfb52a</code></td></tr>
+    <tr><td class="key">Base</td><td><code>main</code></td></tr>
+    <tr><td class="key">Reviewed at</td><td>2026-07-24T12:10:25Z</td></tr>
+    <tr><td class="key">Refresh log</td><td>2026-07-24: no code changes (head SHA unchanged); author posted an assign comment (@petr-muller, @cblecker), no new reviews or inline comments.</td></tr>
+  </table>
+</header>
+
+<div class="verdict approve">
+  <h1>Verdict: Approve <span class="badge">with suggestions</span></h1>
+  <p>Reviewed via direct code review plus a 3-perspective maintainer review (code
+  quality, maintainability, deployment risk) and advisor synthesis — all four
+  assessments converge. This is a small, well-scoped change with no config or
+  API surface impact, and it incidentally fixes a latent bug in the pre-existing
+  "single release note block" validation. The one recurring concern — best-effort
+  line-ending handling in the new append path — is cosmetic, not a functional
+  break, and doesn't block merge.</p>
+</div>
+
+<h2>What this PR does</h2>
+<ul class="plain">
+  <li>Makes <code class="inline">/release-note-edit</code> append a new release-note block to the PR body when one doesn't already exist, instead of erroring out.</li>
+  <li>Detects the body's line-ending style (<code class="inline">\n</code> vs <code class="inline">\r\n</code>) and avoids introducing extra blank lines when appending.</li>
+  <li>Moves the "must be used with a single release note block" validation from checking <code class="inline">ic.Issue.Body</code> to checking <code class="inline">ic.Comment.Body</code> — this incidentally fixes a bug where the old check could never actually detect multiple blocks.</li>
+  <li>Adds two new test cases: appending to a non-empty body without a block, and appending to an empty body.</li>
+</ul>
+
+<h2>Findings</h2>
+
+<div class="finding">
+  <h3><span class="sev should-fix">should-fix</span>Mixed line-ending handling in the append path is unsound</h3>
+  <p class="loc"><code>pkg/plugins/releasenote/releasenote.go:511-524</code></p>
+  <pre>lineEnding := "\n"
+if strings.Contains(ic.Issue.Body, "\r\n") {
+    lineEnding = "\r\n"
+}
+<span class="hl">separator := lineEnding + lineEnding
+if ic.Issue.Body == "" {
+    separator = ""
+} else if strings.HasSuffix(ic.Issue.Body, lineEnding+lineEnding) {
+    separator = ""
+} else if strings.HasSuffix(ic.Issue.Body, lineEnding) {
+    separator = lineEnding
+}</span></pre>
+  <p><code class="inline">lineEnding</code> is inferred from whether <code class="inline">\r\n</code> appears <em>anywhere</em> in the body, but the suffix checks assume that global guess matches the body's <em>trailing</em> line ending. A body with inconsistent line endings (plausible after manual GitHub edits) falls through all suffix branches to the double-separator default, producing a mixed-style seam right before the new block. Flagged independently by all three specialist reviewers (code quality, maintainability, deployment risk) in the maintainer review pass. Not a functional break — GitHub renders either way — but a real gap in the new logic worth tightening.</p>
+</div>
+
+<div class="finding">
+  <h3><span class="sev should-fix">should-fix</span>Append-branch test coverage is narrow</h3>
+  <p class="loc"><code>pkg/plugins/releasenote/releasenote_test.go:767-800</code></p>
+  <pre>expectedNote: "Top\nBelow\n\n```release-note\nThe new note\n```\n",
+...
+expectedNote: "```release-note\nThe new note\n```\n",</pre>
+  <p>Only "body without a block, no trailing newline" and "empty body" are tested. Untested: body already ending in a blank line, body ending in exactly one line ending, and a body using <code class="inline">\r\n</code> line endings (the CRLF-detection branch is never exercised by any test). A future refactor of this logic has no test to catch a regression in those branches.</p>
+</div>
+
+<div class="finding">
+  <h3><span class="sev nit">nit</span>pluginHelp description is stale</h3>
+  <p class="loc"><code>pkg/plugins/releasenote/releasenote.go:92-97</code></p>
+  <pre>pluginHelp.AddCommand(pluginhelp.Command{
+    Usage:       "/release-note-edit",
+    <span class="hl">Description: "Replaces the release note block in the top level comment with the provided one.",</span>
+    WhoCanUse:   "Org Members.",
+    Examples:    []string{"/release-note-edit\r\n```release-note\r\nThe new release note\r\n```"},
+})</pre>
+  <p>The description no longer fully describes behavior — the command now also appends a block when none exists, rather than only replacing an existing one.</p>
+</div>
+
+<div class="finding">
+  <h3><span class="sev nit">nit</span>Append/separator logic should be extracted</h3>
+  <p class="loc"><code>pkg/plugins/releasenote/releasenote.go:508-524</code></p>
+  <p>The four-branch separator computation is inlined in <code class="inline">editReleaseNote</code>. Extracting it into a small pure helper (e.g. <code class="inline">appendReleaseNoteBlock(body, note string) string</code>) would make it directly unit-testable and easier to verify by inspection. Raised by the maintainability reviewer.</p>
+</div>
+
+<div class="finding">
+  <h3><span class="sev nit">nit</span>No comment explaining the semantic shift from "strict edit" to "edit-or-create"</h3>
+  <p class="loc"><code>pkg/plugins/releasenote/releasenote.go:507-524</code></p>
+  <p><code class="inline">/release-note-edit</code> previously only edited an existing block and errored otherwise; it now silently creates one. That rationale currently lives only in the PR description (linking to an external kubernetes/kubernetes PR comment), not in the code.</p>
+</div>
+
+<div class="finding">
+  <h3><span class="sev question">question</span>Does the new comment-multiplicity check narrow previously accepted inputs?</h3>
+  <p class="loc"><code>pkg/plugins/releasenote/releasenote.go:496-501</code></p>
+  <p>The new <code class="inline">FindAllStringSubmatchIndex(ic.Comment.Body, -1) != 1</code> check is stricter than the prior implicit behavior of <code class="inline">getReleaseNote</code> (which just took the first regex match). If any existing user relied on <code class="inline">/release-note-edit</code> comments containing more than one code block, those would now be rejected. Worth confirming this is intentional. Raised by the deployment-risk reviewer.</p>
+</div>
+
+<h2>Things I checked and was fine with</h2>
+<ul class="plain">
+  <li>Confirmed the old "single release note block" check (<code class="inline">len(i) != 4</code> on <code class="inline">FindStringSubmatchIndex(ic.Issue.Body)</code>) could never actually detect multiple blocks — that function returns a fixed-length slice or nil, so the check was equivalent to "no match in issue body." The pre-existing "multiple release note blocks" test only passed incidentally because its fixture left <code class="inline">Issue.Body</code> empty. The new check is a genuine correctness fix, independently confirmed by all three specialist reviewers in the maintainer review pass.</li>
+  <li>Hand-traced both new test cases ("append to body without release note block", "append to empty body") against the separator logic — both produce the expected output.</li>
+  <li><code class="inline">newNote</code> is already validated non-empty before the append branch runs (early return above for an empty note).</li>
+  <li>The appended block (fenced with <code class="inline">```release-note</code> and a trailing line ending) matches <code class="inline">noteMatcherRE</code>, so subsequent plugin runs/label determination will pick it up correctly.</li>
+  <li>No config structs, YAML/JSON tags, CLI flags, or plugin registration are touched — change is isolated to one command handler. Rollback is a plain binary revert with no persisted-state migration.</li>
+  <li>The pre-existing "one release-note block" splice path (<code class="inline">else</code> branch) is functionally unchanged from before this PR, only re-indented.</li>
+</ul>
+
+<h2>Open questions for the author</h2>
+<ul class="plain">
+  <li>Should the CRLF-vs-LF detection and blank-line-suffix branches get explicit test coverage before merge, given they're the actual new logic being introduced?</li>
+  <li>Is the <code class="inline">pluginHelp</code> description meant to be updated in a follow-up, or is it intentionally left generic?</li>
+  <li>Does the new "exactly one block in the comment" check reject any previously-accepted <code class="inline">/release-note-edit</code> comment shape? If so, worth a one-line callout in the PR description/release notes.</li>
+</ul>
+
+</body>
+</html>

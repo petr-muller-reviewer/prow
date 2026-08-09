@@ -3,12 +3,15 @@ pr: kubernetes-sigs/prow#803
 title: "append the release note if there is no release note block"
 head_sha: 94c6c56b65a3e5e0d9db39c77c2e8d6baebfb52a
 base: main
-reviewed_at: 2026-07-24T12:10:25Z
+reviewed_at: 2026-08-09T14:05:55Z
 verdict: approve
 refresh_log:
   - from_sha: 94c6c56b65a3e5e0d9db39c77c2e8d6baebfb52a
     to_sha: 94c6c56b65a3e5e0d9db39c77c2e8d6baebfb52a
     summary: no code changes; author posted an assign comment (@petr-muller, @cblecker), no new reviews or inline comments.
+  - from_sha: 94c6c56b65a3e5e0d9db39c77c2e8d6baebfb52a
+    to_sha: 94c6c56b65a3e5e0d9db39c77c2e8d6baebfb52a
+    summary: no code changes; @cblecker left two inline review comments (COMMENTED review) — a new correctness finding on the pre-existing splice path hardcoding `\r\n`, and a test-coverage suggestion overlapping the existing narrow-coverage finding.
 ---
 
 ## Summary
@@ -23,6 +26,11 @@ Reviewed both via direct code review and a 3-perspective maintainer review
 (code quality, maintainability, deployment risk) plus advisor synthesis. All
 four assessments converge: low risk, no config/API surface change, approve
 with non-blocking suggestions.
+
+Since previous review: no code changes. @cblecker left two inline review
+comments independently surfacing a related line-ending inconsistency in the
+pre-existing splice path and a matching test-coverage gap; both are now
+tracked as findings below.
 
 ## Findings
 
@@ -53,6 +61,23 @@ with non-blocking suggestions.
         separator = lineEnding
     }
 
+### [should-fix] splice path (existing single block) still hardcodes `\r\n`, inconsistent with the new adaptive append path
+- where: `pkg/plugins/releasenote/releasenote.go:528`
+- concern: raised by @cblecker on 2026-08-07. The new append branch (511-523,
+  above) infers `lineEnding` from the body and uses it consistently; the
+  pre-existing `else` splice branch (for editing an already-present single
+  block) unconditionally injects `\r\n` around the replacement note
+  regardless of the body's actual line-ending style. For a body using LF
+  line endings (e.g. a PR body created via the API rather than GitHub's web
+  UI), editing an existing release-note block now produces mixed CRLF/LF
+  line endings around the note content. This behavior predates this PR (see
+  Checked — the splice branch is "functionally unchanged, only re-indented"),
+  but the PR's own new logic right above it highlights the inconsistency and
+  would be the natural place to fix both paths together by extracting a
+  shared `lineEnding` variable before the `if`/`else`.
+- excerpt: |
+    replaced := append(b[:i[2]], append([]byte("\r\n"+strings.TrimSpace(newNote)+"\r\n"), b[i[3]:]...)...)
+
 ### [should-fix] append-branch test coverage is narrow
 - where: `pkg/plugins/releasenote/releasenote_test.go:767-800`
 - concern: only "body without a block, no trailing newline" and "empty body"
@@ -60,7 +85,10 @@ with non-blocking suggestions.
   via the non-empty branch), body ending in exactly one line ending
   (separator = lineEnding), and a body using `\r\n` line endings (the whole
   CRLF-detection branch is never exercised). A future refactor of this logic
-  has no test to catch a regression in those branches.
+  has no test to catch a regression in those branches. @cblecker made the
+  same observation on 2026-08-07, specifically suggesting a CRLF-body test
+  case (e.g. `Body: "Top\r\nBelow"`) to exercise the
+  `strings.Contains(ic.Issue.Body, "\r\n")` branch.
 - excerpt: |
     expectedNote: "Top\nBelow\n\n```release-note\nThe new note\n```\n",
     ...

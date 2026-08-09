@@ -39,8 +39,11 @@
     <tr><td class="key">Title</td><td>append the release note if there is no release note block</td></tr>
     <tr><td class="key">Head SHA</td><td><code>94c6c56b65a3e5e0d9db39c77c2e8d6baebfb52a</code></td></tr>
     <tr><td class="key">Base</td><td><code>main</code></td></tr>
-    <tr><td class="key">Reviewed at</td><td>2026-07-24T12:10:25Z</td></tr>
-    <tr><td class="key">Refresh log</td><td>2026-07-24: no code changes (head SHA unchanged); author posted an assign comment (@petr-muller, @cblecker), no new reviews or inline comments.</td></tr>
+    <tr><td class="key">Reviewed at</td><td>2026-08-09T14:05:55Z</td></tr>
+    <tr><td class="key">Refresh log</td><td>
+      2026-07-24: no code changes (head SHA unchanged); author posted an assign comment (@petr-muller, @cblecker), no new reviews or inline comments.<br>
+      2026-08-09: no code changes (head SHA unchanged); @cblecker left two inline review comments — a new correctness finding on the pre-existing splice path hardcoding <code class="inline">\r\n</code>, and a test-coverage suggestion overlapping the existing narrow-coverage finding.
+    </td></tr>
   </table>
 </header>
 
@@ -63,6 +66,8 @@
   <li>Adds two new test cases: appending to a non-empty body without a block, and appending to an empty body.</li>
 </ul>
 
+<p><em>Since previous review:</em> no code changes. @cblecker left two inline review comments independently surfacing a related line-ending inconsistency in the pre-existing splice path and a matching test-coverage gap; both are now tracked as findings below.</p>
+
 <h2>Findings</h2>
 
 <div class="finding">
@@ -84,12 +89,19 @@ if ic.Issue.Body == "" {
 </div>
 
 <div class="finding">
+  <h3><span class="sev should-fix">should-fix</span>Splice path (existing single block) still hardcodes <code class="inline">\r\n</code>, inconsistent with the new adaptive append path</h3>
+  <p class="loc"><code>pkg/plugins/releasenote/releasenote.go:528</code></p>
+  <pre>replaced := append(b[:i[2]], append([]byte("<span class="hl">\r\n</span>"+strings.TrimSpace(newNote)+"<span class="hl">\r\n</span>"), b[i[3]:]...)...)</pre>
+  <p>Raised by @cblecker on 2026-08-07. The new append branch above infers <code class="inline">lineEnding</code> from the body and uses it consistently; the pre-existing <code class="inline">else</code> splice branch (editing an already-present single block) unconditionally injects <code class="inline">\r\n</code> around the replacement note regardless of the body's actual line-ending style. For an LF body (e.g. created via the API rather than GitHub's web UI), editing an existing release-note block now produces mixed CRLF/LF line endings around the note content. This predates this PR (the splice branch is functionally unchanged, only re-indented — see Checked below), but the PR's own new adaptive logic right above it highlights the inconsistency and would be the natural place to fix both paths together by extracting a shared <code class="inline">lineEnding</code> variable before the <code class="inline">if</code>/<code class="inline">else</code>.</p>
+</div>
+
+<div class="finding">
   <h3><span class="sev should-fix">should-fix</span>Append-branch test coverage is narrow</h3>
   <p class="loc"><code>pkg/plugins/releasenote/releasenote_test.go:767-800</code></p>
   <pre>expectedNote: "Top\nBelow\n\n```release-note\nThe new note\n```\n",
 ...
 expectedNote: "```release-note\nThe new note\n```\n",</pre>
-  <p>Only "body without a block, no trailing newline" and "empty body" are tested. Untested: body already ending in a blank line, body ending in exactly one line ending, and a body using <code class="inline">\r\n</code> line endings (the CRLF-detection branch is never exercised by any test). A future refactor of this logic has no test to catch a regression in those branches.</p>
+  <p>Only "body without a block, no trailing newline" and "empty body" are tested. Untested: body already ending in a blank line, body ending in exactly one line ending, and a body using <code class="inline">\r\n</code> line endings (the CRLF-detection branch is never exercised by any test). A future refactor of this logic has no test to catch a regression in those branches. @cblecker made the same observation on 2026-08-07, specifically suggesting a CRLF-body test case (e.g. <code class="inline">Body: "Top\r\nBelow"</code>) to exercise the <code class="inline">strings.Contains(ic.Issue.Body, "\r\n")</code> branch.</p>
 </div>
 
 <div class="finding">

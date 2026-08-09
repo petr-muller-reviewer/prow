@@ -68,6 +68,7 @@
   .finding.should-fix { border-left-color: #e67e22; }
   .finding.nit { border-left-color: #7f8c8d; }
   .finding.question { border-left-color: #2980b9; }
+  .finding.resolved { border-left-color: #27ae60; }
   .finding h3 { margin: 0 0 0.4rem 0; font-size: 1rem; }
   .tag {
     font-size: 0.7rem;
@@ -83,6 +84,7 @@
   .tag.should-fix { background: #e67e22; }
   .tag.nit { background: #7f8c8d; }
   .tag.question { background: #2980b9; }
+  .tag.resolved { background: #27ae60; }
   .highlight { background: #fff3cd; padding: 0.05em 0.2em; }
   .caveat {
     background: #fff8e1;
@@ -103,19 +105,20 @@
   <dl>
     <dt>PR</dt><dd><a href="https://github.com/kubernetes-sigs/prow/pull/817">kubernetes-sigs/prow#817</a></dd>
     <dt>Base</dt><dd><code class="inline">main</code></dd>
-    <dt>Head SHA</dt><dd><code class="inline">3ac48b908bf172b76aba7c48afabf5b71a6bfe03</code></dd>
-    <dt>Reviewed at</dt><dd>2026-08-03T21:37:02Z</dd>
+    <dt>Head SHA</dt><dd><code class="inline">e9b0c93495e6f8f5dcc81f4ae2716ad20b2b5eee</code></dd>
+    <dt>Reviewed at</dt><dd>2026-08-08T22:47:35Z</dd>
   </dl>
 </header>
 
 <section>
   <h2>Since previous review</h2>
   <ul>
-    <li>No new commits, comments, or reviews. Head SHA unchanged at <code class="inline">3ac48b9</code>. This is a full re-review pass, not a refresh.</li>
-    <li><strong>Correction to the previous pass.</strong> The "plank restart with an unsynced informer" trigger I described earlier does not exist. <code class="inline">pkg/flagutil/kubernetes_cluster_clients.go:394-417</code> probes each build cluster at startup (<code class="inline">cluster.New</code> plus a live SelfSubjectAccessReview) and <em>excludes</em> unreachable ones from the returned map, so they never enter <code class="inline">r.buildClients</code> at all. <code class="inline">r.pod()</code> then returns <code class="inline">TerminalError("no build client found")</code>, which <code class="inline">defaultReconcile</code> already completes today — no PR required.</li>
-    <li>Consequence: no reachable trigger for the new branch has been identified, which is now the primary blocking finding. The earlier blocking finding (timeout measured against job age) still stands but is secondary — it only matters once the branch can fire at all.</li>
-    <li>Traced the full "build cluster stops responding mid-flight" behaviour instead and found three stuck-forever paths the PR does not touch.</li>
-    <li>Added: should-fix on the <code class="inline">ExpectError</code> test asserting nothing, should-fix on <code class="inline">updateProwJobStatus</code> naming/godoc, nit on a dropped comment, and a question on retranslating to <code class="inline">TerminalError</code> as a simpler implementation.</li>
+    <li><strong>Force-push.</strong> Head moved <code class="inline">3ac48b9</code> &rarr; <code class="inline">e9b0c93</code>, and the old head is <em>not</em> an ancestor of the new one. Single rewritten commit authored 2026-08-05. <code class="inline">reconciler.go</code> +58/&minus;71, <code class="inline">controller_test.go</code> +56/&minus;57.</li>
+    <li><strong>The mechanism changed.</strong> The timeout check was removed from the <code class="inline">r.pod()</code> Get-failure branch and moved into <code class="inline">startPod</code>'s non-request-error path inside the <code class="inline">!podExists</code> branch (<code class="inline">reconciler.go:467-476</code>). This <span class="highlight">resolves the previous primary blocker</span>: <code class="inline">Create</code> is a live write, not a cache read, so the branch is genuinely reachable now.</li>
+    <li><code class="inline">updateProwJobStatus</code> was inlined back into <code class="inline">syncPendingJob</code> (helper deleted, cache-barrier comment restored). <code class="inline">maxPodPendingTimeout</code> survives at <code class="inline">:859</code>.</li>
+    <li>The <code class="inline">ExpectError</code> assertion mismatch was fixed, but an early <code class="inline">return</code> still skips the state assertions.</li>
+    <li>The job-age blocking finding <strong>survives and is now worse</strong>: at the new call site it removes retry from the pod-recreate path for any job older than <code class="inline">PodPendingTimeout</code> &mdash; a regression against current behaviour.</li>
+    <li>No new comments or reviews since 2026-08-03; only a <code class="inline">/retest</code> from Prucek on 2026-08-05T14:56:47Z.</li>
   </ul>
 </section>
 
@@ -123,28 +126,27 @@
   <h2>Verdict</h2>
   <div class="verdict">Request Changes</div>
   <p>
-    The bug this PR describes is real and worth fixing, and the refactor it carries (both extracted
-    helpers) is a genuine improvement that resolves every should-fix finding from the previous pass.
-    The problem is upstream of the timeout semantics: this pass could not identify any production
-    condition under which the modified branch actually executes. A build cluster that is unreachable
-    at startup never enters <code class="inline">r.buildClients</code>, so the failure surfaces as a
-    <code class="inline">TerminalError</code> that is already handled; a build cluster that dies later
-    keeps serving reads from a frozen informer cache, so <code class="inline">Get</code> keeps
-    succeeding. Meanwhile three separate paths genuinely do wedge jobs forever, and the PR touches
-    none of them. Before arguing about <em>when</em> the timeout should fire, it is worth establishing
-    that this branch fires at all — which the plank logs for the PR's own 5-day canary example would
-    settle immediately.
+    Same verdict, substantially different reasons. The relocation is a real improvement and I want to
+    credit it: the check now sits behind a live <code class="inline">client.Create</code> instead of an
+    informer-cache read, which is what my previous "this branch is dead code" blocker was asking for,
+    and it targets a path that genuinely wedges. What remains is the timeout basis. At this new call
+    site, gating on <code class="inline">pj.Status.PendingTime</code> is not merely imprecise &mdash; it
+    is a behavioural regression. The <code class="inline">!podExists</code> branch exists to recreate a
+    pod that a rescheduler deleted mid-flight; today a transient failure there retries under backoff,
+    and after this change, for any job older than the pending timeout (10 minutes by default), the very
+    first failure kills the job outright. That condition is trivially true for essentially every real CI
+    job, so "enforce a timeout" becomes "never retry". Fix the clock reference and this is close.
   </p>
 </section>
 
 <section>
   <h2>What this PR does</h2>
   <ul>
-    <li>In <code class="inline">syncPendingJob</code>, when fetching the pod from the build cluster fails, the function used to return the error immediately, skipping the pending-timeout check entirely.</li>
-    <li>Adds a check in that error branch: compare <code class="inline">r.clock.Since(pj.Status.PendingTime)</code> against the configured pending timeout, and if exceeded mark the ProwJob <code class="inline">ErrorState</code>/complete instead of letting controller-runtime retry forever with backoff.</li>
-    <li>Extracts <code class="inline">r.maxPodPendingTimeout(pj)</code>, deduplicating the config lookup shared with the existing <code class="inline">PodPending</code> case.</li>
-    <li>Extracts <code class="inline">r.updateProwJobStatus(ctx, pj, prevPJ)</code> so the new branch reaches the same completion tail (JobURL, transition log, patch, cache-sync wait) as the rest of the function.</li>
-    <li>Adds two table-driven test cases plus a <code class="inline">clientWrapper.Get</code> override to simulate build-cluster unreachability.</li>
+    <li>Identifies a real stuck-forever path: <code class="inline">isRequestError</code> (<code class="inline">reconciler.go:1138-1144</code>) only matches 4xx <code class="inline">APIStatus</code> errors and defaults to code 500 for everything else, so a connection error from pod creation never takes the "Unprocessable pod" completion path &mdash; it is returned for requeue, forever, under controller-runtime backoff.</li>
+    <li>Adds a timeout check inside the <code class="inline">!isRequestError(err)</code> arm of the <code class="inline">startPod</code> failure handling: if <code class="inline">PendingTime</code> is set and <code class="inline">r.clock.Since(PendingTime) &gt;= r.maxPodPendingTimeout(pj)</code>, mark the job <code class="inline">ErrorState</code>/complete instead of returning the error.</li>
+    <li>Completed jobs fall through to the shared tail of <code class="inline">syncPendingJob</code> (JobURL, transition log, patch, cache barrier), so no completion logic is duplicated.</li>
+    <li>Keeps the <code class="inline">maxPodPendingTimeout</code> helper from the previous revision; drops the <code class="inline">updateProwJobStatus</code> helper, restoring that code inline.</li>
+    <li>Two new table-driven cases in <code class="inline">TestSyncPendingJob</code>, driven through <code class="inline">clientWrapper.createError</code>; the now-unused <code class="inline">getError</code>/<code class="inline">GetErr</code> plumbing is removed.</li>
   </ul>
 </section>
 
@@ -152,125 +154,240 @@
   <h2>Findings</h2>
 
   <div class="finding blocking">
-    <h3><span class="tag blocking">Blocking</span>The new branch is likely unreachable in production</h3>
-    <p><code class="inline">pkg/plank/reconciler.go:499-511</code> (branch) · <code class="inline">reconciler.go:845</code> (the erroring call) · <code class="inline">pkg/flagutil/kubernetes_cluster_clients.go:394-417</code> (startup probe)</p>
-    <p>The branch only runs when <code class="inline">buildClient.Get</code> returns a non-<code class="inline">NotFound</code> error, and no path producing one has been identified. Two sub-cases exhaust the "build cluster unreachable" space:</p>
-    <p><strong>1. Unreachable at plank startup.</strong> <code class="inline">BuildClusters</code> probes each cluster (<code class="inline">cluster.New</code> plus a live <code class="inline">CheckAuthorizations</code> SSAR) and omits failures from the returned map; <code class="inline">cmd/prow-controller-manager/main.go:175-177</code> logs at <code class="inline">Error</code> and continues with the survivors. The cluster never enters <code class="inline">r.buildClients</code>, so <code class="inline">r.pod()</code> returns <code class="inline">TerminalError("no build client found for cluster %q")</code> at <code class="inline">reconciler.go:835</code>, and <code class="inline">defaultReconcile:374-388</code> already completes the job as <code class="inline">ErrorState</code>. Corroborated by <code class="inline">syncClusterStatus</code> reporting exactly this state as <code class="inline">ClusterStatusNoManager</code> (<code class="inline">reconciler.go:319-322</code>).</p>
-    <p><strong>2. Unreachable after startup.</strong> <code class="inline">bc.Client = buildCluster.GetClient()</code> (<code class="inline">reconciler.go:163</code>) with pods watched via <code class="inline">GetCache()</code> (<code class="inline">reconciler.go:154-159</code>), controller-runtime v0.21 (<code class="inline">go.mod:83</code>), and no <code class="inline">DisableFor</code>/<code class="inline">CacheOptions</code> overrides anywhere in <code class="inline">cmd/</code> or <code class="inline">pkg/flagutil/</code>. Reads are served from the informer indexer with <em>no per-call network I/O</em>, so <code class="inline">Get</code> keeps succeeding against frozen data across watch loss. An unsynced informer would <em>block</em> in <code class="inline">WaitForCacheSync</code> rather than error, returning only on context cancellation at shutdown.</p>
-    <p>Consequence for the tests: the injected <code class="inline">errors.New("dial tcp: connect: connection refused")</code> (<code class="inline">controller_test.go:1417</code>) is a shape this call site cannot produce in production, so the green test does not demonstrate the bug is fixed.</p>
-    <p class="caveat"><strong>Uncertainty:</strong> controller-runtime is not vendored and there is no module cache in this checkout, so the informer / <code class="inline">WaitForCacheSync</code> semantics above are from library knowledge, not verified against v0.21 source. Everything cited with a <code class="inline">file:line</code> is verified in this tree.</p>
-    <p><strong>Suggested action:</strong> establish the real failure path from plank's logs for the PR's own example (<code class="inline">periodic-build-farm-canary-build06</code>, stuck 5 days) before merging, then fix the branch that actually fires. Candidates in the next finding.</p>
-  </div>
-
-  <div class="finding blocking">
-    <h3><span class="tag blocking">Blocking</span>Three stuck-forever paths exist that the PR does not cover</h3>
-    <p><code class="inline">pkg/plank/reconciler.go:656-658</code> · <code class="inline">reconciler.go:514-521</code> · <code class="inline">reconciler.go:822</code></p>
-    <p>When a build cluster stops responding mid-flight, reads keep succeeding from the frozen cache, writes (<code class="inline">Create</code>/<code class="inline">Delete</code>) fail for real, and pod events stop. That produces:</p>
-    <ul>
-      <li><strong>Pending, pod last seen <code class="inline">Running</code></strong> — <code class="inline">Since(pod.Status.StartTime) &lt; maxPodRunning</code> (default 48h, <code class="inline">config.go:2517</code>) → <code class="inline">return nil, nil</code>. No state change, no requeue, no error, no log. The job goes completely silent. Closest match to the PR's 5-day example.</li>
-      <li><strong>Pending, pod absent from cache</strong> — <code class="inline">podExists == false</code> → <code class="inline">startPod</code> → <code class="inline">Create</code> is a direct write and fails; <code class="inline">isRequestError</code> (<code class="inline">reconciler.go:1146-1152</code>) sees no <code class="inline">APIStatus</code>, defaults to code 500, returns false → <code class="inline">error starting pod for PJ %s</code> → backoff requeue forever, <code class="inline">pod_pending_timeout</code> never consulted.</li>
-      <li><strong>Aborted</strong> — <code class="inline">syncAbortedJob</code>'s <code class="inline">Delete</code> fails at <code class="inline">:822</code> and the error returns before <code class="inline">SetComplete</code> → requeue forever, never completes.</li>
-    </ul>
-    <pre>case corev1.PodRunning:
-    ...
-    <span class="highlight">if pod.Status.StartTime.IsZero() || time.Since(pod.Status.StartTime.Time) &lt; maxPodRunning {
-        // Pod is still running. Do nothing.
-        return nil, nil
-    }</span></pre>
-    <p>Also worth knowing: once <code class="inline">PodRunningTimeout</code> finally elapses on a resync-triggered reconcile, <code class="inline">deletePod</code> fails and the error returns <em>before</em> <code class="inline">updateProwJobStatus</code>, so the <code class="inline">AbortedState</code> transition is computed and then discarded on every single attempt.</p>
-    <p>And plank does not self-restart in this regime: the recovery goroutine in <code class="inline">kubernetes_cluster_clients.go:427-462</code> only launches <code class="inline">if aggregatedErr != nil</code> and only probes clusters missing from <code class="inline">res</code>, so a cluster that was healthy at startup is never re-probed and <code class="inline">interrupts.Terminate()</code> never fires. Only a kubeconfig change (<code class="inline">main.go:193-198</code>) restarts it. <code class="inline">syncClusterStatus</code> writing <code class="inline">ClusterStatusError</code> every minute is the sole operator signal.</p>
-    <p><strong>Suggested action:</strong> pick the path that matches the observed incident. If it is the <code class="inline">Running</code>-pod silence, the fix belongs near <code class="inline">:656</code>; if it is pod-recreation, near <code class="inline">:514</code>.</p>
-  </div>
-
-  <div class="finding blocking">
-    <h3><span class="tag blocking">Blocking</span>Timeout gated on job age, not on cluster-unreachable duration</h3>
-    <p><code class="inline">pkg/plank/reconciler.go:501</code></p>
-    <pre><span class="highlight">if pj.Status.PendingTime != nil &amp;&amp; r.clock.Since(pj.Status.PendingTime.Time) &gt;= r.maxPodPendingTimeout(pj) {</span>
-    pj.SetComplete()
-    pj.Status.State = prowv1.ErrorState</pre>
-    <p>This applies only once the branch can fire at all, but it is independently wrong. Two defects relative to how <code class="inline">maxPodPending</code> is used everywhere else:</p>
-    <ul>
-      <li><strong>Wrong clock reference.</strong> <code class="inline">pj.Status.PendingTime</code> is set exactly once at <code class="inline">Triggered→Pending</code> (<code class="inline">reconciler.go:769</code>) and never updated. Prow has no distinct "Running" ProwJobState — <code class="inline">PendingState</code>'s own doc comment (<code class="inline">types.go:61-62</code>) reads "the job is currently running and we are waiting for it to finish". So this measures <em>total job age</em>, not time-in-pod-pending and not time-since-unreachable.</li>
-      <li><strong>Lost phase guard.</strong> The existing check at <code class="inline">reconciler.go:626</code> compares against <code class="inline">pod.Status.StartTime</code> and only runs inside <code class="inline">case corev1.PodPending</code>. The new branch has no pod, so it applies unconditionally — including to jobs whose pod was last seen <code class="inline">Running</code>.</li>
-    </ul>
-    <p>Combined: a job whose pod has run 3h has <code class="inline">Since(PendingTime) == 3h &gt;= 30m</code>, so the first observed <code class="inline">Get</code> failure marks it errored. The default is 10m (<code class="inline">config.go:2513</code>) and the PR's own example uses 30m — both shorter than most CI job runtimes, so this would hit nearly the entire in-flight population of a cluster at once.</p>
-    <p><strong>Suggested fix:</strong> gate on a duration that actually measures unreachability — a "first <code class="inline">Get</code> failure at" timestamp (set on failure, cleared on success), or N consecutive failures. Do not reuse <code class="inline">pod_pending_timeout</code>, whose name and existing semantics both mean "the pod never started". Add a test: long-running job plus a single <code class="inline">Get</code> error must NOT error the job.</p>
-    <p><strong>Raised on the PR:</strong> reviewer posted this concern as an issue comment on 2026-08-03T14:19:29Z; no author response yet.</p>
+    <h3><span class="tag blocking">blocking</span>Timeout gated on job age, not on how long pod creation has been failing</h3>
+    <p><code class="inline">pkg/plank/reconciler.go:468</code></p>
+<pre>if !isRequestError(err) {
+    if pj.Status.PendingTime != nil &amp;&amp; <span class="highlight">r.clock.Since(pj.Status.PendingTime.Time) &gt;= r.maxPodPendingTimeout(pj)</span> {
+        pj.SetComplete()
+        pj.Status.State = prowv1.ErrorState</pre>
+    <p>
+      <code class="inline">pj.Status.PendingTime</code> is set exactly once, in
+      <code class="inline">syncTriggeredJob</code> at <code class="inline">reconciler.go:750-753</code>, on the
+      <code class="inline">Triggered&rarr;Pending</code> transition, and is never reset &mdash; those two
+      sites (<code class="inline">:468</code> and <code class="inline">:753</code>) are the only references
+      in the file. It is the job's <em>start</em> time. Prow has no <code class="inline">Running</code> state
+      distinct from <code class="inline">PendingState</code> (<code class="inline">pkg/apis/prowjobs/v1/types.go:61-62</code>),
+      so <code class="inline">Since(PendingTime)</code> is total job age, not time spent failing to create a pod.
+      For any job alive longer than <code class="inline">PodPendingTimeout</code> &mdash; 10 minutes by default
+      (<code class="inline">pkg/config/config.go:2513</code>) &mdash; the condition is unconditionally true.
+    </p>
+    <p>
+      <strong>Consequence: this is a regression, not just an imprecision.</strong> The
+      <code class="inline">!podExists</code> branch exists for a pod deleted manually or by a rescheduler
+      mid-flight. Today a transient non-4xx failure on the recreate &mdash; an apiserver 500, a webhook
+      timeout, or a <code class="inline">getBuildID</code>/tot failure (<code class="inline">reconciler.go:867</code>,
+      also a non-request error) &mdash; returns an error and retries under backoff. After this change, for any
+      job past the pending timeout, that single failure completes the job as
+      <code class="inline">ErrorState</code> with zero retries. A three-hour job's pod gets rescheduled, one
+      blip on the recreate, job dead.
+    </p>
+    <p>
+      <strong>Fix:</strong> gate on a duration that measures the <em>failure</em>, not the job. Either record a
+      "pod creation first failed at" timestamp on the ProwJob status (set on failure, cleared on success), or
+      require N consecutive failures. If neither is palatable, at minimum stop reusing
+      <code class="inline">pod_pending_timeout</code>, whose name and existing use at
+      <code class="inline">reconciler.go:559</code> both mean "the pod never started". Please add a regression
+      test: long-running job (<code class="inline">PendingTime</code> 3h ago) plus a single
+      <code class="inline">Create</code> error must <em>not</em> error the job.
+    </p>
   </div>
 
   <div class="finding should-fix">
-    <h3><span class="tag should-fix">Should fix</span>ExpectError test case asserts nothing</h3>
-    <p><code class="inline">pkg/plank/controller_test.go:1808-1818</code></p>
-    <pre>reconcileResult, err := r.syncPendingJob(ctx, &amp;tc.PJ)
-<span class="highlight">if tc.ExpectError &amp;&amp; err != nil {
+    <h3><span class="tag should-fix">should fix</span>Job can be errored while its pod is actually running, and the pod is not deleted</h3>
+    <p><code class="inline">pkg/plank/reconciler.go:467-476</code>, <code class="inline">pkg/plank/reconciler.go:893-905</code></p>
+<pre>}); err != nil {
+    return "", "", fmt.Errorf("<span class="highlight">failed waiting for new pod %s in cluster %s  appear in cache</span>: %w", podName.String(), pj.ClusterAlias(), err)
+}</pre>
+    <p>
+      <code class="inline">startPod</code> can return a non-request error <em>after</em> a successful
+      <code class="inline">Create</code>: the post-create cache barrier times out if the informer lags more
+      than 10 seconds. Previously that error was returned and the next reconcile found the pod via
+      <code class="inline">podExists</code> and continued normally. Now, for any job past the pending timeout,
+      the ProwJob is completed as <code class="inline">ErrorState</code> while the pod is live in the build cluster.
+    </p>
+    <p>
+      The pod then runs to completion with no reporting, and unlike every other completion path in this
+      function (the <code class="inline">PodRunning</code> timeout calls <code class="inline">deletePod</code>
+      at <code class="inline">:622</code>) nothing deletes it. Sinker eventually GCs pods whose ProwJob is
+      complete, so it is not a permanent leak &mdash; but the job result is wrong and the cluster does the
+      work anyway. Distinguishing "Create failed" from "Create succeeded, barrier timed out" inside
+      <code class="inline">startPod</code>, or calling <code class="inline">deletePod</code> before completing,
+      would close this.
+    </p>
+  </div>
+
+  <div class="finding should-fix">
+    <h3><span class="tag should-fix">should fix</span><code>syncTriggeredJob</code> has the identical failure path and was left unchanged</h3>
+    <p><code class="inline">pkg/plank/reconciler.go:737-741</code></p>
+<pre>id, pn, err = r.startPod(ctx, pj)
+if err != nil {
+    if !isRequestError(err) {
+        <span class="highlight">return nil, fmt.Errorf("error starting pod: %w", err)</span>
+    }</pre>
+    <p>
+      <code class="inline">syncTriggeredJob</code> calls <code class="inline">startPod</code> and handles
+      failure with the same shape, untouched by this PR. A job that has never reached
+      <code class="inline">PendingState</code> has <code class="inline">PendingTime == nil</code>, so no
+      timeout could apply there anyway &mdash; an unreachable build cluster still wedges triggered jobs
+      indefinitely.
+    </p>
+    <p>
+      This is arguably the <em>more</em> common manifestation of the reported symptom: a job submitted while
+      the cluster is down never leaves <code class="inline">TriggeredState</code>. The PR only rescues jobs
+      that were already pending when the cluster went away. Either extend the fix (which needs a clock
+      reference other than <code class="inline">PendingTime</code> &mdash; the same mechanism the blocking
+      finding asks for would supply one) or say explicitly in the PR description that triggered jobs are out
+      of scope, and why.
+    </p>
+  </div>
+
+  <div class="finding should-fix">
+    <h3><span class="tag should-fix">should fix</span>Uncovered stuck-forever paths remain from the previous review</h3>
+    <p><code class="inline">pkg/plank/reconciler.go:604-615</code>, <code class="inline">pkg/plank/reconciler.go:820-822</code></p>
+<pre>if pod.Status.StartTime.IsZero() || time.Since(pod.Status.StartTime.Time) &lt; maxPodRunning {
+    // Pod is still running. Do nothing.
+    <span class="highlight">return nil, nil</span>
+}</pre>
+    <p>
+      The previous pass traced three paths that wedge when a build cluster stops responding mid-flight.
+      This push covers one (pod absent from cache &rarr; <code class="inline">Create</code> fails). Two remain:
+    </p>
+    <ul>
+      <li><strong>Pending, pod last seen <code class="inline">Running</code>:</strong> <code class="inline">Since(pod.Status.StartTime) &lt; maxPodRunning</code> (48h default, <code class="inline">config.go:2517</code>) &rarr; <code class="inline">return nil, nil</code>. No state change, no requeue, no error, no log &mdash; the job goes silent. This is the closest match to the PR body's five-day <code class="inline">periodic-build-farm-canary-build06</code> example.</li>
+      <li><strong>Aborted:</strong> <code class="inline">syncAbortedJob</code>'s <code class="inline">deletePod</code> fails and the error returns before <code class="inline">SetComplete</code>, so it requeues forever.</li>
+      <li><strong>Related:</strong> once <code class="inline">PodRunningTimeout</code> does elapse, <code class="inline">deletePod</code> at <code class="inline">:622</code> fails and returns before the patch, so the computed <code class="inline">AbortedState</code> transition is discarded on every attempt.</li>
+    </ul>
+    <p>
+      Out of scope for this PR if that is deliberate &mdash; but the PR body claims to fix the canary incident,
+      and the path it covers may not be the one that produced it. The logs settle it (see open questions).
+    </p>
+  </div>
+
+  <div class="finding should-fix">
+    <h3><span class="tag should-fix">should fix</span><code>ExpectError</code> test case still asserts almost nothing</h3>
+    <p><code class="inline">pkg/plank/controller_test.go:1814-1823</code></p>
+<pre>if (err != nil) != tc.ExpectError {
+    ...
+}
+<span class="highlight">if err != nil {
     return
 }</span></pre>
-    <p>The early <code class="inline">return</code> skips every subsequent assertion, so <code class="inline">ExpectedState: prowapi.PendingState</code> on the "pending timeout not yet exceeded" case is dead configuration — nothing verifies the ProwJob was left untouched, which is the actual behaviour under test. Assert the error and then fall through to the state/pod checks, or at minimum check <code class="inline">tc.PJ.Status.State</code> and <code class="inline">tc.PJ.Complete()</code> before returning.</p>
-  </div>
-
-  <div class="finding should-fix">
-    <h3><span class="tag should-fix">Should fix</span><code>updateProwJobStatus</code> name does not describe what it does</h3>
-    <p><code class="inline">pkg/plank/reconciler.go:461-492</code></p>
-    <p>The name reads as a setter, but the function (1) mutates <code class="inline">pj.Status.URL</code>, (2) logs the transition, (3) patches, and (4) if the state changed, blocks up to 2s polling until the cache reflects it — overwriting <code class="inline">pj</code> with the object read back. Neither the <code class="inline">pj</code> mutation nor the blocking barrier is inferable from the name, and the barrier is the whole point of the function.</p>
-    <p><strong>Preferred:</strong> hoist the <code class="inline">JobURL</code> assignment back to the call sites (two lines) and rename the rest to <code class="inline">patchProwJobAndWaitForCache</code>, which then fully describes the body. <strong>Alternative:</strong> keep it whole under <code class="inline">finalizeProwJobStatus</code> / <code class="inline">commitProwJobStatus</code> plus a godoc stating that <code class="inline">pj</code> is mutated, that the URL error is logged and swallowed, and why the barrier exists (a later reconcile could otherwise observe pre-patch state and recreate a just-deleted pod).</p>
+    <p>
+      The assertion mismatch from the previous review is genuinely fixed &mdash;
+      <code class="inline">(err != nil) != tc.ExpectError</code> now fails correctly when an expected error is
+      missing. But the immediately following early <code class="inline">return</code> skips every subsequent
+      assertion. For the "build cluster unreachable, pending timeout not yet exceeded" case, the declared
+      <code class="inline">ExpectedState: prowapi.PendingState</code> and
+      <code class="inline">ExpectedNumPods: 0</code> are dead configuration &mdash; only "some error occurred"
+      is verified, and an error from any unrelated path would pass.
+    </p>
+    <p>
+      For the error case, still assert <code class="inline">tc.PJ.Status.State</code> and
+      <code class="inline">tc.PJ.Complete()</code> on the in-memory object (no patch happened) before
+      returning &mdash; or drop the unused expectations, so the test does not imply coverage it lacks.
+    </p>
   </div>
 
   <div class="finding nit">
-    <h3><span class="tag nit">Nit</span>Cache-barrier rationale comment dropped during extraction</h3>
-    <p><code class="inline">pkg/plank/reconciler.go:477-489</code></p>
-    <pre>// If the ProwJob state has changed, we must ensure that the update reaches the cache before
-// processing the key again. Without this we might accidentally replace intentionally deleted pods
-// or otherwise incorrectly react to stale ProwJob state.</pre>
-    <p>This moved out of <code class="inline">syncPendingJob</code> but did not land in <code class="inline">updateProwJobStatus</code>. It is the only place the non-obvious barrier is justified.</p>
-  </div>
-
-  <div class="finding question">
-    <h3><span class="tag question">Question</span>Retranslate to <code>TerminalError</code> instead of hand-rolling completion?</h3>
-    <p><code class="inline">pkg/plank/reconciler.go:499-511</code> vs <code class="inline">reconciler.go:374-388</code></p>
-    <pre>return nil, TerminalError(fmt.Errorf("pending timeout exceeded, build cluster unreachable: %w", err))</pre>
-    <p>This would reuse the existing terminal handler and collapse the whole branch to ~4 lines, removing the need for <code class="inline">updateProwJobStatus</code> in this PR. It propagates correctly — <code class="inline">syncPendingJob</code> → <code class="inline">reconcile:326</code> → <code class="inline">serializeIfNeeded:422</code> → <code class="inline">defaultReconcile:374</code>, no wrapping — and <code class="inline">IsTerminalError</code> works despite the <code class="inline">*nonRetryableError</code> / <code class="inline">nonRetryableError{}</code> pointer-value mismatch, since the value-receiver <code class="inline">Is</code> is in the pointer's method set.</p>
-    <p><strong>Tradeoffs:</strong> it loses the cache-sync barrier — and unlike existing terminal errors (unknown alias, idempotent), "cluster unreachable" can stop being true, so a stale re-read could hit <code class="inline">podExists == false</code> and start a fresh pod for an already-errored job. It also swallows patch failures (<code class="inline">:384-386</code> logs and returns nil, no requeue), reintroducing the stuck-forever symptom. <code class="inline">Status.URL</code> loss is moot (already set at <code class="inline">:773</code>). Would need <code class="inline">if IsTerminalError(err) { return nil, err }</code> first to avoid double <code class="inline">nonretryable error:</code> prefixes.</p>
-  </div>
-
-  <div class="finding question">
-    <h3><span class="tag question">Question</span>TerminalError (unknown cluster alias) folded into the same branch</h3>
-    <p><code class="inline">pkg/plank/reconciler.go:499-511</code> vs <code class="inline">reconciler.go:835</code></p>
-    <p>If the pending timeout is already exceeded and the fetch failure is actually a <code class="inline">TerminalError</code> (unknown/misconfigured cluster alias), this branch marks the job errored directly instead of letting <code class="inline">defaultReconcile</code>'s <code class="inline">IsTerminalError</code> path handle it, and reports "could not get pod from build cluster" rather than "Terminal error: ...". End state is identical; only the diagnostic degrades. Intentional, or worth an <code class="inline">IsTerminalError(err)</code> guard?</p>
+    <h3><span class="tag nit">nit</span><code>TerminalError</code> from an unknown cluster alias is now absorbed by the timeout branch</h3>
+    <p><code class="inline">pkg/plank/reconciler.go:467-476</code> vs <code class="inline">pkg/plank/reconciler.go:885</code></p>
+    <p>
+      <code class="inline">startPod</code> returns
+      <code class="inline">TerminalError(fmt.Errorf("unknown cluster alias %q", ...))</code> at
+      <code class="inline">:885</code>. That is not an <code class="inline">APIStatus</code> error, so
+      <code class="inline">isRequestError</code> is false and it now lands in the new branch. If the timeout is
+      already exceeded, the job is completed with
+      <code class="inline">Pod pending timeout: failed to create pod in build cluster: ...</code> rather than
+      reaching <code class="inline">defaultReconcile</code>'s terminal-error handling
+      (<code class="inline">:374-388</code>) and its clearer
+      <code class="inline">Reconciliation failed with terminal error</code> log. End state is identical; only
+      the diagnostic degrades. An <code class="inline">IsTerminalError(err)</code> guard before the timeout
+      check would keep it.
+    </p>
   </div>
 </section>
 
 <section>
-  <h2>Resolved</h2>
-  <ul>
-    <li><strong>Duplicated maxPodPending computation</strong> (was <code class="inline">reconciler.go:459-462</code> vs <code class="inline">569-572</code>) — extracted <code class="inline">func (r *reconciler) maxPodPendingTimeout(pj *prowv1.ProwJob) time.Duration</code>; both call sites now use it. Fixed as of <code class="inline">3ac48b908bf172b76aba7c48afabf5b71a6bfe03</code>.</li>
-    <li><strong>New branch bypassed the shared completion tail</strong> (was <code class="inline">reconciler.go:463-476</code> vs <code class="inline">646-680</code>) — extracted <code class="inline">func (r *reconciler) updateProwJobStatus(ctx, pj, prevPJ) error</code> covering JobURL assignment, transition logging, patch, and the cache-sync-wait poll; both call sites now use it. Fixed as of <code class="inline">3ac48b908bf172b76aba7c48afabf5b71a6bfe03</code>. Naming follow-up above.</li>
-    <li><strong>err variable reused for two meanings</strong> (was <code class="inline">reconciler.go:466-471</code>) — <code class="inline">updateProwJobStatus</code> declares its own local <code class="inline">err</code>, so the pod-fetch error is no longer shadowed. Fixed as of <code class="inline">3ac48b908bf172b76aba7c48afabf5b71a6bfe03</code>.</li>
-  </ul>
+  <h2>Resolved since last review</h2>
+
+  <div class="finding resolved">
+    <h3><span class="tag resolved">resolved</span>New branch is likely unreachable in production <em>(was blocking)</em></h3>
+    <p>
+      Resolved by relocation rather than by argument. The check no longer sits behind
+      <code class="inline">r.pod()</code>, which reads from the controller-runtime informer cache and therefore
+      does not produce connection errors. It now sits behind <code class="inline">startPod</code>'s
+      <code class="inline">client.Create</code> (<code class="inline">reconciler.go:886</code>), a live write to
+      the build cluster apiserver that genuinely fails with
+      <code class="inline">dial tcp: connect: connection refused</code>. My analysis of the startup probe
+      (<code class="inline">pkg/flagutil/kubernetes_cluster_clients.go:394-417</code> excluding unreachable
+      clusters from <code class="inline">r.buildClients</code>) still holds, and still means an
+      unreachable-<em>at-startup</em> cluster yields <code class="inline">TerminalError</code> &mdash; but that
+      is a different, already-handled case.
+    </p>
+  </div>
+
+  <div class="finding resolved">
+    <h3><span class="tag resolved">resolved</span>New branch bypasses shared completion tail <em>(was should-fix)</em></h3>
+    <p>
+      Resolved structurally. The new branch sets state and falls through to the same inline tail (JobURL at
+      <code class="inline">:640</code>, transition log, patch, cache barrier) as every other completion path in
+      <code class="inline">syncPendingJob</code>, so there is nothing left to bypass. The
+      <code class="inline">updateProwJobStatus</code> helper introduced at <code class="inline">3ac48b9</code>
+      was deleted in this push &mdash; which also makes my naming/godoc should-fix on it moot.
+    </p>
+  </div>
+
+  <div class="finding resolved">
+    <h3><span class="tag resolved">resolved</span>Cache-barrier rationale comment dropped during extraction <em>(was nit)</em></h3>
+    <p>
+      The comment is back inline at <code class="inline">reconciler.go:656-658</code>, adjacent to the barrier
+      it explains.
+    </p>
+  </div>
+
+  <div class="finding resolved">
+    <h3><span class="tag resolved">resolved</span>Duplicated <code>maxPodPending</code> computation, and <code>err</code> shadowing <em>(were should-fix / nit)</em></h3>
+    <p>
+      <code class="inline">r.maxPodPendingTimeout(pj)</code> is retained at
+      <code class="inline">reconciler.go:859-864</code> and used at both <code class="inline">:468</code> and
+      <code class="inline">:559</code>. The shadowing branch no longer exists &mdash; the
+      <code class="inline">err</code> at <code class="inline">:466</code> is
+      <code class="inline">startPod</code>'s own, scoped to the <code class="inline">!podExists</code> block.
+    </p>
+  </div>
 </section>
 
 <section>
   <h2>Things I checked and was fine with</h2>
   <ul>
-    <li><code class="inline">r.pod()</code> returns <code class="inline">(nil, false, nil)</code> on <code class="inline">NotFound</code> (<code class="inline">reconciler.go:846-848</code>), so the new branch is correctly scoped to real fetch failures, not "pod doesn't exist yet".</li>
-    <li>No pod deletion attempted in the new branch — correct, the cluster is unreachable. The pod is not leaked permanently: sinker GCs pods whose ProwJob is complete.</li>
-    <li><code class="inline">clientWrapper.getError</code> wraps the build-cluster client only; <code class="inline">pjClient</code> is <code class="inline">fakeMgr.GetClient()</code> (<code class="inline">controller_test.go:1781</code>), so the ProwJob patch path is unaffected by the injected error.</li>
-    <li>New code uses <code class="inline">r.clock.Since</code> (fake-clock-aware) where the surrounding block still uses bare <code class="inline">time.Since</code> — the new code is the better of the two.</li>
+    <li><code class="inline">isRequestError</code> (<code class="inline">reconciler.go:1138-1144</code>) defaults to code 500 for non-<code class="inline">APIStatus</code> errors and returns false &mdash; confirming a connection error takes the new branch, not the "Unprocessable pod" branch. The PR description's account of the bug is accurate.</li>
+    <li>The <code class="inline">else</code> restructuring at <code class="inline">:477-482</code> preserves the pre-existing 4xx behaviour byte-for-byte (<code class="inline">ErrorState</code>, <code class="inline">SetComplete</code>, <code class="inline">Pod can not be created: %v</code>, <code class="inline">Unprocessable pod.</code> warning) &mdash; only the nesting changed.</li>
+    <li>Falling through from the timeout branch is safe: the tail at <code class="inline">:633-637</code> guards <code class="inline">pod != nil</code> before dereferencing, and <code class="inline">pj.Complete()</code> is already true so it does not double-set.</li>
+    <li>New code uses <code class="inline">r.clock.Since</code> (fake-clock-aware) where the surrounding <code class="inline">PodRunning</code> check at <code class="inline">:612</code> still uses bare <code class="inline">time.Since</code>.</li>
+    <li><code class="inline">maxPodPendingTimeout</code> correctly prefers <code class="inline">pj.Spec.DecorationConfig.PodPendingTimeout</code> over <code class="inline">Plank.PodPendingTimeout</code>; both are non-nil after defaulting.</li>
     <li>Timeout defaults confirmed: <code class="inline">PodPendingTimeout</code> 10m, <code class="inline">PodRunningTimeout</code> 48h, <code class="inline">PodUnscheduledTimeout</code> 5m (<code class="inline">pkg/config/config.go:2513-2521</code>).</li>
-    <li>No config-schema breaking changes; <code class="inline">Plank.PodPendingTimeout</code> / <code class="inline">DecorationConfig.PodPendingTimeout</code> reused as-is, both non-nil after defaulting. Rollback is a plain revert, no persisted-state format changes.</li>
+    <li>The test harness now drives the new branch via <code class="inline">clientWrapper.createError</code> (<code class="inline">controller_test.go:1795-1797</code>); the <code class="inline">getError</code> field and the <code class="inline">GetErr</code> test-case field were removed. <code class="inline">pjClient</code> is <code class="inline">fakeMgr.GetClient()</code>, so the ProwJob patch path is unaffected by the injected error.</li>
+    <li>The two new test cases give the PJ a real <code class="inline">PodSpec</code> and <code class="inline">Refs</code> (unlike the <code class="inline">3ac48b9</code> versions, which had an empty <code class="inline">Spec</code>), so <code class="inline">decorate.ProwJobToPod</code> is actually exercised before <code class="inline">Create</code> fails.</li>
+    <li><code class="inline">ExpectedURL</code> is not asserted by <code class="inline">TestSyncPendingJob</code>'s body, so omitting it on the new cases is harmless.</li>
+    <li>No config-schema change; rollback is a plain revert, no persisted-state format change.</li>
     <li>No security surface: no new inputs, credentials, or external calls.</li>
-    <li>Confirmed via <code class="inline">pkg/apis/prowjobs/v1/types.go:61-62</code> that Prow has no separate "Running" ProwJobState distinct from <code class="inline">PendingState</code>.</li>
-    <li><strong>Not verified this pass:</strong> <code class="inline">gofmt</code>, <code class="inline">go build</code>, <code class="inline">go vet</code>, <code class="inline">go test ./pkg/plank/...</code> — no Go toolchain in this environment. Treat build/test status as unknown.</li>
   </ul>
+  <p class="caveat">
+    <strong>Not verified this pass:</strong> <code class="inline">gofmt</code>, <code class="inline">go build</code>,
+    <code class="inline">go vet</code>, <code class="inline">go test ./pkg/plank/...</code> &mdash; no Go toolchain
+    in this environment. Treat build and test status as unknown.
+  </p>
 </section>
 
 <section>
   <h2>Open questions for the author</h2>
   <ul>
-    <li><strong>Highest priority:</strong> what do plank's logs actually say for the stuck canary (<code class="inline">periodic-build-farm-canary-build06</code>, the 5-day example in the PR body)? Expect one of <code class="inline">error starting pod for PJ ...</code> (the fix belongs in the <code class="inline">startPod</code> path), <code class="inline">failed to get pod: ...</code> (my cache analysis is missing something — worth understanding before merge), or <code class="inline">Reconciliation failed with terminal error</code> (the job was not stuck for the assumed reason). Little else in this review can be settled without it.</li>
-    <li>Given <code class="inline">PendingTime</code> is never reset, was the "job age" interpretation of the timeout intentional? With no separate <code class="inline">Running</code> state it cannot distinguish "pod never started" from "job has been running for hours".</li>
-    <li>Any interest in a follow-up requiring N consecutive failures (or a distinct grace-period config) before marking a job errored, so one event does not fail every in-flight job on a cluster at once?</li>
-    <li>Any interest in a distinct metric/log line for "job errored due to build cluster unreachable", to separate it from other <code class="inline">ErrorState</code> causes once it can fire in bursts?</li>
-    <li>Should the mid-flight-unreachable case get explicit handling at all — e.g. re-probing clusters that were healthy at startup, extending the existing <code class="inline">interrupts.Terminate()</code> recovery — rather than relying on each job's own timeout?</li>
+    <li><strong>Still my highest priority, and still unanswered from the last pass:</strong> what do plank's logs actually say for the stuck canary (<code class="inline">periodic-build-farm-canary-build06</code>, the five-day example in the PR body)? If they show <code class="inline">error starting pod for PJ ...</code>, this PR now targets the right path and the review reduces to the findings above. If they show silence, or <code class="inline">Reconciliation failed with terminal error</code>, the covered path is not the incident's path. Nothing else can be settled without this.</li>
+    <li>Was the job-age reading of <code class="inline">PendingTime</code> deliberate? It cannot distinguish "pod never started" from "job has been running for hours", and at the new call site the latter is the common case.</li>
+    <li>Is losing retry on the pod-recreate path acceptable? Before this change a transient <code class="inline">Create</code> failure retried under backoff; after it, for any job past the pending timeout, the first failure is fatal. If that is not intended, the blocking finding's fix restores it.</li>
+    <li>Should triggered-but-not-yet-pending jobs be covered too, or is the <code class="inline">TriggeredState</code> wedge deliberately left for a follow-up?</li>
+    <li>Worth a distinct metric or log for "errored because pod creation failed against an unreachable cluster", to separate it from other <code class="inline">ErrorState</code> causes? It can fire across many jobs at once.</li>
+    <li>Should mid-flight unreachability get explicit handling at all &mdash; re-probing clusters that were healthy at startup, extending the existing <code class="inline">interrupts.Terminate()</code> recovery in <code class="inline">kubernetes_cluster_clients.go:427-462</code> &mdash; rather than relying on each job's own timeout?</li>
   </ul>
 </section>
 

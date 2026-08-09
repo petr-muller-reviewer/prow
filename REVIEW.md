@@ -1,9 +1,9 @@
 ---
 pr: kubernetes-sigs/prow#817
 title: "plank: enforce pending timeout when build cluster is unreachable"
-head_sha: 3ac48b908bf172b76aba7c48afabf5b71a6bfe03
+head_sha: e9b0c93495e6f8f5dcc81f4ae2716ad20b2b5eee
 base: main
-reviewed_at: 2026-08-03T21:37:02Z
+reviewed_at: 2026-08-08T22:47:35Z
 verdict: request-changes
 refresh_log:
   - from: 6e3651863113d1e8e432d295a0bc1ac88dda7d3d
@@ -49,121 +49,149 @@ refresh_log:
       ExpectError test asserting nothing, should-fix on
       updateProwJobStatus naming/godoc, and a question on retranslating to
       TerminalError as a simpler implementation.
+  - from: 3ac48b908bf172b76aba7c48afabf5b71a6bfe03
+    to: e9b0c93495e6f8f5dcc81f4ae2716ad20b2b5eee
+    summary: >
+      Force-push (old head not an ancestor of new head), single rewritten
+      commit authored 2026-08-05. The mechanism changed: the timeout check
+      was REMOVED from the r.pod() Get-failure branch and MOVED into
+      startPod's non-request-error path inside the !podExists branch
+      (reconciler.go:467-476). This resolves the previous primary blocking
+      finding — Create is a live write, not a cache read, so the branch is
+      genuinely reachable — and covers one of the three previously-traced
+      stuck-forever paths. updateProwJobStatus was inlined back into
+      syncPendingJob (helper deleted, cache-barrier comment restored);
+      maxPodPendingTimeout survives at :859. The ExpectError assertion
+      mismatch was fixed but an early return still skips state assertions.
+      The job-age-vs-failure-duration blocking finding SURVIVES and is now
+      worse: at the new call site it removes retry from the pod-recreate
+      path for any job older than PodPendingTimeout, a regression against
+      current behaviour. Two new findings: pod orphaning via the startPod
+      cache-wait, and syncTriggeredJob left uncovered. No new PR comments
+      or reviews since 2026-08-03 (only a /retest from Prucek 2026-08-05).
 ---
 
 ## Summary
 
-Fixes: when the build cluster is unreachable, `syncPendingJob` returns the `r.pod()` error immediately, so the `pod_pending_timeout` check (which only runs after a successful pod fetch) never fires. ProwJobs stay `pending` forever under controller-runtime's exponential backoff, and with `max_concurrency` set this also blocks subsequent runs of the job.
+Fixes: when pod creation against a build cluster fails with a non-4xx error (network failure, unreachable apiserver), `syncPendingJob` returns the error for requeue forever. `isRequestError` (`reconciler.go:1138-1144`) only matches 4xx `APIStatus` errors and defaults to code 500 for anything else, so a connection error never takes the "Unprocessable pod" completion path. ProwJobs stay `pending` indefinitely under controller-runtime backoff, and with `max_concurrency` set this also blocks subsequent runs.
 
-Fix adds a timeout check in the `err != nil` branch of `syncPendingJob` (`reconciler.go:499-511`): computes `maxPodPending` via the new `r.maxPodPendingTimeout(pj)`, compares it against `r.clock.Since(pj.Status.PendingTime)`, and if exceeded marks the job `ErrorState`/complete and patches it via the new shared `r.updateProwJobStatus` instead of propagating the error.
+Fix adds a timeout check inside the `!isRequestError(err)` arm of the `startPod` failure handling in the `!podExists` branch (`reconciler.go:467-476`): if `pj.Status.PendingTime` is set and `r.clock.Since(pj.Status.PendingTime.Time) >= r.maxPodPendingTimeout(pj)`, mark the job `ErrorState`/complete and fall through to the shared completion tail; otherwise return the error as before.
 
-Verdict remains `request-changes`. The refactor (both extracted helpers) is good and resolves all prior should-fix findings. The problem is now upstream of the timeout semantics: this review pass could not identify any production condition under which the modified branch executes, and traced three separate stuck-forever paths that the PR does not touch.
+Verdict remains `request-changes`, but the reasons have changed substantially. The relocation is a real improvement: the branch is now reachable (the old one was not, see Resolved), and it targets a genuine stuck path. The remaining blocker is the timeout basis, which at this new call site is not merely imprecise but a behavioural regression — it deletes retry from the pod-recreate path for essentially every long-running job.
 
 Since previous review:
-- No new commits, comments, or reviews. Head SHA unchanged at `3ac48b9`.
-- Trigger analysis corrected (see `refresh_log`): unreachable-at-startup yields `TerminalError`, not a `Get` error. Prior blocking finding on the timeout basis is retained but demoted to second position — it only matters once the branch can fire at all.
-- Traced full "build cluster stops responding mid-flight" behaviour; three uncovered stuck paths identified.
+- Force-push to `e9b0c9349`; `3ac48b908` is not an ancestor. `reconciler.go` +58/-71, `controller_test.go` +56/-57.
+- Check moved from the `r.pod()` cache-read failure to `startPod`'s `Create` failure — resolves the "unreachable branch" blocker.
+- `updateProwJobStatus` helper removed (inlined); `maxPodPendingTimeout` retained.
+- No new comments or reviews; only `/retest` from Prucek on 2026-08-05T14:56:47Z.
 
 ## Findings
 
-### [blocking] new branch is likely unreachable in production
-- where: `pkg/plank/reconciler.go:499-511` (branch), `pkg/plank/reconciler.go:845` (the erroring call), `pkg/flagutil/kubernetes_cluster_clients.go:394-417` (startup probe)
-- concern: the branch only runs when `buildClient.Get` returns a non-`NotFound` error, and no path producing one has been identified. Two sub-cases exhaust the "build cluster unreachable" space:
-  - **Unreachable at plank startup:** `BuildClusters` probes each cluster (`cluster.New` plus a live `CheckAuthorizations` SSAR) and omits failures from the returned map; `cmd/prow-controller-manager/main.go:175-177` logs at `Error` and continues. The cluster never enters `r.buildClients`, so `r.pod()` returns `TerminalError("no build client found for cluster %q")` at `reconciler.go:835` and `defaultReconcile:374-388` already completes the job today. Corroborated by `syncClusterStatus` reporting this exact state as `ClusterStatusNoManager` (`reconciler.go:319-322`).
-  - **Unreachable after startup:** `bc.Client = buildCluster.GetClient()` (`reconciler.go:163`) with pods watched via `GetCache()` (`reconciler.go:154-159`), controller-runtime v0.21 (`go.mod:83`), and no `DisableFor`/`CacheOptions` overrides anywhere in `cmd/` or `pkg/flagutil/`. Reads are served from the informer indexer with no per-call network I/O, so `Get` keeps succeeding against frozen data across watch loss. An unsynced informer would *block* in `WaitForCacheSync` rather than error, returning only on context cancellation at shutdown.
-- consequence: the test's injected `errors.New("dial tcp: connect: connection refused")` (`controller_test.go:1417`) is a shape this call site cannot produce in production, so the green test does not demonstrate the bug is fixed.
-- caveat: controller-runtime is not vendored and there is no module cache in this checkout, so the informer/`WaitForCacheSync` semantics are from library knowledge, not verified against v0.21 source. Everything cited with `file:line` is verified here.
-- fix: establish the real failure path from plank logs for the PR's own example (`periodic-build-farm-canary-build06`, stuck 5 days) before merging, then fix the branch that actually fires. See the next finding for candidates.
-
-### [blocking] three stuck-forever paths exist that the PR does not cover
-- where: `pkg/plank/reconciler.go:656-658`, `pkg/plank/reconciler.go:514-521`, `pkg/plank/reconciler.go:822`
-- concern: traced behaviour when a build cluster stops responding mid-flight — reads keep succeeding from the frozen cache, writes (`Create`/`Delete`) fail for real, pod events stop:
-  - **Pending, pod last seen `Running`:** `Since(pod.Status.StartTime) < maxPodRunning` (default 48h, `config.go:2517`) → `return nil, nil`. No state change, no requeue, no error, no log. The job goes completely silent. This is the closest match to the PR's 5-day example.
-  - **Pending, pod absent from cache:** `podExists == false` → `startPod` → `Create` is a direct write and fails; `isRequestError` (`reconciler.go:1146-1152`) sees no `APIStatus`, defaults to code 500, returns false → `error starting pod for PJ %s` → backoff requeue forever, `pod_pending_timeout` never consulted.
-  - **Aborted:** `syncAbortedJob` `Delete` fails at `:822`, error returned before `SetComplete` → requeue forever, never completes.
-  - Also: once `PodRunningTimeout` finally elapses on a resync-triggered reconcile, `deletePod` fails and the error returns *before* `updateProwJobStatus`, so the `AbortedState` transition is computed and then discarded on every attempt.
+### [blocking] timeout gated on job age, not on how long pod creation has been failing
+- where: `pkg/plank/reconciler.go:468`
+- concern: `pj.Status.PendingTime` is set exactly once, in `syncTriggeredJob` at `reconciler.go:750-753`, on the `Triggered→Pending` transition, and is never reset (verified: the only two references to `PendingTime` in the file are `:468` and `:753`). It is the job's start time. Prow has no `Running` state distinct from `PendingState` (`pkg/apis/prowjobs/v1/types.go:61-62`), so `Since(PendingTime)` is total job age, not time-spent-failing-to-create-a-pod. For any job that has been alive longer than `PodPendingTimeout` — 10 minutes by default (`pkg/config/config.go:2513`) — the condition is unconditionally true.
+- consequence: this is a regression, not just an imprecision. The `!podExists` branch exists for the case where a pod was deleted manually or by a rescheduler mid-flight. Today a transient non-4xx failure on the recreate — an apiserver 500, a webhook timeout, or a `getBuildID`/tot failure (`reconciler.go:867`, also a non-request error) — returns an error and retries under controller-runtime backoff. After this change, for any job past the pending timeout, that single failure completes the job as `ErrorState` with zero retries. A 3-hour job's pod gets rescheduled, one blip on the recreate, job dead.
 - excerpt: |
-    case corev1.PodRunning:
-        ...
-        if pod.Status.StartTime.IsZero() || time.Since(pod.Status.StartTime.Time) < maxPodRunning {
-            // Pod is still running. Do nothing.
-            return nil, nil
+    if !isRequestError(err) {
+        if pj.Status.PendingTime != nil && r.clock.Since(pj.Status.PendingTime.Time) >= r.maxPodPendingTimeout(pj) {
+            pj.SetComplete()
+            pj.Status.State = prowv1.ErrorState
+- fix: gate on a duration that measures the failure, not the job. Options: record a "pod creation first failed at" timestamp on the ProwJob status (set on failure, cleared on success) and compare against that; or require N consecutive failures. If neither is palatable, at minimum do not reuse `pod_pending_timeout`, whose name and existing semantics at `reconciler.go:559` both mean "the pod never started". Add a regression test: long-running job (`PendingTime` 3h ago) + single `Create` error must NOT error the job.
+
+### [should-fix] job can be errored while its pod is actually running, and the pod is not deleted
+- where: `pkg/plank/reconciler.go:467-476`, `pkg/plank/reconciler.go:893-905`
+- concern: `startPod` returns a non-request error *after* a successful `Create` when the post-create cache barrier times out — `failed waiting for new pod %s in cluster %s  appear in cache` fires if the informer lags more than 10s. Previously that error was returned, and the next reconcile found the pod via `podExists` and continued normally. Now, for any job past the pending timeout, the ProwJob is completed as `ErrorState` while the pod is live in the build cluster.
+- consequence: the pod runs to completion with no reporting, and unlike every other completion path in this function (`PodRunning` timeout calls `deletePod` at `:622`) nothing deletes it. Sinker eventually GCs pods whose ProwJob is complete, so it is not a permanent leak, but the job result is wrong and the cluster does the work anyway.
+- excerpt: |
+    }); err != nil {
+        return "", "", fmt.Errorf("failed waiting for new pod %s in cluster %s  appear in cache: %w", podName.String(), pj.ClusterAlias(), err)
+    }
+- fix: distinguish "Create failed" from "Create succeeded, cache barrier timed out" in `startPod` (e.g. a sentinel or typed error) and only apply the timeout completion to the former; or call `deletePod` before completing.
+
+### [should-fix] syncTriggeredJob has the identical failure path and was left unchanged
+- where: `pkg/plank/reconciler.go:737-741`
+- concern: `syncTriggeredJob` calls `startPod` and handles failure with the same `if !isRequestError(err) { return nil, ... }` shape, untouched by this PR. A job that has never reached `PendingState` has `PendingTime == nil`, so no timeout could apply there anyway — an unreachable build cluster still wedges triggered jobs indefinitely.
+- consequence: this is arguably the *more* common manifestation of the reported symptom: a job submitted while the cluster is down never leaves `TriggeredState`. The PR only rescues jobs that were already pending when the cluster went away.
+- excerpt: |
+    id, pn, err = r.startPod(ctx, pj)
+    if err != nil {
+        if !isRequestError(err) {
+            return nil, fmt.Errorf("error starting pod: %w", err)
         }
-- note: plank does not self-restart in this regime. The recovery goroutine in `kubernetes_cluster_clients.go:427-462` only launches `if aggregatedErr != nil` and only probes clusters missing from `res`, so a cluster healthy at startup is never re-probed and `interrupts.Terminate()` never fires. Only a kubeconfig change (`main.go:193-198`) restarts plank. `syncClusterStatus` writing `ClusterStatusError` every minute is the sole operator signal.
-- fix: pick the path that matches the observed incident. If it is the `Running`-pod silence, the fix belongs near `:656`; if it is pod-recreation, near `:514`.
+- fix: either extend the fix (needs a clock reference other than `PendingTime` — see the blocking finding, which the same mechanism would supply) or state explicitly in the PR description that triggered jobs are out of scope and why.
 
-### [blocking] timeout gated on job age, not on cluster-unreachable duration
-- where: `pkg/plank/reconciler.go:501`
-- concern: applies only once the branch can fire at all, but is independently wrong. Two defects relative to how `maxPodPending` is used everywhere else:
-  1. **Wrong clock reference.** `pj.Status.PendingTime` is set exactly once at `Triggered→Pending` (`reconciler.go:769`) and never updated. Prow has no distinct "Running" ProwJobState — `PendingState`'s doc comment (`pkg/apis/prowjobs/v1/types.go:61-62`) reads "the job is currently running and we are waiting for it to finish." So `Since(PendingTime)` is total job age, not time-in-pod-pending and not time-since-unreachable.
-  2. **Lost phase guard.** The existing check at `reconciler.go:626` compares against `pod.Status.StartTime` and only runs inside `case corev1.PodPending`. The new branch has no pod, so it applies unconditionally — including to jobs whose pod was last seen `Running`.
-- consequence: a job whose pod has run 3h has `Since(PendingTime) == 3h >= 30m`, so the first observed `Get` failure marks it `ErrorState`/complete. Default is 10m (`config.go:2513`); the PR's own example uses 30m. Both are shorter than most CI job runtimes, so this would hit nearly the entire in-flight population of a cluster at once.
+### [should-fix] uncovered stuck-forever paths remain from the previous review
+- where: `pkg/plank/reconciler.go:604-615`, `pkg/plank/reconciler.go:820-822`
+- concern: the previous pass traced three paths that wedge when a build cluster stops responding mid-flight. This push covers one (pod absent from cache → `Create` fails). Two remain:
+  - **Pending, pod last seen `Running`:** `Since(pod.Status.StartTime) < maxPodRunning` (48h default, `config.go:2517`) → `return nil, nil`. No state change, no requeue, no error, no log — the job goes silent. This is the closest match to the PR body's 5-day `periodic-build-farm-canary-build06` example.
+  - **Aborted:** `syncAbortedJob`'s `deletePod` fails and the error returns before `SetComplete`, so it requeues forever.
+  - Related: once `PodRunningTimeout` does elapse, `deletePod` at `:622` fails and returns before the patch, so the computed `AbortedState` transition is discarded on every attempt.
 - excerpt: |
-    if pj.Status.PendingTime != nil && r.clock.Since(pj.Status.PendingTime.Time) >= r.maxPodPendingTimeout(pj) {
-- fix: gate on a duration that measures unreachability — a "first Get failure at" timestamp (set on failure, cleared on success), or N consecutive failures. Do not reuse `pod_pending_timeout`, whose name and existing semantics both mean "the pod never started". Add a test: long-running job + single `Get` error must NOT error the job.
+    if pod.Status.StartTime.IsZero() || time.Since(pod.Status.StartTime.Time) < maxPodRunning {
+        // Pod is still running. Do nothing.
+        return nil, nil
+    }
+- fix: out of scope for this PR if deliberate, but the PR body claims to fix the canary incident and the covered path may not be the one that produced it. See the first open question — the logs settle which.
 
-### [should-fix] ExpectError test case asserts nothing
-- where: `pkg/plank/controller_test.go:1808-1818`
-- concern: the early `return` skips every subsequent assertion, so `ExpectedState: prowapi.PendingState` on the "pending timeout not yet exceeded" case is dead configuration. Nothing verifies the ProwJob was left untouched, which is the actual behaviour under test.
+### [should-fix] ExpectError test case still asserts almost nothing
+- where: `pkg/plank/controller_test.go:1814-1823`
+- concern: the assertion mismatch from the previous review was fixed — `(err != nil) != tc.ExpectError` now correctly fails when an expected error is missing — but the immediately following `if err != nil { return }` skips every subsequent assertion. For the "build cluster unreachable, pending timeout not yet exceeded" case, the declared `ExpectedState: prowapi.PendingState` and `ExpectedNumPods: 0` are dead configuration. Only "some error occurred" is verified; an error from any unrelated path passes.
 - excerpt: |
-    reconcileResult, err := r.syncPendingJob(ctx, &tc.PJ)
-    if tc.ExpectError && err != nil {
+    if (err != nil) != tc.ExpectError {
+        ...
+    }
+    if err != nil {
         return
     }
-- fix: assert the error, then fall through to the state/pod checks, or at minimum check `tc.PJ.Status.State` and `tc.PJ.Complete()` before returning.
+- fix: for the error case, still assert `tc.PJ.Status.State` and `tc.PJ.Complete()` (the in-memory object, since no patch happened) before returning, or drop the unused expectations so the test does not imply coverage it lacks.
 
-### [should-fix] updateProwJobStatus name does not describe what it does
-- where: `pkg/plank/reconciler.go:461-492`
-- concern: the name reads as a setter but the function (1) mutates `pj.Status.URL`, (2) logs the transition, (3) patches, and (4) if the state changed, blocks up to 2s polling until the cache reflects it — overwriting `pj` with the object read back. Neither the `pj` mutation nor the blocking barrier is inferable from the name, and the barrier is the whole point of the function.
-- fix: preferred — hoist the `JobURL` assignment back to call sites and rename to `patchProwJobAndWaitForCache`, which then fully describes the body. Alternative — keep as-is under `finalizeProwJobStatus`/`commitProwJobStatus` plus a godoc stating that `pj` is mutated, that the URL error is logged and swallowed, and why the cache barrier exists (a later reconcile could otherwise observe pre-patch state and recreate a just-deleted pod).
-
-### [nit] cache-barrier rationale comment dropped during extraction
-- where: `pkg/plank/reconciler.go:477-489`
-- concern: the explanatory comment moved out of `syncPendingJob` but did not land in `updateProwJobStatus`. It is the only place the non-obvious barrier is justified.
-- excerpt: |
-    // If the ProwJob state has changed, we must ensure that the update reaches the cache before
-    // processing the key again. Without this we might accidentally replace intentionally deleted pods
-    // or otherwise incorrectly react to stale ProwJob state.
-
-### [question] retranslate to TerminalError instead of hand-rolling completion?
-- where: `pkg/plank/reconciler.go:499-511` vs `pkg/plank/reconciler.go:374-388`
-- concern: `return nil, TerminalError(fmt.Errorf("pending timeout exceeded, build cluster unreachable: %w", err))` would reuse the existing terminal handler and collapse the whole branch to ~4 lines, removing the need for `updateProwJobStatus` in this PR. Verified it propagates: `syncPendingJob` → `reconcile:326` → `serializeIfNeeded:422` → `defaultReconcile:374`, no wrapping; `IsTerminalError` works despite the `*nonRetryableError`/`nonRetryableError{}` pointer-value mismatch (value-receiver `Is` is in the pointer method set).
-- tradeoffs: loses the cache-sync barrier — and unlike existing terminal errors (unknown alias, idempotent), "cluster unreachable" can stop being true, so a stale re-read could hit `podExists == false` and start a fresh pod for an already-errored job. Also swallows patch failures (`:384-386` logs and returns nil, no requeue), reintroducing the stuck-forever symptom. `Status.URL` loss is moot (already set at `:773`). Would also need `if IsTerminalError(err) { return nil, err }` first to avoid double `nonretryable error:` prefixes.
-
-### [question] TerminalError folded into the same branch
-- where: `pkg/plank/reconciler.go:499-511` vs `pkg/plank/reconciler.go:835`
-- concern: if the timeout is already exceeded and the failure is a `TerminalError` (unknown cluster alias), the new branch handles it directly and reports "could not get pod from build cluster" rather than `defaultReconcile`'s clearer "Terminal error: ...". End state is identical; only the diagnostic degrades. Intentional, or worth an `IsTerminalError(err)` guard?
+### [nit] TerminalError from an unknown cluster alias is now absorbed by the timeout branch
+- where: `pkg/plank/reconciler.go:467-476` vs `pkg/plank/reconciler.go:885`
+- concern: `startPod` returns `TerminalError(fmt.Errorf("unknown cluster alias %q", ...))` at `:885`. That is not an `APIStatus` error, so `isRequestError` is false and it now lands in the new branch. If the timeout is already exceeded, the job is completed with `Pod pending timeout: failed to create pod in build cluster: ...` instead of reaching `defaultReconcile`'s terminal-error handling (`:374-388`) and its clearer `Reconciliation failed with terminal error` log. End state is the same; only the diagnostic degrades.
+- fix: an `IsTerminalError(err)` guard before the timeout check, returning the error unchanged.
 
 ## Resolved
 
-### [should-fix] duplicated maxPodPending computation
-- where (was): `pkg/plank/reconciler.go:459-462` vs `pkg/plank/reconciler.go:569-572`
-- resolution: extracted `func (r *reconciler) maxPodPendingTimeout(pj *prowv1.ProwJob) time.Duration`; both call sites use it. Fixed as of `3ac48b908bf172b76aba7c48afabf5b71a6bfe03`.
+### [blocking] new branch is likely unreachable in production
+- where (was): `pkg/plank/reconciler.go:499-511` (branch at `3ac48b908`)
+- resolution: resolved by relocation, not by argument. The check no longer sits behind `r.pod()`, which reads from the controller-runtime informer cache and therefore does not produce connection errors. It now sits behind `startPod`'s `client.Create` (`reconciler.go:886`), a live write to the build cluster apiserver that genuinely fails with `dial tcp: connect: connection refused` when the cluster is unreachable. The previous pass's analysis of the startup probe (`pkg/flagutil/kubernetes_cluster_clients.go:394-417` excluding unreachable clusters from `r.buildClients`) still holds and still means an unreachable-*at-startup* cluster yields `TerminalError("unknown cluster alias")` — but that is a different, already-handled case. Fixed as of `e9b0c93495e6f8f5dcc81f4ae2716ad20b2b5eee`.
 
 ### [should-fix] new branch bypasses shared completion tail
-- where (was): `pkg/plank/reconciler.go:463-476` vs `pkg/plank/reconciler.go:646-680`
-- resolution: extracted `func (r *reconciler) updateProwJobStatus(ctx context.Context, pj, prevPJ *prowv1.ProwJob) error` doing JobURL, transition log, patch, and cache-sync wait. Both call sites use it. Fixed as of `3ac48b908bf172b76aba7c48afabf5b71a6bfe03`. (Naming follow-up above.)
+- where (was): `pkg/plank/reconciler.go:463-476` at `6e36518`
+- resolution: resolved structurally. The new branch sets state and falls through to the same inline tail (JobURL at `:640`, transition log, patch, cache barrier) as every other completion path in `syncPendingJob`, so there is nothing to bypass. The `updateProwJobStatus` helper introduced at `3ac48b908` was deleted in this push. Fixed as of `e9b0c93495e6f8f5dcc81f4ae2716ad20b2b5eee`.
+
+### [should-fix] updateProwJobStatus name does not describe what it does
+- resolution: moot — the helper no longer exists.
+
+### [nit] cache-barrier rationale comment dropped during extraction
+- resolution: the comment is back inline at `reconciler.go:656-658`, adjacent to the barrier it explains. Fixed as of `e9b0c93495e6f8f5dcc81f4ae2716ad20b2b5eee`.
+
+### [should-fix] duplicated maxPodPending computation
+- resolution: `r.maxPodPendingTimeout(pj)` retained at `reconciler.go:859-864`; used at `:468` and `:559`. Still fixed.
 
 ### [nit] err variable reused for two different meanings
-- where (was): `pkg/plank/reconciler.go:466-471`
-- resolution: `updateProwJobStatus` declares its own local `err`, so the pod-fetch `err` is no longer shadowed. Fixed as of `3ac48b908bf172b76aba7c48afabf5b71a6bfe03`.
+- resolution: the shadowing branch no longer exists. The `err` at `:466` is `startPod`'s own, scoped to the `!podExists` block.
 
 ## Checked
 
-- `r.pod()` returns `(nil, false, nil)` on `NotFound` (`reconciler.go:846-848`), so the new branch is correctly scoped to real fetch failures, not "pod doesn't exist yet".
-- No `deletePod` in the new branch — correct, the cluster is unreachable. Pod is not leaked permanently: sinker GCs pods whose ProwJob is complete.
-- `clientWrapper.getError` wraps the build cluster client only; `pjClient` is `fakeMgr.GetClient()` (`controller_test.go:1781`), so the ProwJob patch path is unaffected by the injected error.
-- New code uses `r.clock.Since` (fake-clock-aware) where surrounding code still uses bare `time.Since` — an improvement.
+- `isRequestError` (`reconciler.go:1138-1144`) defaults to code 500 for non-`APIStatus` errors and returns false — confirming a connection error takes the new branch, not the "Unprocessable pod" branch. The PR description's account of the bug is accurate.
+- The `else` restructuring at `:477-482` preserves the pre-existing 4xx behaviour byte-for-byte (`ErrorState`, `SetComplete`, `Pod can not be created: %v`, `Unprocessable pod.` warning) — only the nesting changed.
+- Falling through from the timeout branch is safe: the tail at `:633-637` guards `pod != nil` before dereferencing, and `pj.Complete()` is already true so it does not double-set.
+- New code uses `r.clock.Since` (fake-clock-aware) where the surrounding `PodRunning` check at `:612` still uses bare `time.Since`.
+- `maxPodPendingTimeout` correctly prefers `pj.Spec.DecorationConfig.PodPendingTimeout` over `Plank.PodPendingTimeout`; both are non-nil after defaulting.
 - Timeout defaults confirmed: `PodPendingTimeout` 10m, `PodRunningTimeout` 48h, `PodUnscheduledTimeout` 5m (`pkg/config/config.go:2513-2521`).
-- No config-schema change; `Plank.PodPendingTimeout` / `DecorationConfig.PodPendingTimeout` reused as-is, both non-nil after defaulting. Rollback is a plain revert, no persisted-state format change.
+- Test harness now drives the new branch via `clientWrapper.createError` (`controller_test.go:1795-1797`); the `getError` field and the `GetErr` test-case field were removed. `pjClient` is `fakeMgr.GetClient()`, so the ProwJob patch path is unaffected by the injected error.
+- The two new test cases give the PJ a real `PodSpec` and `Refs` (unlike the `3ac48b908` versions, which had an empty `Spec`), so `decorate.ProwJobToPod` is actually exercised before `Create` fails.
+- `ExpectedURL` is not asserted by `TestSyncPendingJob`'s body, so omitting it on the new cases is harmless.
+- No config-schema change; rollback is a plain revert, no persisted-state format change.
 - No security surface: no new inputs, credentials, or external calls.
-- Confirmed `pkg/apis/prowjobs/v1/types.go:61-62` that Prow has no "Running" ProwJobState distinct from `PendingState`.
 - NOT verified this pass: `gofmt`, `go build`, `go vet`, `go test ./pkg/plank/...` — no Go toolchain in this environment. Treat build/test status as unknown.
 
 ## Open questions
 
-- Highest priority: what do plank's logs actually say for the stuck canary (`periodic-build-farm-canary-build06`, the 5-day example in the PR body)? Expect one of `error starting pod for PJ ...` (fix belongs in the `startPod` path), `failed to get pod: ...` (the cache analysis above is missing something — worth understanding before merge), or `Reconciliation failed with terminal error` (the job was not stuck for the assumed reason). Nothing else in the review can be settled without this.
-- Was the job-age interpretation of the timeout deliberate? With `PendingTime` never reset and no `Running` state, it cannot distinguish "pod never started" from "job has been running for hours".
-- Interest in a follow-up requiring N consecutive failures (or a distinct grace-period config) before erroring, so one event does not fail every in-flight job on a cluster at once?
-- Worth a distinct metric/log for "errored because build cluster unreachable", to separate it from other `ErrorState` causes once it can fire in bursts?
-- Should the mid-flight-unreachable case get explicit handling at all (e.g. re-probing clusters that were healthy at startup, extending the existing `interrupts.Terminate()` recovery), rather than relying on each job's own timeout?
+- Still highest priority, still unanswered from the previous pass: what do plank's logs actually say for the stuck canary (`periodic-build-farm-canary-build06`, the 5-day example in the PR body)? If they show `error starting pod for PJ ...`, this PR now targets the right path and the review reduces to the findings above. If they show silence or `Reconciliation failed with terminal error`, the covered path is not the incident's path. Nothing else can be settled without this.
+- Was the job-age reading of `PendingTime` deliberate? It cannot distinguish "pod never started" from "job has been running for hours", and at the new call site the latter is the common case.
+- Is losing retry on the pod-recreate path acceptable? Before this change a transient `Create` failure retried under backoff; after it, for any job past the pending timeout, the first failure is fatal. If not intended, the blocking finding's fix (measure failure duration, or require N consecutive failures) also restores it.
+- Should triggered-but-not-yet-pending jobs be covered too, or is the `TriggeredState` wedge deliberately left for a follow-up?
+- Worth a distinct metric or log for "errored because pod creation failed against an unreachable cluster", to separate it from other `ErrorState` causes? It can fire across many jobs at once.
+- Should mid-flight unreachability get explicit handling at all — re-probing clusters that were healthy at startup, extending the existing `interrupts.Terminate()` recovery in `kubernetes_cluster_clients.go:427-462` — rather than relying on each job's own timeout?

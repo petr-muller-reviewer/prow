@@ -14,8 +14,9 @@
   header dt { font-weight: 600; color: #555; }
   h1 { font-size: 1.4rem; margin-bottom: 0.2rem; }
   h2 { font-size: 1.15rem; border-bottom: 1px solid #ddd; padding-bottom: 0.3rem; margin-top: 2rem; }
-  .verdict { background: #eaf6ea; border: 1px solid #b6dfb6; border-left: 5px solid #2e7d32; padding: 1rem 1.2rem; border-radius: 6px; }
-  .verdict .label { font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; color: #2e7d32; }
+  h3 { font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.04em; color: #666; margin: 1.6rem 0 0.6rem; }
+  .verdict { background: #fdf3e3; border: 1px solid #e8cfa0; border-left: 5px solid #e6a700; padding: 1rem 1.2rem; border-radius: 6px; }
+  .verdict .label { font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; color: #8a6100; }
   .finding { border: 1px solid #e0e0e0; border-radius: 8px; padding: 1rem 1.2rem; margin: 1rem 0; }
   .finding.should-fix { border-left: 5px solid #e6a700; }
   .finding.nit { border-left: 5px solid #999; }
@@ -26,11 +27,10 @@
   .sev.nit { background: #eee; color: #555; }
   .sev.question { background: #dceefb; color: #0d4c76; }
   .loc { color: #555; font-size: 0.85em; }
-  .converge { display: inline-block; font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
-         padding: 0.1em 0.6em; border-radius: 999px; margin-left: 0.4em; background: #f3e5f5; color: #6a1b9a; }
   ul.tight li { margin-bottom: 0.4rem; }
   a { color: #1976d2; }
   .correction { background: #fdecea; border: 1px solid #f5c6cb; border-left: 5px solid #c62828; padding: 0.8rem 1.1rem; border-radius: 6px; margin: 1rem 0; }
+  .note { background: #eef7ff; border: 1px solid #b6d4ee; border-left: 5px solid #1976d2; padding: 0.8rem 1.1rem; border-radius: 6px; margin: 1rem 0; }
 </style>
 </head>
 <body>
@@ -41,81 +41,117 @@
     <dt>PR</dt><dd><a href="https://github.com/kubernetes-sigs/prow/pull/674">kubernetes-sigs/prow#674</a></dd>
     <dt>Head SHA</dt><dd><code class="inline">d6d08d0b2b40c9ef3fee39d3886a44be0c993f23</code></dd>
     <dt>Base</dt><dd><code class="inline">main</code></dd>
-    <dt>Reviewed at</dt><dd>2026-08-04T12:59:26Z (refreshed from 910f6c95a, previously reviewed 2026-07-26T23:52:55Z)</dd>
+    <dt>Reviewed at</dt><dd>2026-08-09T01:38:33Z (second pass, no new commits since 2026-08-04T12:59:26Z)</dd>
   </dl>
 </header>
 
 <div class="verdict">
-  <span class="label">Verdict: Approve</span>
-  <p>Combines a direct code review with a three-perspective maintainer review (code quality, maintainability, deployment risk) plus a synthesized advisor recommendation of <strong>APPROVE_WITH_SUGGESTIONS</strong>. The exclusion mechanism is correctly wired to the actual error-wrapping chain used by <code class="inline">tryMerge</code>/<code class="inline">mergePRs</code>, is properly synchronized against the real concurrent sync-loop pattern, and is covered by genuine end-to-end regression tests. Two gaps — the unfiltered batch-merge path and unbounded-but-slow exclusion-map growth — were independently flagged by multiple reviewers and are worth tracking as explicit follow-ups, but neither is a correctness or safety defect that should block merge.</p>
+  <span class="label">Verdict: Request changes</span>
+  <p>The exclusion mechanism itself is sound — correctly wired to the actual error-wrapping chain used by <code class="inline">tryMerge</code>/<code class="inline">mergePRs</code>, properly synchronized against the real concurrent sync-loop pattern, collision-safe in its key scheme, and covered by genuine end-to-end regression tests (suite and <code class="inline">go vet</code> both pass). But <code class="inline">takeAction</code> applies the new filter in only two of its four decision points. The serial-trigger gate still tests unfiltered <code class="inline">successes</code>, so an excluded PR continues to starve other PRs of serial tests — the same head-of-line blocking #673 describes, moved one step downstream. Separately, an already-successful batch is merged without consulting exclusions at all, contradicting the doc comment that claims that case is handled. Both are small, local fixes.</p>
 </div>
 
 <h2>What this PR does</h2>
 <ul class="tight">
   <li>Fixes #673: <code class="inline">takeAction()</code> deterministically re-picks the lowest-numbered PR from <code class="inline">successes</code> every cycle; if it fails with <code class="inline">UnmergablePRError</code> (e.g. branch protection needs more approvals), it blocked the whole merge queue forever.</li>
-  <li>Adds <code class="inline">syncController.mergeExclusions map[string]int</code> keyed by <code class="inline">org/repo#number@sha</code>, with mutex-guarded <code class="inline">excludeFromMerge</code>/<code class="inline">isExcludedFromMerge</code>.</li>
+  <li>Adds <code class="inline">syncController.mergeExclusions map[string]int</code> keyed by <code class="inline">org/repo#number@sha</code>, with mutex-guarded <code class="inline">excludeFromMerge</code>/<code class="inline">isExcludedFromMerge</code>/<code class="inline">filterExcludedFromMerge</code>.</li>
   <li><code class="inline">isUnmergableError()</code> unwraps <code class="inline">*mergeFailure</code> → <code class="inline">mergeErr.err</code> → <code class="inline">fmt.Errorf</code>-wrapped <code class="inline">github.UnmergablePRError</code> via <code class="inline">errors.As</code>.</li>
-  <li><code class="inline">takeAction()</code> filters <code class="inline">successes</code> through <code class="inline">isExcludedFromMerge</code> before <code class="inline">pickHighestPriorityPR</code>, and records an exclusion when <code class="inline">mergePRs</code> returns an unmergeable error.</li>
-  <li>SHA-scoped key means a new push (new head SHA) auto-clears the exclusion without waiting for it to age out.</li>
+  <li><code class="inline">takeAction()</code> filters <code class="inline">successes</code> before <code class="inline">pickHighestPriorityPR</code> and records an exclusion on unmergeable failure; <code class="inline">pickBatch</code> filters candidates, and <code class="inline">excludeUnmergablePRsFromBatch</code> records per-PR exclusions after a failed batch merge.</li>
+  <li>Entries age via <code class="inline">ageMergeExclusions()</code> once per <code class="inline">Sync()</code> (<code class="inline">mergeExclusionSyncs = 3</code>). The SHA-scoped key means a new push auto-clears the exclusion without waiting for it to age out.</li>
 </ul>
 
-<div class="correction" style="background:#eef7ff;border-color:#b6d4ee;border-left-color:#1976d2;">
-  <strong>Since previous review:</strong> the author pushed a second commit (<code class="inline">d6d08d0b2</code>) addressing both <code class="inline">should-fix</code> findings below.
+<div class="note">
+  <strong>Since previous review:</strong> no new commits (head SHA unchanged). A second review pass was run <em>with a working Go toolchain</em> — <code class="inline">go test ./pkg/tide/...</code> and <code class="inline">go vet ./pkg/tide/</code> both pass; the first pass could execute neither.
   <ul class="tight">
-    <li>Extracted the exclusion filter into <code class="inline">filterExcludedFromMerge()</code> and applied it to the batch path too (<code class="inline">pickBatch</code>, before candidates are considered), plus added <code class="inline">excludeUnmergablePRsFromBatch()</code> which inspects a failed batch merge's per-PR errors and excludes only the individual PR(s) that came back <code class="inline">UnmergablePRError</code>, leaving batch-mates alone.</li>
-    <li>Replaced the wall-clock TTL (<code class="inline">map[string]time.Time</code>, 5-minute <code class="inline">mergeExclusionTTL</code>) with a sync-cycle counter (<code class="inline">map[string]int</code>, <code class="inline">mergeExclusionSyncs = 3</code>) aged by a new <code class="inline">ageMergeExclusions()</code>, called unconditionally once per <code class="inline">Sync()</code>. Since every entry is decremented (and deleted at zero) every cycle regardless of lookup, this also closes the unbounded-growth gap for abandoned/closed PRs.</li>
-    <li>Added <code class="inline">TestExcludeFromMergeReplacesPriorSHA</code>, <code class="inline">TestTakeActionExcludesPRThatFailsInBatch</code>, <code class="inline">TestPickBatchExcludesMergeExcludedPR</code>; renamed <code class="inline">TestMergeExclusionExpiry</code> → <code class="inline">TestMergeExclusionAging</code>.</li>
+    <li>Two new <strong>should-fix</strong> findings, both in <code class="inline">takeAction</code>: the serial-trigger gate and the pre-existing-batch merge path each still operate on unfiltered data.</li>
+    <li>The prior "Resolved — batch-merge path bypassed the exclusion filter" entry is downgraded to <em>partially</em> resolved. Batch <em>selection</em> and post-failure exclusion recording were fixed; merging an already-successful batch was not.</li>
+    <li>Verdict downgraded from <strong>approve</strong> to <strong>request changes</strong>.</li>
   </ul>
 </div>
 
 <h2>Findings</h2>
 
+<h3>Should fix</h3>
+
+<div class="finding should-fix">
+  <p><span class="sev should-fix">should fix</span><span class="loc"><code class="inline">pkg/tide/tide.go:1741</code></span></p>
+  <p><strong>Serial-trigger gate still tests unfiltered <code class="inline">successes</code>, so an excluded PR keeps blocking other PRs' tests.</strong> The direct-merge branch filters into <code class="inline">eligible</code>, but the fall-through condition still reads <code class="inline">len(successes) == 0</code> using the original slice — so a PR excluded from merging still counts as a "success" that suppresses serial test triggers. Concretely: the pool holds PR #1 (green, permanently rejected by branch protection) and PR #2 (missing required presubmits). #1 is excluded, <code class="inline">eligible</code> is empty, so we fall through — but <code class="inline">len(successes) == 1</code>, so #2's presubmits are never triggered, and <code class="inline">pickBatch</code> can't rescue it since #2 isn't retest-eligible. This is the same class of head-of-line blocking the PR set out to fix. Gate on <code class="inline">eligible</code> instead.</p>
+  <pre>eligible := c.filterExcludedFromMerge(sp.log, sp.org, sp.repo, successes)
+...
+if len(missings) &gt; 0 &amp;&amp; len(pendings) == 0 &amp;&amp; <span style="background:#ffe0e0;font-weight:600;">len(successes) == 0</span> {</pre>
+</div>
+
+<div class="finding should-fix">
+  <p><span class="sev should-fix">should fix</span><span class="loc"><code class="inline">pkg/tide/tide.go:1695</code>, doc comment at <code class="inline">615-621</code></span></p>
+  <p><strong>Pre-existing batch merges bypass the exclusion set entirely.</strong> <code class="inline">takeAction</code> merges <code class="inline">batchMerges</code> unconditionally — only <code class="inline">pickBatch</code> (new batch selection) and the single-merge path run through <code class="inline">filterExcludedFromMerge</code>. <code class="inline">batchMerges</code> comes from <code class="inline">accumulateBatch</code>, which returns any still-valid successful batch ProwJob, so a batch containing an excluded PR is retried whole every cycle. The practical exposure is narrower than it first looks: if the excluded PR's batch-mates merge successfully they leave the pool, invalidating the batch refs, so sustained retry requires <em>every</em> other batch member to also fail transiently on the same cycle. What is unambiguously wrong either way is the doc comment on <code class="inline">excludeUnmergablePRsFromBatch</code>, which asserts this case is handled ("whether the batch is retried whole or the PR resurfaces in a later batch"). Either filter <code class="inline">batchMerges</code> (skipping the batch if any member is excluded) or correct the comment.</p>
+  <pre>// Merge the batch!
+if len(batchMerges) &gt; 0 {
+    merged, err = c.provider.mergePRs(sp, <span style="background:#ffe0e0;font-weight:600;">batchMerges</span>, c.statusUpdate.dontUpdateStatus)</pre>
+</div>
+
+<h3>Nits</h3>
+
 <div class="finding nit">
-  <p><span class="sev nit">nit</span><span class="loc"><code class="inline">pkg/tide/tide.go:99-105, 536-550</code></span></p>
-  <p><strong><code class="inline">excludeFromMerge</code> will panic on a nil <code class="inline">mergeExclusions</code> map.</strong> The field is only initialized in <code class="inline">newSyncController</code>. Several existing tests build <code class="inline">&amp;syncController{...}</code> literals directly without setting it; none currently trigger the write path, so there's no live bug today, but this is a latent footgun for future test additions. <code class="inline">isExcludedFromMerge</code>'s read is nil-safe already.</p>
+  <p><span class="sev nit">nit</span><span class="loc"><code class="inline">pkg/tide/tide.go:670</code></span></p>
+  <p><strong><code class="inline">ageMergeExclusions()</code> ages on syncs that never attempt a merge.</strong> It is the first statement of <code class="inline">Sync()</code>, before <code class="inline">provider.Query()</code>, <code class="inline">blockers()</code> and <code class="inline">dividePool()</code>, and it also ages during syncs where the subpool is <code class="inline">PoolBlocked</code> and <code class="inline">takeAction</code> is never reached. Three consecutive syncs failing on <code class="inline">failed getting blockers</code> will expire an exclusion having granted Tide zero actual opportunities to advance. Aging after the subpools are synced — or only counting cycles in which <code class="inline">takeAction</code> ran — would match the documented intent. Low impact: worst case the PR is retried one cycle early.</p>
+</div>
+
+<div class="finding nit">
+  <p><span class="sev nit">nit</span><span class="loc"><code class="inline">pkg/tide/tide.go:1358-1363</code></span></p>
+  <p><strong><code class="inline">pickBatch</code> log message misattributes an exclusion to failing tests.</strong> The filter is applied to <code class="inline">candidates</code> immediately before the empty check, but the message still says the PRs weren't passing tests — when in fact they did pass and were merge-excluded. An operator debugging "why is no batch being created" gets pointed at CI instead of at the exclusion. Distinguish the two causes, or move the filter after the check.</p>
+  <pre>candidates = c.filterExcludedFromMerge(sp.log, sp.org, sp.repo, candidates)
+if len(candidates) == 0 {
+    log.Debug("None of the prs in the subpool was passing tests, no batch will be created")</pre>
+</div>
+
+<div class="finding nit">
+  <p><span class="sev nit">nit</span><span class="loc"><code class="inline">pkg/tide/tide.go:588</code> vs <code class="inline">1673</code></span></p>
+  <p><strong>Per-cycle skip is logged at Debug while the original exclusion is Warning.</strong> No history record is written for the skips either, and the PR's Tide status context still reports it as in the merge pool — so the author sees a green, "in merge pool" PR that Tide silently declines to touch, and an operator investigating days later (after the Warning aged out of retention, with Debug off in production) has nothing to go on. Promoting the skip to Info would fix that; volume is bounded by pool size.</p>
+  <pre>log.WithFields(pr.logFields()).Debug("Skipping PR temporarily excluded from merging due to recent merge failure.")</pre>
+</div>
+
+<div class="finding nit">
+  <p><span class="sev nit">nit</span><span class="loc"><code class="inline">pkg/tide/tide.go:104-105, 538-552</code></span></p>
+  <p><strong><code class="inline">excludeFromMerge</code> will panic on a nil <code class="inline">mergeExclusions</code> map.</strong> The field is only initialized in <code class="inline">newSyncController</code>, but <code class="inline">tide_test.go</code> constructs <code class="inline">&amp;syncController{...}</code> literals in ~15 places, and the two new merge-failure tests had to remember <code class="inline">mergeExclusions: make(map[string]int)</code>. No live bug today — every production path goes through the constructor — but a lazy init inside <code class="inline">excludeFromMerge</code> removes a sharp edge for the next test or constructor added. <code class="inline">isExcludedFromMerge</code>'s read is nil-safe already.</p>
   <pre>mergeExclusions   map[string]int
 mergeExclusionsMu sync.Mutex</pre>
 </div>
 
 <div class="finding nit">
-  <p><span class="sev nit">nit</span><span class="loc"><code class="inline">pkg/tide/tide.go:1649</code> vs <code class="inline">1663</code></span></p>
-  <p><strong>Per-cycle skip is logged at Debug while the original exclusion is Warning.</strong> An operator investigating a stuck PR days after the original Warning scrolled out of retention has no way to see why it's still being skipped, since Debug logging is usually off in production. Promoting the skip log to Info would help incident debugging without much added volume.</p>
-  <pre>sp.log.WithFields(pr.logFields()).Debug("Skipping PR temporarily excluded from merging due to recent merge failure.")</pre>
+  <p><span class="sev nit">nit</span><span class="loc"><code class="inline">pkg/tide/tide.go:599-613</code></span></p>
+  <p><strong><code class="inline">isUnmergableError</code> duplicates knowledge of <code class="inline">mergeFailure</code>'s internal shape.</strong> It iterates <code class="inline">mf.errs</code> and recurses — structural knowledge that also lives in <code class="inline">mergeFailure.historyMessage()</code>/<code class="inline">operatorError()</code> and now in <code class="inline">excludeUnmergablePRsFromBatch()</code> as well. A <code class="inline">mergeFailure.underlyingErrors() []error</code> helper would consolidate. Not urgent.</p>
 </div>
 
-<div class="finding nit">
-  <p><span class="sev nit">nit</span><span class="loc"><code class="inline">pkg/tide/tide.go:570-586</code></span></p>
-  <p><strong><code class="inline">isUnmergableError</code> duplicates knowledge of <code class="inline">mergeFailure</code>'s internal shape.</strong> It iterates <code class="inline">mf.errs</code> and recurses — structural knowledge that also lives in <code class="inline">mergeFailure.historyMessage()</code>/<code class="inline">operatorError()</code>. A <code class="inline">mergeFailure.underlyingErrors() []error</code> helper would reduce duplication. Not urgent.</p>
-</div>
+<h3>Questions</h3>
 
 <div class="finding question">
-  <p><span class="sev question">question</span></p>
-  <p><strong>Should <code class="inline">mergeExclusionSyncs</code> (3 cycles, hardcoded) be configurable?</strong> Raised by the deployment-risk pass, originally against the 5-minute TTL — the concern carries over to the new sync-cycle counter. For large multi-tenant installations, a branch-protection misconfiguration can take a human longer than a few sync cycles to notice/fix, causing the PR to flap in and out of the queue with repeated Warning logs. A <code class="inline">Tide</code> config knob and/or a <code class="inline">tide_merge_exclusions_active</code> metric would give operators visibility without a code change to tune. The switch from wall-clock to cycle-count makes the exclusion window's real-world duration depend on the configured sync period, worth calling out in docs if not made configurable.</p>
+  <p><span class="sev question">question</span><span class="loc"><code class="inline">pkg/tide/tide.go:519</code></span></p>
+  <p><strong>Should <code class="inline">mergeExclusionSyncs</code> (3 cycles, hardcoded) be configurable?</strong> For large multi-tenant installations, a branch-protection misconfiguration can take a human longer than three sync cycles to notice and fix, causing the PR to flap in and out of the queue with repeated Warning logs. A <code class="inline">Tide</code> config knob and/or a <code class="inline">tide_merge_exclusions_active</code> metric would give operators visibility without a code change. The switch from wall-clock TTL to cycle count also makes the window's real-world duration depend on the configured sync period — worth documenting if not made configurable.</p>
 </div>
 
 <h2>Resolved</h2>
 
 <div class="finding should-fix" style="opacity:0.75;">
   <p><span class="sev should-fix">was should-fix</span></p>
-  <p><strong>Batch-merge path bypassed the exclusion filter entirely.</strong> Fixed in <code class="inline">d6d08d0b2</code>: <code class="inline">takeAction</code>'s batch-merge branch now calls the new <code class="inline">excludeUnmergablePRsFromBatch()</code> on failure, excluding only the PR(s) that failed with <code class="inline">UnmergablePRError</code> — batch-mates that merged fine are untouched. <code class="inline">pickBatch</code> also now runs candidates through <code class="inline">filterExcludedFromMerge()</code> before batch selection. Covered by <code class="inline">TestTakeActionExcludesPRThatFailsInBatch</code> and <code class="inline">TestPickBatchExcludesMergeExcludedPR</code>.</p>
+  <p><strong>Exclusion map entries for abandoned PRs were never cleaned up.</strong> Fixed in <code class="inline">d6d08d0b2</code> by switching from lazy wall-clock expiry to a sync-cycle counter: <code class="inline">ageMergeExclusions()</code> runs once per <code class="inline">Sync()</code>, decrementing (and deleting at zero) every entry regardless of whether it's looked up again, and <code class="inline">excludeFromMerge</code> drops the PR's prior-SHA entries on re-exclusion. Covered by <code class="inline">TestMergeExclusionAging</code>.</p>
 </div>
 
 <div class="finding should-fix" style="opacity:0.75;">
-  <p><span class="sev should-fix">was should-fix</span></p>
-  <p><strong>Exclusion map entries for abandoned PRs were never cleaned up.</strong> Fixed in <code class="inline">d6d08d0b2</code>, as a side effect of switching to a sync-cycle counter: <code class="inline">ageMergeExclusions()</code> is now called unconditionally once per <code class="inline">Sync()</code>, decrementing (and deleting at zero) every entry regardless of whether it's looked up again. Covered by <code class="inline">TestMergeExclusionAging</code> (renamed from <code class="inline">TestMergeExclusionExpiry</code>).</p>
+  <p><span class="sev should-fix">partially resolved — was should-fix</span></p>
+  <p><strong>Batch-merge path bypassed the exclusion filter.</strong> Fixed in <code class="inline">d6d08d0b2</code> for two of three sub-paths: <code class="inline">pickBatch</code> now runs candidates through <code class="inline">filterExcludedFromMerge()</code> before batch selection, and <code class="inline">excludeUnmergablePRsFromBatch()</code> excludes only the PR(s) that returned <code class="inline">UnmergablePRError</code>, leaving batch-mates alone. Covered by <code class="inline">TestTakeActionExcludesPRThatFailsInBatch</code> and <code class="inline">TestPickBatchExcludesMergeExcludedPR</code>. <strong>Not</strong> fixed: merging an already-successful batch (<code class="inline">batchMerges</code>) — see the open should-fix above. The previous review recorded this finding as fully resolved; that was wrong.</p>
 </div>
 
 <h2>Things I checked and was fine with</h2>
 <ul class="tight">
+  <li><code class="inline">go test ./pkg/tide/...</code> and <code class="inline">go vet ./pkg/tide/</code> both pass (the previous pass had no Go toolchain and relied on static tracing only).</li>
   <li>Traced the full error-unwrap chain end-to-end: <code class="inline">tryMerge()</code> wraps <code class="inline">github.UnmergablePRError</code> as <code class="inline">fmt.Errorf("PR is unmergable...: %w", err)</code> → <code class="inline">GitHubProvider.mergePRs()</code> wraps into <code class="inline">&amp;mergeFailure{errs: []mergeErr{...}}</code> → <code class="inline">isUnmergableError()</code> type-asserts <code class="inline">*mergeFailure</code>, recurses into <code class="inline">me.err</code>, falls back to <code class="inline">errors.As</code>. Matches the real runtime error shape.</li>
-  <li><code class="inline">takeAction</code> only calls <code class="inline">mergePRs</code> with a single-element slice on the non-batch path, so <code class="inline">mergeFailure.errs</code> always has exactly one entry there — no ambiguity about which PR triggered the exclusion.</li>
-  <li>Exclusion set/check both key off <code class="inline">pr.HeadRefOID</code> consistently.</li>
-  <li><code class="inline">mergeExclusionsMu</code> is the correct primitive: <code class="inline">syncSubpool</code> runs concurrently across org/repo/branch subpools via goroutines, so the shared map genuinely needs locking; both accessors take/release it around the full read-modify-write sequence.</li>
-  <li>New tests (<code class="inline">TestTakeActionSkipsExcludedPRs</code>, <code class="inline">TestIsUnmergableError</code>, <code class="inline">TestMergeExclusionAging</code>, <code class="inline">TestExcludeFromMergeReplacesPriorSHA</code>, <code class="inline">TestTakeActionExcludesPRThatFailsInBatch</code>, <code class="inline">TestPickBatchExcludesMergeExcludedPR</code>) are structurally consistent with existing test helpers; argument counts/types match current signatures. <code class="inline">TestTakeActionSkipsExcludedPRs</code> and <code class="inline">TestTakeActionExcludesPRThatFailsInBatch</code> are genuine end-to-end regression tests (single-PR and batch paths respectively), not unit tests of map internals.</li>
-  <li><code class="inline">isUnmergableError</code> correctly returns false for <code class="inline">UnauthorizedToPushError</code> and generic errors — not overly broad.</li>
-  <li>Feature is GitHub-only (Gerrit provider untouched); consistent with the PR's stated scope.</li>
-  <li>No config/API/schema changes; drop-in, safely revertible (all state is in-memory, lost on restart).</li>
-  <li>Could not run <code class="inline">go test ./pkg/tide/...</code> in this environment (no <code class="inline">go</code> binary available) — relied on static tracing of signatures/control flow instead of executing the suite.</li>
+  <li><code class="inline">errors.As</code> works against <code class="inline">github.UnmergablePRError</code> (value receiver on <code class="inline">Error()</code>), and correctly does <em>not</em> match the distinct <code class="inline">UnmergablePRBaseChangedError</code>, <code class="inline">UnauthorizedToPushError</code> or <code class="inline">MergeCommitsForbiddenError</code> types — the predicate isn't overly broad.</li>
+  <li>Key scheme is collision-safe: <code class="inline">o/r#1@</code> cannot prefix-match <code class="inline">o/r#12@</code>, so the prior-SHA cleanup loop in <code class="inline">excludeFromMerge</code> won't delete unrelated PRs' entries.</li>
+  <li>Aging arithmetic matches the constant: a PR excluded during sync N is skipped for N+1..N+3 and retried at N+4. The <code class="inline">remaining &gt; 0</code> check in <code class="inline">isExcludedFromMerge</code> is dead (zero-valued entries are deleted) but harmless.</li>
+  <li>SHA-keyed invalidation genuinely works: <code class="inline">filterExcludedFromMerge</code> checks the current <code class="inline">HeadRefOID</code>, so a force-push clears the exclusion immediately.</li>
+  <li><code class="inline">mergeExclusionsMu</code> is the correct primitive and correctly scoped: <code class="inline">syncSubpool</code> runs concurrently across org/repo/branch subpools, locking is flat (no nested acquisition between <code class="inline">filterExcludedFromMerge</code> and <code class="inline">isExcludedFromMerge</code>), and <code class="inline">syncController</code> is only used through a pointer, so the added mutex introduces no copylock issue.</li>
+  <li><code class="inline">takeAction</code> only calls <code class="inline">mergePRs</code> with a single-element slice on the non-batch path, so <code class="inline">mergeFailure.errs</code> has exactly one entry there — no ambiguity about which PR triggered the exclusion.</li>
+  <li>New tests (<code class="inline">TestTakeActionSkipsExcludedPRs</code>, <code class="inline">TestIsUnmergableError</code>, <code class="inline">TestMergeExclusionAging</code>, <code class="inline">TestExcludeFromMergeReplacesPriorSHA</code>, <code class="inline">TestTakeActionExcludesPRThatFailsInBatch</code>, <code class="inline">TestPickBatchExcludesMergeExcludedPR</code>) are structurally consistent with existing helpers; the two <code class="inline">takeAction</code> ones are genuine end-to-end regression tests, not unit tests of map internals.</li>
+  <li>Feature is GitHub-only (Gerrit provider untouched), consistent with the PR's stated scope. No config/API/schema changes; all state is in-memory and lost on restart, so the change is drop-in and safely revertible.</li>
 </ul>
 
 <div class="correction">
@@ -124,9 +160,10 @@ mergeExclusionsMu sync.Mutex</pre>
 
 <h2>Open questions for the author</h2>
 <ul class="tight">
+  <li>The serial-trigger gate (<code class="inline">len(successes) == 0</code>) looks like it should be <code class="inline">len(eligible) == 0</code> — was gating on the unfiltered slice deliberate, or an oversight? As written, an unmergeable PR still starves other PRs of serial tests, which is the failure mode #673 describes.</li>
+  <li>Should <code class="inline">batchMerges</code> be filtered through <code class="inline">filterExcludedFromMerge</code> as well, or is the "batch retried whole" case considered unreachable in practice? If the latter, the doc comment on <code class="inline">excludeUnmergablePRsFromBatch</code> should be narrowed, since it currently claims that case is covered.</li>
   <li>Should <code class="inline">mergeExclusionSyncs</code> be configurable, and would a metric for active exclusions be worth adding now vs. as a follow-up?</li>
 </ul>
-<p><em>Resolved since previous review: the batch-merge exclusion gap and the unbounded exclusion-map growth question (see Resolved section above).</em></p>
 
 </body>
 </html>

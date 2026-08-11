@@ -3,9 +3,13 @@ pr: kubernetes-sigs/prow#804
 title: "plank: revive pods terminated by kubelet"
 head_sha: e039405950fc1f0303e1388925b839aab7016f60
 base: main
-reviewed_at: 2026-08-09T14:05:46Z
+reviewed_at: 2026-08-11T11:28:56Z
 verdict: needs-discussion
 refresh_log:
+  - from_sha: e039405950fc1f0303e1388925b839aab7016f60
+    to_sha: e039405950fc1f0303e1388925b839aab7016f60
+    at: 2026-08-11T11:28:56Z
+    summary: No code changes. Prucek softened his objection, saying he'd be ok approving if the feature were opt-in (per dobesv's earlier suggestion) and pulled in maintainers petr-muller and smg247 for input. petr-muller replied he likes the feature at a high level and wouldn't mind merging it, but hadn't been closely engaged since others seemed to have it covered. First sign of convergence toward a path forward (opt-in) since the correctness/scope debate stalled; lgtm still absent, smg247 has not yet responded.
   - from_sha: 937cca0dd5d26c70a8601af8b1748c4b8c4ddf9f
     to_sha: e039405950fc1f0303e1388925b839aab7016f60
     at: 2026-08-09T14:05:46Z
@@ -39,6 +43,7 @@ Reviewed from three additional maintainer perspectives (code quality, maintainab
 - `Prucek` narrowed the objection: concedes the retriable-by-design intent for spot reclamation/graceful shutdown, but points out `TerminationByKubelet` also covers node-pressure eviction (memory/disk/PID pressure), where retrying could add load to an already-pressured cluster. `mimowo` countered that `MaxRevivals=3` already bounds the blast radius, and that relying on contributors to manually diagnose pressure-vs-infra causes before deciding to retry is unrealistic. Author `yuluo-yx` posted a 3-point summary reframing the open question as: should Prow auto-recover from infra disruption by default, and how to add granular per-cause/per-cluster control. Still unresolved; `lgtm` remains absent.
 - (2026-08-09) `head_sha` changed to `e039405` via a merge from `main`, but the merge only pulls in unrelated commits (dependabot dependency bumps, a `testfreeze` plugin change) — no changes under `pkg/plank` or `pkg/pjutil`, so the feature diff is unchanged and none of the prior code findings are affected.
 - `yuluo-yx` asked `mimowo`/`Prucek` what the next steps are, noting consensus hasn't been reached. `mimowo` replied that the original motivating flakiness (spot-VM CI jobs) no longer occurs since they moved off spot VMs for CI, and proposed leaving the PR open one more week, closing it as lazy consensus if no maintainer moves it forward. Design/correctness debate (retriable-by-design vs. node-pressure over-inclusion) remains unresolved; `lgtm` still absent.
+- (2026-08-10) `Prucek` signaled he'd be willing to approve if the feature were made opt-in (echoing `dobesv`'s earlier separate-controller-flavored suggestion), and asked maintainers `petr-muller` and `smg247` to weigh in. `petr-muller` responded favorably at a high level ("would not mind merging it") but noted he hadn't been closely tracking the thread. This is the first concrete move toward a compromise (gate the behavior behind an opt-in, addressing the earlier "no opt-out for this revival cause" finding below) since the correctness/scope debate stalled; `smg247` has not yet responded and `lgtm` remains absent.
 
 ## Findings
 

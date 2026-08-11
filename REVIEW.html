@@ -37,7 +37,7 @@
     <div><strong>PR:</strong> <a href="https://github.com/kubernetes-sigs/prow/pull/804">kubernetes-sigs/prow#804</a></div>
     <div><strong>Base:</strong> <code>main</code></div>
     <div><strong>Head SHA:</strong> <code>e039405950fc1f0303e1388925b839aab7016f60</code></div>
-    <div><strong>Reviewed at:</strong> <code>2026-08-09T14:05:46Z</code></div>
+    <div><strong>Reviewed at:</strong> <code>2026-08-11T11:28:56Z</code></div>
   </div>
 </header>
 
@@ -55,6 +55,10 @@
 
 <div class="refresh-log">
   <strong>Refresh (2026-08-09T14:05:46Z):</strong> Head SHA changed to <code>e039405</code> but only via a merge from <code>main</code> picking up unrelated commits (dependabot dependency bumps, a <code>testfreeze</code> plugin change) — no changes under <code>pkg/plank</code> or <code>pkg/pjutil</code>, the PR's actual feature is untouched. <code>yuluo-yx</code> asked <code>mimowo</code>/<code>Prucek</code> for next steps since consensus hasn't been reached; <code>mimowo</code> replied that the original flakiness (spot VM CI jobs) no longer occurs since they moved off spot VMs, and proposed keeping the PR open one more week before closing as lazy consensus if no maintainer moves it forward. Design/correctness debate remains unresolved; <code>lgtm</code> still absent.
+</div>
+
+<div class="refresh-log">
+  <strong>Refresh (2026-08-11T11:28:56Z):</strong> No code changes. <code>Prucek</code> softened his objection, saying he'd be ok approving if the feature were opt-in (per <code>dobesv</code>'s earlier suggestion), and pulled in maintainers <code>petr-muller</code> and <code>smg247</code> for input. <code>petr-muller</code> replied he likes the feature at a high level and wouldn't mind merging it, but hadn't been closely engaged since others seemed to have it covered. First sign of convergence toward a path forward (opt-in) since the correctness/scope debate stalled; <code>lgtm</code> still absent, <code>smg247</code> has not yet responded.
 </div>
 
 <div class="verdict needs-discussion">
@@ -85,6 +89,7 @@
   <li><code>Prucek</code> narrowed the objection: concedes the retriable-by-design intent for spot reclamation/graceful shutdown, but points out <code>TerminationByKubelet</code> also covers node-pressure eviction (memory/disk/PID pressure), where retrying could add load to an already-pressured cluster. <code>mimowo</code> countered that <code>MaxRevivals=3</code> already bounds the blast radius, and that relying on contributors to manually diagnose pressure-vs-infra causes before deciding to retry is unrealistic. Author <code>yuluo-yx</code> posted a 3-point summary reframing the open question as: should Prow auto-recover from infra disruption by default, and how to add granular per-cause/per-cluster control. Still unresolved; <code>lgtm</code> remains absent.</li>
   <li>(2026-08-09) <code>head_sha</code> changed to <code>e039405</code> via a merge from <code>main</code>, but the merge only pulls in unrelated commits (dependabot dependency bumps, a <code>testfreeze</code> plugin change) — no changes under <code>pkg/plank</code> or <code>pkg/pjutil</code>, so the feature diff is unchanged and none of the prior code findings are affected.</li>
   <li><code>yuluo-yx</code> asked <code>mimowo</code>/<code>Prucek</code> what the next steps are, noting consensus hasn't been reached. <code>mimowo</code> replied that the original motivating flakiness (spot-VM CI jobs) no longer occurs since they moved off spot VMs for CI, and proposed leaving the PR open one more week, closing it as lazy consensus if no maintainer moves it forward. Design/correctness debate (retriable-by-design vs. node-pressure over-inclusion) remains unresolved; <code>lgtm</code> still absent.</li>
+  <li>(2026-08-10) <code>Prucek</code> signaled he'd be willing to approve if the feature were made opt-in (echoing <code>dobesv</code>'s earlier separate-controller-flavored suggestion), and asked maintainers <code>petr-muller</code> and <code>smg247</code> to weigh in. <code>petr-muller</code> responded favorably at a high level ("would not mind merging it") but noted he hadn't been closely tracking the thread. This is the first concrete move toward a compromise (gate the behavior behind an opt-in, addressing the earlier "no opt-out for this revival cause" finding below) since the correctness/scope debate stalled; <code>smg247</code> has not yet responded and <code>lgtm</code> remains absent.</li>
 </ul>
 
 <h2>Findings</h2>

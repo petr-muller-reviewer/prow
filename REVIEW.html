@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Review: kubernetes-sigs/prow#782</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; line-height: 1.6; max-width: 820px; margin: 2rem auto; padding: 0 1rem; color: #24292f; }
+  h1 { font-size: 1.4rem; border-bottom: 1px solid #d0d7de; padding-bottom: .4rem; }
+  h2 { font-size: 1.15rem; margin-top: 2rem; border-bottom: 1px solid #d0d7de; padding-bottom: .3rem; }
+  h3 { font-size: 1rem; margin-top: 1.4rem; }
+  code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; font-size: 0.9em; background: #f6f8fa; padding: 0.15em 0.35em; border-radius: 3px; }
+  pre { background: #f6f8fa; padding: 1em; overflow-x: auto; border-radius: 6px; font-size: 0.85em; line-height: 1.5; }
+  .meta { background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 6px; padding: 0.8rem 1rem; margin-bottom: 1.5rem; font-size: 0.9em; }
+  .meta dt { font-weight: 600; display: inline; }
+  .meta dd { display: inline; margin: 0 1.2rem 0 0; }
+  .verdict { background: #dafbe1; border: 1px solid #218bff; border-radius: 6px; padding: 0.8rem 1rem; margin-bottom: 1.5rem; }
+  .severity { display: inline-block; font-size: 0.75em; font-weight: 600; padding: 0.15em 0.5em; border-radius: 3px; vertical-align: middle; margin-right: 0.3em; text-transform: uppercase; }
+  .sev-should-fix { background: #fff8c5; color: #6a5300; }
+  .sev-nit { background: #f0f0f0; color: #57606a; }
+  .sev-question { background: #ddf4ff; color: #0550ae; }
+  ul { padding-left: 1.4em; }
+  li { margin-bottom: 0.3em; }
+  a { color: #0969da; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .finding { margin-bottom: 1.5rem; border-left: 3px solid #d0d7de; padding-left: 1rem; }
+  .finding.sf { border-left-color: #d4a72c; }
+  .finding.nt { border-left-color: #bbb; }
+  .finding.qu { border-left-color: #218bff; }
+</style>
+</head>
+<body>
+
+<h1>Review: owners-label: add ignore_merge_commits config option</h1>
+
+<div class="meta">
+  <dl>
+    <dt>PR:</dt><dd><a href="https://github.com/kubernetes-sigs/prow/pull/782">kubernetes-sigs/prow#782</a></dd>
+    <dt>Author:</dt><dd>carterpewpew</dd>
+    <dt>Base:</dt><dd>main</dd>
+    <dt>Head SHA:</dt><dd><code>ddde196fedea6f58c0fd75fa102433444b989d21</code></dd>
+    <dt>Reviewed:</dt><dd>2026-07-26T22:39:28Z</dd>
+  </dl>
+</div>
+
+<div class="meta">
+  <strong>Refresh log</strong>
+  <ul>
+    <li>2026-07-03: No code changes (head SHA unchanged at <code>f864b330</code>). Reviewer Prucek left an inline comment on <code>config.go:258</code> reinforcing the existing config-granularity question.</li>
+    <li>2026-07-26: <code>f864b330</code> &rarr; <code>ddde196fe</code>. <code>IgnoreMergeCommits</code> converted from a global bool to a <code>[]string</code> of org/org-repo entries with an <code>IgnoreMergeCommitsFor(org, repo)</code> helper, mirroring the existing <code>SkipCollaborators</code> pattern. Resolves the config-granularity question raised by all three review perspectives and by Prucek's inline comment.</li>
+  </ul>
+</div>
+
+<div class="verdict">
+  <strong>Verdict: Approve with suggestions.</strong>
+  All three review perspectives (code quality, maintainability, deployment risk) converge on approval with no critical issues. The implementation is correct, well-tested, and off by default with zero impact on existing deployments. A few non-blocking suggestions around API call ordering, config scope documentation, and inter-plugin context are worth considering.
+</div>
+
+<h2>What this PR does</h2>
+<ul>
+  <li>Adds opt-in <code>ignore_merge_commits</code> config to the <code>Owners</code> config struct.</li>
+  <li>When enabled for a repo, the <code>owners-label</code> plugin calls <code>ListPullRequestCommits</code> on every PR open/reopen/synchronize and skips labeling if any commit has more than one parent (merge commit).</li>
+  <li>After a force-push removes the merge commit, the plugin re-fires on the <code>synchronize</code> event and applies correct labels.</li>
+  <li>Adds <code>ListPullRequestCommits</code> to the local <code>githubClient</code> interface (real and fake clients already implement it).</li>
+  <li>Adds <code>TestHandleIgnoreMergeCommits</code> covering both the skip and proceed paths.</li>
+</ul>
+
+<p><strong>Since previous review:</strong></p>
+<ul>
+  <li><code>IgnoreMergeCommits</code> changed from a global <code>bool</code> to a <code>[]string</code> of <code>org</code> / <code>org/repo</code> entries (<code>pkg/plugins/config.go:256-259</code>), following the same shape as <code>SkipCollaborators</code>.</li>
+  <li>Added <code>Configuration.IgnoreMergeCommitsFor(org, repo)</code> (<code>pkg/plugins/config.go:305-313</code>), the same lookup pattern as <code>SkipCollaborators</code>.</li>
+  <li><code>handlePullRequest</code> now calls <code>pc.PluginConfig.IgnoreMergeCommitsFor(pre.Repo.Owner.Login, pre.Repo.Name)</code> instead of reading the bool directly (<code>pkg/plugins/owners-label/owners-label.go:69</code>).</li>
+</ul>
+
+<h2>Findings</h2>
+
+<h3>Should fix</h3>
+
+<div class="finding sf">
+  <h3><span class="severity sev-should-fix">Should fix</span> Merge commit API call runs before label-need check</h3>
+  <p><code>pkg/plugins/owners-label/owners-label.go:77-88</code></p>
+  <p>
+    <code>ListPullRequestCommits</code> executes before <code>GetPullRequestChanges</code>. When no OWNERS labels apply to the changed files, the function already early-exits at line 99 with the comment <em>"Return now to save API tokens"</em>. With the current ordering, the commit-listing call is wasted in that case. Moving the label-need check (lines 90&ndash;102) before the merge commit check would avoid the extra API call on the common path where no labels apply.
+  </p>
+<pre>if ignoreMergeCommits {
+    commits, err := ghc.ListPullRequestCommits(org, repo, number)
+    // ...
+}
+
+// ... later, after GetPullRequestChanges:
+if neededLabels.Len() == 0 {
+    // No labels requested for the given files. Return now to save API tokens.
+    return nil
+}</pre>
+</div>
+
+<h3>Nits</h3>
+
+<div class="finding nt">
+  <h3><span class="severity sev-nit">Nit</span> No test coverage for IgnoreMergeCommitsFor / handlePullRequest wiring</h3>
+  <p><code>pkg/plugins/config.go:305-313</code>, <code>pkg/plugins/owners-label/owners-label.go:69</code></p>
+  <p>
+    <code>IgnoreMergeCommitsFor</code> (new) and <code>handlePullRequest</code> (pre-existing, now calls it) have no direct test coverage &mdash; only the lower-level <code>handle()</code> is tested via <code>TestHandleIgnoreMergeCommits</code>, which still takes the resolved <code>bool</code>. Note <code>SkipCollaborators</code>, the pattern this mirrors, is likewise untested directly, so this matches existing convention rather than introducing a new gap.
+  </p>
+</div>
+
+<div class="finding nt">
+  <h3><span class="severity sev-nit">Nit</span> Add comment noting relationship with mergecommitblocker</h3>
+  <p><code>pkg/plugins/owners-label/owners-label.go:77</code></p>
+  <p>
+    This feature exists specifically because of how <code>owners-label</code> and <code>mergecommitblocker</code> interact. A brief comment would save future maintainers from reconstructing the inter-plugin relationship from the PR description. Also worth noting why this uses the GitHub API rather than git directly (because <code>owners-label</code> does not clone the repo, unlike <code>mergecommitblocker</code> which uses <code>MergeCommitsExistBetween</code>).
+  </p>
+</div>
+
+<div class="finding nt">
+  <h3><span class="severity sev-nit">Nit</span> Add error-path test for ListPullRequestCommits failure</h3>
+  <p><code>pkg/plugins/owners-label/owners-label_test.go</code></p>
+  <p>
+    Happy paths are well-covered (merge commit present and absent), but no test verifies that a <code>ListPullRequestCommits</code> error is propagated correctly rather than swallowed. A small table-driven case would round out coverage.
+  </p>
+</div>
+
+<h2>Resolved</h2>
+
+<div class="finding qu">
+  <h3><span class="severity sev-question">Resolved</span> Config granularity: global bool vs per-org/repo &mdash; resolved in ddde196fe</h3>
+  <p><code>pkg/plugins/config.go:256-259</code></p>
+  <p>
+    <strong>Original concern:</strong> <code>MDYAMLRepos</code>, <code>SkipCollaborators</code>, and <code>Filenames</code> in the same <code>Owners</code> struct support per-org or per-repo configuration with corresponding lookup helpers. <code>IgnoreMergeCommits</code> was a single bool for the entire prow instance. A multi-tenant deployment could not enable this selectively. This concern was flagged independently by all three review perspectives, and reviewer <strong>Prucek</strong> raised the same point as an inline PR comment on 2026-07-02.
+  </p>
+  <p>
+    <strong>Resolution:</strong> <code>IgnoreMergeCommits</code> is now <code>[]string</code> of <code>org</code> / <code>org/repo</code> entries, with <code>IgnoreMergeCommitsFor(org, repo)</code> resolving it the same way <code>SkipCollaborators</code> does. <code>handlePullRequest</code> was updated to call the new helper.
+  </p>
+</div>
+
+<div class="finding nt">
+  <h3><span class="severity sev-nit">Nit</span> Add comment on config field noting global scope &mdash; superseded in ddde196fe</h3>
+  <p><code>pkg/plugins/config.go:256-259</code></p>
+  <p>
+    Moot &mdash; the field is no longer global-only (see above). The doc comment on <code>IgnoreMergeCommits</code> was updated to describe the org/org-repo list format instead.
+  </p>
+</div>
+
+<h2>Things I checked and was fine with</h2>
+<ul>
+  <li>Merge commit detection logic (<code>len(commit.Parents) &gt; 1</code>) is correct.</li>
+  <li>Error from <code>ListPullRequestCommits</code> is properly propagated with <code>%w</code> wrapping.</li>
+  <li>The <code>githubClient</code> interface addition compiles: real client and fake client both already implement <code>ListPullRequestCommits</code>.</li>
+  <li><code>RepositoryCommit.Parents</code> field exists as <code>[]GitCommit</code> in <code>pkg/github/types.go</code>.</li>
+  <li>Existing <code>TestHandle</code> passes <code>false</code> for the new param, preserving prior behavior.</li>
+  <li>New <code>TestHandleIgnoreMergeCommits</code> covers both paths (merge commit present, merge commit absent).</li>
+  <li>No callers of <code>handle()</code> besides <code>handlePullRequest</code> and tests.</li>
+  <li><code>handlePullRequest</code> correctly gates on PR action before reaching the new code.</li>
+  <li>Removed-behavior audit: no invariants lost; old behavior fully preserved when <code>ignoreMergeCommits=false</code>.</li>
+  <li>Checked reuse with <code>mergecommitblocker</code> (git-based detection, different approach) and <code>dco</code> (same expression but different purpose: filter vs gate). Neither warrants extraction.</li>
+  <li>Config field uses <code>omitempty</code>, defaults to <code>false</code>, existing configs parse identically.</li>
+  <li>No new permissions required; <code>ListPullRequestCommits</code> uses same GitHub token scope.</li>
+  <li>Upgrade and rollback both safe, no ordering dependencies.</li>
+</ul>
+
+<h2>Open questions for the author</h2>
+<ul>
+  <li>Would reordering checks so the label-need check runs before the merge-commit detection be acceptable? The existing code explicitly optimizes for the no-labels path (<em>"Return now to save API tokens"</em>), and the current ordering bypasses that optimization.</li>
+</ul>
+
+</body>
+</html>

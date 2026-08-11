@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Review of kubernetes-sigs/prow#825</title>
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+    color: #1a1a1a;
+    max-width: 860px;
+    margin: 2rem auto;
+    padding: 0 1.5rem;
+    background: #fdfdfd;
+  }
+  code, pre {
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 0.92em;
+  }
+  pre {
+    background: #f4f4f4;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 0.75rem 1rem;
+    overflow-x: auto;
+  }
+  header {
+    border-bottom: 2px solid #333;
+    padding-bottom: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  header dl {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 0.25rem 1rem;
+    margin: 0.5rem 0 0 0;
+  }
+  header dt { font-weight: 600; color: #555; }
+  header dd { margin: 0; }
+  h1 { margin-bottom: 0.25rem; }
+  h2 {
+    border-bottom: 1px solid #ccc;
+    padding-bottom: 0.3rem;
+    margin-top: 2.5rem;
+  }
+  .verdict-badge {
+    display: inline-block;
+    padding: 0.2rem 0.7rem;
+    border-radius: 999px;
+    font-weight: 600;
+    font-size: 0.9em;
+    background: #fde2e2;
+    color: #a12626;
+    border: 1px solid #e8a3a3;
+  }
+  .finding {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.25rem;
+  }
+  .finding.blocking { border-left: 5px solid #c0392b; }
+  .finding.should-fix { border-left: 5px solid #d68910; }
+  .finding.nit { border-left: 5px solid #7f8c8d; }
+  .finding h3 { margin-top: 0; margin-bottom: 0.5rem; }
+  .sev {
+    text-transform: uppercase;
+    font-size: 0.72em;
+    letter-spacing: 0.05em;
+    font-weight: 700;
+    padding: 0.1rem 0.5rem;
+    border-radius: 4px;
+    margin-right: 0.5rem;
+    vertical-align: middle;
+  }
+  .sev.blocking { background: #c0392b; color: white; }
+  .sev.should-fix { background: #d68910; color: white; }
+  .sev.nit { background: #7f8c8d; color: white; }
+  .loc { color: #555; font-size: 0.9em; }
+  .hl { background: #ffe9a8; }
+  ul.plain li { margin-bottom: 0.4rem; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Review of kubernetes-sigs/prow#825</h1>
+  <dl>
+    <dt>PR</dt><dd><a href="https://github.com/kubernetes-sigs/prow/pull/825">kubernetes-sigs/prow#825</a></dd>
+    <dt>Title</dt><dd>announcement: notify transfer-issue consolidation under issue-management plugin</dd>
+    <dt>Base</dt><dd>main</dd>
+    <dt>Head SHA</dt><dd><code>6beef156d0cf270918f4bc148ec29b82cbe9f6b4</code></dd>
+    <dt>Reviewed at</dt><dd>2026-08-11T14:26:20Z</dd>
+  </dl>
+</header>
+
+<h2>Verdict</h2>
+<p><span class="verdict-badge">Request changes</span></p>
+<p>The PR is a tiny, docs-only change (one commit, four lines added to <code>announcements.md</code>), but its central factual claim — that <code>transfer-issue</code> has been consolidated into <code>issue-management</code> — does not match the current state of the codebase. Publishing it as written would tell users to remove a plugin they still need.</p>
+
+<h2>What this PR does</h2>
+<ul class="plain">
+  <li>Adds a single dated bullet to the "New features" announcements list in <code>site/content/en/docs/announcements.md</code>.</li>
+  <li>Announces that <code>transfer-issue</code> has been folded into a new <code>issue-management</code> plugin, together with <code>/link-issue</code>, <code>/unlink-issue</code>, <code>/pin-issue</code>, and <code>/unpin-issue</code>.</li>
+  <li>Instructs operators to replace <code>transfer-issue</code> with <code>issue-management</code> in their <code>plugins.yaml</code>.</li>
+  <li>References PR #702 in the commit message as the source of the underlying change.</li>
+</ul>
+
+<h2>Findings</h2>
+
+<div class="finding blocking">
+  <h3><span class="sev blocking">Blocking</span>Announcement claims a consolidation that has not happened in code</h3>
+  <p class="loc"><code>site/content/en/docs/announcements.md:12-15</code></p>
+  <pre>- *August 11, 2026* The `transfer-issue` plugin has been consolidated into the new `issue-management`
+    plugin along with `/link-issue`, `/unlink-issue`, `/pin-issue`, and `/unpin-issue` commands.
+    <span class="hl">Users should replace `transfer-issue` with `issue-management` in their `plugins.yaml`.</span>
+    Both `/transfer-issue &lt;repo&gt;` and the shorter `/transfer &lt;repo&gt;` are supported.</pre>
+  <p><code>pkg/plugins/transfer-issue/transfer-issue.go</code> still defines <code>pluginName = "transfer-issue"</code> and registers its own generic comment handler. It's still imported separately in <code>cmd/hook/plugin-imports/plugin-imports.go</code> (line 66) alongside <code>issue-management</code> (line 41). <code>pkg/plugins/issue-management/</code> has no transfer-related code at all. A user who follows this announcement and swaps <code>transfer-issue</code> for <code>issue-management</code> in <code>plugins.yaml</code> loses <code>/transfer-issue</code> and <code>/transfer</code> entirely.</p>
+</div>
+
+<h2>Things I checked and was fine with</h2>
+<ul class="plain">
+  <li><code>/link-issue</code>, <code>/unlink-issue</code>, <code>/pin-issue</code>, <code>/unpin-issue</code> genuinely exist in <code>issue-management</code> — that part of the announcement is accurate.</li>
+  <li>Confirmed via grep that <code>issue-management</code> package has zero occurrences of "transfer".</li>
+  <li>Confirmed both plugins are still separately registered in the plugin-imports file.</li>
+  <li>Change surface is minimal and low-risk mechanically (pure doc addition, no code touched).</li>
+</ul>
+
+<h2>Open questions for the author</h2>
+<ul class="plain">
+  <li>Is there a follow-up PR (the commit message references #702) that actually merges <code>transfer-issue</code> into <code>issue-management</code>? If so, should this announcement wait until that lands, or be merged together with it?</li>
+  <li>If the consolidation is planned but not yet done, should the wording move from past tense ("has been consolidated") to a forward-looking notice, so operators don't act on it prematurely?</li>
+</ul>
+
+</body>
+</html>

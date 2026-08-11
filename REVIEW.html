@@ -87,8 +87,8 @@
     <div><strong>PR:</strong> <a href="https://github.com/kubernetes-sigs/prow/pull/808">kubernetes-sigs/prow#808</a></div>
     <div><strong>Base:</strong> main</div>
     <div><strong>Head SHA:</strong> <code class="inline">402d33a621297b0172011c6e530351542ef84fb5</code></div>
-    <div><strong>Reviewed at:</strong> 2026-08-09T01:33:36Z</div>
-    <div><strong>Refresh log:</strong> rebased from <code class="inline">e2d6a6b1c</code> to <code class="inline">402d33a62</code> onto current main (dependabot bumps only, no PR-content change); <code class="inline">ylink-lfs</code> posted <code class="inline">/ok-to-test</code> on 2026-07-29; author <code class="inline">SaaiAravindhRaja</code> asked "is there anything i can improve on?" on 2026-08-01. Second full diff pass on 2026-08-09 with no code change since: the Tide interaction was re-verified and <strong>escalated to blocking</strong>, and two new findings added.</div>
+    <div><strong>Reviewed at:</strong> 2026-08-11T11:09:26Z</div>
+    <div><strong>Refresh log:</strong> rebased from <code class="inline">e2d6a6b1c</code> to <code class="inline">402d33a62</code> onto current main (dependabot bumps only, no PR-content change); <code class="inline">ylink-lfs</code> posted <code class="inline">/ok-to-test</code> on 2026-07-29; author <code class="inline">SaaiAravindhRaja</code> asked "is there anything i can improve on?" on 2026-08-01. Second full diff pass on 2026-08-09 with no code change since: the Tide interaction was re-verified and <strong>escalated to blocking</strong>, and two new findings added. On 2026-08-10, <code class="inline">Prucek</code> asked whether this duplicates #778 (<code class="inline">/override-sticky</code>); no code change.</div>
   </div>
 </header>
 
@@ -213,6 +213,7 @@ func shaGetterFactory(oc overrideClient, org, repo, ref string) func() (string, 
     <li>Was the Tide coupling considered? Tide only counts an override when the embedded SHA equals the current pool base (<code class="inline">tide.go:1055</code>) <em>and</em> only sees the synthetic ProwJob through an index keyed on that same SHA (<code class="inline">tide.go:1974</code>). With the original SHA preserved, an override on a stale failing status satisfies neither — so <code class="inline">/override</code> would stop unblocking merges in exactly the moved-base case. Is a follow-up planned (sentinel for plain override, or splitting the status SHA from the ProwJob refs SHA)?</li>
     <li>Should a <code class="inline">GetRef</code> failure still guarantee all-or-nothing across the contexts of a single <code class="inline">/override</code> invocation, as it did before this change? Right now the user can get a failure comment and a success comment for the same command.</li>
     <li>Could <code class="inline">TestHandleCachesFallbackBaseSHA</code> be reworked to test <code class="inline">cachedRefGetter</code> directly (specifically error caching)? As written it passes even with the wrapper removed, because <code class="inline">shaGetterFactory</code> already caches successes.</li>
+    <li>Is this PR complementary to or overlapping with #778 (<code class="inline">/override-sticky</code>)? <code class="inline">Prucek</code> raised this on 2026-08-10; worth an explicit reply distinguishing base-SHA preservation from sticky-override persistence.</li>
   </ul>
 </section>
 

@@ -3,7 +3,7 @@ pr: kubernetes-sigs/prow#808
 title: "override: preserve status base SHA when overriding jobs"
 head_sha: 402d33a621297b0172011c6e530351542ef84fb5
 base: main
-reviewed_at: 2026-08-09T01:33:36Z
+reviewed_at: 2026-08-11T11:09:26Z
 verdict: needs-discussion
 refresh_log:
   - from: e2d6a6b1ce031b2896302af67b5bb05af12b3098
@@ -15,6 +15,9 @@ refresh_log:
   - from: 402d33a621297b0172011c6e530351542ef84fb5
     to: 402d33a621297b0172011c6e530351542ef84fb5
     summary: Second full diff pass (2026-08-09), no code change since last review. Tide interaction re-verified and escalated from should-fix to blocking - the stale base SHA fails both Tide gates (context description check at tide.go:1055 AND the pool ProwJob index at tide.go:1974/2171). Two new findings added - duplicate/contradictory comments on the mid-loop error path, and TestHandleCachesFallbackBaseSHA not actually exercising cachedRefGetter.
+  - from: 402d33a621297b0172011c6e530351542ef84fb5
+    to: 402d33a621297b0172011c6e530351542ef84fb5
+    summary: No code change. Prucek commented 2026-08-10T14:17:28Z questioning whether this duplicates #778 ("Add /override-sticky command for persistent overrides", merged 2026-07-14). #778 addresses a different mechanism (a sticky flag that persists overrides across new pushes), not base-SHA preservation on override - the two look complementary rather than duplicative, but worth the author/maintainer confirming explicitly since it's an open question on the PR.
 ---
 
 ## What this PR does
@@ -101,3 +104,4 @@ Since previous review:
 - Was the Tide coupling (`tide.go:1055` context check plus the `cacheIndexKey` pool filter at `tide.go:1974`) considered? With a stale base SHA the override satisfies neither, so `/override` stops unblocking merges in the moved-base case. Is a follow-up (sentinel for plain override, or splitting status SHA from ProwJob refs SHA) planned?
 - Should a `GetRef` failure still guarantee all-or-nothing across the contexts of one `/override` invocation, as it did pre-PR?
 - Should `TestHandleCachesFallbackBaseSHA` be reworked to test `cachedRefGetter` directly (error caching), since the current assertion passes without it?
+- Is this PR complementary to or overlapping with #778 (`/override-sticky`)? Prucek raised this on 2026-08-10; worth an explicit reply distinguishing base-SHA preservation from sticky-override persistence.

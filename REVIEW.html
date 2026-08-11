@@ -54,7 +54,7 @@
 <tr><td class="k">Title</td><td>chore(deps): bump the aws group across 1 directory with 4 updates</td></tr>
 <tr><td class="k">Head SHA</td><td><code>f3371bdd561f5c793fe165cf823f30ec26c0a559</code></td></tr>
 <tr><td class="k">Base</td><td><code>main</code></td></tr>
-<tr><td class="k">Reviewed at</td><td>2026-08-11T11:18:24Z</td></tr>
+<tr><td class="k">Reviewed at</td><td>2026-08-11T15:27:42Z</td></tr>
 </table>
 </div>
 
@@ -92,6 +92,7 @@ github.com/aws/aws-sdk-go-v2/service/s3 v1.107.0</pre>
 <li>"Set FIPS-approved TLS curve preferences when FIPS module is active" (#3499) &mdash; not exercised; <code>aws.go</code> doesn't opt into FIPS mode.</li>
 <li>Transfer Manager <code>HeadObject</code> field additions (#3491) &mdash; not applicable, this repo doesn't use Transfer Manager.</li>
 <li>No pseudo-versions; all new tags resolve cleanly via the Go module proxy with proper <code>Origin</code> metadata pointing at real upstream tags.</li>
+<li>Investigated the <code>pull-prow-integration</code> CI failure (run <code>2087143800412573696</code>): unrelated to this PR. <code>test/integration/integration-test.sh</code> installs Tekton Pipeline v1.6.0 into a KIND cluster; the <code>tekton-pipelines-webhook</code> pod got stuck in <code>ImagePullBackOff</code> because containerd/kubelet repeatedly hit <code>net/http: TLS handshake timeout</code> pulling <code>ghcr.io/tektoncd/pipeline/webhook-...:v1.6.0</code> from <code>pkg-containers.githubusercontent.com</code> (8 failures over ~7 minutes, same error for the <code>resolvers</code> image). No code path connects the AWS SDK v2 bump to Tekton image pulls &mdash; this is a registry/network flake in CI infra, not caused by the diff. Recommend <code>/retest</code>.</li>
 </ul>
 
 <h2>Open questions for the author</h2>

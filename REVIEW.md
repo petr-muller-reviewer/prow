@@ -3,7 +3,7 @@ pr: kubernetes-sigs/prow#826
 title: "chore(deps): bump the aws group across 1 directory with 4 updates"
 head_sha: f3371bdd561f5c793fe165cf823f30ec26c0a559
 base: main
-reviewed_at: 2026-08-11T11:18:24Z
+reviewed_at: 2026-08-11T15:27:42Z
 verdict: approve
 ---
 
@@ -37,6 +37,7 @@ Plus indirect submodules riding the same AWS SDK v2 release train (`aws/protocol
 - "Set FIPS-approved TLS curve preferences when FIPS module is active" (#3499) — not exercised, `aws.go` doesn't opt into FIPS mode.
 - Transfer Manager `HeadObject` field additions (#3491) — not applicable, we don't use Transfer Manager.
 - No pseudo-versions; all tags resolve cleanly via the Go module proxy with proper `Origin` metadata.
+- Investigated `pull-prow-integration` CI failure (run 2087143800412573696): unrelated to this PR. `test/integration/integration-test.sh` installs Tekton Pipeline v1.6.0 into a KIND cluster; the `tekton-pipelines-webhook` pod stuck in `ImagePullBackOff` because containerd/kubelet repeatedly hit `net/http: TLS handshake timeout` pulling `ghcr.io/tektoncd/pipeline/webhook-...:v1.6.0` from `pkg-containers.githubusercontent.com` (8 failures over ~7 min, same error for the `resolvers` image too). No code path connects the AWS SDK v2 bump to Tekton image pulls — this is a registry/network flake in CI infra, not caused by the diff. Recommend `/retest`.
 
 ## Open questions
 - Given the releases are only 5-6 days old, is there urgency to merge now, or can this wait a few more days for additional soak time?

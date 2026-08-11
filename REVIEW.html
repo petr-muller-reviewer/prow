@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Review: prow#832</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; line-height: 1.55; max-width: 860px; margin: 2rem auto; padding: 0 1.5rem; color: #1a1a1a; }
+  code, pre { font-family: "SF Mono", Menlo, Consolas, monospace; }
+  code { background: #f2f2f2; padding: 0.1em 0.35em; border-radius: 3px; font-size: 0.9em; }
+  pre { background: #1e1e1e; color: #e6e6e6; padding: 0.9rem 1rem; border-radius: 6px; overflow-x: auto; font-size: 0.85em; }
+  header { border-bottom: 2px solid #ddd; padding-bottom: 1rem; margin-bottom: 1.5rem; }
+  header dl { display: grid; grid-template-columns: max-content 1fr; gap: 0.2rem 1rem; margin: 0.5rem 0 0; }
+  header dt { font-weight: 600; color: #555; }
+  header dd { margin: 0; }
+  h1 { font-size: 1.4rem; margin: 0; }
+  h2 { font-size: 1.15rem; border-bottom: 1px solid #eee; padding-bottom: 0.3rem; margin-top: 2rem; }
+  .verdict { padding: 0.8rem 1rem; border-radius: 6px; background: #fff4e5; border-left: 4px solid #d97706; margin: 1rem 0; }
+  .finding { border: 1px solid #e5e5e5; border-radius: 6px; padding: 1rem; margin: 1rem 0; }
+  .finding h3 { margin: 0 0 0.5rem; font-size: 1.02rem; }
+  .badge { display: inline-block; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; padding: 0.15em 0.5em; border-radius: 4px; margin-right: 0.5em; }
+  .badge.blocking { background: #fde2e2; color: #b91c1c; }
+  .badge.should-fix { background: #fff4d6; color: #92700c; }
+  .badge.nit { background: #e6f0ff; color: #1d4ed8; }
+  .badge.question { background: #ece6ff; color: #5b21b6; }
+  .loc { color: #555; font-size: 0.85em; }
+  ul.tight li { margin-bottom: 0.4rem; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>spyglass/junit: add copy-to-clipboard widget for test names</h1>
+  <dl>
+    <dt>PR</dt><dd><a href="https://github.com/kubernetes-sigs/prow/pull/832">kubernetes-sigs/prow#832</a></dd>
+    <dt>Base</dt><dd>main</dd>
+    <dt>Head SHA</dt><dd><code>54de4a56ff35d1d87963fbe9edd039de7a6398dd</code></dd>
+    <dt>Reviewed at</dt><dd>2026-08-11T15:17:14Z</dd>
+  </dl>
+</header>
+
+<div class="verdict">
+  <strong>Verdict: Request changes.</strong> The change itself is small and well-crafted — a sensible delegated-listener pattern for the copy icon, and a clean template consolidation that removes ~10 duplicated inline snippets. But the clipboard call is missing a secure-context guard, which will throw an uncaught exception (instead of showing the intended error icon) on any plain-HTTP deck deployment.
+</div>
+
+<h2>What this PR does</h2>
+<ul class="tight">
+  <li>Adds a copy-to-clipboard icon next to every rendered test name in the JUnit spyglass lens, copying the bare test name (not the "ClassName: Name" display string) so it can be used directly as a filter/search term.</li>
+  <li>Introduces a shared <code>testname</code> Go template that renders name + icon together, replacing ~10 duplicated inline <code>{{ "{{$firstTest.ClassName}}: {{$firstTest.Name}}" }}</code> snippets across the failed/flaky/passed/skipped/grouped sections.</li>
+  <li>Click handling is delegated to a single capture-phase listener on <code>#junit-container</code> rather than one listener per icon, since a run can have thousands of tests.</li>
+  <li>The icon is opacity-0 by default and revealed on row hover via CSS, staying in layout at all times so revealing it doesn't shift the row.</li>
+  <li><code>lens_test.go</code> gains assertions that rendered HTML for a couple of test names includes the new icon markup.</li>
+</ul>
+
+<h2>Findings</h2>
+
+<h3 style="border:none;margin-top:1rem;">Blocking</h3>
+<div class="finding">
+  <h3><span class="badge blocking">blocking</span>navigator.clipboard used without secure-context guard</h3>
+  <div class="loc"><code>pkg/spyglass/lenses/junit/lens.ts:72</code></div>
+  <p><code>navigator.clipboard</code> is only defined in secure contexts (HTTPS, or localhost) per the Clipboard API spec. On a plain-HTTP deck deployment (e.g. an internal/dev Prow cluster without TLS termination), <code>navigator.clipboard</code> is <code>undefined</code>, so <code>navigator.clipboard.writeText(...)</code> throws a synchronous <code>TypeError</code> before the promise chain is even constructed. The <code>.then(onFulfilled, onRejected)</code> rejection handler — which is supposed to set the icon to <code>error_outline</code> — never runs, so the failure surfaces as an uncaught exception with no user-visible feedback instead of the intended error state.</p>
+  <pre>e.stopPropagation();
+navigator.clipboard.writeText(button.dataset.testName!).then(() =&gt; {
+  button.innerText = 'check';
+  ...
+}, () =&gt; {
+  button.innerText = 'error_outline';
+  ...
+});</pre>
+</div>
+
+<h2>Things I checked and was fine with</h2>
+<ul class="tight">
+  <li>Delegated click listener registration/lifecycle (<code>addCopyTestNameButtons</code>, called once from <code>loaded()</code>) — correct, no duplicate binding.</li>
+  <li>Capture-phase ordering rationale vs. the row's own expand/collapse handler (bound directly on the row, between icon and container) — sound, and correctly explained in the added comment.</li>
+  <li><code>stopPropagation()</code> placement — prevents the row's expand/collapse handler from also firing on icon click; correct.</li>
+  <li>Test name carried via <code>data-test-name</code> attribute rather than scraped from cell text — avoids picking up the expander arrow or skip-reason text; correct approach.</li>
+  <li>Template consolidation into <code>testname</code> — removes duplication cleanly, all call sites updated consistently (verified across all 10 replaced call sites in the diff).</li>
+  <li><code>lens_test.go</code> new assertions match the actual rendered attribute order/classes.</li>
+  <li>CSS: <code>opacity: 0</code> + <code>tr:hover</code> reveal keeps layout stable (no reflow on hover) — correct technique for the stated goal.</li>
+</ul>
+
+<h2>Open questions for the author</h2>
+<ul class="tight">
+  <li>Is plain-HTTP deck a deployment configuration that's actually in use/supported? If not, the secure-context concern may be moot — but if it is, the <code>writeText</code> call needs a guard (e.g. checking <code>navigator.clipboard</code> before calling, or wrapping in try/catch) so it fails through the intended error-icon path instead of throwing uncaught.</li>
+</ul>
+
+</body>
+</html>

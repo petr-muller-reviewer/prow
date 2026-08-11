@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Review of prow#828</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; line-height: 1.6; color: #1a1a1a; max-width: 900px; margin: 2rem auto; padding: 0 1.5rem; background: #fff; }
+  code, pre { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; }
+  code { background: #f2f2f2; padding: 0.1rem 0.35rem; border-radius: 3px; font-size: 0.92em; }
+  pre { background: #f6f6f6; border: 1px solid #e0e0e0; border-radius: 6px; padding: 0.8rem 1rem; overflow-x: auto; }
+  header { border-bottom: 2px solid #333; padding-bottom: 1rem; margin-bottom: 1.5rem; }
+  header dl { display: grid; grid-template-columns: max-content 1fr; gap: 0.2rem 1rem; margin: 0.5rem 0 0; }
+  header dt { font-weight: 600; color: #555; }
+  h1 { font-size: 1.5rem; margin: 0; }
+  h2 { font-size: 1.15rem; border-bottom: 1px solid #ddd; padding-bottom: 0.3rem; margin-top: 2rem; }
+  h3 { font-size: 1rem; margin-bottom: 0.3rem; }
+  .verdict { background: #e8f5e9; border-left: 4px solid #2e7d32; padding: 0.8rem 1rem; border-radius: 4px; }
+  .finding { border: 1px solid #e0e0e0; border-radius: 6px; padding: 0.8rem 1rem; margin: 0.8rem 0; }
+  .finding.nit { border-left: 4px solid #999; }
+  .dep { border: 1px solid #e0e0e0; border-radius: 6px; padding: 0.8rem 1rem; margin: 0.8rem 0; }
+  .dep dl { display: grid; grid-template-columns: max-content 1fr; gap: 0.25rem 1rem; margin: 0.4rem 0 0; }
+  .dep dt { font-weight: 600; color: #555; }
+  .sev { display: inline-block; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; padding: 0.1rem 0.5rem; border-radius: 3px; margin-right: 0.5rem; background: #eee; color: #555; }
+  .take { font-weight: 600; }
+  .loc { color: #555; font-size: 0.9em; }
+  ul { padding-left: 1.4rem; }
+  a { color: #1a56db; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Review of kubernetes-sigs/prow#828</h1>
+  <dl>
+    <dt>Title</dt><dd>chore(deps): bump vulnerable dependencies</dd>
+    <dt>Head SHA</dt><dd><code>01d8ac2444bbff706a2b6c9b00c90e8bcdc56f31</code></dd>
+    <dt>Base</dt><dd><code>main</code></dd>
+    <dt>Reviewed</dt><dd>2026-08-11T08:41:36Z</dd>
+    <dt>Link</dt><dd><a href="https://github.com/kubernetes-sigs/prow/pull/828">github.com/kubernetes-sigs/prow/pull/828</a></dd>
+  </dl>
+</header>
+
+<h2>Verdict</h2>
+<div class="verdict">
+  <strong>Approve.</strong> A clean, low-risk security dependency bump (go-git, grpc, cel-go, sigstore/rekor, sigstore-go, timestamp-authority, go-tuf, plus JS postcss/picomatch) alongside a mechanical, verified-equivalent <code>strings.Split</code>&rarr;<code>strings.Cut</code> lint fix. The grpc bump fixes a real DoS vector in a network-facing gRPC server (gangway); the go-git bump fixes a path-traversal bug our usage doesn't meaningfully expose. Build and module hygiene are clean, and no code bug survived multi-angle review. Only two optional nits remain, neither blocking.
+</div>
+
+<h2>What this PR does</h2>
+<ul>
+  <li>Bumps <code>go-git</code> v5.19.1&rarr;v5.19.2, <code>grpc</code> v1.79.3&rarr;v1.82.1, <code>cel-go</code> v0.26.0&rarr;v0.29.0 to address known CVEs.</li>
+  <li>Pulls forward transitive dependencies: <code>golang.org/x/{net,oauth2,sync,text,crypto,mod,sys,term,tools}</code>, envoyproxy, opentelemetry-operations-go, cncf/xds.</li>
+  <li>Same bumps applied to the <code>hack/tools</code> submodule's <code>go.mod</code>/<code>go.sum</code> (cosign/sigstore toolchain, docker, go-openapi, prometheus, ~30 indirect churns).</li>
+  <li>Bumps <code>postcss</code> and <code>picomatch</code> in <code>site/package-lock.json</code> (transitive lockfile only, no <code>package.json</code> pin change).</li>
+  <li>Separately, a lint-driven commit replaces <code>strings.Split(s, sep)[0]</code> with <code>strings.Cut(s, sep)</code> across 9 call sites (config, checkconfig, deck, genyaml, plugins).</li>
+</ul>
+
+<h2>Dependency analysis</h2>
+
+<div class="dep">
+  <h3>github.com/go-git/go-git/v5 <code>v5.19.1 &rarr; v5.19.2</code></h3>
+  <dl>
+    <dt>Freshness</dt><dd>released 2026-07-29, ~13 days old. Past the 5-day danger zone, within the 2-week soak window.</dd>
+    <dt>Usage</dt><dd>Direct. Import surface: <code>pkg/plugins/testfreeze/checker/checker.go</code> (fetches refs into <strong>in-memory</strong> storage via <code>gitmemory.NewStorage()</code>), <code>test/integration/internal/fakegitserver/fakegitserver.go</code> (test-only, uses <code>git.PlainOpen</code> &rarr; filesystem-backed <code>dotgit</code> storage).</dd>
+    <dt>Changelog &amp; exposure</dt><dd>Fixes <em>"storage: dotgit, reject path traversal in reference names"</em> &mdash; a malicious remote could advertise ref names (<code>.</code>/<code>..</code>/control chars) that escape the refs subtree under filesystem-backed storage and clobber repo metadata. <code>checker.go</code> uses in-memory storage (unaffected); <code>fakegitserver.go</code> uses filesystem storage but is test-only infra, not a production path handling untrusted remotes. Exposure: light.</dd>
+    <dt>Take</dt><dd class="take">Safe to bump now.</dd>
+  </dl>
+</div>
+
+<div class="dep">
+  <h3>google.golang.org/grpc <code>v1.79.3 &rarr; v1.82.1</code></h3>
+  <dl>
+    <dt>Freshness</dt><dd>released 2026-07-15, ~27 days old. Fine.</dd>
+    <dt>Usage</dt><dd>Direct. Import surface: <code>cmd/gangway/main.go</code> + <code>pkg/gangway/gangway_grpc.pb.go</code> (gangway is a <strong>network-facing gRPC server</strong>), <code>pkg/gangway/client/google/google.go</code>, <code>pkg/resultstore/{client,writer/writer}.go</code> (gRPC clients), <code>test/integration/internal/fakepubsub/fakepubsub.go</code>.</dd>
+    <dt>Changelog &amp; exposure</dt><dd>Security fix &mdash; <em>"server: Stop reading from the connection when flooded by HTTP/2 frames"</em> (DoS mitigation via a new frame-count limit, default 100, tunable via <code>GRPC_GO_EXPERIMENTAL_CONTROL_BUFFER_THROTTLE_LIMIT</code>). Gangway runs a real network-facing gRPC server, so this directly applies. Exposure: heavy, sensitive.</dd>
+    <dt>Take</dt><dd class="take">Take this now &mdash; the clearest justification for the whole PR.</dd>
+  </dl>
+</div>
+
+<div class="dep">
+  <h3>golang.org/x/net, x/oauth2, x/sync, x/text</h3>
+  <dl>
+    <dt>Freshness</dt><dd><code>x/net</code> v0.56.0 (2026-06-09, ~2mo), <code>x/oauth2</code> v0.36.0 (2026-02-11, ~6mo). Fine.</dd>
+    <dt>Usage &amp; exposure</dt><dd>Direct but routine transitive-consistency bumps riding along with go-git/grpc; no distinct CVE motivation found beyond that chain.</dd>
+    <dt>Take</dt><dd class="take">Fine to bump, no separate scrutiny needed.</dd>
+  </dl>
+</div>
+
+<p><strong>Long tail (not deep-dived):</strong> <code>hack/tools/go.mod</code> ~30 indirect churns (cosign/sigstore toolchain, docker, go-openapi, prometheus) &mdash; tooling-only, not shipped. <code>site/package-lock.json</code> postcss/picomatch &mdash; transitive lockfile only. <code>cel-go</code> v0.26.0&rarr;v0.29.0, <code>antlr4-go</code>, envoyproxy/cncf-xds, opentelemetry-gcp detectors &mdash; indirect-only, pulled in by the grpc/genproto bump.</p>
+
+<h2>Findings</h2>
+
+<div class="finding nit">
+  <span class="sev">Nit</span><strong>ad-hoc org/repo split duplicates existing helpers</strong>
+  <p class="loc"><code>pkg/plugins/config.go:1373</code> (also <code>cmd/checkconfig/main.go:1008,1545</code>, <code>cmd/deck/configured_jobs.go:83</code>, <code>cmd/deck/tide.go:193,272</code>)</p>
+  <pre>org, _, _ := strings.Cut(repo, "/")</pre>
+  <p>Re-encodes pre-existing <code>strings.Split(repo, "/")[0]</code> logic instead of reusing <code>pkg/config.SplitRepoName</code>/<code>NewOrgRepo</code>. This duplication predates the PR and isn't introduced by this diff &mdash; and it's not a trivial swap, since <code>SplitRepoName</code> errors on a missing <code>/</code> (different semantics) and <code>NewOrgRepo</code> returns a struct, not a string. Optional drive-by cleanup only.</p>
+</div>
+
+<div class="finding nit">
+  <span class="sev">Nit</span><strong>unrelated commits bundled in one PR</strong>
+  <p class="loc">commit structure: <code>f7cf72fd8</code> (dep bump) + <code>01d8ac244</code> (lint refactor)</p>
+  <p>A security dependency bump is bundled with an unrelated lint-fix commit. Low real risk since either commit can still be reverted/cherry-picked independently by SHA, but splitting would keep the security-relevant history cleaner for future backports.</p>
+</div>
+
+<h2>Things I checked and was fine with</h2>
+<ul>
+  <li><code>go build ./...</code> succeeds on both modules (root and <code>hack/tools</code>).</li>
+  <li><code>go mod verify</code> and <code>go mod tidy -diff</code> clean in both modules.</li>
+  <li>All 9 <code>strings.Cut</code> call sites verified semantically equivalent to the prior <code>strings.Split(...)[0]</code>, including no-separator edge cases.</li>
+  <li>No unsafe/vulnerable-pattern usage of the bumped APIs found in project code that the CVE fixes would affect.</li>
+  <li>go-git and grpc release provenance confirmed via proxy.golang.org and upstream release notes/commit ranges; neither is a pseudo-version or unusually fresh release.</li>
+</ul>
+
+<h2>Open questions for the author</h2>
+<ul>
+  <li>Any objection to keeping lint-fix commits split out of future security-bump PRs, so the security-relevant diff stays minimal and easy to backport?</li>
+  <li>Was the grpc HTTP/2 frame-flood fix (v1.82.1) the actual trigger for this PR? Worth confirming gangway doesn't need <code>GRPC_GO_EXPERIMENTAL_CONTROL_BUFFER_THROTTLE_LIMIT</code> tuned from its default (100 frames).</li>
+</ul>
+
+</body>
+</html>

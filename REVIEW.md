@@ -1,15 +1,38 @@
 ---
 pr: kubernetes-sigs/prow#828
 title: "chore(deps): bump vulnerable dependencies"
-head_sha: 01d8ac2444bbff706a2b6c9b00c90e8bcdc56f31
+head_sha: 86f489e2a8a9b504c27fbaa6a36d18d6a6e6d730
 base: main
-reviewed_at: 2026-08-11T08:41:36Z
+reviewed_at: 2026-08-11T15:17:25Z
 verdict: approve
+refresh_log:
+  - from: 01d8ac2444bbff706a2b6c9b00c90e8bcdc56f31
+    to: 86f489e2a8a9b504c27fbaa6a36d18d6a6e6d730
+    at: 2026-08-11T15:07:05Z
+    summary: >
+      PR rebased onto current main (picked up #830 lint-cleanups, #702 transfer-issue,
+      base-image autobumps, prometheus dep updates already merged there) after a
+      "needs rebase" bot comment; LGTM label removed by bot due to new changes. The
+      strings.Cut lint-fix commit was dropped from the branch since it had already
+      landed on main via #830 — PR is now dep-only (go.mod/go.sum, hack/tools
+      go.mod/go.sum, site/package-lock.json). Dependency version bumps analyzed
+      previously (go-git, grpc, cel-go, x/net, x/oauth2, x/sync, x/text) are unchanged.
+  - from: 86f489e2a8a9b504c27fbaa6a36d18d6a6e6d730
+    to: 86f489e2a8a9b504c27fbaa6a36d18d6a6e6d730
+    at: 2026-08-11T15:17:25Z
+    summary: >
+      No code change (head unchanged). kubernetes-prow[bot] posted a CI failure
+      report at 2026-08-11T15:07:59Z: pull-prow-integration failed as a required
+      test on 86f489e2a (pull-prow-image-build-test failed on the prior, now-stale
+      commit 01d8ac244). No human comments or reviews since last review.
 ---
 
 ## Dependency analysis
 
-Classification: dep + code (manifest/lockfile bumps plus a `strings.Split(...)[0]`→`strings.Cut(...)` lint-fix touching 6 source files).
+Classification: dep-only (as of `86f489e2a`). Previously dep + code; the
+`strings.Split(...)[0]`→`strings.Cut(...)` lint-fix commit was dropped during the
+rebase because it had already merged into main independently via #830 — no
+project source files remain in this PR's diff. See `refresh_log` above.
 
 ### github.com/go-git/go-git/v5 v5.19.1 -> v5.19.2
 - freshness: released 2026-07-29 (~13 days old at review time). Past the 5-day danger zone, within the 2-week soak window.
@@ -35,15 +58,17 @@ Classification: dep + code (manifest/lockfile bumps plus a `strings.Split(...)[0
 
 ## Findings
 
-### [nit] ad-hoc org/repo split duplicates existing helpers
-- where: `pkg/plugins/config.go:1373` (also `cmd/checkconfig/main.go:1008,1545`, `cmd/deck/configured_jobs.go:83`, `cmd/deck/tide.go:193,272`)
-- concern: `org, _, _ := strings.Cut(repo, "/")` re-encodes pre-existing `strings.Split(repo, "/")[0]` logic rather than reusing `pkg/config.SplitRepoName`/`NewOrgRepo`. Pre-existing duplication, not introduced by this diff; `SplitRepoName` errors on a missing `/` (different semantics) and `NewOrgRepo` returns a struct, so it's not a drop-in swap. Optional drive-by only.
-- excerpt: |
-    org, _, _ := strings.Cut(repo, "/")
+None outstanding — see Resolved below.
 
-### [nit] unrelated commits bundled in one PR
-- where: PR commit structure (`f7cf72fd8` dep bump, `01d8ac244` lint refactor)
-- concern: A security dependency bump is bundled with an unrelated `strings.Split`->`strings.Cut` lint-fix commit. Low real risk — either commit can still be reverted/cherry-picked independently by SHA — but splitting would keep the security-relevant history cleaner and easier to backport.
+## Resolved
+
+### [nit] ad-hoc org/repo split duplicates existing helpers — no longer in scope
+- where (was): `pkg/plugins/config.go:1373` (also `cmd/checkconfig/main.go:1008,1545`, `cmd/deck/configured_jobs.go:83`, `cmd/deck/tide.go:193,272`)
+- resolution: this code is no longer part of the PR's diff — it landed on main independently via #830 before this PR was rebased on top of it. Not something this PR needs to address.
+
+### [nit] unrelated commits bundled in one PR — resolved
+- where (was): PR commit structure (`f7cf72fd8` dep bump, `01d8ac244` lint refactor)
+- resolution: the lint-fix commit was dropped during the rebase (already on main via #830). The PR is now a single dependency-bump commit (`86f489e2a`) touching only manifests/lockfiles — nothing left to split.
 
 ## Checked
 - `go build ./...` succeeds on both modules (root and `hack/tools`).
@@ -53,5 +78,5 @@ Classification: dep + code (manifest/lockfile bumps plus a `strings.Split(...)[0
 - go-git and grpc release provenance confirmed via proxy.golang.org and upstream release notes/commit ranges; neither is a pseudo-version or unusually fresh release.
 
 ## Open questions
-- Any objection to keeping lint-fix commits split out of future security-bump PRs, so the security-relevant diff stays minimal and easy to backport?
 - Was the grpc HTTP/2 frame-flood fix (v1.82.1) the actual trigger for this PR? Worth confirming gangway doesn't need `GRPC_GO_EXPERIMENTAL_CONTROL_BUFFER_THROTTLE_LIMIT` tuned from its default (100 frames).
+- `pull-prow-integration` is currently reported failing (required) as of 2026-08-11T15:07:59Z on head `86f489e2a`. Not yet investigated — worth checking before merge whether this is a flake or a real regression from the dependency bump (e.g. a behavior change in a bumped transitive dep affecting integration tests).

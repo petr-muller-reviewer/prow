@@ -33,16 +33,26 @@
   <h1>Review of kubernetes-sigs/prow#828</h1>
   <dl>
     <dt>Title</dt><dd>chore(deps): bump vulnerable dependencies</dd>
-    <dt>Head SHA</dt><dd><code>01d8ac2444bbff706a2b6c9b00c90e8bcdc56f31</code></dd>
+    <dt>Head SHA</dt><dd><code>86f489e2a8a9b504c27fbaa6a36d18d6a6e6d730</code></dd>
     <dt>Base</dt><dd><code>main</code></dd>
-    <dt>Reviewed</dt><dd>2026-08-11T08:41:36Z</dd>
+    <dt>Reviewed</dt><dd>2026-08-11T15:17:25Z</dd>
     <dt>Link</dt><dd><a href="https://github.com/kubernetes-sigs/prow/pull/828">github.com/kubernetes-sigs/prow/pull/828</a></dd>
   </dl>
 </header>
 
+<h2>Refresh log</h2>
+<div class="finding">
+  <p><strong>2026-08-11T15:17:25Z</strong> &mdash; <code>86f489e2a8a9</code> &rarr; <code>86f489e2a8a9</code> (no code change)</p>
+  <p><code>kubernetes-prow[bot]</code> posted a CI failure report at 2026-08-11T15:07:59Z: <code>pull-prow-integration</code> failed as a required test on <code>86f489e2a</code> (<code>pull-prow-image-build-test</code> failed on the prior, now-stale commit <code>01d8ac244</code>). No human comments or reviews since last review.</p>
+</div>
+<div class="finding">
+  <p><strong>2026-08-11T15:07:05Z</strong> &mdash; <code>01d8ac2444bb</code> &rarr; <code>86f489e2a8a9</code></p>
+  <p>PR rebased onto current main (picked up #830 lint-cleanups, #702 transfer-issue, base-image autobumps, prometheus dep updates already merged there) after a "needs rebase" bot comment; LGTM label removed by bot due to new changes. The <code>strings.Cut</code> lint-fix commit was dropped from the branch since it had already landed on main via #830 &mdash; the PR is now dependency-manifest-only (<code>go.mod</code>/<code>go.sum</code>, <code>hack/tools/go.mod</code>/<code>go.sum</code>, <code>site/package-lock.json</code>). Dependency version bumps analyzed previously (go-git, grpc, cel-go, x/net, x/oauth2, x/sync, x/text) are unchanged.</p>
+</div>
+
 <h2>Verdict</h2>
 <div class="verdict">
-  <strong>Approve.</strong> A clean, low-risk security dependency bump (go-git, grpc, cel-go, sigstore/rekor, sigstore-go, timestamp-authority, go-tuf, plus JS postcss/picomatch) alongside a mechanical, verified-equivalent <code>strings.Split</code>&rarr;<code>strings.Cut</code> lint fix. The grpc bump fixes a real DoS vector in a network-facing gRPC server (gangway); the go-git bump fixes a path-traversal bug our usage doesn't meaningfully expose. Build and module hygiene are clean, and no code bug survived multi-angle review. Only two optional nits remain, neither blocking.
+  <strong>Approve.</strong> A clean, low-risk security dependency bump (go-git, grpc, cel-go, sigstore/rekor, sigstore-go, timestamp-authority, go-tuf, plus JS postcss/picomatch). Since the previous review the PR was rebased onto current main and is now dependency-manifest-only — the accompanying lint-fix commit was dropped because it had already landed on main separately via #830. The grpc bump fixes a real DoS vector in a network-facing gRPC server (gangway); the go-git bump fixes a path-traversal bug our usage doesn't meaningfully expose. No findings remain outstanding.
 </div>
 
 <h2>What this PR does</h2>
@@ -53,6 +63,8 @@
   <li>Bumps <code>postcss</code> and <code>picomatch</code> in <code>site/package-lock.json</code> (transitive lockfile only, no <code>package.json</code> pin change).</li>
   <li>Separately, a lint-driven commit replaces <code>strings.Split(s, sep)[0]</code> with <code>strings.Cut(s, sep)</code> across 9 call sites (config, checkconfig, deck, genyaml, plugins).</li>
 </ul>
+
+<p><strong>Classification (as of <code>86f489e2a</code>): dep-only.</strong> Previously dep + code; the <code>strings.Cut</code> lint-fix commit was dropped during the rebase because it had already merged into main independently via #830 &mdash; no project source files remain in this PR's diff.</p>
 
 <h2>Dependency analysis</h2>
 
@@ -88,18 +100,20 @@
 <p><strong>Long tail (not deep-dived):</strong> <code>hack/tools/go.mod</code> ~30 indirect churns (cosign/sigstore toolchain, docker, go-openapi, prometheus) &mdash; tooling-only, not shipped. <code>site/package-lock.json</code> postcss/picomatch &mdash; transitive lockfile only. <code>cel-go</code> v0.26.0&rarr;v0.29.0, <code>antlr4-go</code>, envoyproxy/cncf-xds, opentelemetry-gcp detectors &mdash; indirect-only, pulled in by the grpc/genproto bump.</p>
 
 <h2>Findings</h2>
+<p>None outstanding — both prior nits resolved by the rebase (see below).</p>
+
+<h2>Resolved</h2>
 
 <div class="finding nit">
-  <span class="sev">Nit</span><strong>ad-hoc org/repo split duplicates existing helpers</strong>
-  <p class="loc"><code>pkg/plugins/config.go:1373</code> (also <code>cmd/checkconfig/main.go:1008,1545</code>, <code>cmd/deck/configured_jobs.go:83</code>, <code>cmd/deck/tide.go:193,272</code>)</p>
-  <pre>org, _, _ := strings.Cut(repo, "/")</pre>
-  <p>Re-encodes pre-existing <code>strings.Split(repo, "/")[0]</code> logic instead of reusing <code>pkg/config.SplitRepoName</code>/<code>NewOrgRepo</code>. This duplication predates the PR and isn't introduced by this diff &mdash; and it's not a trivial swap, since <code>SplitRepoName</code> errors on a missing <code>/</code> (different semantics) and <code>NewOrgRepo</code> returns a struct, not a string. Optional drive-by cleanup only.</p>
+  <span class="sev">Nit</span><strong>ad-hoc org/repo split duplicates existing helpers</strong> — no longer in scope
+  <p class="loc">was: <code>pkg/plugins/config.go:1373</code> (also <code>cmd/checkconfig/main.go:1008,1545</code>, <code>cmd/deck/configured_jobs.go:83</code>, <code>cmd/deck/tide.go:193,272</code>)</p>
+  <p>This code is no longer part of the PR's diff — it landed on main independently via #830 before this PR was rebased on top of it. Not something this PR needs to address.</p>
 </div>
 
 <div class="finding nit">
-  <span class="sev">Nit</span><strong>unrelated commits bundled in one PR</strong>
-  <p class="loc">commit structure: <code>f7cf72fd8</code> (dep bump) + <code>01d8ac244</code> (lint refactor)</p>
-  <p>A security dependency bump is bundled with an unrelated lint-fix commit. Low real risk since either commit can still be reverted/cherry-picked independently by SHA, but splitting would keep the security-relevant history cleaner for future backports.</p>
+  <span class="sev">Nit</span><strong>unrelated commits bundled in one PR</strong> — resolved
+  <p class="loc">was: commit structure <code>f7cf72fd8</code> (dep bump) + <code>01d8ac244</code> (lint refactor)</p>
+  <p>The lint-fix commit was dropped during the rebase (already on main via #830). The PR is now a single dependency-bump commit (<code>86f489e2a</code>) touching only manifests/lockfiles &mdash; nothing left to split.</p>
 </div>
 
 <h2>Things I checked and was fine with</h2>
@@ -113,8 +127,8 @@
 
 <h2>Open questions for the author</h2>
 <ul>
-  <li>Any objection to keeping lint-fix commits split out of future security-bump PRs, so the security-relevant diff stays minimal and easy to backport?</li>
   <li>Was the grpc HTTP/2 frame-flood fix (v1.82.1) the actual trigger for this PR? Worth confirming gangway doesn't need <code>GRPC_GO_EXPERIMENTAL_CONTROL_BUFFER_THROTTLE_LIMIT</code> tuned from its default (100 frames).</li>
+  <li><code>pull-prow-integration</code> is currently reported failing (required) as of 2026-08-11T15:07:59Z on head <code>86f489e2a</code>. Not yet investigated &mdash; worth checking before merge whether this is a flake or a real regression from the dependency bump (e.g. a behavior change in a bumped transitive dep affecting integration tests).</li>
 </ul>
 
 </body>

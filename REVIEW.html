@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Review: kubernetes-sigs/prow#804</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; line-height: 1.6; color: #1a1a1a; max-width: 860px; margin: 2rem auto; padding: 0 1.5rem; background: #fdfdfd; }
+  code, pre { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; }
+  header { border-bottom: 2px solid #ddd; padding-bottom: 1rem; margin-bottom: 1.5rem; }
+  header h1 { margin-bottom: 0.25rem; font-size: 1.4rem; }
+  .meta { color: #555; font-size: 0.92rem; }
+  .meta code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; }
+  .verdict { padding: 1rem; border-radius: 6px; margin-bottom: 1.5rem; }
+  .verdict.approve { background: #e6f6ea; border: 1px solid #b7e3c2; }
+  .verdict.needs-discussion { background: #fff3cd; border: 1px solid #f0dca0; }
+  .verdict-label { font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; font-size: 0.85rem; }
+  .refresh-log { font-size: 0.85rem; color: #666; background: #f6f8fa; border: 1px solid #e1e4e8; border-radius: 6px; padding: 0.7rem 1rem; margin-bottom: 1.5rem; }
+  h2 { border-bottom: 1px solid #eee; padding-bottom: 0.3rem; margin-top: 2rem; }
+  .finding { border: 1px solid #e2e2e2; border-radius: 6px; padding: 0.9rem 1.1rem; margin-bottom: 1rem; }
+  .finding h3 { margin: 0 0 0.4rem 0; font-size: 1.02rem; }
+  .badge { display: inline-block; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; padding: 0.15rem 0.5rem; border-radius: 4px; margin-right: 0.5rem; vertical-align: middle; }
+  .badge.should-fix { background: #fff3cd; color: #7a5c00; }
+  .badge.nit { background: #eee; color: #555; }
+  .badge.question { background: #e3edff; color: #1a4b9c; }
+  .loc { font-size: 0.85rem; color: #666; margin-bottom: 0.5rem; }
+  pre.excerpt { background: #f6f8fa; border: 1px solid #e1e4e8; border-radius: 4px; padding: 0.7rem 0.9rem; overflow-x: auto; font-size: 0.85rem; }
+  ul { padding-left: 1.3rem; }
+  .hl { background: #fff2a8; }
+  .panel { background: #f6f8fa; border: 1px solid #e1e4e8; border-radius: 6px; padding: 0.8rem 1.1rem; margin-bottom: 1.5rem; font-size: 0.92rem; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Review: plank: revive pods terminated by kubelet</h1>
+  <div class="meta">
+    <div><strong>PR:</strong> <a href="https://github.com/kubernetes-sigs/prow/pull/804">kubernetes-sigs/prow#804</a></div>
+    <div><strong>Base:</strong> <code>main</code></div>
+    <div><strong>Head SHA:</strong> <code>e039405950fc1f0303e1388925b839aab7016f60</code></div>
+    <div><strong>Reviewed at:</strong> <code>2026-08-09T14:05:46Z</code></div>
+  </div>
+</header>
+
+<div class="refresh-log">
+  <strong>Refresh (2026-07-25T12:51:35Z):</strong> No code changes (<code>head_sha</code> unchanged). Maintainer review-comment thread on <code>reconciler.go:724</code> shows <code>mimowo</code> proposing to generalize the fix from <code>TerminationByKubelet</code>-only to any <code>DisruptionTarget</code> reason (rename to <code>podWasDisrupted</code>/<code>PodUnexpectedStopCauseDisruption</code>) and asking the author to broaden scope per a testing-leads Slack discussion; <code>droslean</code> pushed back, noting Prow isn't Kubernetes-only and wants to check OpenShift's node-status handling before proceeding. Author has not yet responded substantively. Verdict changed from <strong>approve</strong> to <strong>needs-discussion</strong> pending resolution.
+</div>
+
+<div class="refresh-log">
+  <strong>Refresh (2026-07-27T10:17:44Z):</strong> No code changes. Maintainer <code>Prucek</code> raised a correctness objection and ran <code>/lgtm cancel</code>, arguing kubelet terminates pods for many legitimate non-retriable reasons (resource pressure, graceful shutdown, node-level preemption/OOM). <code>mimowo</code> rebutted with upstream k8s docs stating <code>DisruptionTarget</code> is specifically only attached for retriable disruption scenarios and deliberately omitted for pod-caused disruptions that would recur. <code>lgtm</code> label is now removed. Thread unresolved as of this refresh.
+</div>
+
+<div class="refresh-log">
+  <strong>Refresh (2026-07-29T00:44:09Z):</strong> No code changes. <code>Prucek</code> narrowed the objection: concedes the retriable-by-design intent for spot reclamation/graceful shutdown, but points out <code>TerminationByKubelet</code> also covers node-pressure eviction (memory/disk/PID pressure), where retrying could add load to an already-pressured cluster. <code>mimowo</code> countered that <code>MaxRevivals=3</code> already bounds this, and that relying on contributors to manually diagnose pressure-vs-infra causes before retrying is unrealistic. Author <code>yuluo-yx</code> posted a 3-point summary reframing the open question as whether Prow should auto-recover from infra disruption by default, and how to add granular per-cause/per-cluster control. Still unresolved; <code>lgtm</code> remains absent.
+</div>
+
+<div class="refresh-log">
+  <strong>Refresh (2026-08-09T14:05:46Z):</strong> Head SHA changed to <code>e039405</code> but only via a merge from <code>main</code> picking up unrelated commits (dependabot dependency bumps, a <code>testfreeze</code> plugin change) — no changes under <code>pkg/plank</code> or <code>pkg/pjutil</code>, the PR's actual feature is untouched. <code>yuluo-yx</code> asked <code>mimowo</code>/<code>Prucek</code> for next steps since consensus hasn't been reached; <code>mimowo</code> replied that the original flakiness (spot VM CI jobs) no longer occurs since they moved off spot VMs, and proposed keeping the PR open one more week before closing as lazy consensus if no maintainer moves it forward. Design/correctness debate remains unresolved; <code>lgtm</code> still absent.
+</div>
+
+<div class="verdict needs-discussion">
+  <div class="verdict-label">Verdict: Needs discussion</div>
+  <p>The implementation itself is small, well-scoped, and low-risk — it plugs a real gap (kubelet-initiated terminations, e.g. spot-node reclaims, were previously misreported as test failures) into an existing, already-bounded revival mechanism, with solid unit test coverage for the new predicate, and was independently approved by a three-perspective maintainer panel (code quality, maintainability, deployment risk). However, two maintainer disagreements are now unresolved: scope (kubelet-termination-only vs. any <code>DisruptionTarget</code> reason, and whether that's safe on non-Kubernetes-only deployments like OpenShift), and — as of 2026-07-27 — a correctness objection that led to <code>lgtm</code> being canceled, disputing whether kubelet-initiated terminations are generally safe to retry. <code>mimowo</code>'s documentation-backed rebuttal to the latter looks strong, but is unconfirmed by the objecting maintainer as of this refresh.</p>
+</div>
+
+<div class="panel">
+  <strong>Maintainer panel synthesis (from prior review, code unchanged since):</strong> APPROVE_WITH_SUGGESTIONS. No converging blocking concerns; two items were independently raised by 2+ reviewers (missing MaxRevivals-boundary test, undocumented branch ordering) and are folded into Should-fix/Nits below. This panel did not have visibility into the subsequent scope-generalization discussion.
+</div>
+
+<h2>What this PR does</h2>
+<ul>
+  <li>Adds a new <code>PodUnexpectedStopCause</code> value, <code>termination-by-kubelet</code>, detected via a new <code>podWasTerminatedByKubelet</code> helper.</li>
+  <li>The helper matches pods with <code>status.reason == "Terminated"</code> plus a <code>DisruptionTarget</code> condition whose status is <code>True</code> and reason is <code>TerminationByKubelet</code> (both upstream <code>corev1</code> constants).</li>
+  <li>These pods now flow through the same delete-and-recreate branch in <code>syncPendingJob</code> already used for evicted/OOM-killed/unreachable-node pods, subject to the pre-existing <code>MaxRevivals</code> cap.</li>
+  <li>Renames an existing test case for clarity and adds new cases: a dedicated <code>TestGetPodUnexpectedStopCause</code> table (5 sub-cases) and a new <code>TestSyncPendingJob</code> case verifying revival behavior.</li>
+  <li>Fixes <a href="https://github.com/kubernetes-sigs/kueue/issues/12856">kubernetes-sigs/kueue#12856</a>.</li>
+</ul>
+
+<p><strong>Since previous review</strong> (no code changes; head SHA unchanged):</p>
+<ul>
+  <li>Maintainer <code>mimowo</code> opened a design discussion on <code>reconciler.go:724</code> proposing to generalize the check to any <code>DisruptionTarget</code> condition (not just <code>TerminationByKubelet</code>), renaming to <code>podWasDisrupted</code>/<code>PodUnexpectedStopCauseDisruption</code>, and asked the author to broaden the PR's scope per an off-thread Slack conversation with testing leads.</li>
+  <li>Maintainer <code>droslean</code> objected: Prow isn't Kubernetes-only, and generalizing needs investigation of how OpenShift represents node/pod disruption before it's safe to default this behavior.</li>
+  <li>Author <code>yuluo-yx</code> has not yet substantively responded (hasn't joined the referenced Slack channel yet).</li>
+  <li>Unrelated informational comment from <code>dobesv</code> describing an alternative approach (a separate controller instead of a core Prow change) for the same underlying spot-instance problem.</li>
+  <li>Maintainer <code>Prucek</code> raised a correctness objection and ran <code>/lgtm cancel</code>, disputing that kubelet-initiated terminations are generally retriable (cites resource pressure, graceful node shutdown, node-level preemption, node-level OOM). <code>mimowo</code> rebutted by quoting upstream k8s docs: <code>DisruptionTarget</code> is documented as attached specifically and only for retriable disruption scenarios, and deliberately withheld for pod-caused disruptions that would reoccur on retry. <code>lgtm</code> label removed; thread unresolved.</li>
+  <li><code>Prucek</code> narrowed the objection: concedes the retriable-by-design intent for spot reclamation/graceful shutdown, but points out <code>TerminationByKubelet</code> also covers node-pressure eviction (memory/disk/PID pressure), where retrying could add load to an already-pressured cluster. <code>mimowo</code> countered that <code>MaxRevivals=3</code> already bounds the blast radius, and that relying on contributors to manually diagnose pressure-vs-infra causes before deciding to retry is unrealistic. Author <code>yuluo-yx</code> posted a 3-point summary reframing the open question as: should Prow auto-recover from infra disruption by default, and how to add granular per-cause/per-cluster control. Still unresolved; <code>lgtm</code> remains absent.</li>
+  <li>(2026-08-09) <code>head_sha</code> changed to <code>e039405</code> via a merge from <code>main</code>, but the merge only pulls in unrelated commits (dependabot dependency bumps, a <code>testfreeze</code> plugin change) — no changes under <code>pkg/plank</code> or <code>pkg/pjutil</code>, so the feature diff is unchanged and none of the prior code findings are affected.</li>
+  <li><code>yuluo-yx</code> asked <code>mimowo</code>/<code>Prucek</code> what the next steps are, noting consensus hasn't been reached. <code>mimowo</code> replied that the original motivating flakiness (spot-VM CI jobs) no longer occurs since they moved off spot VMs for CI, and proposed leaving the PR open one more week, closing it as lazy consensus if no maintainer moves it forward. Design/correctness debate (retriable-by-design vs. node-pressure over-inclusion) remains unresolved; <code>lgtm</code> still absent.</li>
+</ul>
+
+<h2>Findings</h2>
+
+<div class="finding">
+  <h3><span class="badge question">question</span>lgtm canceled: dispute over whether kubelet terminations are generally retriable</h3>
+  <div class="loc">PR-level discussion (issue comments, 2026-07-27)</div>
+  <p><code>Prucek</code> canceled <code>lgtm</code>, arguing the kubelet terminates pods for multiple legitimate, non-retriable reasons (resource-pressure eviction, graceful node shutdown, node-level preemption, node-level OOM), and objects to treating all kubelet-initiated terminations as retriable infrastructure glitches. <code>mimowo</code> responded citing upstream Kubernetes documentation: the <code>DisruptionTarget</code> pod condition is specifically and only attached for retriable disruption scenarios; pod-caused disruptions that would recur on retry (e.g. exceeding container resource limits) deliberately do NOT receive this condition. This directly addresses Prucek's concern if accurate — the PR doesn't match on "any kubelet termination," only ones additionally flagged via <code>DisruptionTarget</code>/<code>TerminationByKubelet</code>, which per docs excludes the non-retriable cases Prucek lists. As of this refresh, <code>Prucek</code> has not replied to the rebuttal and <code>lgtm</code> remains removed.</p>
+  <pre class="excerpt">Prucek: "Kubelet terminates pods for many legitimate reasons: Resource
+pressure ... Graceful node shutdown ... Priority-based preemption at the
+node level ... Node-level OOM ... I don't think we should be going in this
+direction. /lgtm cancel"
+
+mimowo: "...DisruptionTarget condition ... was designed specifically to
+mark retriable terminations ... In all other disruption scenarios, ...
+Pods don't receive the DisruptionTarget condition because the disruptions
+were probably caused by the Pod and would reoccur on retry."</pre>
+</div>
+
+<div class="finding">
+  <h3><span class="badge question">question</span>Narrowed objection: does TerminationByKubelet over-include node-pressure eviction?</h3>
+  <div class="loc">PR-level discussion (issue comments, 2026-07-27)</div>
+  <p><code>Prucek</code> conceded the <code>DisruptionTarget</code> design intent (retriable-by-design for spot reclamation/graceful shutdown) but points out <code>TerminationByKubelet</code> specifically also fires for node-pressure eviction (memory/disk/PID pressure) — a case where retrying reproduces the same resource contention rather than escaping a transient infra event, and could compound cluster pressure. <code>mimowo</code> counters that <code>MaxRevivals=3</code> bounds the downside, and that expecting contributors to manually distinguish "safe to retry now" from "will hit the same pressure again" before clicking retry is unrealistic. Author <code>yuluo-yx</code> reframed this as a broader open design question: should Prow auto-recover from infra disruption by default, and is there a need for granular per-cause/per-cluster opt-in/opt-out (which would also address the earlier "no opt-out for this revival cause, unlike eviction" finding below). Unresolved as of this refresh.</p>
+  <pre class="excerpt">Prucek: "...TerminationByKubelet covers both spot/graceful-node-shutdown
+and node-pressure eviction (memory, disk, PID pressure). For node-pressure
+eviction, the pod was terminated because the node ran out of resources —
+retrying is likely to hit the same problem again, and auto-reviving could
+make things worse by adding load to an already-pressured cluster."
+
+mimowo: "...the mechanism is anyway capped by max_revivals=3 ...
+contributors don't check if a PR failed maybe due to PID pressure on node
+... most of them just randomly do "retry". Relying on humans being slow is
+not a good strategy."
+
+yuluo-yx: "...key questions are: Should Prow automatically recover from
+such infrastructure disruptions by default? And how can we provide
+sufficiently granular control for expensive tasks, different clusters, and
+various causes of disruption?"</pre>
+</div>
+
+<div class="finding">
+  <h3><span class="badge question">question</span>Scope disagreement: TerminationByKubelet-only vs. any DisruptionTarget</h3>
+  <div class="loc"><code>pkg/plank/reconciler.go:714-728</code> (<code>podWasTerminatedByKubelet</code>)</div>
+  <p>Maintainer <code>mimowo</code> proposed generalizing this to match any <code>DisruptionTarget</code> condition reason (covering preemption/eviction/kubelet-termination uniformly), citing upstream k8s docs that <code>DisruptionTarget</code> broadly signals k8s-initiated disruption, and asked the author to broaden the PR per a Slack discussion with testing leads. Maintainer <code>droslean</code> objects: Prow is not Kubernetes-only, and defaulting this behavior needs prior investigation of how OpenShift represents equivalent node/pod disruption. This is an open, unresolved design question that could change the shape of the fix (new type name <code>PodUnexpectedStopCauseDisruption</code>, broader condition match) before merge. The author has not yet responded substantively.</p>
+  <pre class="excerpt">// mimowo's proposed generalization:
+if podWasDisrupted(pod) {
+    // DisruptionTarget identifies a retriable disruption affecting the Pod,
+    // such as preemption, eviction, or termination by the kubelet. Treat it as
+    // unexpected so Plank can revive the Pod. This also covers spot node
+    // reclamation observed in Kueue CI.
+    return PodUnexpectedStopCauseDisruption
+}</pre>
+</div>
+
+<div class="finding">
+  <h3><span class="badge should-fix">should-fix</span>No test for kubelet-termination cause at MaxRevivals boundary</h3>
+  <div class="loc"><code>pkg/plank/controller_test.go</code> (TestSyncPendingJob table)</div>
+  <p>The table already has a case for eviction hitting the revival ceiling ("don't delete evicted pod w/ revivalCount == maxRevivals, complete PJ instead") but no equivalent for the new <code>termination-by-kubelet</code> cause. Flagged independently by both the code-quality reviewer and the deployment-risk reviewer (who emphasized <code>MaxRevivals</code> as the key safety bound) — worth adding to confirm the new cause participates correctly in the existing limit path.</p>
+  <pre class="excerpt">case pj.Status.PodRevivalCount &gt;= *r.config().Plank.MaxRevivals:
+    // MaxRevivals is reached, complete the PJ and mark it as errored.
+    ...
+    pj.Status.Description = fmt.Sprintf("Job pod reached max revivals (%d) after being stopped unexpectedly (%s)", pj.Status.PodRevivalCount, podUnexpectedStopCause)</pre>
+</div>
+
+<div class="finding">
+  <h3><span class="badge nit">nit</span>Undocumented branch ordering in getPodUnexpectedStopCause</h3>
+  <div class="loc"><code>pkg/plank/reconciler.go:682-711</code></div>
+  <p>The new check sits between the <code>Evicted</code> and <code>Unreachable</code> checks with no comment on whether order matters. Both the code-quality and maintainability reviewers independently flagged this — a future contributor adding another cause has to re-derive that the branches are mutually exclusive on <code>pod.Status.Reason</code> rather than order-sensitive. A one-line comment would help.</p>
+</div>
+
+<div class="finding">
+  <h3><span class="badge nit">nit</span>Rationale comment lives on the caller, not the gating function</h3>
+  <div class="loc"><code>pkg/plank/reconciler.go:687-693</code> vs <code>pkg/plank/reconciler.go:714-728</code></div>
+  <p>The explanatory comment (spot-node example, kueue issue link) sits at the <code>getPodUnexpectedStopCause</code> call site, but the actual gating logic lives in <code>podWasTerminatedByKubelet</code> — a reader jumping straight to the helper won't see the "why."</p>
+</div>
+
+<div class="finding">
+  <h3><span class="badge question">question</span>Trailing "feat: add comment" commit</h3>
+  <div class="loc">git log — commit <code>937cca0d</code></div>
+  <p>The second commit on the branch has an uninformative message. Confirmed via <code>git show</code> that it's purely additive — just the explanatory comment above the <code>podWasTerminatedByKubelet</code> call site, no functional change — so it's harmless, but worth a squash/reword before merge for a cleaner history.</p>
+</div>
+
+<div class="finding">
+  <h3><span class="badge question">question</span>No opt-out for this revival cause, unlike eviction</h3>
+  <div class="loc"><code>pkg/plank/reconciler.go:487</code> (<code>ErrorOnEviction</code>) vs the new branch</div>
+  <p>Eviction has a per-job opt-out (<code>pj.Spec.ErrorOnEviction</code>) for teams wanting fail-fast instead of retry. The new kubelet-termination cause has no equivalent — any matching pod is always revived (subject to <code>MaxRevivals</code>). Raised by the deployment-risk reviewer as worth discussing with the author, not a merge blocker.</p>
+</div>
+
+<div class="finding">
+  <h3><span class="badge question">question</span>Consider a Prometheus label for unexpected-stop-cause</h3>
+  <div class="loc"><code>pkg/plank/reconciler.go</code> (revival logging)</div>
+  <p><code>unexpected-stop-cause</code> is only a structured log field today. A metric/label would make revival-cause trends (including this new one) dashboard-visible without log-scraping. Applies to the whole enum, not unique to this PR — optional deferred cleanup per the maintainability reviewer.</p>
+</div>
+
+<h2>Things I checked and was fine with</h2>
+<ul>
+  <li><code>podWasTerminatedByKubelet</code> uses upstream <code>corev1.DisruptionTarget</code> / <code>corev1.PodReasonTerminationByKubelet</code> constants; confirmed present in vendored <code>k8s.io/api</code> (v0.29.6+).</li>
+  <li>Check ordering in <code>getPodUnexpectedStopCause</code> (evicted → kubelet-terminated → node-unreachable) has no overlap risk — the underlying <code>pod.Status.Reason</code> values are mutually exclusive across these branches.</li>
+  <li>The condition loop correctly returns on the first <code>DisruptionTarget</code> match (Kubernetes only ever sets one condition per type).</li>
+  <li><code>go build ./pkg/plank/...</code>, <code>go vet</code>, and <code>go test ./pkg/plank/... -run 'TestGetPodUnexpectedStopCause|TestSyncPendingJob'</code> all pass locally at the head SHA.</li>
+  <li>New <code>TestGetPodUnexpectedStopCause</code> table covers the happy path plus 4 negative cases (inactive condition, wrong reason, missing condition, condition present but pod not <code>Terminated</code>).</li>
+  <li>No config/CRD/struct-tag changes; behavior is unconditional post-upgrade, inert on pre-1.26 clusters lacking <code>PodDisruptionConditions</code>; rollback is a plain binary revert.</li>
+  <li>No RBAC, dependency, or resource-consumption changes; reuses the existing delete/recreate pod flow.</li>
+</ul>
+
+<h2>Open questions for the author</h2>
+<ul>
+  <li>Was a max-revivals test case for the new cause intentionally left out, or just missed alongside the existing eviction one?</li>
+  <li>Any interest in squashing the two commits before merge, given the second only adds a comment?</li>
+  <li>Is an <code>ErrorOnEviction</code>-style opt-out warranted for teams with strict-SLA jobs that prefer fail-fast over retry on kubelet-initiated termination?</li>
+  <li>Should this behavior change (retry instead of immediate failure for kubelet-terminated pods) be called out explicitly in release notes, given it silently affects fail-fast signals for operators on spot/preemptible infrastructure?</li>
+</ul>
+
+</body>
+</html>

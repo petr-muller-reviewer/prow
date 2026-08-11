@@ -3,7 +3,7 @@ pr: kubernetes-sigs/prow#744
 title: "tide: optionally abort superseded batch jobs before retriggering"
 head_sha: f33597699b8a233b37560b4949c03794dbc5633e
 base: main
-reviewed_at: 2026-06-22T17:31:16Z
+reviewed_at: 2026-08-11T14:47:08Z
 verdict: approve
 refresh_log:
   - prev_sha: 230403b27be3fe1b9ca8c18fef9db3fe627118be
@@ -12,6 +12,9 @@ refresh_log:
   - prev_sha: ce86882fae44ed61cd4058cc30f43478200ed31b
     new_sha: f33597699b8a233b37560b4949c03794dbc5633e
     summary: "Author flipped default to true. Config, accessor, test, and doc all updated. CI lint failing."
+  - prev_sha: f33597699b8a233b37560b4949c03794dbc5633e
+    new_sha: f33597699b8a233b37560b4949c03794dbc5633e
+    summary: "No code changes. carterpewpew pinged for status (2026-08-10); still blocked only on lgtm/approved labels per gate."
 gate:
   decision: hold
   gated_at: 2026-06-22T18:03:11Z
@@ -103,3 +106,6 @@ gate:
 - Would you consider adding an info-level log per successfully aborted job? Something like `sp.log.WithField("prowjob", pj.Name).Info("Aborted superseded batch job")` — low effort, high operational value.
 - Is the List-to-Patch race on job completion worth documenting in a code comment, or is it acceptable given the narrow window and cosmetic consequence?
 - Would a brief note in the config documentation about the interaction with `prioritize_existing_batches` be useful for operators?
+
+## Activity since 2026-06-20T20:00:00Z
+- **carterpewpew** (2026-08-10): Pinged petr-muller and stmcginnis asking whether any more changes are needed. No code changes — PR remains blocked only on the `lgtm`/`approved` labels documented in the gate.

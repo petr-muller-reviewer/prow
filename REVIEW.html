@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Review: kubernetes-sigs/prow#744</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; line-height: 1.6; max-width: 52em; margin: 2em auto; padding: 0 1em; color: #1a1a1a; }
+  h1 { font-size: 1.4em; border-bottom: 2px solid #0969da; padding-bottom: .3em; }
+  h2 { font-size: 1.15em; margin-top: 1.8em; border-bottom: 1px solid #d0d7de; padding-bottom: .2em; }
+  h3 { font-size: 1em; margin-top: 1.2em; }
+  code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; font-size: 0.9em; background: #f6f8fa; padding: .15em .3em; border-radius: 3px; }
+  pre { background: #f6f8fa; padding: 1em; overflow-x: auto; border-radius: 6px; font-size: 0.85em; line-height: 1.45; }
+  pre code { background: none; padding: 0; }
+  .meta { background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 6px; padding: 1em 1.2em; margin-bottom: 1.5em; }
+  .meta dt { font-weight: 600; display: inline; }
+  .meta dd { display: inline; margin: 0 1.5em 0 .3em; }
+  .verdict { background: #dafbe1; border-left: 4px solid #1a7f37; padding: .8em 1em; border-radius: 4px; margin: 1em 0; }
+  .severity { display: inline-block; font-size: 0.75em; font-weight: 700; text-transform: uppercase; padding: .15em .5em; border-radius: 3px; margin-right: .4em; vertical-align: middle; }
+  .sev-blocking { background: #ffebe9; color: #82071e; }
+  .sev-should-fix { background: #fff8c5; color: #6a5700; }
+  .sev-nit { background: #ddf4ff; color: #0550ae; }
+  .sev-question { background: #f0e8ff; color: #5e3db0; }
+  .sev-resolved { background: #e8e8e8; color: #555; text-decoration: line-through; }
+  .activity { background: #fff8e1; border: 1px solid #f0e0a0; border-radius: 6px; padding: 1em 1.2em; margin: 1.5em 0; }
+  .activity h2 { border-bottom: none; margin-top: 0; }
+  .refresh-note { background: #e8f4fd; border-left: 4px solid #0969da; padding: .6em 1em; border-radius: 4px; margin: 1em 0; font-size: 0.9em; }
+  ul { padding-left: 1.5em; }
+  li { margin-bottom: .3em; }
+  a { color: #0969da; }
+</style>
+</head>
+<body>
+
+<h1>Review: kubernetes-sigs/prow#744</h1>
+
+<div class="meta">
+  <dl>
+    <dt>PR:</dt><dd><a href="https://github.com/kubernetes-sigs/prow/pull/744">kubernetes-sigs/prow#744</a></dd>
+    <dt>Title:</dt><dd>tide: optionally abort superseded batch jobs before retriggering</dd>
+    <dt>Head SHA:</dt><dd><code>f33597699b8a233b37560b4949c03794dbc5633e</code></dd>
+    <dt>Base:</dt><dd>main</dd>
+    <dt>Reviewed:</dt><dd>2026-06-22T17:31:16Z</dd>
+  </dl>
+</div>
+
+<div class="refresh-note">
+  <strong>Refresh (2026-06-22):</strong> Author flipped default to <code>true</code> in <code>f335976</code> (<code>ce86882</code> &rarr; <code>f335976</code>). Config comment, accessor godoc, test, and <code>prow-config-documented.yaml</code> all updated. &ldquo;Default should be true&rdquo; finding resolved. CI lint failing on this revision.
+</div>
+
+<div class="refresh-note">
+  <strong>Refresh (2026-06-12):</strong> PR rebased onto main (<code>230403b</code> &rarr; <code>ce86882</code>). No changes to PR-specific files. Maintainer discussion resulted in promoting &ldquo;default to true&rdquo; from question to should-fix. LGTM label removed by rebase.
+</div>
+
+<div class="verdict">
+  <strong>Verdict: Approve.</strong>
+  Clean, well-scoped feature that follows existing Tide patterns precisely. All three review perspectives (code quality, maintainability, deployment risk) converge on APPROVE. Default flipped to true per maintainer consensus.
+</div>
+
+<div style="background: #fff8c5; border-left: 4px solid #bf8700; padding: .8em 1em; border-radius: 4px; margin: 1em 0;">
+  <strong>Gate Decision: Hold</strong> (2026-06-22T18:03:11Z, SHA <code>f335976</code>)
+  <p style="margin: .5em 0 0 0;">Code is correct and all review findings are addressed or acceptably dispositioned. The only blockers are process: missing <code>lgtm</code> and <code>approved</code> labels. Once stmcginnis re-LGTMs and a maintainer <code>/approve</code>s, this is clear to merge.</p>
+
+  <h3 style="font-size: 1em; margin-top: 1em;">Gating list</h3>
+  <ul>
+    <li><strong>addressed</strong>: Default flipped to <code>true</code> in <code>f335976</code>.</li>
+    <li><strong>not-addressed, non-blocking</strong>: No logging on successful abort (<code>pkg/tide/tide.go:1561-1571</code>). Acceptable to merge; fast follow-up.</li>
+    <li><strong>not-addressed, non-blocking</strong>: No Prometheus counter (<code>pkg/tide/tide.go:1541-1573</code>). Acceptable as follow-up PR.</li>
+    <li><strong>label</strong>: <code>lgtm</code> missing. stmcginnis LGTM&rsquo;d on 2026-06-08; removed by subsequent pushes. Needs re-application.</li>
+    <li><strong>label</strong>: <code>approved</code> missing. No maintainer has <code>/approve</code>d yet.</li>
+  </ul>
+
+  <h3 style="font-size: 1em; margin-top: 1em;">Merge risk</h3>
+  <ul>
+    <li><strong>Configuration</strong>: New additive field with <code>omitempty</code>. Existing configs parse without issue.</li>
+    <li><strong>Behavioral</strong>: Default is <code>true</code>. All Tide installations will automatically abort superseded batch jobs on upgrade. The aborted jobs were already producing unusable results, so the impact is net positive. Operators who want the old behavior can set <code>"*": false</code>. Should be release-noted.</li>
+    <li><strong>API surface</strong>: No exported Go API changes beyond the new additive config field and accessor. No CRD/proto changes.</li>
+  </ul>
+</div>
+
+<h2>What this PR does</h2>
+<ul>
+  <li>Adds a new config option <code>abort_superseded_batch_jobs</code> (per-org/repo map with <code>*</code> global key, <strong>defaulting to <code>true</code></strong>) that tells Tide to abort stale in-flight batch ProwJobs before triggering a new batch.</li>
+  <li>New method <code>abortSupersededBatchJobs(sp subpool)</code> lists all Tide-created batch ProwJobs for the same org/repo/branch via label selector, then patches any with a baseSHA different from the current subpool SHA to <code>AbortedState</code>. Skips completed jobs and jobs matching the current SHA.</li>
+  <li>Called in <code>takeAction</code> right before <code>pickBatch</code>, only when <code>batchPending == 0</code> and the config is enabled. Abort failures are non-fatal (logged, new batch proceeds).</li>
+  <li>Refactors pre-existing job filtering in the test from <code>reflect.DeepEqual</code> to name-based <code>sets.Set</code> &mdash; necessary because aborted jobs no longer match their original objects, and also cleaner.</li>
+  <li>Addresses the waste described in issue #650: when baseSHA advances, old batches become invisible to Tide (filtered by <code>dividePool</code>) but keep running to completion, producing results that can never be used.</li>
+</ul>
+
+<p><strong>Since previous review (2026-06-20):</strong></p>
+<ul>
+  <li>Author flipped default from <code>false</code> to <code>true</code> in <code>f335976</code>, per maintainer consensus.</li>
+  <li>Config comment, accessor godoc, test case name/assertion, and <code>prow-config-documented.yaml</code> all updated consistently.</li>
+  <li>CI <code>pull-prow-verify-lint</code> failing on this revision.</li>
+</ul>
+
+<h2>Findings</h2>
+
+<h3><span class="severity sev-should-fix">Should fix</span> No logging on successful abort</h3>
+<p><code>pkg/tide/tide.go:1561-1571</code></p>
+<p>The patch loop logs errors but is completely silent on success. All three review perspectives flagged this independently. An info-level log per aborted job (with job name and old baseSHA) would match the codebase&rsquo;s instrumentation standard and make production debugging significantly easier.</p>
+<pre><code>if err := c.prowJobClient.Patch(c.ctx, &amp;pj, ctrlruntimeclient.MergeFrom(prev)); err != nil {
+    errs = append(errs, fmt.Errorf("failed to abort superseded batch prowjob %s: %w", pj.Name, err))
+}</code></pre>
+<p>Suggested addition after the patch succeeds:</p>
+<pre><code>sp.log.WithField("prowjob", pj.Name).WithField("old_base_sha", pj.Spec.Refs.BaseSHA).Info("Aborted superseded batch job")</code></pre>
+
+<h3><span class="severity sev-should-fix">Should fix</span> No Prometheus counter for aborted jobs</h3>
+<p><code>pkg/tide/tide.go:1541-1573</code></p>
+<p>The codebase already has <code>tideMetrics.retests</code> for batch triggers. An analogous <code>tide_superseded_batch_aborts_total</code> counter (with org/repo/branch labels) would let operators quantify compute savings and detect misconfiguration (e.g., unexpectedly high abort rates). Could reasonably be a follow-up PR.</p>
+
+<h3><span class="severity sev-nit">Nit</span> List-to-Patch race can mark a just-completed job as aborted</h3>
+<p><code>pkg/tide/tide.go:1562</code></p>
+<p>Between the <code>List</code> call and the <code>Patch</code> loop, a job could complete naturally. The <code>pj.Complete()</code> guard only checks the snapshot from list time. A patch would then set a completed job back to <code>AbortedState</code>. The window is narrow and the consequence is cosmetic (the work already ran), but worth documenting as a known limitation.</p>
+<pre><code>if pj.Spec.Refs == nil || pj.Spec.Refs.BaseSHA == sp.sha || pj.Complete() {
+    continue
+}</code></pre>
+
+<h3><span class="severity sev-nit">Nit</span> Test uses branch name as BaseSHA for &ldquo;current&rdquo; job</h3>
+<p><code>pkg/tide/tide_test.go:2110</code></p>
+<p>The &ldquo;current-batch&rdquo; fixture sets <code>BaseSHA: defaultBranch</code> (a branch name like &ldquo;master&rdquo;), which happens to equal <code>sp.sha</code>. Using a distinct fake value like <code>"current-sha"</code> with a matching <code>sp.sha</code> would make the test intent clearer.</p>
+
+<h3><span class="severity sev-question">Question</span> Interaction with <code>prioritize_existing_batches</code></h3>
+<p><code>pkg/tide/tide.go:1602-1607</code></p>
+<p>Both features affect batch lifecycle but are complementary: <code>prioritize_existing_batches</code> tries to reuse existing batch results, while <code>abort_superseded_batch_jobs</code> cleans up when a new batch <em>is</em> triggered. The interaction may not be obvious to operators. A brief note in the config documentation would help.</p>
+
+<h2>Resolved findings</h2>
+
+<h3><span class="severity sev-resolved">Resolved</span> Default should be true, not false</h3>
+<p><code>pkg/config/tide.go:407</code></p>
+<p>Addressed in <code>f335976</code>. Default flipped from <code>false</code> to <code>true</code>. Config comment, accessor godoc, test case, and <code>prow-config-documented.yaml</code> all updated consistently.</p>
+
+<h3><span class="severity sev-resolved">Resolved</span> Should this default to true?</h3>
+<p><code>pkg/config/tide.go:252</code></p>
+<p>Originally raised as a question. Promoted to should-fix based on maintainer consensus (petr-muller + stmcginnis). Now addressed in <code>f335976</code>.</p>
+
+<h2>Things I checked and was fine with</h2>
+<ul>
+  <li>Config accessor <code>AbortSupersededBatchJobs()</code> follows exact same repo&rarr;org&rarr;global fallback as <code>PrioritizeExistingBatches()</code></li>
+  <li>Default <code>true</code> &mdash; flipped per maintainer consensus; comment, godoc, test, and documented-yaml all updated</li>
+  <li>Config test covers all resolution levels (unset, global, org, repo override, unmatched-org fallback)</li>
+  <li><code>DeepCopy</code> + <code>MergeFrom</code> patch pattern is correct for controller-runtime</li>
+  <li><code>utilerrors.NewAggregate</code> for error collection matches codebase patterns</li>
+  <li>Abort is non-fatal: logged error, batch triggering proceeds</li>
+  <li>Placement in <code>takeAction</code> correct: only runs when <code>batchPending == 0</code></li>
+  <li>Label selector on list query matches labels set in <code>trigger()</code> (CreatedByTideLabel, ProwJobTypeLabel, OrgLabel, RepoLabel, BaseRefLabel)</li>
+  <li>Test exercises both stale-SHA job (aborted) and current-SHA job (skipped)</li>
+  <li>Whitespace changes in <code>tide_test.go</code> are gofmt artifacts from new longer field names &mdash; not semantic changes</li>
+  <li>Pre-existing job filtering refactored from <code>reflect.DeepEqual</code> to name-based <code>sets.Set</code> &mdash; cleaner and necessary for abort verification</li>
+  <li>No new RBAC requirements, no config migration needed, no upgrade ordering dependency</li>
+  <li>Rollback safe: removing config key or setting <code>"*": false</code> returns to previous behavior</li>
+</ul>
+
+<div class="activity">
+<h2>Activity since 2026-06-08T17:25:04Z</h2>
+<ul>
+  <li><strong>petr-muller</strong> (2026-06-08): Asked whether default should be true instead of false.</li>
+  <li><strong>carterpewpew</strong> (2026-06-11): Author replied &mdash; chose opt-in for safety, willing to flip default if maintainers prefer.</li>
+  <li><strong>k8s-ci-robot</strong> (2026-06-11): LGTM label removed (triggered by rebase push).</li>
+  <li><strong>stmcginnis</strong> (2026-06-11): Agrees default-on makes sense &mdash; superseded batches produce unusable results.</li>
+  <li><strong>petr-muller</strong> (2026-06-16): <code>/ok-to-test</code>.</li>
+  <li><strong>carterpewpew</strong> (2026-06-20): Flipped default to true as suggested. Pushed <code>f335976</code>.</li>
+  <li><strong>kubernetes-prow[bot]</strong> (2026-06-20): <code>pull-prow-verify-lint</code> failing on <code>f335976</code>.</li>
+</ul>
+</div>
+
+<h2>Open questions for the author</h2>
+<ul>
+  <li>Would you consider adding an info-level log per successfully aborted job? Something like <code>sp.log.WithField("prowjob", pj.Name).Info("Aborted superseded batch job")</code> &mdash; low effort, high operational value.</li>
+  <li>Is the List&rarr;Patch race on job completion worth documenting in a code comment, or is it acceptable given the narrow window and cosmetic consequence?</li>
+  <li>Would a brief note in the config documentation about the interaction with <code>prioritize_existing_batches</code> be useful for operators?</li>
+</ul>
+
+</body>
+</html>

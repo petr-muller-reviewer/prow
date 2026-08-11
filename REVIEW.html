@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Review: kubernetes-sigs/prow#808</title>
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+    color: #1a1a1a;
+    max-width: 900px;
+    margin: 2rem auto;
+    padding: 0 1.5rem;
+    background: #fdfdfd;
+  }
+  code, pre {
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 0.92em;
+  }
+  pre {
+    background: #f4f4f4;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    padding: 0.75rem 1rem;
+    overflow-x: auto;
+  }
+  code.inline {
+    background: #f0f0f0;
+    padding: 0.1em 0.35em;
+    border-radius: 4px;
+  }
+  header {
+    border-bottom: 2px solid #333;
+    padding-bottom: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  header h1 { margin-bottom: 0.25rem; font-size: 1.4rem; }
+  header .meta { color: #555; font-size: 0.92em; }
+  header .meta div { margin: 0.15rem 0; }
+  .verdict {
+    background: #fff8e1;
+    border-left: 4px solid #f0ad4e;
+    padding: 0.75rem 1rem;
+    border-radius: 4px;
+    margin-bottom: 1.5rem;
+  }
+  .verdict .label { font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; }
+  section { margin-bottom: 2rem; }
+  h2 {
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 0.3rem;
+    font-size: 1.15rem;
+  }
+  .finding {
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    padding: 0.9rem 1.1rem;
+    margin-bottom: 1rem;
+  }
+  .finding h3 { margin: 0 0 0.4rem 0; font-size: 1.02rem; }
+  .badge {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding: 0.15em 0.55em;
+    border-radius: 10px;
+    margin-right: 0.5em;
+  }
+  .badge.blocking { background: #f8d7da; color: #842029; }
+  .badge.should-fix { background: #fff3cd; color: #664d03; }
+  .badge.nit { background: #e2e3e5; color: #41464b; }
+  .badge.question { background: #cfe2ff; color: #084298; }
+  .loc { color: #555; font-size: 0.88em; margin-bottom: 0.5rem; }
+  ul { padding-left: 1.3rem; }
+  li { margin-bottom: 0.4rem; }
+  a { color: #0a5cb8; }
+  mark { background: #ffe9a8; padding: 0 0.15em; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Review: override: preserve status base SHA when overriding jobs</h1>
+  <div class="meta">
+    <div><strong>PR:</strong> <a href="https://github.com/kubernetes-sigs/prow/pull/808">kubernetes-sigs/prow#808</a></div>
+    <div><strong>Base:</strong> main</div>
+    <div><strong>Head SHA:</strong> <code class="inline">402d33a621297b0172011c6e530351542ef84fb5</code></div>
+    <div><strong>Reviewed at:</strong> 2026-08-09T01:33:36Z</div>
+    <div><strong>Refresh log:</strong> rebased from <code class="inline">e2d6a6b1c</code> to <code class="inline">402d33a62</code> onto current main (dependabot bumps only, no PR-content change); <code class="inline">ylink-lfs</code> posted <code class="inline">/ok-to-test</code> on 2026-07-29; author <code class="inline">SaaiAravindhRaja</code> asked "is there anything i can improve on?" on 2026-08-01. Second full diff pass on 2026-08-09 with no code change since: the Tide interaction was re-verified and <strong>escalated to blocking</strong>, and two new findings added.</div>
+  </div>
+</header>
+
+<div class="verdict">
+  <div class="label">Verdict: Needs discussion</div>
+  <p>The change does exactly what issue #789 asked for, is small, and its tests pass — but a second pass through Tide says the preserved base SHA defeats <em>both</em> of Tide's gates for an override result, so in the moved-base case (the only case this PR changes behavior in) <code class="inline">/override</code> stops unblocking merges. That is a design question for a maintainer rather than a mechanical fix, hence "needs discussion" rather than "request changes": the intent is clearly endorsed, but the mechanism appears to undo the user-visible effect of the command. Secondary: the lazy per-status lookup can now leave a half-applied override plus two contradictory bot comments, and the new caching test does not actually exercise the new caching.</p>
+</div>
+
+<section>
+  <h2>What this PR does</h2>
+  <ul>
+    <li>When <code class="inline">/override</code> recreates a synthetic successful status/ProwJob for a failed presubmit, it now prefers the base SHA already embedded in the failed status's description (<code class="inline">BaseSHA:</code> marker) over re-fetching the PR's current base branch SHA.</li>
+    <li>Adds <code class="inline">baseSHAForStatus(status, fallback)</code>: returns the embedded SHA if present, else calls <code class="inline">fallback()</code>.</li>
+    <li>Adds <code class="inline">cachedRefGetter(getter)</code>: memoizes the fallback <code class="inline">RefGetter</code> (value and error) so multiple statuses needing the fallback in one invocation trigger only one <code class="inline">GetRef</code> call.</li>
+    <li>Removes the previous unconditional <code class="inline">baseSHAGetter()</code> call (and its early-return-on-error) at the top of <code class="inline">handle</code>; the getter is now invoked lazily, per status, only when needed.</li>
+    <li>Implements item 2 of issue #789 (follow-up from the #778 review).</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Findings</h2>
+
+  <div class="finding">
+    <h3><span class="badge blocking">Blocking</span>Stale BaseSHA makes Tide ignore the override entirely, in exactly the scenario this PR targets</h3>
+    <div class="loc"><code class="inline">pkg/plugins/override/override.go:536</code> (effect at <code class="inline">:564</code>) &rarr; <code class="inline">pkg/tide/tide.go:1055</code> and <code class="inline">pkg/tide/tide.go:1974</code>/<code class="inline">2171</code></div>
+    <p>Both Tide gates for an override result are keyed on the <em>current</em> pool base SHA. <strong>(1)</strong> <code class="inline">prowJobsFromContexts</code> accepts a green context only when the embedded SHA equals the pool base SHA. <strong>(2)</strong> The synthetic ProwJob is only visible to the pool through <code class="inline">cacheIndexKey(sp.org, sp.repo, sp.branch, sp.sha)</code>, which indexes on <code class="inline">pj.Spec.Refs.BaseSHA</code>. Stamping the old SHA into both means neither matches once the base branch has moved — precisely the divergence the PR exists to handle.</p>
+    <p><strong>Concrete scenario:</strong> job fails at base <code class="inline">B0</code>; base advances to <code class="inline">B1</code>; user runs <code class="inline">/override prow-job</code>. Pre-PR, status and ProwJob were stamped <code class="inline">B1</code>, Tide counted the context as passing, PR merged. Post-PR both carry <code class="inline">B0</code>, Tide matches neither, retriggers the job, it fails again — the override never sticks and the user must keep re-overriding.</p>
+    <p>Note that <code class="inline">/override-sticky</code> is unaffected: <code class="inline">stickyDescription</code> (override.go:332) embeds <code class="inline">config.SkipRetestSentinel</code>, which short-circuits the base-SHA comparison. That asymmetry is itself evidence that plain <code class="inline">/override</code> deliberately depends on the current base SHA. A fix probably means either keeping the current base SHA in the <em>status description</em> while using the original only for the ProwJob refs, or giving plain override an equivalent sentinel-style escape hatch.</p>
+    <pre>// override.go
+baseSHA, err := baseSHAForStatus(status, baseSHAGetter)
+...
+status.Description = config.ContextDescriptionWithBaseSha(descFn(user), baseSHA)
+
+// tide.go:1055
+if config.IsSkipRetest(desc) || (<mark>baseSHAForContext == baseSHA</mark>) {
+// tide.go:1974 — pool prowjob lookup
+ctrlruntimeclient.MatchingFields{cacheIndexName: <mark>cacheIndexKey(sp.org, sp.repo, sp.branch, sp.sha)</mark>}</pre>
+  </div>
+
+  <div class="finding">
+    <h3><span class="badge should-fix">Should fix</span>GetRef failure mid-loop leaves a partial override and posts two contradictory comments</h3>
+    <div class="loc"><code class="inline">pkg/plugins/override/override.go:517-541</code></div>
+    <p>Previously <code class="inline">baseSHAGetter()</code> ran once before any mutation, so a failure produced a single "Cannot get base ref of PR" comment with nothing changed. Now the fallback runs inside the per-status loop. With statuses <code class="inline">[A (has marker), B (no marker)]</code> and <code class="inline">GetRef</code> failing: A is fully overridden (ProwJob created, status flipped to success, <code class="inline">done.Insert(A)</code>), then B returns the failure comment — and the <code class="inline">defer</code> at override.go:523 immediately posts the success message listing A. Half-applied override, two comments that contradict each other. Resolving the fallback once up front whenever any targeted status lacks a marker would restore the old atomicity.</p>
+    <pre>baseSHA, err := baseSHAForStatus(status, baseSHAGetter)
+if err != nil {
+    resp := "Cannot get base ref of PR"
+    log.WithError(err).Warn(resp)
+    return oc.CreateComment(org, repo, number, plugins.FormatResponseRaw(e.Body, e.HTMLURL, user, resp))
+}</pre>
+  </div>
+
+  <div class="finding">
+    <h3><span class="badge should-fix">Should fix</span>TestHandleCachesFallbackBaseSHA does not exercise the code it names</h3>
+    <div class="loc"><code class="inline">pkg/plugins/override/override_test.go:1562-1599</code></div>
+    <p><code class="inline">shaGetterFactory</code> (override.go:701) already memoizes successful lookups, so the <code class="inline">getRefCalls == 1</code> assertion passes unchanged even if <code class="inline">cachedRefGetter</code> is deleted — the test cannot detect a regression in the caching it is named after. The one behavior <code class="inline">cachedRefGetter</code> genuinely adds is caching an <em>error</em>, which needs a direct unit test with a counting, error-returning <code class="inline">config.RefGetter</code>.</p>
+    <pre>if got := fc.getRefCalls; got != 1 {
+    t.Fatalf("GetRef calls = %d, want 1", got)
+}
+
+// override.go:701 — already caches success
+func shaGetterFactory(oc overrideClient, org, repo, ref string) func() (string, error) {
+    var baseSHA string
+    return func() (string, error) {
+        <mark>if baseSHA != "" { return baseSHA, nil }</mark>
+        ...</pre>
+  </div>
+
+  <div class="finding">
+    <h3><span class="badge nit">Nit</span>cachedRefGetter duplicates shaGetterFactory's memoization</h3>
+    <div class="loc"><code class="inline">pkg/plugins/override/override.go:520</code>, <code class="inline">:609-620</code>, <code class="inline">:701-712</code></div>
+    <p><code class="inline">shaGetterFactory</code>'s own comment says it is "a closure to retrieve a sha once". <code class="inline">cachedRefGetter</code> adds a second layer whose only new effect is caching failures — immaterial, since the first error aborts <code class="inline">handle</code>. Either consolidate, or add a comment stating the wrapper exists so <code class="inline">handle</code> does not depend on the caching behavior of whatever <code class="inline">RefGetter</code> it is handed.</p>
+    <pre>func cachedRefGetter(getter config.RefGetter) config.RefGetter {
+    var baseSHA string
+    var err error
+    var called bool
+    return func() (string, error) {
+        if !called {
+            baseSHA, err = getter()
+            called = true
+        }
+        return baseSHA, err
+    }
+}</pre>
+  </div>
+
+  <div class="finding">
+    <h3><span class="badge nit">Nit</span>No comment on why a status's base SHA can diverge from the PR's current base ref</h3>
+    <div class="loc"><code class="inline">pkg/plugins/override/override.go:602-607</code></div>
+    <p>The rationale — a job's original base SHA differs from today's base-branch tip when the branch moved — lives only in the PR description. One line of comment on <code class="inline">baseSHAForStatus</code> would stop a future maintainer from reading the marker preference as a bug.</p>
+  </div>
+
+  <div class="finding">
+    <h3><span class="badge question">Question</span>Is the partial-override-on-error behavior intentional?</h3>
+    <p>Confirm whether returning mid-loop on a <code class="inline">GetRef</code> failure — after earlier contexts were already mutated, and with the deferred success comment still firing — is an accepted tradeoff or should be pre-resolved before any mutation.</p>
+  </div>
+
+  <div class="finding">
+    <h3><span class="badge question">Question</span>Duplicate event-construction helper in tests</h3>
+    <div class="loc"><code class="inline">pkg/plugins/override/override_test.go:1612-1621</code></div>
+    <p><code class="inline">overrideCommentEvent</code> duplicates literal <code class="inline">github.GenericCommentEvent</code> construction already at lines 1220, 1506 and 1690 of the same file. Non-blocking, but the existing sites could migrate to the new helper in this PR.</p>
+  </div>
+
+</section>
+
+<section>
+  <h2>Things I checked and was fine with</h2>
+  <ul>
+    <li><code class="inline">baseSHAForStatus</code> falls through correctly on an empty description — branch-protection-injected synthetic statuses (<code class="inline">github.Status{Context: context}</code>, override.go:499) have a zero-value Description, and <code class="inline">BaseSHAFromContextDescription("")</code> returns <code class="inline">""</code>.</li>
+    <li><code class="inline">ContextDescriptionWithBaseSha</code> receives only <code class="inline">descFn(user)</code> as the human-readable part, so re-encoding an already-marked description cannot double the <code class="inline">BaseSHA:</code> suffix or blow the 140-char limit.</li>
+    <li><code class="inline">cachedRefGetter</code> memoizes value and error on first call; no re-entrancy or goroutine concern (<code class="inline">handle</code> is single-threaded, matching <code class="inline">shaGetterFactory</code>'s "not threadsafe" note).</li>
+    <li>The checkrun override path is untouched — checkruns carry no base SHA and still key off the head SHA only.</li>
+    <li><code class="inline">go vet</code> and <code class="inline">go test ./pkg/plugins/override/</code> pass on the PR head.</li>
+    <li>No config/API/CRD/RBAC surface touched; the change is confined to <code class="inline">override.go</code> and its test. Drop-in and revertible.</li>
+    <li>No security-relevant surface: base SHA data originates from Prow's own status descriptions, not user-controlled input.</li>
+    <li>Net API-call effect is positive: <code class="inline">GetRef</code> is skipped entirely when every targeted status carries a marker.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Open questions for the author</h2>
+  <ul>
+    <li>Was the Tide coupling considered? Tide only counts an override when the embedded SHA equals the current pool base (<code class="inline">tide.go:1055</code>) <em>and</em> only sees the synthetic ProwJob through an index keyed on that same SHA (<code class="inline">tide.go:1974</code>). With the original SHA preserved, an override on a stale failing status satisfies neither — so <code class="inline">/override</code> would stop unblocking merges in exactly the moved-base case. Is a follow-up planned (sentinel for plain override, or splitting the status SHA from the ProwJob refs SHA)?</li>
+    <li>Should a <code class="inline">GetRef</code> failure still guarantee all-or-nothing across the contexts of a single <code class="inline">/override</code> invocation, as it did before this change? Right now the user can get a failure comment and a success comment for the same command.</li>
+    <li>Could <code class="inline">TestHandleCachesFallbackBaseSHA</code> be reworked to test <code class="inline">cachedRefGetter</code> directly (specifically error caching)? As written it passes even with the wrapper removed, because <code class="inline">shaGetterFactory</code> already caches successes.</li>
+  </ul>
+</section>
+
+</body>
+</html>

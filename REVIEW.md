@@ -3,7 +3,7 @@ pr: kubernetes-sigs/prow#782
 title: "owners-label: add ignore_merge_commits config option"
 head_sha: ddde196fedea6f58c0fd75fa102433444b989d21
 base: main
-reviewed_at: 2026-07-26T22:39:28Z
+reviewed_at: 2026-08-11T11:19:22Z
 verdict: approve
 refresh_log:
   - from_sha: f864b330e8bae580e7a1e177ed6c1b69259a279a
@@ -12,6 +12,9 @@ refresh_log:
   - from_sha: f864b330e8bae580e7a1e177ed6c1b69259a279a
     to_sha: ddde196fedea6f58c0fd75fa102433444b989d21
     summary: IgnoreMergeCommits converted from a global bool to a []string of org/org-repo entries with an IgnoreMergeCommitsFor(org, repo) helper, mirroring the existing SkipCollaborators pattern. Resolves the config-granularity question raised by all three review perspectives and by Prucek's inline comment.
+  - from_sha: ddde196fedea6f58c0fd75fa102433444b989d21
+    to_sha: ddde196fedea6f58c0fd75fa102433444b989d21
+    summary: No code changes. Prucek flagged (1) generated docs are stale — plugin-config-documented.yaml doesn't reflect the new field, needs `make verify-codegen`; (2) the org/full membership-check loop is now duplicated a third time (MDYAMLRepos-style, SkipCollaborators, IgnoreMergeCommitsFor) and asked for it to be factored out.
 ---
 
 ## Summary
@@ -22,8 +25,17 @@ Since previous review:
 - `IgnoreMergeCommits` changed from a global `bool` to a `[]string` of `org` / `org/repo` entries (`pkg/plugins/config.go:256-259`), following the same shape as `SkipCollaborators`.
 - Added `Configuration.IgnoreMergeCommitsFor(org, repo)` (`pkg/plugins/config.go:305-313`), byte-for-byte the same lookup pattern as `SkipCollaborators`.
 - `handlePullRequest` now calls `pc.PluginConfig.IgnoreMergeCommitsFor(pre.Repo.Owner.Login, pre.Repo.Name)` instead of reading the bool directly (`pkg/plugins/owners-label/owners-label.go:69`).
+- No code changes since 2026-07-26T22:39:28Z. Prucek left two new comments on 2026-08-10 (see Findings): generated docs are stale, and the org/repo membership-check loop should be factored out now that it's duplicated three times.
 
 ## Findings
+
+### [should-fix] Generated plugin-config-documented.yaml not regenerated
+- where: `prow/cmd/generic-autobumper` docs / `pkg/plugins/plugin-config-documented.yaml` (generated)
+- concern: Flagged by Prucek on 2026-08-10: the new `ignore_merge_commits` config field is not reflected in the generated documentation. `make verify-codegen` needs to be run and its output committed before merge, or CI's codegen-verify check will fail.
+
+### [nit] Org/repo membership-check loop now duplicated a third time
+- where: `pkg/plugins/config.go:284-289` (`MDYAMLRepos`-style helper), `:294-301` (`SkipCollaborators`), `:305-313` (`IgnoreMergeCommitsFor`)
+- concern: Prucek requested (2026-08-10, inline on config.go:316) that the repeated `for _, elem := range list { if elem == org || elem == full { return true } }` pattern be factored into a shared helper now that it appears three times. The previous review's "Checked" section noted the pattern was reused but judged extraction unnecessary at two occurrences; a third occurrence changes that calculus and is worth a small helper, e.g. `func orgOrRepoInList(org, repo string, list []string) bool`.
 
 ### [should-fix] Merge commit API call runs before label-need check
 - where: `pkg/plugins/owners-label/owners-label.go:77-88`
@@ -75,6 +87,7 @@ Since previous review:
 - `handlePullRequest` gates on PR action before reaching new code
 - No invariants lost; old behavior preserved when `ignoreMergeCommits=false`
 - Checked reuse with `mergecommitblocker` (git-based, different approach) and `dco` (same expression but different purpose: filter vs gate). Neither warrants extraction.
+- Checked reuse of the org/full membership-check loop itself across `Owners` config helpers: now duplicated three times (see Findings — Prucek requested extraction on 2026-08-10).
 - Config field uses `omitempty`, defaults to `false`, existing configs parse identically
 - No new permissions required; `ListPullRequestCommits` uses same GitHub token scope
 - Upgrade and rollback both safe, no ordering dependencies

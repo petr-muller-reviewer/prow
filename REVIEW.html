@@ -38,7 +38,7 @@
     <dt>Author:</dt><dd>carterpewpew</dd>
     <dt>Base:</dt><dd>main</dd>
     <dt>Head SHA:</dt><dd><code>ddde196fedea6f58c0fd75fa102433444b989d21</code></dd>
-    <dt>Reviewed:</dt><dd>2026-07-26T22:39:28Z</dd>
+    <dt>Reviewed:</dt><dd>2026-08-11T11:19:22Z</dd>
   </dl>
 </div>
 
@@ -47,6 +47,7 @@
   <ul>
     <li>2026-07-03: No code changes (head SHA unchanged at <code>f864b330</code>). Reviewer Prucek left an inline comment on <code>config.go:258</code> reinforcing the existing config-granularity question.</li>
     <li>2026-07-26: <code>f864b330</code> &rarr; <code>ddde196fe</code>. <code>IgnoreMergeCommits</code> converted from a global bool to a <code>[]string</code> of org/org-repo entries with an <code>IgnoreMergeCommitsFor(org, repo)</code> helper, mirroring the existing <code>SkipCollaborators</code> pattern. Resolves the config-granularity question raised by all three review perspectives and by Prucek's inline comment.</li>
+    <li>2026-08-11: No code changes (head SHA unchanged at <code>ddde196fe</code>). Reviewer Prucek flagged that generated docs (<code>plugin-config-documented.yaml</code>) are stale and need <code>make verify-codegen</code>, and that the org/full membership-check loop is now duplicated a third time and should be factored out.</li>
   </ul>
 </div>
 
@@ -69,11 +70,20 @@
   <li><code>IgnoreMergeCommits</code> changed from a global <code>bool</code> to a <code>[]string</code> of <code>org</code> / <code>org/repo</code> entries (<code>pkg/plugins/config.go:256-259</code>), following the same shape as <code>SkipCollaborators</code>.</li>
   <li>Added <code>Configuration.IgnoreMergeCommitsFor(org, repo)</code> (<code>pkg/plugins/config.go:305-313</code>), the same lookup pattern as <code>SkipCollaborators</code>.</li>
   <li><code>handlePullRequest</code> now calls <code>pc.PluginConfig.IgnoreMergeCommitsFor(pre.Repo.Owner.Login, pre.Repo.Name)</code> instead of reading the bool directly (<code>pkg/plugins/owners-label/owners-label.go:69</code>).</li>
+  <li>No code changes since 2026-07-26T22:39:28Z. Prucek left two new comments on 2026-08-10: generated docs are stale, and the org/repo membership-check loop should be factored out (see Findings).</li>
 </ul>
 
 <h2>Findings</h2>
 
 <h3>Should fix</h3>
+
+<div class="finding sf">
+  <h3><span class="severity sev-should-fix">Should fix</span> Generated plugin-config-documented.yaml not regenerated</h3>
+  <p><code>pkg/plugins/plugin-config-documented.yaml</code> (generated)</p>
+  <p>
+    Flagged by Prucek on 2026-08-10: the new <code>ignore_merge_commits</code> config field is not reflected in the generated documentation. <code>make verify-codegen</code> needs to be run and its output committed before merge, or CI's codegen-verify check will fail.
+  </p>
+</div>
 
 <div class="finding sf">
   <h3><span class="severity sev-should-fix">Should fix</span> Merge commit API call runs before label-need check</h3>
@@ -94,6 +104,14 @@ if neededLabels.Len() == 0 {
 </div>
 
 <h3>Nits</h3>
+
+<div class="finding nt">
+  <h3><span class="severity sev-nit">Nit</span> Org/repo membership-check loop now duplicated a third time</h3>
+  <p><code>pkg/plugins/config.go:284-289</code> (MDYAMLRepos-style helper), <code>:294-301</code> (<code>SkipCollaborators</code>), <code>:305-313</code> (<code>IgnoreMergeCommitsFor</code>)</p>
+  <p>
+    Prucek requested (2026-08-10, inline on <code>config.go:316</code>) that the repeated <code>for _, elem := range list { if elem == org || elem == full { return true } }</code> pattern be factored into a shared helper now that it appears three times. The previous review's "Checked" section judged extraction unnecessary at two occurrences; a third occurrence changes that calculus &mdash; worth a small helper, e.g. <code>func orgOrRepoInList(org, repo string, list []string) bool</code>.
+  </p>
+</div>
 
 <div class="finding nt">
   <h3><span class="severity sev-nit">Nit</span> No test coverage for IgnoreMergeCommitsFor / handlePullRequest wiring</h3>
@@ -152,6 +170,7 @@ if neededLabels.Len() == 0 {
   <li><code>handlePullRequest</code> correctly gates on PR action before reaching the new code.</li>
   <li>Removed-behavior audit: no invariants lost; old behavior fully preserved when <code>ignoreMergeCommits=false</code>.</li>
   <li>Checked reuse with <code>mergecommitblocker</code> (git-based detection, different approach) and <code>dco</code> (same expression but different purpose: filter vs gate). Neither warrants extraction.</li>
+  <li>Checked reuse of the org/full membership-check loop itself across <code>Owners</code> config helpers: now duplicated three times (see Findings &mdash; Prucek requested extraction on 2026-08-10).</li>
   <li>Config field uses <code>omitempty</code>, defaults to <code>false</code>, existing configs parse identically.</li>
   <li>No new permissions required; <code>ListPullRequestCommits</code> uses same GitHub token scope.</li>
   <li>Upgrade and rollback both safe, no ordering dependencies.</li>

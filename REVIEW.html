@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Review of kubernetes-sigs/prow#837</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+         line-height: 1.6; max-width: 860px; margin: 2rem auto; padding: 0 1.5rem; color: #1a1a1a; }
+  code, pre { font-family: "SF Mono", Consolas, Menlo, monospace; }
+  header { border-bottom: 2px solid #333; padding-bottom: 1rem; margin-bottom: 1.5rem; }
+  header dl { display: grid; grid-template-columns: max-content 1fr; gap: 0.25rem 1rem; }
+  header dt { font-weight: 600; color: #555; }
+  h1 { font-size: 1.4rem; margin-bottom: 0.25rem; }
+  h2 { font-size: 1.15rem; border-bottom: 1px solid #ddd; padding-bottom: 0.3rem; margin-top: 2rem; }
+  .verdict { background: #eaf7ea; border: 1px solid #9c9; border-radius: 6px; padding: 0.75rem 1rem; }
+  .verdict.approve { background: #eaf7ea; border-color: #9c9; }
+  code.path { background: #f2f2f2; padding: 0.1rem 0.35rem; border-radius: 4px; }
+  ul { padding-left: 1.4rem; }
+  .empty { color: #777; font-style: italic; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Review of <a href="https://github.com/kubernetes-sigs/prow/pull/837">kubernetes-sigs/prow#837</a></h1>
+  <dl>
+    <dt>Title</dt><dd>chore(deps): bump github.com/sigstore/sigstore-go from 1.1.4 to 1.2.1 in /hack/tools</dd>
+    <dt>Head SHA</dt><dd><code>53ea75efdb102675f98ab9e85df0716577d3802c</code></dd>
+    <dt>Base</dt><dd>main</dd>
+    <dt>Reviewed at</dt><dd>2026-08-12T10:06:24Z</dd>
+  </dl>
+</header>
+
+<section class="verdict approve">
+  <strong>Verdict: Approve.</strong>
+  Dep-only bump of an indirect, unused-by-our-code dependency, fixing a real CVE, well past soak time, with zero code to review. Safe to merge.
+</section>
+
+<h2>What this PR does</h2>
+<ul>
+  <li>Dependabot bump of <code>github.com/sigstore/sigstore-go</code> <code>v1.1.4 → v1.2.1</code> in <code class="path">hack/tools/go.mod</code>, an indirect dependency pulled in transitively (via <code>google/ko</code>).</li>
+  <li><code>go mod tidy</code> churn on transitive deps as a side effect: docker/cli, go-openapi/*, grpc-gateway/v2, klog, otel, in-toto/attestation, sigstore/{rekor,sigstore,timestamp-authority}, theupdateframework/go-tuf/v2, etc.</li>
+  <li>Only <code class="path">hack/tools/go.mod</code> and <code class="path">hack/tools/go.sum</code> change. No project source touched.</li>
+  <li>New version fixes CVE-2026-54787 / GHSA-wqqc-jjcq-vfxm (signature-timestamp-vs-key-validity-window check for self-managed long-lived keys).</li>
+</ul>
+
+<h2>Dependency analysis</h2>
+<ul>
+  <li><strong>Freshness</strong> — v1.2.1 tagged 2026-06-09, ~2 months old at review time. Fine, no soak-time concern.</li>
+  <li><strong>Usage</strong> — indirect only, not imported by any of this repo's own code (<code class="path">hack/tools/tools.go</code> only blank-imports golangci-lint, k8s code-generators, protoc-gen-go, gotestsum, misspell, google/ko). Reaches sigstore-go transitively through <code>google/ko</code>'s signing support; Prow's own binaries never link against it.</li>
+  <li><strong>Changelog / exposure</strong> — v1.2.1 is a security fix for the long-lived-key verification path (not the standard Fulcio-cert path); v1.2.0 bundled unrelated Rekor v2 / TUF changes. None of it lands on code this repo exercises, since sigstore-go isn't called directly here. Exposure is minimal — build-tooling transitive dep only.</li>
+</ul>
+
+<h2>Findings</h2>
+<p class="empty">None — dep-only PR, no project code to review.</p>
+
+<h2>Things I checked and was fine with</h2>
+<ul>
+  <li>Diff scope: confirmed only <code class="path">hack/tools/go.mod</code>/<code class="path">go.sum</code> changed via <code>git diff --stat</code>.</li>
+  <li>Confirmed <code>sigstore-go</code> is indirect and not imported by any file in this repo outside <code class="path">hack/tools/go.sum</code>.</li>
+  <li>Confirmed CVE-2026-54787 fixed in v1.2.1 doesn't affect standard cert-based verification, and this repo doesn't use the affected long-lived-key workflow at all.</li>
+</ul>
+
+<h2>Open questions for the author</h2>
+<p class="empty">None.</p>
+
+</body>
+</html>

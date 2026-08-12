@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Review of kubernetes-sigs/prow#827</title>
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+    max-width: 860px;
+    margin: 2rem auto;
+    padding: 0 1.5rem;
+    color: #1a1a1a;
+  }
+  code, pre {
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 0.92em;
+  }
+  pre {
+    background: #f6f8fa;
+    padding: 0.9rem 1rem;
+    border-radius: 6px;
+    overflow-x: auto;
+    border: 1px solid #e1e4e8;
+  }
+  code.inline {
+    background: #f6f8fa;
+    padding: 0.1rem 0.35rem;
+    border-radius: 4px;
+  }
+  header {
+    border-bottom: 2px solid #e1e4e8;
+    padding-bottom: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  header dl {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 0.25rem 1rem;
+    margin: 0.5rem 0 0 0;
+  }
+  header dt { font-weight: 600; color: #57606a; }
+  header dd { margin: 0; }
+  h1 { font-size: 1.4rem; margin: 0; }
+  h2 {
+    font-size: 1.15rem;
+    margin-top: 2rem;
+    border-bottom: 1px solid #e1e4e8;
+    padding-bottom: 0.3rem;
+  }
+  .verdict {
+    background: #fff8c5;
+    border: 1px solid #d4a72c;
+    border-radius: 6px;
+    padding: 0.9rem 1.1rem;
+    margin: 1rem 0;
+  }
+  .verdict .label {
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    font-size: 0.85rem;
+    color: #7d5a00;
+  }
+  .finding {
+    border-left: 4px solid #d1d5da;
+    padding: 0.6rem 0 0.6rem 1rem;
+    margin: 1rem 0;
+  }
+  .finding.blocking { border-left-color: #cf222e; }
+  .finding.should-fix { border-left-color: #bf8700; }
+  .finding.nit { border-left-color: #57606a; }
+  .finding.question { border-left-color: #0969da; }
+  .finding h3 { margin: 0 0 0.3rem 0; font-size: 1rem; }
+  .sev-tag {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding: 0.1rem 0.5rem;
+    border-radius: 999px;
+    margin-right: 0.5rem;
+    vertical-align: middle;
+  }
+  .sev-tag.blocking { background: #ffebe9; color: #cf222e; }
+  .sev-tag.should-fix { background: #fff8c5; color: #7d5a00; }
+  .sev-tag.nit { background: #eaeef2; color: #57606a; }
+  .sev-tag.question { background: #ddf4ff; color: #0969da; }
+  .loc { color: #57606a; font-size: 0.85rem; margin-bottom: 0.4rem; }
+  ul { padding-left: 1.3rem; }
+  a { color: #0969da; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Review of kubernetes-sigs/prow #827</h1>
+  <dl>
+    <dt>Title</dt><dd>chore(deps): bump github.com/andygrunwald/go-gerrit from 0.0.0-20210709065208-9d38b0be0268 to 1.1.1</dd>
+    <dt>Head SHA</dt><dd><code class="inline">c8be0c7f4f2d2f9c5fc3b2428e8af932a565e2e3</code></dd>
+    <dt>Base</dt><dd><code class="inline">main</code></dd>
+    <dt>Reviewed at</dt><dd>2026-08-12T11:46:43Z</dd>
+    <dt>Link</dt><dd><a href="https://github.com/kubernetes-sigs/prow/pull/827">github.com/kubernetes-sigs/prow/pull/827</a></dd>
+  </dl>
+</header>
+
+<div class="verdict">
+  <div class="label">Verdict: Request changes</div>
+  <p>The version bump itself is fine on freshness (release is ~8 months old, a real tag). But go-gerrit v1.1.1 removed a URL-encoding special-case for literal <code class="inline">+</code> in query strings that prow's own Gerrit query construction directly depends on. Taking this bump as-is risks silently breaking Gerrit change discovery across every configured instance. Should be verified against a real/fake Gerrit before merging, or the query-join code should be fixed first.</p>
+</div>
+
+<h2>What this PR does</h2>
+<ul>
+  <li>Bumps direct dependency <code class="inline">github.com/andygrunwald/go-gerrit</code> from a 2021 pseudo-version (<code class="inline">v0.0.0-20210709065208-9d38b0be0268</code>) to the first real tagged releases, landing on <code class="inline">v1.1.1</code>.</li>
+  <li>Dep-only change: <code class="inline">go.mod</code>/<code class="inline">go.sum</code> only, no project code touched.</li>
+  <li>Spans ~92 upstream commits / 4+ years of history, including the library's first ever tagged releases (v1.0.0, v1.1.0, v1.1.1).</li>
+</ul>
+
+<h2>Findings</h2>
+
+<div class="finding blocking">
+  <span class="sev-tag blocking">Blocking</span>
+  <h3>Query <code class="inline">+</code>-join relies on removed go-gerrit URL-encoding special-case</h3>
+  <div class="loc"><code>pkg/gerrit/client/client.go:682</code></div>
+  <pre>opt.Query = append(opt.Query, strings.Join(append(additionalFilters, "project:"+project), "+"))</pre>
+  <p>go-gerrit removed its special-casing of literal <code class="inline">+</code> in query values (upstream commit <code class="inline">a7b2c28fbf9b684a5f521276e939f432f7b8a6df</code>, "don't treat + as a special character for queries", included in v1.0.0+). Previously <code class="inline">addOptions</code> substituted a placeholder for <code class="inline">+</code> before calling <code class="inline">url.Values.Encode()</code> and restored it afterward, so a raw unescaped <code class="inline">+</code> reached Gerrit and was interpreted (via standard form-decoding) as a space joining ANDed search predicates. That protection is gone as of v1.1.1.</p>
+  <p><code class="inline">queryChangesForProjectWithoutMetrics</code> builds every project query with exactly this pattern, joining predicates with <code class="inline">+</code>. Verified locally that <code class="inline">url.Values.Encode()</code> now percent-encodes a literal <code class="inline">+</code> to <code class="inline">%2B</code>; Gerrit will decode <code class="inline">%2B</code> back to a literal <code class="inline">+</code> character in the query text (not a space), turning <code class="inline">"status:open+project:foo"</code> into one malformed token instead of two ANDed predicates. This is the only <code class="inline">+</code>-join site in the codebase (checked <code class="inline">pkg/gerrit/client/*.go</code> and <code class="inline">pkg/gerrit/adapter/*.go</code>), but it's on the path every Gerrit adapter poll loop calls. If correct, this bump silently breaks Gerrit change discovery for every configured Gerrit project (empty results or a 400 from Gerrit).</p>
+</div>
+
+<h2>Things I checked and was fine with</h2>
+<ul>
+  <li>Release freshness: v1.1.1 released 2025-12-05 per proxy.golang.org — ~8 months old, adequate soak time, real tag (not a pseudo-version, unlike the old pin).</li>
+  <li>Import surface: direct dep, used in <code class="inline">pkg/gerrit/client</code>, <code class="inline">pkg/gerrit/adapter</code>, <code class="inline">pkg/gerrit/fakegerrit</code>, <code class="inline">pkg/tide/{gerrit,codereview}.go</code>, <code class="inline">pkg/crier/reporters/gerrit</code>, plus integration tests — core to prow's Gerrit integration, not incidental.</li>
+  <li>Grepped for other API surfaces changed upstream in this range (<code class="inline">CreateChangeDeprecated</code> removal, <code class="inline">DeleteDraftChange</code>&rarr;<code class="inline">DeleteChange</code> rename, <code class="inline">MoveInput.KeepAllLabels</code>&rarr;<code class="inline">KeepAllVotes</code> rename, new <code class="inline">ChangeInput</code>/<code class="inline">SubmitInput</code>/<code class="inline">CherryPickInput</code> fields) — no usages of the renamed/removed symbols in prow code, so those are non-issues here.</li>
+  <li>go.sum diff is consistent with the go.mod version bump (h1/go.mod hashes only for the one module).</li>
+</ul>
+
+<h2>Open questions for the author</h2>
+<ul>
+  <li>Has this been tested against a real (or fake) Gerrit instance with a multi-predicate query (e.g. <code class="inline">additionalFilters</code> non-empty, or the <code class="inline">project:</code> clause combined with another filter) to confirm change discovery still works after the <code class="inline">+</code>-encoding behavior change?</li>
+  <li>Would it be safer to change <code class="inline">pkg/gerrit/client/client.go:682</code> to join with <code class="inline">" "</code> (space) instead of <code class="inline">"+"</code> before taking this bump — matching go-gerrit's own updated example (<code class="inline">"change:249244+status:merged"</code> &rarr; <code class="inline">"change:249244 status:merged"</code>) and working correctly under both old and new library versions?</li>
+</ul>
+
+</body>
+</html>

@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Review: prow#844</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; line-height: 1.6; color: #1b1f23; max-width: 900px; margin: 2rem auto; padding: 0 1.5rem; background: #fff; }
+  code, pre { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; }
+  header { border-bottom: 2px solid #e1e4e8; padding-bottom: 1rem; margin-bottom: 1.5rem; }
+  header h1 { margin-bottom: 0.25rem; font-size: 1.4rem; }
+  header dl { display: grid; grid-template-columns: max-content 1fr; gap: 0.25rem 1rem; font-size: 0.9rem; color: #444; }
+  header dt { font-weight: 600; }
+  .verdict { background: #dafbe1; border: 1px solid #2ea043; border-radius: 6px; padding: 1rem 1.25rem; margin-bottom: 1.5rem; }
+  .verdict h2 { margin: 0 0 0.5rem 0; font-size: 1.1rem; }
+  section { margin-bottom: 2rem; }
+  section h2 { border-bottom: 1px solid #e1e4e8; padding-bottom: 0.3rem; }
+  .finding { border-left: 4px solid #ccc; padding: 0.5rem 1rem; margin-bottom: 1rem; background: #f8f9fa; }
+  .finding.blocking { border-color: #cf222e; }
+  .finding.should-fix { border-color: #bf8700; }
+  .finding.nit { border-color: #8250df; }
+  .finding.question { border-color: #0969da; }
+  .finding h3 { margin: 0 0 0.25rem 0; font-size: 1rem; }
+  .loc { font-size: 0.85rem; color: #555; }
+  ul { padding-left: 1.4rem; }
+  .empty { color: #666; font-style: italic; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Review: kubernetes-sigs/prow#844</h1>
+  <dl>
+    <dt>Title</dt><dd>fix(site): upgrade postcss-cli to 11 to patch picomatch CVE-2026-33672</dd>
+    <dt>Head SHA</dt><dd><code>701be5a93463a0175a9ff678a39015ab057a24ab</code></dd>
+    <dt>Base</dt><dd>main</dd>
+    <dt>Reviewed at</dt><dd>2026-08-12T10:20:49Z</dd>
+    <dt>Link</dt><dd><a href="https://github.com/kubernetes-sigs/prow/pull/844">github.com/kubernetes-sigs/prow/pull/844</a></dd>
+  </dl>
+</header>
+
+<div class="verdict">
+  <h2>Verdict: Approve</h2>
+  <p>Dep-only PR that cleanly resolves two CVEs (GHSA-3v7f-55p6-f55p, GHSA-c2c7-rcm5-vvqj) in the transitive <code>picomatch</code> dependency by upgrading <code>postcss-cli</code>, with the required Node&nbsp;18+ bump correctly handled via a Netlify config pin. All touched/introduced package versions are well past the freshness window, the change is scoped to devDependencies used only for the docs-site build (no runtime exposure to Prow itself), and no project source is touched.</p>
+</div>
+
+<section>
+  <h2>What this PR does</h2>
+  <ul>
+    <li>Bumps <code>postcss-cli</code> <code>9.1.0 &rarr; 11.0.1</code> in <code>site/package.json</code>, regenerating <code>site/package-lock.json</code>.</li>
+    <li>Replaces vulnerable <code>picomatch 2.3.1</code> with patched <code>2.3.2</code>, and introduces a new <code>tinyglobby</code> subtree carrying patched <code>picomatch 4.0.5</code>.</li>
+    <li>Refreshes <code>autoprefixer</code> <code>10.4.13 &rarr; 10.5.4</code> (within the existing <code>^10.4.2</code> range &mdash; lockfile refresh, not a manifest bump).</li>
+    <li>Pins <code>NODE_VERSION = "22"</code> in <code>netlify.toml</code>, required because postcss-cli 11 needs Node &ge;18.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Findings</h2>
+  <p class="empty">No findings &mdash; dep-only PR, nothing to flag.</p>
+</section>
+
+<section>
+  <h2>Things I checked and was fine with</h2>
+  <ul>
+    <li>Classification confirmed dep-only: diff against <code>upstream/main</code> touches only <code>netlify.toml</code>, <code>site/package.json</code>, <code>site/package-lock.json</code>.</li>
+    <li>Freshness of all bumped/new versions (relative to 2026-08-12): postcss-cli 11.0.1 (2025-03-12, &gt;1yr), picomatch 2.3.2 (2026-03-23, ~4.5mo), picomatch 4.0.5 (2026-07-02, ~6wk), tinyglobby 0.2.17 (2026-05-30, ~2.5mo), autoprefixer 10.5.4 (2026-07-16, ~27d). All comfortably past the freshness threshold; none are pseudo-versions.</li>
+    <li>CVE resolution verified against GitHub advisories directly: GHSA-3v7f-55p6-f55p (medium, POSIX method injection) and GHSA-c2c7-rcm5-vvqj (high, extglob ReDoS) both list picomatch <code>&lt;2.3.2</code> / <code>&lt;4.0.4</code> as vulnerable; lockfile diff confirms only <code>2.3.2</code> and <code>4.0.5</code> remain.</li>
+    <li>Read the full postcss-cli CHANGELOG from 9.1.0 to 11.0.1: Node&ge;18 requirement (11.0.0), ESM config support, non-TTY watch mode &mdash; no CSS-processing behavior changes expected.</li>
+    <li>Verified the new <code>NODE_VERSION = "22"</code> pin in <code>netlify.toml</code> covers postcss-cli 11's Node&ge;18 floor.</li>
+    <li>Confirmed <code>postcss-cli</code>/<code>autoprefixer</code> are devDependencies used only for the static docs-site build (Hugo + PostCSS via Netlify) &mdash; no runtime exposure in any Prow Go binary.</li>
+    <li>PR description reports <code>npm audit</code> &rarr; 0 vulnerabilities and <code>npm ls picomatch</code> showing only patched versions post-change.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Open questions for the author</h2>
+  <ul>
+    <li>The test plan's Netlify deploy preview checkbox is unchecked &mdash; can you confirm the preview build is green before merge? It's the only end-to-end validation of the Hugo/PostCSS/autoprefixer pipeline against the new toolchain.</li>
+  </ul>
+</section>
+
+</body>
+</html>

@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Review: kubernetes-sigs/prow#707</title>
+<style>
+  body { font-family: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+         line-height: 1.55; color: #1c1e21; margin: 0; background: #f6f8fa; }
+  main { max-width: 60rem; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+  h1 { font-size: 1.5rem; margin-bottom: .25rem; }
+  h2 { font-size: 1.2rem; border-bottom: 1px solid #d0d7de; padding-bottom: .3rem; margin-top: 2.2rem; }
+  h3 { font-size: 1.02rem; margin-bottom: .2rem; }
+  code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .88em; }
+  code { background: #eef1f4; padding: .1em .35em; border-radius: 4px; }
+  pre { background: #f0f3f6; border: 1px solid #d8dee4; border-radius: 6px; padding: .7rem .9rem;
+        overflow-x: auto; line-height: 1.45; }
+  pre code { background: none; padding: 0; }
+  .meta { background: #fff; border: 1px solid #d0d7de; border-radius: 8px; padding: 1rem 1.25rem; margin-top: 1rem; }
+  .meta table { border-collapse: collapse; }
+  .meta td { padding: .12rem .8rem .12rem 0; vertical-align: top; }
+  .meta td:first-child { color: #57606a; white-space: nowrap; }
+  .verdict { background: #ddf4ff; border: 1px solid #54aeff; border-left: 6px solid #0969da;
+             border-radius: 8px; padding: .9rem 1.25rem; margin-top: 1rem; }
+  .verdict strong.tag { color: #0969da; text-transform: uppercase; letter-spacing: .03em; }
+  .context { background: #f1f8ff; border: 1px solid #54aeff; border-left: 6px solid #0969da;
+             border-radius: 8px; padding: .9rem 1.25rem; margin-top: 1rem; font-size: .95em; }
+  .update { background: #dafbe1; border: 1px solid #4ac26b; border-left: 6px solid #1a7f37;
+            border-radius: 8px; padding: .9rem 1.25rem; margin-top: 1rem; font-size: .95em; }
+  .finding { background: #fff; border: 1px solid #d0d7de; border-radius: 8px;
+             padding: .9rem 1.25rem; margin: .9rem 0; }
+  .resolved-finding { background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 8px;
+             padding: .9rem 1.25rem; margin: .9rem 0; opacity: 0.7; }
+  .sev { display: inline-block; font-size: .72rem; font-weight: 700; text-transform: uppercase;
+         letter-spacing: .04em; padding: .15em .55em; border-radius: 999px; vertical-align: 2px; margin-right: .5em; }
+  .sev-should   { background: #fff8c5; color: #7d4e00; border: 1px solid #d4a72c66; }
+  .sev-nit      { background: #ddf4ff; color: #0969da; border: 1px solid #54aeff66; }
+  .sev-question { background: #fbefff; color: #8250df; border: 1px solid #c297ff66; }
+  .sev-resolved { background: #dafbe1; color: #1a7f37; border: 1px solid #4ac26b66; }
+  .where { color: #57606a; font-size: .9em; margin: .15rem 0 .5rem; }
+  ul { padding-left: 1.4rem; }
+  li { margin: .25rem 0; }
+  a { color: #0969da; }
+  .hl { background: #fff1b8; border-radius: 3px; padding: 0 .15em; }
+</style>
+</head>
+<body>
+<main>
+
+<h1>Review: <a href="https://github.com/kubernetes-sigs/prow/pull/707">kubernetes-sigs/prow#707</a></h1>
+<div class="meta">
+  <table>
+    <tr><td>PR</td><td>kubernetes-sigs/prow#707</td></tr>
+    <tr><td>Title</td><td>approve: fix silent approval bypass when PR exceeds GitHub file list API limit</td></tr>
+    <tr><td>Author</td><td>jmguzik</td></tr>
+    <tr><td>Head SHA</td><td><code>f8fb3fd1af69203c783876acd791fbf7d757f275</code></td></tr>
+    <tr><td>Base</td><td><code>main</code></td></tr>
+    <tr><td>Reviewed at</td><td><code>2026-06-30T11:52:48Z</code></td></tr>
+    <tr><td>Method</td><td>Multi-perspective maintainer review + advisor synthesis (refreshed after force-push)</td></tr>
+    <tr><td>Previous SHA</td><td><code>decefa02a730efb3d44e4df79d6bf4810d6a1267</code></td></tr>
+  </table>
+</div>
+
+<h2>Verdict</h2>
+<div class="verdict">
+  <strong class="tag">Comment</strong> — the blocking finding from the previous review (unsound commit-based fallback)
+  is resolved: the entire fallback was deleted. The PR now simply detects truncation and blocks, requiring manual admin
+  approval. Remaining items are should-fix (test coverage, fail-open on <code>expectedFiles == 0</code>) and
+  questions (direction vs discussed root-approver plan, operator docs). Nothing blocking.
+</div>
+
+<div class="update">
+  <strong>Since previous review</strong> (force-push <code>decefa02a</code> &rarr; <code>f8fb3fd1a</code>, 2026-06-16):
+  <ul>
+    <li>Entire commit-based fallback removed: <code>ListPullRequestCommits</code>/<code>GetSingleCommit</code>,
+    <code>truncationReason</code> enum, <code>maxCommitsForFallback</code> constant, and the union-filenames logic
+    are all gone. <code>getFilenames</code> is now ~15 lines returning <code>([]string, bool, error)</code>.</li>
+    <li><code>truncationWarningMessage</code> simplified to a single message taking only <code>changedFiles int</code>.</li>
+    <li>Two of three truncation tests deleted; remaining one renamed to <code>TestHandleTruncatedFileList</code>
+    and simplified.</li>
+    <li>This is simpler than the "option 1" (root approver) discussed on Slack and prototyped on
+    <code>petr-muller/prow:707-explore</code>. Current code blocks entirely on truncation &mdash; no root-approver
+    fallback. More conservative but less ergonomic for legitimate large PRs.</li>
+  </ul>
+</div>
+
+<div class="context">
+  <strong>Off-PR context (Slack, 2026-06-09):</strong> the blocking finding from the original review was independently
+  confirmed on the PR (discussion
+  <a href="https://github.com/kubernetes-sigs/prow/pull/707#discussion_r3195042137">r3195042137</a> &mdash;
+  <code>GetSingleCommit</code> is also limited). The author intended to refactor toward <em>"option&nbsp;1"</em>
+  (root approver on truncation). The actual push took a simpler approach: just block and require manual admin label.
+  The root-approver direction may come in a follow-up.
+</div>
+
+<div class="context">
+  <strong>Prototype (2026-06-09):</strong> the root-approver direction is implemented on
+  <code>petr-muller/prow</code> branch <a href="https://github.com/petr-muller/prow/tree/707-explore"><code>707-explore</code></a>
+  (commit <code>3e3c66a3c</code>). Detection moved into the github client via typed
+  <code>PullRequestChangesTruncatedError</code>; approve catches it and requires root approval via
+  <code>approvers.NewTruncatedOwners</code>. If the author pursues root-approver support later,
+  compare against this prototype.
+</div>
+
+<h2>What this PR does</h2>
+<ul>
+  <li>Closes a real, observed approval bypass (openshift/hypershift#8355): GitHub's "list PR files" API silently caps at 3000 files, so the approve plugin never evaluated files past the cap against OWNERS.</li>
+  <li>Adds <code>ChangedFiles</code> to the <code>PullRequest</code> struct so the (always accurate) count on the PR object can be compared with what the files endpoint actually returned.</li>
+  <li>New <code>getFilenames</code> helper: calls <code>GetPullRequestChanges</code>; if the returned count is less than <code>ChangedFiles</code>, returns <code>(nil, true, nil)</code> to signal truncation. No recovery attempt.</li>
+  <li>On truncation: posts an <code>[ApprovalNotifier]</code> "NOT APPROVED" comment (deduplicated), removes a bot-added <code>approved</code> label (human-applied labels preserved), returns <code>nil</code>.</li>
+  <li>PRs &le;3000 files keep byte-identical behavior &mdash; single API call, zero overhead.</li>
+</ul>
+
+<h2>Findings</h2>
+
+<h3><span class="sev sev-should">Should fix</span>Silent fail-open when <code>ChangedFiles == 0</code> (the <code>pull_request_review</code> path is inert)</h3>
+<div class="finding">
+  <div class="where"><code>pkg/plugins/approve/approve.go:371</code>, <code>pkg/plugins/approve/approve.go:275-289</code> (handleReview)</div>
+  <p><code>if expectedFiles &gt; 0 &amp;&amp; len(filenames) &lt; expectedFiles</code> &mdash; when <code>expectedFiles</code>
+  is 0, truncation detection is skipped entirely with no log line. <code>handleReview</code> populates
+  <code>changedFiles</code> from the <code>pull_request_review</code> webhook payload, whose embedded
+  <code>pull_request</code> object does <em>not</em> carry <code>changed_files</code> &mdash; so via review events
+  the check is silently inert and the bypass remains reachable (fails open to pre-PR behavior; a gap, not a regression).</p>
+  <pre><code>if expectedFiles &gt; 0 &amp;&amp; len(filenames) &lt; expectedFiles {
+    return nil, true, nil
+}</code></pre>
+  <p>Minimum: log when the guard is skipped. Better: fetch the PR via <code>GetPullRequest</code> when the payload field is 0.</p>
+</div>
+
+<h3><span class="sev sev-should">Should fix</span>Test coverage is thin for a security fix</h3>
+<div class="finding">
+  <div class="where"><code>pkg/plugins/approve/approve_test.go:1407-1459</code></div>
+  <p>Only one truncation test remains (<code>TestHandleTruncatedFileList</code>). It correctly checks that the
+  truncation warning is posted and the <code>approved</code> label is removed. Still missing: the dedup path
+  (second <code>handle</code> run with identical existing truncation comment must not delete/recreate), the
+  <code>humanApproved == true</code> label-preserve path, and the <code>expectedFiles == 0</code> fast-path behavior.
+  All testable with <code>fakegithub</code> today.</p>
+</div>
+
+<h3><span class="sev sev-nit">Nit</span>Unused fetches on the truncation path</h3>
+<div class="finding">
+  <div class="where"><code>pkg/plugins/approve/approve.go:443-450</code></div>
+  <p><code>ListPullRequestComments</code> and <code>ListReviews</code> are fetched before the truncation early-return but
+  unused there. Checking <code>truncated</code> earlier saves two paginated calls on exactly the PRs that are
+  already in an exceptional path.</p>
+</div>
+
+<h3><span class="sev sev-nit">Nit</span>Duplicated notification lifecycle logic</h3>
+<div class="finding">
+  <div class="where"><code>pkg/plugins/approve/approve.go:457-469</code> vs <code>pkg/plugins/approve/approve.go:536-550</code></div>
+  <p>The truncation block re-implements the filter-notifications / compare-latest / delete-all / create-new pattern
+  from the normal flow; two copies in one function will drift. Extract a shared helper.</p>
+</div>
+
+<h3><span class="sev sev-question">Question</span><code>WasLabelAddedByHuman</code> error-handling asymmetry</h3>
+<div class="finding">
+  <div class="where"><code>pkg/plugins/approve/approve.go:472-476</code> vs <code>pkg/plugins/approve/approve.go:574-577</code></div>
+  <p>On error the truncation path <em>preserves</em> the approved label (fails open on a known-incomplete PR), while the
+  existing <code>humanAddedApproved</code> helper assumes not-human on the same error (fails closed). Deliberate
+  (protect manual admin overrides) or oversight?</p>
+</div>
+
+<h3><span class="sev sev-question">Question</span>Root cause remains for ~15 other <code>GetPullRequestChanges</code> consumers</h3>
+<div class="finding">
+  <div class="where"><code>pkg/github/client.go:2415</code></div>
+  <p>Same silent truncation affects <code>blockade</code> (security-relevant), <code>verify-owners</code>,
+  <code>owners-label</code>, <code>blunderbuss</code>, <code>trigger</code>, etc. Plan: client-level affordance
+  or at least a tracking issue?</p>
+</div>
+
+<h3><span class="sev sev-question">Question</span>Operator-facing documentation</h3>
+<div class="finding">
+  <div class="where">approve plugin docs / helpProvider</div>
+  <p>New blocking behavior documented only in the bot comment. Update plugin docs? Release-note that bot-applied
+  <code>approved</code> labels on &gt;3000-file PRs get removed on the next event after upgrade?</p>
+</div>
+
+<h3><span class="sev sev-question">Question</span>Direction vs discussed plan</h3>
+<div class="finding">
+  <div class="where">overall approach</div>
+  <p>Slack discussion indicated "option 1" (root approver on truncation); this push blocks entirely and requires
+  manual admin label. Either is valid &mdash; confirming this is the intended final direction or an interim step
+  before root-approver support.</p>
+</div>
+
+<h2>Resolved findings</h2>
+
+<h3><span class="sev sev-resolved">Resolved</span>Fallback completeness check is unsound (was blocking)</h3>
+<div class="resolved-finding">
+  <div class="where">was <code>pkg/plugins/approve/approve.go:411-423</code></div>
+  <p>Entire commit-based fallback removed. <code>ListPullRequestCommits</code>/<code>GetSingleCommit</code> no longer
+  called; <code>getFilenames</code> detects truncation via count comparison and returns immediately. No unsound
+  count-equality heuristic, no per-commit file cap issue.</p>
+</div>
+
+<h3><span class="sev sev-resolved">Resolved</span>Undocumented invariant + maxCommitsForFallback rationale (was should-fix)</h3>
+<div class="resolved-finding">
+  <div class="where">was <code>pkg/plugins/approve/approve.go:368, 378-383</code></div>
+  <p><code>maxCommitsForFallback</code> constant and all commit-based fallback logic deleted.</p>
+</div>
+
+<h3><span class="sev sev-resolved">Resolved</span>reason logged as raw iota (was nit)</h3>
+<div class="resolved-finding">
+  <div class="where">was <code>pkg/plugins/approve/approve.go:518</code></div>
+  <p><code>truncationReason</code> enum deleted. Warning log now uses a plain descriptive message.</p>
+</div>
+
+<h3><span class="sev sev-resolved">Resolved</span>Commit-fetch errors with misleading context (was nit)</h3>
+<div class="resolved-finding">
+  <div class="where">was <code>pkg/plugins/approve/approve.go:398-414</code></div>
+  <p>No more commit fetches.</p>
+</div>
+
+<h3><span class="sev sev-resolved">Resolved</span>getFilenames signature at edge of readability (was nit)</h3>
+<div class="resolved-finding">
+  <div class="where">was <code>pkg/plugins/approve/approve.go:384</code></div>
+  <p>Simplified from <code>([]string, truncationReason, int, error)</code> to <code>([]string, bool, error)</code>.</p>
+</div>
+
+<h2>Things I checked and was fine with</h2>
+<ul>
+  <li>Fast path is byte-identical for &le;3000-file PRs: single <code>GetPullRequestChanges</code> call, zero extra API calls.</li>
+  <li>The truncation comment uses <code>approvers.ApprovalNotificationName</code> and matches <code>notificationRegex</code> &mdash; participates in existing notification dedup/replace lifecycle.</li>
+  <li>No config/CRD/flag/RBAC/scope changes; <code>ChangedFiles</code> struct field is additive; rollback is a plain image revert. Deployment risk LOW.</li>
+  <li>Detection compares against <code>PR.ChangedFiles</code>, not a hardcoded 3000 &mdash; resilient to GitHub changing the cap.</li>
+  <li>Human-applied <code>approved</code> labels are never removed.</li>
+  <li>API cost reduced vs previous revision: no more up-to-11-call fallback; truncation handling adds zero extra API calls beyond <code>GetPullRequestChanges</code>.</li>
+  <li>Returning <code>nil</code> from the truncation path keeps hook error metrics clean.</li>
+  <li>Tests are behavioral (drive <code>handle()</code> through <code>fakegithub</code>; no new mocks).</li>
+  <li>Change cleanly revertible: one struct field plus plugin-local code.</li>
+</ul>
+
+<h2>Open questions for the author</h2>
+<ul>
+  <li>Is the <code>WasLabelAddedByHuman</code> error-path fail-open (preserve label) deliberate, given <code>humanAddedApproved</code> treats the same error fail-closed?</li>
+  <li>Plan for the other <code>GetPullRequestChanges</code> consumers (especially <code>blockade</code>) &mdash; client-level fix or tracking issue?</li>
+  <li>Should <code>handleReview</code> fetch the PR to populate <code>changed_files</code>, given <code>pull_request_review</code> payloads omit it?</li>
+  <li>Docs/helpProvider and release-note updates for the new blocking behavior?</li>
+  <li>Is the block-entirely approach the final direction, or is root-approver support (per Slack "option 1") coming as a follow-up?</li>
+</ul>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Review of kubernetes-sigs/prow#845</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+         line-height: 1.6; color: #1a1a1a; max-width: 860px; margin: 2rem auto; padding: 0 1.5rem; }
+  code, pre { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; }
+  code { background: #f2f2f2; padding: 0.1em 0.35em; border-radius: 3px; font-size: 0.92em; }
+  pre { background: #f6f6f6; padding: 0.8em 1em; border-radius: 6px; overflow-x: auto; }
+  header { border-bottom: 2px solid #ddd; padding-bottom: 1rem; margin-bottom: 1.5rem; }
+  header dl { display: grid; grid-template-columns: max-content 1fr; gap: 0.2rem 1rem; margin: 0.5rem 0; }
+  header dt { font-weight: 600; color: #555; }
+  h1 { font-size: 1.4rem; margin-bottom: 0.2rem; }
+  h2 { font-size: 1.15rem; margin-top: 2rem; border-bottom: 1px solid #eee; padding-bottom: 0.3rem; }
+  .verdict { background: #eafbea; border: 1px solid #b7e4b7; padding: 0.8em 1.2em; border-radius: 6px; }
+  .verdict.approve { background: #eafbea; border-color: #b7e4b7; }
+  ul { padding-left: 1.4rem; }
+  .none { color: #666; font-style: italic; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Review of kubernetes-sigs/prow#845</h1>
+  <dl>
+    <dt>Title</dt><dd>chore(deps): bump the kubernetes group across 1 directory with 2 updates</dd>
+    <dt>PR</dt><dd><a href="https://github.com/kubernetes-sigs/prow/pull/845">kubernetes-sigs/prow#845</a></dd>
+    <dt>Head SHA</dt><dd><code>0e3a2a2fbfeab2ee2540bea3675da904f1267683</code></dd>
+    <dt>Base</dt><dd>main</dd>
+    <dt>Reviewed at</dt><dd>2026-08-12T11:24:49Z</dd>
+  </dl>
+</header>
+
+<section class="verdict approve">
+  <strong>Verdict: Approve.</strong>
+  Dep-only bump in the standalone <code>hack/tools</code> build-tooling module. Both direct dependencies
+  (<code>k8s.io/code-generator</code>, <code>sigs.k8s.io/controller-tools</code>) are used exclusively as
+  build-time CLI generators, not linked into any shipped Prow binary, and both releases have soaked well
+  past the risky window. No project code changed, no findings.
+</section>
+
+<h2>What this PR does</h2>
+<ul>
+  <li>Dependabot group bump touching only <code>hack/tools/go.mod</code> and <code>hack/tools/go.sum</code> — a separate Go module from the main Prow module used purely for dev tooling.</li>
+  <li>Direct deps: <code>k8s.io/code-generator</code> v0.32.8 &rarr; v0.36.3 (released 2026-07-23, ~20 days old) and <code>sigs.k8s.io/controller-tools</code> v0.17.3 &rarr; v0.21.0 (released 2026-05-06, ~3 months old).</li>
+  <li><code>go</code> directive bumped 1.25.5 &rarr; 1.26.0; a long tail of transitive deps follow (k8s.io/api, apimachinery, apiextensions-apiserver &rarr; 0.36.x, kube-openapi, klog, utils, structured-merge-diff/v6, fsnotify, cbor, grpc-gateway; <code>gogo/protobuf</code> dropped, <code>google/gnostic-models</code> added; <code>google.golang.org/protobuf</code> moved to a pseudo-version).</li>
+  <li>Both direct deps are invoked only as CLI binaries (<code>client-gen</code>, <code>deepcopy-gen</code>, <code>informer-gen</code>, <code>lister-gen</code>, <code>controller-gen</code>) from <code>hack/make-rules/update/codegen.sh</code> lines 40-48 — never imported into runtime Prow code.</li>
+  <li>Classification: dep-only. No project source, vendored, or generated files changed.</li>
+</ul>
+
+<h2>Findings</h2>
+<p class="none">None — dep-only bump, no project code to review.</p>
+
+<h2>Things I checked and was fine with</h2>
+<ul>
+  <li>Diff scope: confirmed only <code>hack/tools/go.mod</code>/<code>go.sum</code> changed.</li>
+  <li>Freshness of both direct deps via <code>proxy.golang.org</code>: code-generator v0.36.3 (2026-07-23) and controller-tools v0.21.0 (2026-05-06) — both well outside the &lt;2-week risky window.</li>
+  <li>Import surface: grepped the repo for these two module paths outside <code>go.mod</code>/<code>go.sum</code> — only referenced as CLI builds in <code>codegen.sh</code>, never imported into Prow source.</li>
+  <li>Changelogs for both (code-generator v0.32.8..v0.36.3, controller-tools v0.17.3..v0.21.0): additive generator features (declarative-validation markers, <code>k8s:enum</code>/<code>k8s:immutable</code>, applyconfiguration extract functions, kube-openapi/k8s.io v1.36 bump) — no CVEs, no exposure since these tools never run against untrusted input inside Prow.</li>
+</ul>
+
+<h2>Open questions for the author</h2>
+<ul>
+  <li>Given the 4-minor-version jump on both generators, and the marker/CRD-generation changes in that range (IntOrString enum handling, cluster-scoped applyconfiguration fix), has <code>make update-codegen</code>/<code>verify-codegen</code> been re-run to confirm no unexpected diff in checked-in generated code?</li>
+</ul>
+
+</body>
+</html>

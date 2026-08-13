@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Review: kubernetes-sigs/prow#847</title>
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+    color: #1a1a1a;
+    max-width: 900px;
+    margin: 2rem auto;
+    padding: 0 1.5rem;
+    background: #fafafa;
+  }
+  code, .code {
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 0.9em;
+    background: #f0f0f0;
+    padding: 0.1em 0.35em;
+    border-radius: 3px;
+  }
+  pre {
+    background: #1e1e2e;
+    color: #cdd6f4;
+    padding: 1rem;
+    border-radius: 6px;
+    overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 0.88em;
+  }
+  header {
+    border-bottom: 2px solid #ddd;
+    padding-bottom: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  header dl {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 0.25rem 1rem;
+    margin: 0;
+  }
+  header dt { font-weight: 600; color: #555; }
+  header dd { margin: 0; }
+  h1 { font-size: 1.4rem; margin-bottom: 0.25rem; }
+  h2 {
+    margin-top: 2.5rem;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 0.3rem;
+  }
+  h3 { margin-bottom: 0.3rem; }
+  .verdict-box {
+    background: #fff3cd;
+    border: 1px solid #ffe69c;
+    border-radius: 6px;
+    padding: 1rem 1.25rem;
+  }
+  .verdict-label {
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: #92620a;
+  }
+  .finding {
+    border: 1px solid #e0e0e0;
+    border-left: 4px solid #999;
+    border-radius: 4px;
+    padding: 0.9rem 1.1rem;
+    margin-bottom: 1.1rem;
+    background: #fff;
+  }
+  .finding.blocking { border-left-color: #d33; }
+  .finding.should-fix { border-left-color: #e08a00; }
+  .finding.nit { border-left-color: #888; }
+  .finding.question { border-left-color: #3366cc; }
+  .sev-tag {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 0.15em 0.5em;
+    border-radius: 3px;
+    margin-right: 0.5em;
+    color: #fff;
+  }
+  .sev-tag.blocking { background: #d33; }
+  .sev-tag.should-fix { background: #e08a00; }
+  .sev-tag.nit { background: #888; }
+  .sev-tag.question { background: #3366cc; }
+  .loc { color: #666; }
+  ul { padding-left: 1.4rem; }
+  a { color: #1a5fb4; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>deck: drop stale Prow-managed contexts with no matching ProwJob</h1>
+  <dl>
+    <dt>PR</dt><dd><a href="https://github.com/kubernetes-sigs/prow/pull/847">kubernetes-sigs/prow#847</a></dd>
+    <dt>Head SHA</dt><dd class="code">41980fbc0d3985c7f9ecc7045c73ea5e6b9b162d</dd>
+    <dt>Base</dt><dd class="code">main</dd>
+    <dt>Reviewed at</dt><dd>2026-08-13T11:40:24Z</dd>
+  </dl>
+</header>
+
+<section class="verdict-box">
+  <div><span class="verdict-label">Verdict: request changes</span></div>
+  <p>The core mechanism&mdash;pruning GitHub status contexts by name-prefix heuristic when no live <code>ProwJob</code> exists&mdash;has a correctness gap that will misfire on any long-lived PR: Sinker garbage-collects <code>ProwJob</code> CRs after their retention window even when the job and its context are still valid, so this will delete accurate, current statuses. The name-based matching is also loose enough to catch non-Prow checks the PR explicitly says it wants to avoid touching. There's also an existing server-side mechanism (<code>statusreconciler</code>) solving a closely related problem with a stronger method, worth reconciling with before adding a second heuristic.</p>
+</section>
+
+<h2>What this PR does</h2>
+<ul>
+  <li>Changes <code>getFullPRContext</code> (<code>cmd/deck/static/pr/pr.ts</code>) to delete GitHub status contexts that have no matching live <code>ProwJob</code> and whose name matches a hardcoded Prow naming convention (<code>pull-</code>, <code>branch-ci-</code>, <code>ci-</code> prefixes).</li>
+  <li>Intent: retract stale contexts left behind by renamed/removed Prow jobs, since GitHub never retracts a status context on its own.</li>
+  <li>Explicitly scoped to name-pattern matching rather than a real config diff; author acknowledges this won't catch non-conventionally-named renamed jobs.</li>
+  <li>Fixes #824.</li>
+</ul>
+
+<h2>Findings</h2>
+
+<h3>Blocking</h3>
+
+<div class="finding blocking">
+  <span class="sev-tag blocking">blocking</span>
+  <strong>Pruning deletes contexts whose ProwJob was merely garbage-collected, not actually stale</strong>
+  <div class="loc"><code>cmd/deck/static/pr/pr.ts:382-390</code></div>
+  <p><code>builds</code>/<code>buildContextNames</code> only reflects currently-live ProwJob CRs. Sinker garbage-collects ProwJob CRs after <code>MaxProwJobAge</code> (default 7 days, <code>pkg/config/config.go:2692</code>). A PR open (or viewed) longer than that will have its presubmit's ProwJob CR GC'd even though the job is still configured and the GitHub context is still accurate. This logic conflates &ldquo;no ProwJob&rdquo; with &ldquo;job renamed/removed&rdquo; and will silently delete valid, still-correct contexts from the returned list.</p>
+  <pre>const prowJobNamePattern = /^(pull-|branch-ci-|ci-)/;
+for (const [name] of contextMap) {
+  if (!buildContextNames.has(name) &amp;&amp; prowJobNamePattern.test(name)) {
+    contextMap.delete(name);
+  }
+}</pre>
+</div>
+
+<div class="finding blocking">
+  <span class="sev-tag blocking">blocking</span>
+  <strong>Naming-convention regex can match and hide legitimate non-Prow status contexts</strong>
+  <div class="loc"><code>cmd/deck/static/pr/pr.ts:385</code></div>
+  <p><span class="code">/^(pull-|branch-ci-|ci-)/</span> is not a guaranteed-unique Prow convention. A third-party/bot GitHub status context that happens to start with one of these prefixes but is never reported via <code>builds</code> will be deleted every single run, permanently hiding a valid, currently-reporting check from the PR status view &mdash; the opposite of the PR's own stated goal of not touching non-Prow checks.</p>
+</div>
+
+<h3>Should fix</h3>
+
+<div class="finding should-fix">
+  <span class="sev-tag should-fix">should-fix</span>
+  <strong>Duplicates and conflicts with the existing server-side stale-context retirement mechanism</strong>
+  <div class="loc"><code>cmd/deck/static/pr/pr.ts:382-390</code></div>
+  <p><code>pkg/statusreconciler/controller.go</code> (<code>removedPresubmits</code> / <code>retireRemovedContexts</code>, ~lines 194 and 408) already retires GitHub statuses for presubmits actually removed from config, using real config diffs rather than a name heuristic. This client-side addition re-solves the same problem with a weaker mechanism that both misses cases (non-conventional names) and wrongly targets cases the reconciler wouldn't (GC'd-but-still-valid jobs, see above) &mdash; leaving two divergent, sometimes-contradicting definitions of &ldquo;stale&rdquo; in the codebase.</p>
+</div>
+
+<div class="finding should-fix">
+  <span class="sev-tag should-fix">should-fix</span>
+  <strong>No test coverage for the new deletion behavior</strong>
+  <div class="loc"><code>cmd/deck/static/pr/pr.ts:335</code></div>
+  <p><code>getFullPRContext</code> is newly exported with new map-deletion logic and no accompanying unit test. The only functional change in the PR ships untested, so a future edit to the regex, <code>buildContextNames</code>, or the delete-while-iterating pattern has nothing to catch a regression.</p>
+</div>
+
+<h3>Nits</h3>
+
+<div class="finding nit">
+  <span class="sev-tag nit">nit</span>
+  <strong>Doc comment no longer describes the function's behavior</strong>
+  <div class="loc"><code>cmd/deck/static/pr/pr.ts:330-334</code></div>
+  <p>The comment still says the function &ldquo;takes all pr contexts and only replaces contexts that have existing Prow Jobs&rdquo; &mdash; it doesn't mention that contexts can now be deleted outright. A reader relying on the doc to assume the output always contains every GitHub-reported context will be surprised.</p>
+</div>
+
+<h2>Things I checked and was fine with</h2>
+<ul>
+  <li>Iteration-while-deleting on the <code>Map</code> (<code>for (const [name] of contextMap) { ... contextMap.delete(name) }</code>) is safe in JS/TS &mdash; <code>Map</code> iterators tolerate deletion of the current key during iteration.</li>
+  <li>Tide context exclusion (<code>context.Context === "tide"</code>) is unaffected by the new logic.</li>
+  <li>Discrepancy-detection logic for state mismatches (lines 363-380) is unchanged and unaffected by the new pruning block.</li>
+</ul>
+
+<h2>Open questions for the author</h2>
+<ul>
+  <li>How does this interact with Sinker's <code>MaxProwJobAge</code> GC of ProwJob CRs &mdash; has this been tested on a PR open longer than that retention window?</li>
+  <li>Is the naming-convention regex meant to be configurable per-deployment, since prefixes like <code>ci-</code> are common outside Prow too?</li>
+  <li>Given <code>statusreconciler</code> already retires removed-presubmit contexts server-side, why implement a second, weaker heuristic client-side instead of extending/reusing that mechanism?</li>
+</ul>
+
+</body>
+</html>

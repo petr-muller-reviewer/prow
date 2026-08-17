@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Review of kubernetes-sigs/prow#856</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; line-height: 1.6; color: #1a1a1a; max-width: 860px; margin: 2rem auto; padding: 0 1.5rem; }
+  code, pre { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; }
+  header { border-bottom: 2px solid #ddd; padding-bottom: 1rem; margin-bottom: 1.5rem; }
+  header h1 { margin-bottom: 0.25rem; font-size: 1.4rem; }
+  header dl { display: grid; grid-template-columns: max-content 1fr; gap: 0.15rem 0.75rem; font-size: 0.92rem; color: #444; }
+  header dt { font-weight: 600; }
+  .verdict { background: #eef7ee; border: 1px solid #bfe3bf; border-radius: 6px; padding: 1rem 1.25rem; margin-bottom: 1.5rem; }
+  .verdict .label { font-weight: 700; text-transform: uppercase; color: #1e7a1e; letter-spacing: 0.03em; }
+  h2 { border-bottom: 1px solid #eee; padding-bottom: 0.3rem; margin-top: 2rem; }
+  table { border-collapse: collapse; margin: 0.75rem 0; }
+  td, th { border: 1px solid #ddd; padding: 0.35rem 0.75rem; text-align: left; }
+  .dep h3 { margin-bottom: 0.25rem; }
+  .dep dl { display: grid; grid-template-columns: max-content 1fr; gap: 0.2rem 0.75rem; margin: 0.5rem 0 1rem; }
+  .dep dt { font-weight: 600; color: #333; }
+  ul { padding-left: 1.3rem; }
+  a { color: #0552b5; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Review of kubernetes-sigs/prow#856</h1>
+  <dl>
+    <dt>Title</dt><dd>chore(deps): bump the kubernetes group across 1 directory with 2 updates</dd>
+    <dt>PR</dt><dd><a href="https://github.com/kubernetes-sigs/prow/pull/856">kubernetes-sigs/prow#856</a></dd>
+    <dt>Head SHA</dt><dd><code>443a28f9bd3b6d998415791eb7da096cac59eeb6</code></dd>
+    <dt>Base</dt><dd>main</dd>
+    <dt>Reviewed at</dt><dd>2026-08-17T10:28:42Z</dd>
+  </dl>
+</header>
+
+<div class="verdict">
+  <div class="label">Verdict: Approve</div>
+  <p>Dep-only PR bumping two direct dev-tooling dependencies (<code>k8s.io/code-generator</code>, <code>sigs.k8s.io/controller-tools</code>) confined entirely to the isolated <code>hack/tools</code> build-tooling module. Both releases have had adequate soak time, neither pulls in security-relevant changes to the generators Prow actually uses, and neither is linked into any runtime binary. Safe to merge as-is.</p>
+</div>
+
+<h2>What this PR does</h2>
+<ul>
+  <li>Dependabot "kubernetes group" bump touching only <code>hack/tools/go.mod</code> / <code>hack/tools/go.sum</code> &mdash; a separate build-tooling module, not the main <code>sigs.k8s.io/prow</code> module.</li>
+  <li>Direct bumps: <code>k8s.io/code-generator</code> v0.32.8 &rarr; v0.36.3, <code>sigs.k8s.io/controller-tools</code> v0.17.3 &rarr; v0.21.0.</li>
+  <li>Incidental churn riding along: <code>go</code> directive 1.25.5 &rarr; 1.26.0, <code>google.golang.org/protobuf</code> bumped to a pseudo-version, and a batch of transitive <code>k8s.io/*</code> bumps (api, apiextensions-apiserver, apimachinery, klog/v2, kube-openapi, utils, structured-merge-diff/v6).</li>
+  <li>No project source changes &mdash; this is a dep-only PR, so no line-by-line code review applies.</li>
+</ul>
+
+<h2>Dependency analysis</h2>
+
+<div class="dep">
+  <h3>k8s.io/code-generator v0.32.8 &rarr; v0.36.3</h3>
+  <dl>
+    <dt>Freshness</dt><dd>Released 2026-07-23 (~25 days old at review time). Fine.</dd>
+    <dt>Usage</dt><dd>Direct dep, confined to <code>hack/tools/tools.go</code> (<code>client-gen</code>, <code>deepcopy-gen</code>, <code>informer-gen</code>, <code>lister-gen</code> tool-pins), invoked as standalone binaries from <code>hack/make-rules/update/codegen.sh</code>. Not linked into any runtime binary.</dd>
+    <dt>Changelog</dt><dd>Four-minor-version jump, but the commits are overwhelmingly <code>validation-gen</code>/<code>applyconfiguration-gen</code> feature work (cohort support, UUID format tag, openapi model-name accessors) &mdash; generators Prow doesn't use. No CVEs found.</dd>
+    <dt>Exposure</dt><dd>Light &mdash; worst case is a codegen diff surfacing in a follow-up regen PR, not a runtime risk.</dd>
+    <dt>Take</dt><dd>Safe to take.</dd>
+  </dl>
+</div>
+
+<div class="dep">
+  <h3>sigs.k8s.io/controller-tools v0.17.3 &rarr; v0.21.0</h3>
+  <dl>
+    <dt>Freshness</dt><dd>Released 2026-05-06 (~3.5 months old). Fine.</dd>
+    <dt>Usage</dt><dd>Direct dep, same pattern &mdash; <code>controller-gen</code> pinned in <code>hack/tools/tools.go</code>, invoked via <code>codegen.sh</code> to produce CRD/deepcopy manifests. Not linked into runtime.</dd>
+    <dt>Changelog</dt><dd>v0.18&ndash;v0.21 releases are themselves mostly <code>k8s.io/*</code> bumps (to v0.33, v0.34, etc.) plus generator maintenance. No security-relevant findings.</dd>
+    <dt>Exposure</dt><dd>Light &mdash; same "regenerates checked-in code" risk profile.</dd>
+    <dt>Take</dt><dd>Safe to take.</dd>
+  </dl>
+</div>
+
+<h2>Findings</h2>
+<p><em>None.</em></p>
+
+<h2>Things I checked and was fine with</h2>
+<ul>
+  <li>Diff scope confirmed dep-only (<code>git diff --stat</code> against merge-base with <code>upstream/main</code>): only <code>hack/tools/go.mod</code>/<code>hack/tools/go.sum</code> touched.</li>
+  <li>Import surface of both direct bumps verified via grep &mdash; confined to <code>hack/tools/tools.go</code> and <code>hack/make-rules/update/codegen.sh</code>, not imported by the main module or any runtime path.</li>
+  <li>Release ages for both direct bumps checked against proxy.golang.org &mdash; neither is within the "too fresh" window.</li>
+  <li>Changelogs for both direct bumps reviewed (commit range for code-generator, release notes for controller-tools) &mdash; no CVEs, no behavior changes affecting the generators Prow actually uses.</li>
+</ul>
+
+<h2>Open questions for the author</h2>
+<p><em>None.</em></p>
+
+</body>
+</html>

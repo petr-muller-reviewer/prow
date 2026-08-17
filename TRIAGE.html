@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Triage: kubernetes-sigs/prow#846</title>
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    line-height: 1.55;
+    color: #1a1a1a;
+    background: #fff;
+    margin: 0;
+    padding: 2.5rem 1.5rem;
+  }
+  main {
+    max-width: 860px;
+    margin: 0 auto;
+  }
+  code, pre {
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 0.92em;
+  }
+  pre {
+    background: #f4f4f4;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    padding: 0.75rem 1rem;
+    overflow-x: auto;
+  }
+  code {
+    background: #f4f4f4;
+    padding: 0.1em 0.35em;
+    border-radius: 3px;
+  }
+  pre code { background: none; padding: 0; }
+  header {
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 1rem 1.25rem;
+    background: #fafafa;
+    margin-bottom: 2rem;
+  }
+  header dl {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 0.25rem 1rem;
+    margin: 0;
+  }
+  header dt { font-weight: 600; color: #555; }
+  header dd { margin: 0; }
+  h1 { font-size: 1.4rem; margin-bottom: 0.25rem; }
+  h2 {
+    font-size: 1.15rem;
+    border-bottom: 2px solid #eee;
+    padding-bottom: 0.3rem;
+    margin-top: 2.5rem;
+  }
+  h3 { font-size: 1.02rem; margin-top: 1.5rem; margin-bottom: 0.4rem; }
+  .verdict {
+    font-size: 1.05rem;
+    font-weight: 600;
+    padding: 0.9rem 1.1rem;
+    border-radius: 6px;
+    background: #eaf6ec;
+    border: 1px solid #b7e0bd;
+    color: #1e5c2a;
+  }
+  .tag {
+    display: inline-block;
+    font-family: monospace;
+    font-size: 0.78em;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    background: #eef2ff;
+    color: #3742a3;
+    border-radius: 3px;
+    padding: 0.1em 0.5em;
+    margin-right: 0.5em;
+  }
+  .finding-meta { color: #555; font-size: 0.95em; }
+  ul { padding-left: 1.4rem; }
+  li { margin-bottom: 0.35rem; }
+  a { color: #1a56db; }
+</style>
+</head>
+<body>
+<main>
+
+<header>
+  <h1>Triage: kubernetes-sigs/prow#846</h1>
+  <dl>
+    <dt>Title</dt><dd>&#96;tide&#96; support for Github Rulesets</dd>
+    <dt>State</dt><dd>open</dd>
+    <dt>Labels</dt><dd>(none)</dd>
+    <dt>Triaged at</dt><dd>2026-08-17T22:58:10Z</dd>
+    <dt>Main SHA</dt><dd><code>7e14d333447e988af71131de0bd52db54cd14906</code></dd>
+    <dt>Verdict</dt><dd>accepted</dd>
+    <dt>Link</dt><dd><a href="https://github.com/kubernetes-sigs/prow/issues/846" target="_blank">github.com/kubernetes-sigs/prow/issues/846</a></dd>
+  </dl>
+</header>
+
+<div class="verdict">Verdict: ACCEPTED — legitimate feature/architecture proposal, keep open.</div>
+<p>
+The issue's own cross-link (to #477, a <code>branchprotector</code> bug) is loose, but it accurately captures a real, maintainer-endorsed
+direction: the maintainer (petr-muller) explicitly stated on 2026-08-13, the same day #846 was filed, that <code>branchprotector</code>
+is legacy with a poor configuration surface, and that future effort should go toward GitHub Rulesets support rather than deeper into
+<code>branchprotector</code>. Repository code confirms a genuine, verified gap — no Rulesets API support exists anywhere in Prow.
+</p>
+
+<h2>What the issue reports</h2>
+<ul>
+  <li>Tide (and Prow's branch-protection tooling generally) should support GitHub's newer Repository Rulesets API, not just "classic" branch protection rules.</li>
+  <li>The author (kaovilai) links kubernetes-sigs/prow#477 as related, saying #846 "should include fixes for" it.</li>
+  <li>#477 is actually about a different bug: <code>branchprotector</code> not removing protection from branches added to an <code>exclude</code> pattern.</li>
+  <li>The two issues are connected through the maintainer's own 2026-08-13 comment on #477, not through any shared code path described in #846's body.</li>
+</ul>
+
+<h2>Analysis</h2>
+
+<h3>Reproducibility / observed behavior</h3>
+<ul>
+  <li>Not a bug report — no reproduction steps needed. This is an architecture/feature gap: any repo relying on GitHub-side rulesets (rather than Prow-managed classic branch protection) for required checks has those requirements invisible to Tide.</li>
+</ul>
+
+<h3>Probable cause</h3>
+<p>Prow has zero representation of GitHub's Repository Rulesets API. Two distinct code paths are affected differently:</p>
+<ul>
+  <li><strong>Merge-blocking decision</strong> (<code>pkg/tide/github.go:600-641</code>, <code>isAllowedToMerge</code>) already delegates to GitHub's own computed <code>mergeStateStatus</code> field via <code>GitHubMergeBlocksPolicyMap</code> (<code>pkg/config/tide.go:250-256</code>, added Dec 2025 in commit <code>2c14b702b</code>, merged as PR #579). Since GitHub computes <code>mergeStateStatus</code> server-side accounting for rulesets, this path is likely <em>already</em> functionally ruleset-compatible — untested for that specific scenario, but not a code gap.</li>
+  <li><strong>Required-status-context resolution</strong> is genuinely ruleset-blind (and live-branch-protection-blind too): the chain <code>config.Config.GetTideContextPolicy</code> (<code>pkg/config/tide.go:944-995</code>) &rarr; <code>Config.GetBranchProtection</code>/<code>GetPolicy</code> (<code>pkg/config/branch_protection.go:456-524</code>) is fed exclusively from Prow's own declarative <code>branch-protection:</code> config tree, never from a live GitHub call.</li>
+</ul>
+
+<h3>Related code</h3>
+<pre><code>// pkg/tide/github.go:630-634
+if pr.MergeStateStatus == MergeStateStatusBlocked {
+    switch policy := m.config().Tide.GitHubMergeBlocksPolicy(orgRepo); policy {
+    case config.GitHubMergeBlocksBlock:
+        return "PR is blocked from merging by GitHub (check branch protection, required reviews, or rulesets)", nil</code></pre>
+<ul>
+  <li><code>pkg/github/client.go:2840-2914</code> &mdash; only classic <code>branches/{branch}/protection</code> REST endpoints (<code>GetBranchProtection</code>, <code>UpdateBranchProtection</code>, <code>RemoveBranchProtection</code>); no Rulesets API methods anywhere in <code>pkg/github</code>.</li>
+  <li><code>pkg/config/branch_protection.go:456-524</code> &mdash; <code>GetBranchProtection</code>/<code>GetPolicy</code>, purely config-tree-derived, no GitHub API call.</li>
+  <li><code>pkg/config/tide.go:944-995</code> &mdash; <code>GetTideContextPolicy</code>, the entry point Tide uses to compute required contexts; sources everything from the config above.</li>
+  <li><code>cmd/branchprotector/protect.go:531</code> &mdash; the one live <code>GetBranchProtection</code> call in the repo, used by the branchprotector reconciler's write-path diff, unrelated to Tide's runtime decisions.</li>
+</ul>
+
+<h3>Related issues / PRs</h3>
+<ul>
+  <li><a href="https://github.com/kubernetes-sigs/prow/issues/477" target="_blank">kubernetes-sigs/prow#477</a> &mdash; linked in #846's body but is a different, specific <code>branchprotector</code> <code>exclude</code>-handling bug. The maintainer's 2026-08-13 comment there is what actually establishes #846 as an endorsed direction.</li>
+  <li>Commit <code>2c14b702b</code> / PR #579 &mdash; "tide: add configurable GitHub merge blocks enforcement" (Dec 2025 / merged May 2026), added <code>GitHubMergeBlocksPolicyMap</code>, the mechanism most likely to already handle ruleset-blocked merges correctly.</li>
+</ul>
+
+<h2>What I checked</h2>
+<ul>
+  <li>Repo-wide case-insensitive grep for "ruleset": 6 files, all comment/string-only text from the Dec 2025 <code>GitHubMergeBlocksPolicyMap</code> change &mdash; no functional ruleset code.</li>
+  <li>Confirmed Prow does not vendor <code>go-github</code>; its GitHub client is hand-rolled, so there is no upstream library ruleset support to fall back on.</li>
+  <li>Confirmed <code>cmd/branchprotector</code>/<code>pkg/config/branch_protection.go</code> operate purely on Prow's declarative config, not live GitHub branch-protection/ruleset state (aside from the reconciler's own push/diff calls).</li>
+  <li>Read kubernetes-sigs/prow#477 in full, including the maintainer's 2026-08-13 comment.</li>
+  <li>Grepped <code>pkg/tide</code> for <code>RequiredContexts</code>/<code>ContextPolicy</code>/<code>contextChecker</code> to confirm no GitHub branch-protection or rulesets API calls exist in that package.</li>
+</ul>
+
+<h2>Recommended next steps</h2>
+<ul>
+  <li>Ask the author (kaovilai) to clarify intended scope: full ruleset management (branchprotector-equivalent) vs. narrower "Tide should recognize ruleset-driven required checks."</li>
+  <li>Split into (a) a small verification/test task confirming <code>GitHubMergeBlocksPolicyMap</code> correctly handles ruleset-only blocks, and (b) a larger design proposal for ruleset-aware config before any new client/schema work begins.</li>
+  <li>Apply labels: <code>kind/feature</code>, <code>area/tide</code> (and <code>area/branchprotector</code> for cross-reference).</li>
+  <li>Require a short design note before any new Rulesets API client/config work starts, to avoid repeating branchprotector's configuration-surface problems.</li>
+</ul>
+
+<h2>Open questions</h2>
+<ul>
+  <li>"Should ruleset support be a new parallel config surface, or should <code>pkg/config/branch_protection.go</code>'s <code>Policy</code> type be extended to also be populated from rulesets?"</li>
+  <li>"Do we need Prow to manage rulesets (write path, like branchprotector does for classic protection), or only read/respect them for Tide's merge and context-policy decisions? The title here suggests read-only is the immediate need — can you confirm?"</li>
+  <li>"Should we first verify whether the existing <code>github_merge_blocks_policy</code> handling already covers ruleset-blocked PRs, before starting any new client/schema work?"</li>
+</ul>
+
+</main>
+</body>
+</html>

@@ -28,91 +28,88 @@
 <div class="meta">
   <dl>
     <dt>Issue:</dt><dd><a href="https://github.com/kubernetes-sigs/prow/issues/477">kubernetes-sigs/prow#477</a></dd>
-    <dt>State:</dt><dd>closed (stale bot, not maintainer)</dd>
-    <dt>Labels:</dt><dd>lifecycle/rotten</dd>
-    <dt>Triaged:</dt><dd>2026-06-15T16:21:44Z</dd>
-    <dt>Main SHA:</dt><dd><code>da30d8b3fec2bdb5c5e923f85df17faa04520d6f</code></dd>
+    <dt>State:</dt><dd>open</dd>
+    <dt>Labels:</dt><dd>area/branchprotector</dd>
+    <dt>Triaged:</dt><dd>2026-08-17T22:57:32Z</dd>
+    <dt>Main SHA:</dt><dd><code>cced76d904946c1412da1ddc2d6441167d3d8e46</code></dd>
   </dl>
 </div>
 
 <div class="verdict-box">
   <span class="verdict-label">Verdict: needs-discussion</span>
-  <p>The reported behavior is real, but whether it is a bug depends on the intended semantics of <code>exclude</code>. The current behavior (&ldquo;don&rsquo;t manage,&rdquo; like <code>unmanaged</code>) has been stable for years. The issue author wants <code>exclude</code> to actively remove protection (like <code>protect: false</code>). This is a design ambiguity, not a clear-cut bug. A PR exists but changes long-standing behavior with backwards compatibility and API consumption implications.</p>
+  <p>The reported behavior is real and root-caused: <code>exclude</code> is a pure enumeration-time skip that never queues protection removal, which the maintainer (petr-muller) confirmed 2026-08-13 is intentional &mdash; <code>exclude</code> is meant as a pattern variant of <code>unmanaged: true</code>, not of <code>protect: false</code>, and he initially moved to close this issue and the linked PR <a href="https://github.com/kubernetes-sigs/prow/pull/478">#478</a> on that basis. A subsequent live exchange with the reporter (kaovilai) surfaced a narrower, concrete gap &mdash; bot/automation-created branches get protected before any pattern can cover them, with no pattern-based way to retroactively unprotect them &mdash; which left the maintainer explicitly &ldquo;softening&rdquo; toward accepting a new, additive, pattern-based <code>protect: false</code> field instead. That decision is unresolved as of the last comment.</p>
 </div>
 
 <h2>What the issue reports</h2>
 <ul>
   <li>Adding a branch pattern to <code>exclude</code> in branchprotector config stops new protection from being applied, but does not remove existing protection from branches that were previously protected.</li>
-  <li>Branches matching exclusion patterns (e.g. <code>^konflux-</code>, <code>^dependabot/</code>) remain protected on GitHub, causing <code>GH006: Protected branch update failed</code> push errors.</li>
+  <li>Branches matching exclusion patterns (e.g. <code>^konflux-</code>) remain protected on GitHub, causing <code>GH006: Protected branch update failed</code> push errors.</li>
   <li>Branchprotector logs show the branch as <code>excluded</code>, but takes no action to remove existing protection.</li>
   <li>The author identifies the root cause at <code>protect.go:341-343</code> and provides a workaround (temporarily remove from exclude list, let branchprotector run, re-add).</li>
-  <li>PR <a href="https://github.com/kubernetes-sigs/prow/pull/478">#478</a> by the same author implements a fix. Has <code>lgtm</code>, all CI green, waiting for <code>approve</code>.</li>
+  <li>PR <a href="https://github.com/kubernetes-sigs/prow/pull/478">#478</a> by the same author implements a fix by repurposing <code>exclude</code> itself; has <code>lgtm</code>, all CI green, but the maintainer has ruled out this specific approach.</li>
 </ul>
 
 <h2>Analysis</h2>
 
-<h3>The design ambiguity</h3>
-<p>Branchprotector has three distinct branch-level behaviors with overlapping semantics:</p>
-<ul>
-  <li><strong><code>protect: false</code></strong> &mdash; actively removes protection. Sends <code>Request: nil</code> through the updates channel, triggering <code>RemoveBranchProtection</code>.</li>
-  <li><strong><code>unmanaged: true</code></strong> &mdash; don&rsquo;t touch the branch. Branch enters <code>UpdateBranch</code> but returns early at line 456.</li>
-  <li><strong><code>exclude</code> (pattern)</strong> &mdash; branch is skipped via <code>continue</code> during enumeration (line 341-343). Never enters <code>UpdateBranch</code>. Functionally identical to <code>unmanaged</code>, but specified as a regex pattern rather than per-branch boolean.</li>
-</ul>
-<p>If <code>exclude</code> is meant to mean &ldquo;branchprotector doesn&rsquo;t manage this branch,&rdquo; the current behavior is correct. If it means &ldquo;this branch should not be protected,&rdquo; then the bug is real. The documentation (&ldquo;branches that should be excluded from the protection policy&rdquo;) doesn&rsquo;t resolve the ambiguity. There is historical tension between the boolean config (<code>protect</code>/<code>unmanaged</code>) and the pattern config (<code>include</code>/<code>exclude</code>).</p>
+<h3>Reproducibility / observed behavior</h3>
+<p>Confirmed and root-caused by the reporter, independently verified in code. Add a branch to <code>exclude</code>, run branchprotector against a branch that was already <code>Protected=true</code> on GitHub &mdash; protection is never removed; the log line reads <code>excluded</code> and no further action is taken. Subsequent pushes to that branch fail with <code>GH006</code>.</p>
 
-<h3>Probable cause (if it is a bug)</h3>
+<h3>Probable cause</h3>
 <p>In <code>UpdateRepo</code>, the branch iteration loop at lines 328&ndash;347 builds a <code>branches</code> map. Excluded branches are filtered out via <code>continue</code> and never added to the map:</p>
 <pre>} else if !ok && branchExclusions != nil && branchExclusions.MatchString(b.Name) {
     logrus.Infof("%s/%s=%s: excluded", orgName, repoName, b.Name)
     continue
 }</pre>
-<p>The processing loop at lines 370&ndash;377 iterates the map and calls <code>UpdateBranch</code> for each entry. Since excluded branches aren&rsquo;t in the map, they never reach <code>UpdateBranch</code>, and no removal request is queued.</p>
+<p>Since excluded branches never reach <code>UpdateBranch</code>, no removal request is ever queued. The maintainer confirmed (2026-08-13T12:12:31Z) this is intentional: <code>exclude</code> is a pattern variant of <code>unmanaged: true</code> (don&rsquo;t touch), not of <code>protect: false</code> (actively remove), and this semantics will not be changed.</p>
+
+<h3>The deeper gap surfaced during discussion</h3>
+<p><code>Unmanaged</code> (<code>pkg/config/branch_protection.go:32-34</code>) is a per-branch-name boolean, not a regex list. <code>Exclude</code>/<code>Include</code> are the only regex mechanisms in <code>Policy</code>, and both are pure &ldquo;don&rsquo;t touch&rdquo; filters. For branches whose names aren&rsquo;t knowable in advance &mdash; bot/automation-created branches, e.g. Copilot-assigned branches &mdash; there is no pattern-based way to pre-empt protection, and once branchprotector&rsquo;s default policy protects them, no pattern-based way to remove that protection afterward. Only a manual, exact-name <code>protect: false</code> or a manual GitHub UI/API action works, which for some organizations requires a change-ticket process. This reframing (surfaced 2026-08-13T12:45:09Z&ndash;13:18:08Z between kaovilai and petr-muller) is materially different from &ldquo;what should exclude mean&rdquo; and is what shifted the maintainer&rsquo;s stance.</p>
 
 <h3>Related code</h3>
 <ul>
   <li><code>cmd/branchprotector/protect.go:328-347</code> &mdash; branch iteration and filtering. The exclusion <code>continue</code> is at lines 341-343.</li>
   <li><code>cmd/branchprotector/protect.go:182-196</code> &mdash; <code>configureBranches()</code> goroutine. Dispatches <code>RemoveBranchProtection</code> when <code>Request</code> is <code>nil</code>.</li>
   <li><code>cmd/branchprotector/protect.go:454-517</code> &mdash; <code>UpdateBranch</code>. Where <code>protect: false</code> branches get <code>req = nil</code> and trigger removal.</li>
-  <li><code>pkg/config/branch_protection.go:54-56</code> &mdash; <code>Exclude</code> field definition.</li>
+  <li><code>pkg/config/branch_protection.go:32-34</code> &mdash; <code>Unmanaged</code> field: boolean, not pattern-based.</li>
+  <li><code>pkg/config/branch_protection.go:54-56</code> &mdash; <code>Exclude</code> field definition. Docstring still unclarified.</li>
   <li><code>cmd/branchprotector/protect_test.go:1098-1167</code> &mdash; existing exclusion tests. Test gap: no case for excluded branch that is already protected.</li>
 </ul>
 
-<h3>Related PRs</h3>
+<h3>Related issues / PRs</h3>
 <ul>
-  <li><a href="https://github.com/kubernetes-sigs/prow/pull/478">PR #478</a> &mdash; fix by kaovilai (same author as the issue). Adds a second pass after branch enumeration to detect excluded-but-protected branches and queue removal requests (<code>Request: nil</code>). Has <code>lgtm</code>, all CI green, waiting for <code>approve</code>.</li>
-</ul>
-
-<h3>Concerns with PR #478</h3>
-<ul>
-  <li><strong>Backwards compatibility</strong>: Changes <code>exclude</code> semantics from &ldquo;don&rsquo;t manage&rdquo; to &ldquo;actively remove.&rdquo; Existing deployments using <code>exclude</code> to leave manually-managed branches alone would see their protection removed.</li>
-  <li><strong>API consumption</strong>: Removal requests bypass the <code>equalBranchProtections</code> dedup (sent directly to the channel, not through <code>UpdateBranch</code>). For repos with many excluded protected branches, the first run produces a burst of <code>RemoveBranchProtection</code> API calls. Subsequent runs are fine (branches are no longer <code>Protected</code> after removal).</li>
+  <li><a href="https://github.com/kubernetes-sigs/prow/pull/478">PR #478</a> &mdash; fix by kaovilai repurposing <code>exclude</code> to actively remove protection. Has <code>lgtm</code>, all CI green. Maintainer initially moved to close it (2026-08-13T12:12:31Z), then softened toward wanting a separate additive field instead of merging this as-is. Also bypasses <code>equalBranchProtections</code> dedup &mdash; a concern independent of which approach proceeds.</li>
+  <li><a href="https://github.com/kubernetes-sigs/prow/issues/846">Issue #846</a> &mdash; move away from branch protection towards rulesets. Cited by the maintainer as the reason not to invest further in branchprotector's feature set. No committed timeline.</li>
 </ul>
 
 <h2>What I checked</h2>
 <ul>
-  <li><code>Exclude</code> field docs say &ldquo;branches that should be excluded from the protection policy&rdquo; &mdash; ambiguous.</li>
-  <li><code>Unmanaged</code> flag takes a different code path (per-branch policy, not enumeration filter) but has the same &ldquo;don&rsquo;t touch&rdquo; effect.</li>
-  <li><code>Include</code> filtering has the same gap: branches that stop matching an include pattern keep existing protection.</li>
+  <li><code>Exclude</code> field docs say &ldquo;branches that should be excluded from the protection policy&rdquo; &mdash; ambiguous, docstring not yet updated.</li>
+  <li><code>Unmanaged</code> confirmed to be a per-branch-name boolean, not a regex list &mdash; no existing pattern-based &ldquo;don&rsquo;t manage&rdquo; mechanism beyond <code>exclude</code> itself.</li>
+  <li><code>Include</code> filtering has the same structural gap as <code>Exclude</code> (branches that stop matching keep existing protection) &mdash; not raised in the issue, not addressed by any proposed approach.</li>
   <li>Existing tests only verify excluded branches don&rsquo;t <em>receive</em> protection, not that existing protection is <em>removed</em>.</li>
   <li>Fake test client&rsquo;s <code>GetBranches</code> correctly simulates <code>Protected=true</code> for the <code>onlyProtected=true</code> call.</li>
-  <li>Current <code>exclude</code> behavior has been stable for years.</li>
+  <li>Current <code>exclude</code> behavior has been stable for years and is, per the maintainer, intentional.</li>
+  <li>Line numbers for all cited code reconfirmed against current main SHA &mdash; unchanged since original triage.</li>
+  <li>Full issue comment history re-read end to end; no linked/cross-referenced PRs beyond #478 and #846.</li>
+  <li>Maintainer's position evolved materially during the thread: firm close (2026-08-13T12:12:31Z) &rarr; softening toward a new additive field (2026-08-13T13:18:08Z) after the bot-branch scenario was explained.</li>
 </ul>
 
 <h2>Recommended next steps</h2>
 <ul>
-  <li>Reopen issue #477 (closed by stale bot, not by maintainer decision).</li>
-  <li>Comment on the issue with the design question: should <code>exclude</code> mean &ldquo;don&rsquo;t manage&rdquo; or &ldquo;remove protection&rdquo;?</li>
-  <li>If &ldquo;remove protection&rdquo;: review PR #478, flag the backwards compatibility risk and the <code>equalBranchProtections</code> dedup bypass. Request a doc update clarifying <code>exclude</code> vs <code>unmanaged</code>.</li>
-  <li>If &ldquo;don&rsquo;t manage&rdquo;: close as working-as-designed. Suggest the author use per-branch <code>protect: false</code>. Improve docs to clarify the distinction.</li>
-  <li>Apply label: <code>area/branchprotector</code>.</li>
+  <li>Do not merge PR #478 as-is &mdash; the maintainer has ruled out changing <code>exclude</code>'s semantics.</li>
+  <li>Decide: commit to a new, additive, pattern-based <code>protect: false</code> field (backwards compatible, solves the bot-branch scenario, reuses #478's removal machinery through a dedup-aware path) versus holding the status quo (close, redirect effort to rulesets #846).</li>
+  <li>Regardless of that decision: land a docstring clarification on <code>Exclude</code> (<code>pkg/config/branch_protection.go:54-56</code>) stating it behaves as a pattern-scoped <code>unmanaged: true</code>, not a pattern-scoped <code>protect: false</code> &mdash; low-cost, unblocked either way.</li>
+  <li>Decide PR #478's fate explicitly once the above is resolved (close outright vs. leave open pending rework).</li>
+  <li>Labels applied so far: <code>area/branchprotector</code> (added), <code>lifecycle/rotten</code> (removed).</li>
 </ul>
 
 <h2>Open questions</h2>
 <ul>
-  <li>What are the intended semantics of <code>exclude</code>? The documentation is ambiguous and the boolean/pattern config tension is unresolved.</li>
-  <li>If <code>exclude</code> should remove protection: is there a backwards-compatible way to introduce this? (e.g., opt-in flag, though there&rsquo;s no tracking of what branchprotector originally applied.)</li>
-  <li>Should the <code>include</code> path also handle removal when a branch stops matching the pattern? Same class of ambiguity.</li>
-  <li>PR #478 bypasses <code>equalBranchProtections</code> dedup &mdash; for repos with many excluded protected branches, this means a burst of API calls on the first run. Worth addressing if the PR moves forward.</li>
+  <li>Will you commit to the new additive field, or hold the close/redirect-to-rulesets position? This is the single blocking decision.</li>
+  <li>If the additive field proceeds: what name avoids repeating the <code>exclude</code>/<code>unmanaged</code> confusion?</li>
+  <li>Should <code>include</code> receive the same retroactive-removal treatment for consistency, or is that explicitly out of scope?</li>
+  <li>Is there a target timeline for the rulesets migration (#846) that would change the urgency calculus here?</li>
+  <li>Should PR #478 be closed outright now that repurposing <code>exclude</code> is ruled out, or left open pending a possible rework?</li>
 </ul>
 
 </body>

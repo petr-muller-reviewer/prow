@@ -23,11 +23,45 @@ refresh_log:
     new_sha: 35fd83923ae5a1ad2d8f65a7bb411ae1d9e695d7
     refreshed_at: "2026-07-28T23:05:37Z"
     summary: "No code changes; second consumer (Kueue) surfaced via apullo777/mimowo; Caesarsage committed to quiet /retest, rename to /netlify-rebuild, and pagination as follow-up work"
+recommended_rereview:
+  - at: "2026-08-17T22:11:26Z"
+    old_sha: 35fd83923ae5a1ad2d8f65a7bb411ae1d9e695d7
+    new_sha: e8849971aad14f136ab4b965d06a9fe679b9115b
+    reason: "390 net lines rewriting /retest-quieting, ListDeploys pagination, and command rename — exactly the areas of 3 converging findings"
 ---
 
 # PR #708 Review: external-plugins: add netlify-preview plugin
 
 **Author**: Caesarsage · **Branch**: `netlify-command` → `main` · +1252 −0 across 11 files · 6 commits
+
+## Re-review Recommended
+
+### 2026-08-17T22:11:26Z — `35fd83923` → `e8849971a`
+
+**What changed** (single commit, "address review feedback", 8 files, +447/−57, 390 net lines):
+
+- `config/config.go` (+8/−8) — renamed `Repo` type to `SiteConfig` per singh1203's naming nit.
+- `plugin/plugin.go` (+10/−10) — renamed `/rebuild-preview` command and `RebuildPreviewCommand` constant to `/netlify-rebuild` / `NetlifyRebuildCommand`, per petr-muller's and the Kueue thread's naming suggestion.
+- `netlify/client.go` (+69/−12, net +57) — **replaced `ListDeploys` entirely** with a new `ForEachDeployPage` method: paginates via the Netlify `Link` response header (new `nextLink` header-parser), narrows server-side with `deploy-previews=true`, caps at `maxListDeployPages = 10` pages of `per_page=100`, and early-exits the page walk once a match is found.
+- `server.go` (+44/−28, net +16) — **rewrote the comment-response logic**: introduced a `noopLevel` (Debug for `/retest`, Info for `/netlify-rebuild`) so log verbosity differs by command, and gated every `s.comment(...)` call behind `command == NetlifyRebuildCommand` — `/retest` no longer posts any PR comment on the untrusted-user, missing-config, already-retried, or no-op paths; only `/netlify-rebuild` does. `netlifyClient` interface signature changed (`ListDeploys` → `ForEachDeployPage`).
+- `netlify/client_test.go` (+149/−~few), `server_test.go` (+178/−~few), `plugin_test.go` (+31/−17) — substantial new test coverage for pagination, the new command name, and per-command comment gating.
+- `site/content/.../netlify-preview.md` (+15/−~few) — docs updated for the renamed command.
+
+**Why this exceeds "update in place":** This is not a targeted fix — it's a rewrite of the exact three converging concerns the review flagged (`ListDeploys` pagination, `/retest` overlap noise, and the command name), each with a genuinely new mechanism: a hand-rolled `Link`-header parser and page-capped iteration protocol that didn't exist before, and a behavior change where `/retest` goes from "always comments" to "never comments, logs at Debug instead." Both mechanisms carry their own new edge cases (off-by-one in `maxListDeployPages`, malformed `Link` headers, whether early-exit-on-first-match correctly handles a PR with multiple deploys across pages, whether the trusted-user deny path silently swallowing `/retest` is desired) that the prior review never evaluated because the code didn't exist yet. The `netlifyClient` interface's public shape also changed. This satisfies the ">100 lines net change AND touches areas of existing findings" trigger.
+
+**Activity since the last review** (`2026-07-28T23:05:37Z`):
+- **2026-08-13** — Caesarsage pushed the above commit and left an inline comment on `server.go` explaining the pagination design: paginated via `Link` header, 100/page max, no server-side `review_id` filter so "some walking is unavoidable," early-exit on first match, 10-page cap, `deploy-previews=true` narrows server-side.
+- **2026-08-13** — Caesarsage submitted a COMMENTED review (no body) alongside that comment.
+- **2026-08-13** — kubernetes-prow[bot] posted the routine "NOT APPROVED" approval-notifier comment (no reviewer/approver activity to act on).
+
+**Preliminary findings against `e8849971a`** (from `/code-review`, medium effort — supersedes the need for a from-scratch look at these specific spots when the full re-review happens):
+
+- **`netlify/client.go:116`** — `nextLink` splits the raw `Link` header on literal commas instead of using a proper link-header parser (cf. `pkg/github/links.go`). If a `Link` header ever contains a comma inside a URL, the split breaks that URL, the bracket check fails, `nextLink` returns `""`, and `ForEachDeployPage` silently stops paginating early — a real deploy on a later page gets missed with no error. New code from this commit; not covered by any prior finding.
+- **`plugin/plugin.go:37`** — `commandRe` matches `/retest` case-insensitively (`(?mi)`), diverging from `pkg/pjutil.RetestRe`'s case-sensitive `(?m)^/retest\s*$` used by the trigger plugin. A commenter writing `/ReTest` retries the Netlify preview but not CI — inconsistent behavior for what looks like the same command. Pre-existing regex, but its interaction with the now-more-consequential `/retest` no-op path deserves a look during re-review.
+- **`server.go` (5 call sites: ~118, 135, 144, 184, 191)** — the new "only `/netlify-rebuild` gets a comment reply" rule from this commit is repeated as `if command == netlifypreview.NetlifyRebuildCommand { return s.comment(...) }; return nil` five separate times in `handleIssueComment`, instead of being expressed once. A future new early-return path can easily forget the gate, silently making `/retest` chatty again or `/netlify-rebuild` silent. New pattern introduced by this commit — a maintainability concern on the exact code this refresh flagged for re-review.
+- **`plugin/plugin.go:39`** — `ParseCommand` uses `FindStringSubmatch` (first match only), so a comment body with both `/retest` and `/netlify-rebuild` on separate lines only honors the first one found; the second is silently dropped. Pre-existing behavior, now more consequential since the two commands diverge sharply in comment/logging behavior post-rewrite.
+
+Two additional `/code-review` findings restate ground already tracked in this file and aren't repeated here: config key format not validated (`config/config.go:49`, cf. "Config key format not validated" above) and config not hot-reloaded (`main.go:119`, cf. "Config loaded once at startup" above); a fifth finding (duplicate `flagutil` import, `main.go:34`) restates "Redundant flagutil import" above at an updated line number.
 
 ## Gate
 

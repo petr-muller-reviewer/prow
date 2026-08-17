@@ -303,6 +303,42 @@
   Reviewed <code>35fd839</code> &middot; Refreshed 2026-07-28
 </div>
 
+<!-- ==================== RE-REVIEW RECOMMENDED ==================== -->
+
+<div class="advisor-box" style="border-color: var(--orange);">
+  <h2 style="color: var(--orange);">Re-review Recommended</h2>
+
+  <h3>2026-08-17T22:11:26Z &mdash; <code>35fd839</code> &rarr; <code>e884997</code></h3>
+  <p><strong>What changed</strong> (single commit, "address review feedback", 8 files, +447/&minus;57, 390 net lines):</p>
+  <ul>
+    <li><code>config/config.go</code> (+8/&minus;8) &mdash; renamed <code>Repo</code> type to <code>SiteConfig</code> per singh1203's naming nit.</li>
+    <li><code>plugin/plugin.go</code> (+10/&minus;10) &mdash; renamed <code>/rebuild-preview</code> command and <code>RebuildPreviewCommand</code> constant to <code>/netlify-rebuild</code> / <code>NetlifyRebuildCommand</code>, per petr-muller's and the Kueue thread's naming suggestion.</li>
+    <li><code>netlify/client.go</code> (+69/&minus;12, net +57) &mdash; <strong>replaced <code>ListDeploys</code> entirely</strong> with a new <code>ForEachDeployPage</code> method: paginates via the Netlify <code>Link</code> response header (new <code>nextLink</code> header-parser), narrows server-side with <code>deploy-previews=true</code>, caps at <code>maxListDeployPages = 10</code> pages of <code>per_page=100</code>, and early-exits the page walk once a match is found.</li>
+    <li><code>server.go</code> (+44/&minus;28, net +16) &mdash; <strong>rewrote the comment-response logic</strong>: introduced a <code>noopLevel</code> (Debug for <code>/retest</code>, Info for <code>/netlify-rebuild</code>) so log verbosity differs by command, and gated every <code>s.comment(...)</code> call behind <code>command == NetlifyRebuildCommand</code> &mdash; <code>/retest</code> no longer posts any PR comment on the untrusted-user, missing-config, already-retried, or no-op paths; only <code>/netlify-rebuild</code> does. <code>netlifyClient</code> interface signature changed (<code>ListDeploys</code> &rarr; <code>ForEachDeployPage</code>).</li>
+    <li><code>netlify/client_test.go</code> (+149), <code>server_test.go</code> (+178), <code>plugin_test.go</code> (+31/&minus;17) &mdash; substantial new test coverage for pagination, the new command name, and per-command comment gating.</li>
+    <li><code>site/content/.../netlify-preview.md</code> (+15) &mdash; docs updated for the renamed command.</li>
+  </ul>
+
+  <p><strong>Why this exceeds "update in place":</strong> This is not a targeted fix &mdash; it's a rewrite of the exact three converging concerns the review flagged (<code>ListDeploys</code> pagination, <code>/retest</code> overlap noise, and the command name), each with a genuinely new mechanism: a hand-rolled <code>Link</code>-header parser and page-capped iteration protocol that didn't exist before, and a behavior change where <code>/retest</code> goes from "always comments" to "never comments, logs at Debug instead." Both mechanisms carry their own new edge cases (off-by-one in <code>maxListDeployPages</code>, malformed <code>Link</code> headers, whether early-exit-on-first-match correctly handles a PR with multiple deploys across pages, whether the trusted-user deny path silently swallowing <code>/retest</code> is desired) that the prior review never evaluated because the code didn't exist yet. The <code>netlifyClient</code> interface's public shape also changed. This satisfies the "&gt;100 lines net change AND touches areas of existing findings" trigger.</p>
+
+  <h3>Activity since the last review (2026-07-28)</h3>
+  <ul>
+    <li><strong>2026-08-13</strong> &mdash; Caesarsage pushed the above commit and left an inline comment on <code>server.go</code> explaining the pagination design: paginated via <code>Link</code> header, 100/page max, no server-side <code>review_id</code> filter so "some walking is unavoidable," early-exit on first match, 10-page cap, <code>deploy-previews=true</code> narrows server-side.</li>
+    <li><strong>2026-08-13</strong> &mdash; Caesarsage submitted a COMMENTED review (no body) alongside that comment.</li>
+    <li><strong>2026-08-13</strong> &mdash; kubernetes-prow[bot] posted the routine "NOT APPROVED" approval-notifier comment (no reviewer/approver activity to act on).</li>
+  </ul>
+
+  <h3>Preliminary findings against <code>e884997</code></h3>
+  <p style="color:var(--text-muted); font-size:0.85rem;">From <code>/code-review</code> (medium effort) &mdash; supersedes the need for a from-scratch look at these specific spots when the full re-review happens.</p>
+  <ul>
+    <li><strong><code>netlify/client.go:116</code></strong> &mdash; <code>nextLink</code> splits the raw <code>Link</code> header on literal commas instead of using a proper link-header parser (cf. <code>pkg/github/links.go</code>). If a <code>Link</code> header ever contains a comma inside a URL, the split breaks that URL, the bracket check fails, <code>nextLink</code> returns <code>""</code>, and <code>ForEachDeployPage</code> silently stops paginating early &mdash; a real deploy on a later page gets missed with no error. New code from this commit; not covered by any prior finding.</li>
+    <li><strong><code>plugin/plugin.go:37</code></strong> &mdash; <code>commandRe</code> matches <code>/retest</code> case-insensitively (<code>(?mi)</code>), diverging from <code>pkg/pjutil.RetestRe</code>'s case-sensitive <code>(?m)^/retest\s*$</code> used by the trigger plugin. A commenter writing <code>/ReTest</code> retries the Netlify preview but not CI &mdash; inconsistent behavior for what looks like the same command. Pre-existing regex, but its interaction with the now-more-consequential <code>/retest</code> no-op path deserves a look during re-review.</li>
+    <li><strong><code>server.go</code> (5 call sites: ~118, 135, 144, 184, 191)</strong> &mdash; the new "only <code>/netlify-rebuild</code> gets a comment reply" rule from this commit is repeated as <code>if command == netlifypreview.NetlifyRebuildCommand { return s.comment(...) }; return nil</code> five separate times in <code>handleIssueComment</code>, instead of being expressed once. A future new early-return path can easily forget the gate, silently making <code>/retest</code> chatty again or <code>/netlify-rebuild</code> silent. New pattern introduced by this commit &mdash; a maintainability concern on the exact code this refresh flagged for re-review.</li>
+    <li><strong><code>plugin/plugin.go:39</code></strong> &mdash; <code>ParseCommand</code> uses <code>FindStringSubmatch</code> (first match only), so a comment body with both <code>/retest</code> and <code>/netlify-rebuild</code> on separate lines only honors the first one found; the second is silently dropped. Pre-existing behavior, now more consequential since the two commands diverge sharply in comment/logging behavior post-rewrite.</li>
+  </ul>
+  <p style="color:var(--text-muted); font-size:0.85rem;">Two additional <code>/code-review</code> findings restate ground already tracked in this file and aren't repeated here: config key format not validated (<code>config/config.go:49</code>, cf. "Config key format not validated" above) and config not hot-reloaded (<code>main.go:119</code>, cf. "Config loaded once at startup" above); a fifth finding (duplicate <code>flagutil</code> import, <code>main.go:34</code>) restates "Redundant flagutil import" above at an updated line number.</p>
+</div>
+
 <!-- ==================== GATE DECISION ==================== -->
 
 <div class="advisor-box" style="border-color: var(--green);">

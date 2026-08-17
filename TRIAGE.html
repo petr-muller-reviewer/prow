@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Triage: kubernetes-sigs/prow#841</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+         line-height: 1.6; color: #1a1a1a; max-width: 860px; margin: 2rem auto; padding: 0 1.5rem; }
+  code, pre { font-family: "SF Mono", Consolas, Menlo, monospace; font-size: 0.9em; }
+  pre { background: #f5f5f5; padding: 0.8rem; border-radius: 6px; overflow-x: auto; }
+  code { background: #f0f0f0; padding: 0.15em 0.35em; border-radius: 4px; }
+  h1 { font-size: 1.4rem; }
+  h2 { font-size: 1.15rem; margin-top: 2rem; border-bottom: 1px solid #ddd; padding-bottom: 0.3rem; }
+  h3 { font-size: 1rem; margin-bottom: 0.3rem; }
+  .meta { background: #f8f8f8; border: 1px solid #e0e0e0; border-radius: 8px; padding: 1rem 1.5rem; }
+  .meta dl { display: grid; grid-template-columns: max-content 1fr; gap: 0.3rem 1rem; margin: 0; }
+  .meta dt { font-weight: 600; color: #555; }
+  .verdict { font-size: 1.1rem; font-weight: 700; padding: 0.8rem 1rem; border-radius: 6px;
+             background: #fff3cd; border: 1px solid #ffe08a; display: inline-block; }
+  .tag { display: inline-block; font-size: 0.75em; font-weight: 700; text-transform: uppercase;
+         padding: 0.1em 0.5em; border-radius: 4px; background: #e7edff; color: #2a4bd0; margin-right: 0.5em; }
+  a { color: #2a4bd0; }
+  ul { padding-left: 1.3rem; }
+</style>
+</head>
+<body>
+
+<h1>Triage: kubernetes-sigs/prow#841</h1>
+
+<div class="meta">
+<dl>
+  <dt>Issue</dt><dd><a href="https://github.com/kubernetes-sigs/prow/issues/841">kubernetes-sigs/prow#841</a></dd>
+  <dt>Title</dt><dd>`status-reconciler`: a required context that never once reported can never be retired, permanently deadlocking Tide under `github_merge_blocks_policy: block`</dd>
+  <dt>State (at triage)</dt><dd>closed</dd>
+  <dt>Labels</dt><dd>(none)</dd>
+  <dt>Triaged at</dt><dd>2026-08-17T22:18:10Z</dd>
+  <dt>Main SHA</dt><dd><code>de7332b9aa43d1480db4c8099ca9ea7486b80743</code></dd>
+</dl>
+</div>
+
+<h2>Verdict</h2>
+<p class="verdict">DUPLICATE</p>
+<p>The issue bundles two claims judged out of scope or working-as-intended (a GitHub-ruleset-orphaned required context, and Tide's status-message gate ordering), plus one real bug — <code>config.Agent.Set</code> silently dropping a config delta on subscriber timeout — surfaced by a maintainer during discussion. That real bug was correctly split into a dedicated issue, <a href="https://github.com/kubernetes-sigs/prow/issues/848">#848</a>, and #841 was closed as its duplicate on 2026-08-13. No further action is needed on #841 itself.</p>
+
+<h2>What the issue reports</h2>
+<ul>
+<li>A required GitHub context added but never triggered, then removed from config, can never be retired by <code>status-reconciler</code> because its retire condition requires the context to have already posted at least once.</li>
+<li>Real-world trigger cited: <a href="https://github.com/openshift/oadp-operator/pull/2346">openshift/oadp-operator#2346</a>, a PR permanently <code>BLOCKED</code> by two never-triggered required contexts under Tide's <code>github_merge_blocks_policy: block</code>.</li>
+<li>Secondary claim: Tide's status message hides the "blocked by GitHub" reason behind other, earlier-checked requirement gates.</li>
+<li>Proposes code changes to <code>migrator.RetireMode</code> and <code>requirementDiff</code>, plus a new Prometheus gauge for pool-exclusion reasons.</li>
+<li>Discussion (Prucek) redirected the issue toward a different, verified root cause: <code>status-reconciler</code> can silently miss config changes entirely when config-delta delivery times out.</li>
+</ul>
+
+<h2>Analysis</h2>
+
+<h3>Probable cause — as originally reported</h3>
+<p>The reporter's own cited incident (#2346) turns out to be blocked by a <strong>GitHub ruleset</strong>, not a Prow-managed branch-protection required check. branchprotector (<code>pkg/config/branch_protection.go</code>) only speaks the legacy Branch Protection API and never reconciles rulesets, so this class of orphaning is out of scope for any Prow component — confirmed by petr-muller in the thread.</p>
+
+<h3>Related code — retire condition (accurate but not the operative cause)</h3>
+<p><code>pkg/statusreconciler/migrator/migrator.go:171-174</code>:</p>
+<pre>case stateAny:
+    if !found {
+        return nil
+    }</pre>
+<p>Requires the context to already be present in the PR's combined status for a <code>stateAny</code> retire condition to match — a context that never posted has no entry, so retirement never fires. Technically correct as described, but not what caused #2346 (see above).</p>
+
+<h3>Related code — Tide status-message gating (working as intended)</h3>
+<p><code>pkg/tide/status.go:265-267</code> gates the <code>github_merge_blocks_policy: block</code> description behind <code>desc == ""</code>, last of ~7 requirement gates. Judged intentional: status length is limited, and earlier reasons (missing label, failing test) are usually more actionable for the PR author than a GitHub-side ruleset block they can't self-resolve.</p>
+
+<h3>Cause — the real bug</h3>
+<p><code>pkg/config/agent.go:403-421</code> (<code>Agent.Set</code>):</p>
+<pre>for _, subscription := range ca.subscriptions {
+    go func(sub DeltaChan) { // wait a minute to send each event
+        end := time.NewTimer(time.Minute)
+        select {
+        case sub &lt;- delta:
+        case &lt;-end.C:
+        }
+        ...
+    }(subscription)
+}</pre>
+<p>If a subscriber's channel send doesn't complete within one minute, the delta is silently dropped — but <code>ca.c</code> has already advanced synchronously. <code>status-reconciler</code> trusts the delta's <code>Before</code> field as its diff baseline rather than tracking its own last-processed config, so a dropped delta's changes (e.g. a newly added blocking presubmit) are never diffed against, and <code>triggerNewPresubmits</code> (<code>controller.go:186</code>/<code>:211-268</code>) never runs for them. Identified by Prucek (MEMBER) in <a href="https://github.com/kubernetes-sigs/prow/issues/841#issuecomment-5281038208">this comment</a>; verified independently by reading the code.</p>
+
+<h3>Related issues / PRs</h3>
+<ul>
+<li><a href="https://github.com/kubernetes-sigs/prow/issues/848">kubernetes-sigs/prow#848</a> — "status-reconciler can permanently miss config changes when delta delivery times out". Open, correctly scoped to the real bug found here. This is where the actionable fix belongs.</li>
+<li><a href="https://github.com/openshift/oadp-operator/pull/2346">openshift/oadp-operator#2346</a> — the real-world trigger PR; blocked by a GitHub-ruleset-pinned required context, not Prow-managed protection.</li>
+<li><a href="https://github.com/openshift/release/pull/82902">openshift/release#82902</a> — set <code>github_merge_blocks_policy: block</code> for the affected repo.</li>
+</ul>
+
+<h2>What I checked</h2>
+<ul>
+<li><code>pkg/statusreconciler/migrator/migrator.go:171-174</code> — <code>stateAny</code> case matches the issue's description.</li>
+<li><code>pkg/tide/status.go:265-267</code> — gate ordering matches the issue's description; judged intentional.</li>
+<li><code>pkg/config/agent.go:403-421</code> — matches Prucek's delta-drop description exactly.</li>
+<li>Issue state: closed 2026-08-13T16:40:07Z, <code>stateReason: DUPLICATE</code>, cross-referenced by #848 (open, correctly scoped).</li>
+</ul>
+
+<h2>Recommended next steps</h2>
+<ul>
+<li>No action needed on #841 — leave closed as duplicate.</li>
+<li>Triage/label #848 separately: rough estimate, logging the delta drop is a small change; making <code>status-reconciler</code> diff against its own last-processed config (instead of trusting <code>delta.Before</code>) to survive a dropped delta is moderate — touches the delta-consumption contract and needs a regression test for the drop-then-recover scenario.</li>
+</ul>
+
+<h2>Open questions</h2>
+<ul>
+<li>None outstanding on #841.</li>
+</ul>
+
+</body>
+</html>

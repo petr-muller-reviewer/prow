@@ -45,20 +45,20 @@
   <p><strong>Author:</strong> carterpewpew</p>
   <p><strong>Head SHA:</strong> <code>88366d45c02a0429dd163a8c8fe4e68697a6603c</code></p>
   <p><strong>Base:</strong> main</p>
-  <p><strong>Reviewed:</strong> 2026-07-26T22:40:25Z</p>
+  <p><strong>Reviewed:</strong> 2026-08-17T22:39:03Z</p>
 </div>
 
 <div class="lgtm-banner">
-  <strong>Approved by Prucek</strong> on 2026-06-26. lgtm label was auto-stripped on 2026-07-09 after a rebase (no functional delta) and not yet reapplied; PR awaits OWNERS approval (cjwagner).
+  <strong>Approved by Prucek</strong> on 2026-06-26 (formal APPROVED review) and <code>/lgtm</code>, reapplied 2026-08-11 after the label was auto-stripped by a no-op rebase on 2026-07-09. PR also carries a <code>CHANGES_REQUESTED</code> review from petr-muller (2026-08-12) &mdash; see verdict below.
 </div>
 
 <div class="update-banner">
-  <strong>Refreshed review (3rd refresh).</strong> Previous review was at <code>47513e5</code> (2026-06-24). Branch was rebased onto latest main (~50 unrelated files from other merged PRs pulled in, no overlap with this change). The only real content change: a one-line clarifying comment added at <code>assign.go:255</code> addressing Prucek's warn-path request &mdash; that nit is now resolved. Author also ran an unrelated <code>/remove-area</code> label cleanup.
+  <strong>Refreshed review (4th refresh).</strong> No code changes since previous review (still <code>88366d4</code>). Prucek reapplied <code>/lgtm</code> on 2026-08-11. petr-muller then submitted a formal <code>CHANGES_REQUESTED</code> review on 2026-08-12 raising a new should-fix (the <code>Assign</code> config struct conflates plugin identity with the restriction feature) plus three open questions (PR vs issue scope, org-level key support, member/non-member assign semantics), followed by a same-day comment softening tone without withdrawing the request.
 </div>
 
 <div class="verdict">
-  <strong>Verdict: Approve with suggestions</strong>
-  <p>All three original should-fix items have been addressed. The remaining open item is <code>HasConfigFor()</code> not including Assign config for sharding &mdash; still a should-fix. The remaining nits (hardcoded label text, double-comment scenario, MissingUsers merging) are minor UX polish. The PR has /lgtm from Prucek.</p>
+  <strong>Verdict: Request changes</strong>
+  <p>Two should-fix items are now open: the pre-existing <code>HasConfigFor()</code> gap, and a newly-raised config-shape concern &mdash; <code>Assign</code>'s <code>OnlyOrgMembers</code>/<code>Action</code>/<code>ExemptLabels</code> fields are coupled restriction knobs living flat on a struct named after the plugin rather than the feature, and since this is the last point before the schema is released (and thus effectively frozen), the shape should be fixed now. Three open questions (PR/issue scope, org-level key coverage, assign-direction semantics) also need author confirmation. The remaining nits (hardcoded label text, double-comment scenario, MissingUsers merging) are minor UX polish and don't block.</p>
 </div>
 
 <h2>What this PR does</h2>
@@ -83,8 +83,19 @@
 
 <div class="finding should-fix">
   <p><span class="severity sev-should-fix">should-fix</span> <strong>HasConfigFor() not updated for Assign</strong></p>
-  <p><code>pkg/plugins/config.go:2447-2537</code></p>
-  <p><code>HasConfigFor()</code> enumerates all repo-scoped configs for config sharding. <code>Assign</code> (<code>map[string]*Assign</code>) is still not included. Config entries could be silently dropped during sharding. Iteration over map keys would be straightforward.</p>
+  <p><code>pkg/plugins/config.go:2467-2559</code></p>
+  <p><code>HasConfigFor()</code> is consumed only by <code>cmd/checkconfig</code>'s supplemental-config-layout validator (<code>cmd/checkconfig/main.go:1374-1420</code>), which enforces that a config file under <code>myorg/</code> (or <code>myorg/myrepo/</code>) &mdash; the standard sharded-<code>plugins.yaml</code> layout large Prow deployments use &mdash; contains only config scoped to that org/repo. <code>Assign</code> isn't part of the function's equality baseline or its <code>orgs</code>/<code>repos</code> enumeration, so any file setting <code>assign:</code> forces <code>global = true</code> unconditionally. A file at <code>myorg/plugins.yaml</code> containing only <code>assign: {myorg: {only_org_members: true}}</code> is correctly scoped but would be rejected by <code>checkconfig</code> as "contains global config" &mdash; a false positive. Not silent data loss, but a real break of the verification path this feature is meant to be used through. <code>TestHasConfigFor</code> (<code>pkg/plugins/config_test.go:2051</code>) has no case for <code>Assign</code>. Raised again explicitly in petr-muller's 2026-08-12 review.</p>
+</div>
+
+<div class="finding should-fix">
+  <p><span class="severity sev-should-fix">should-fix</span> <strong>Config struct conflates plugin identity with the restriction feature</strong></p>
+  <p><code>pkg/plugins/config.go:115-128</code></p>
+  <p><code>OnlyOrgMembers</code>, <code>Action</code>, and <code>ExemptLabels</code> are coupled knobs of one restriction feature but live flat on <code>Assign</code> (named after the plugin, not the feature). Two of the three fields only have meaning when <code>OnlyOrgMembers</code> is <code>true</code> &mdash; nothing in <code>validateAssign()</code> enforces that pairing, so <code>action: block</code> with <code>only_org_members</code> unset validates but silently does nothing (confirmed: the gate at <code>assign.go:48</code>/<code>assign.go:216</code> is <code>if cfg.OnlyOrgMembers</code>; <code>Action</code> is never consulted otherwise). Config schema is a de facto stable API once released &mdash; <code>Assign</code> isn't on <code>main</code> yet, so this is the last free opportunity to fix the shape. Proposed by petr-muller (2026-08-12 review): nest the three fields under a <code>Restrict</code> sub-struct (<code>assign.&lt;org/repo&gt;.restrict.{action,exempt_labels}</code>), using the sub-struct's presence as the enablement signal instead of the <code>OnlyOrgMembers</code> bool &mdash; also leaves room for a future non-org-membership restriction mechanism.</p>
+  <pre><code>type Assign struct {
+    OnlyOrgMembers bool         `json:"only_org_members,omitempty"`
+    ExemptLabels   []string     `json:"exempt_labels,omitempty"`
+    Action         AssignAction `json:"action,omitempty"`
+}</code></pre>
 </div>
 
 <h3>Nits</h3>
@@ -116,6 +127,18 @@
 </div>
 
 <h3>Questions</h3>
+
+<div class="finding question">
+  <p><span class="severity sev-question">question</span> <strong>Restriction scope and semantics are unclear</strong></p>
+  <p><code>pkg/plugins/assign/assign.go:94-104</code>, <code>assign.go:216-225</code></p>
+  <p>(1) PR vs issue: <code>handleGenericComment</code> runs the <code>/assign</code> restriction path unconditionally &mdash; there is no <code>e.IsPR</code> gate (only the separate <code>/cc</code> review-request handler is PR-gated). So <code>only_org_members</code> currently applies identically to <code>/assign</code> on PRs and issues; the warn message is also hardcoded to say "issue" even when triggered from a PR comment. (2) Member/non-member direction: the membership check applies to the <strong>assignment target</strong>, not the commenter &mdash; a non-member can freely <code>/assign</code> an org-member approver (per the standard OWNERS approval-request flow), while an org member assigning a non-member is blocked/warned identically to a non-member self-assigning. Docs don't spell this out. Raised by petr-muller's 2026-08-12 review; needs an explicit answer (and doc wording) from the author.</p>
+</div>
+
+<div class="finding question">
+  <p><span class="severity sev-question">question</span> <strong>Org-level (bare org) key not explicitly covered by tests</strong></p>
+  <p><code>pkg/plugins/assign/assign_test.go:472-597</code></p>
+  <p><code>AssignFor()</code> (<code>config.go:1111-1122</code>) resolves <code>org/repo</code> &rarr; <code>org</code> &rarr; <code>"*"</code> &rarr; zero-value with no special-casing, so a bare-org key mechanically works the same as an org/repo key. Not verified whether the test suite exercises the org-only key specifically. Raised by petr-muller's 2026-08-12 review; needs confirmation/added coverage rather than a design change.</p>
+</div>
 
 <div class="finding question">
   <p><span class="severity sev-question">question</span> <strong>Block mode error merging edge case</strong></p>
@@ -166,14 +189,18 @@
   <li><code>newReviewHandler</code> intentionally not affected by this config</li>
   <li>Deployment risk is LOW: all fields optional with <code>omitempty</code>, no breaking changes, safe rollback</li>
   <li><code>/cc</code> (review handler) unaffected &mdash; blast radius limited to assign handler</li>
-  <li>Prucek gave /lgtm on 2026-06-24 and a formal APPROVED review on 2026-06-26; lgtm label auto-removed on 2026-07-09 after a no-op rebase, not yet reapplied</li>
+  <li>Prucek gave /lgtm on 2026-06-24 and a formal APPROVED review on 2026-06-26; lgtm label auto-removed on 2026-07-09 after a no-op rebase, reapplied by Prucek on 2026-08-11</li>
   <li>PR currently awaits OWNERS approval (<code>cjwagner</code> for <code>pkg/plugins/OWNERS</code>) &mdash; unrelated to open review findings</li>
+  <li>petr-muller submitted a formal CHANGES_REQUESTED review on 2026-08-12T15:11:45Z (content folded into Findings above) and a same-day follow-up comment (2026-08-12T15:18:48Z) clarifying tone was not intended harshly and the feature is valued &mdash; but not withdrawing the change request; the config-struct-shape concern is explicitly maintained</li>
 </ul>
 
 <h2>Open questions for the author</h2>
 <ul>
   <li>Is there an intentional reason <code>HasConfigFor()</code> was not updated, or was it missed?</li>
   <li>In warn mode, should the nudge comment be suppressed when <code>AssignIssue</code> itself fails for the non-member?</li>
+  <li>Should <code>Assign</code>'s restriction fields be nested under a dedicated <code>Restrict</code> struct before this merges?</li>
+  <li>Is <code>only_org_members</code> intended to apply to PRs as well as issues? If so, the warn message wording needs fixing too.</li>
+  <li>Can a member assign a non-member and vice versa &mdash; is the current target-membership-only check the intended semantics?</li>
 </ul>
 
 </body>

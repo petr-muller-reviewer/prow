@@ -1,0 +1,300 @@
+<meta charset="utf-8">
+<title>Review — kubernetes-sigs/prow#555</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text-muted: #8b949e;
+    --accent: #58a6ff;
+    --green: #3fb950;
+    --yellow: #d29922;
+    --red: #f85149;
+    --purple: #bc8cff;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #ffffff;
+      --surface: #f6f8fa;
+      --border: #d0d7de;
+      --text: #1f2328;
+      --text-muted: #656d76;
+      --accent: #0969da;
+      --green: #1a7f37;
+      --yellow: #9a6700;
+      --red: #cf222e;
+      --purple: #8250df;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+    margin: 0 auto;
+    padding: 2rem 1.5rem 5rem;
+    max-width: 60rem;
+  }
+  h1 { font-size: 1.6rem; margin: 0 0 0.4rem; line-height: 1.3; }
+  h2 {
+    font-size: 1.2rem;
+    margin: 2.4rem 0 0.8rem;
+    padding-bottom: 0.3rem;
+    border-bottom: 1px solid var(--border);
+  }
+  h3 { font-size: 1rem; margin: 1.4rem 0 0.3rem; }
+  p { margin: 0.5rem 0; }
+  a { color: var(--accent); }
+
+  code {
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.85em;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 0.1em 0.35em;
+  }
+  pre {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.8rem 1rem;
+    overflow-x: auto;
+    font-size: 0.82rem;
+    line-height: 1.5;
+    margin: 0.6rem 0;
+  }
+  pre code { background: none; border: none; padding: 0; font-size: inherit; }
+  .hl { background: rgba(248, 81, 73, 0.16); border-radius: 3px; padding: 0 2px; }
+
+  .meta {
+    color: var(--text-muted);
+    font-size: 0.88rem;
+    margin-bottom: 1.5rem;
+    line-height: 1.7;
+  }
+  .file-ref {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    color: var(--purple);
+    font-size: 0.85em;
+  }
+
+  .verdict {
+    border: 2px solid var(--red);
+    border-radius: 6px;
+    padding: 1rem 1.25rem;
+    margin: 1.5rem 0;
+    background: rgba(248, 81, 73, 0.07);
+  }
+  .verdict h2 { border: none; margin: 0 0 0.4rem; color: var(--red); }
+
+  .badge {
+    display: inline-block;
+    font-size: 0.68rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    border-radius: 3px;
+    padding: 0.12em 0.5em;
+    vertical-align: middle;
+    margin-right: 0.4rem;
+  }
+  .badge-blocking { background: var(--red);    color: #fff; }
+  .badge-should   { background: var(--yellow); color: #000; }
+  .badge-nit      { background: var(--border); color: var(--text); }
+  .badge-question { background: var(--accent); color: #fff; }
+
+  .finding {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.9rem 1.1rem;
+    margin: 0.8rem 0;
+  }
+  .finding.blocking { border-left: 3px solid var(--red); }
+  .finding.should   { border-left: 3px solid var(--yellow); }
+  .finding.nit      { border-left: 3px solid var(--border); }
+  .finding.question { border-left: 3px solid var(--accent); }
+  .finding h3 { margin-top: 0; }
+
+  ul { margin: 0.5rem 0; padding-left: 1.4rem; }
+  li { margin: 0.25rem 0; }
+
+  .checked li::marker { color: var(--green); }
+</style>
+
+<h1>kubernetes-sigs/prow#555 — <code>peribolos</code>: add org roles feature</h1>
+<div class="meta">
+  <a href="https://github.com/kubernetes-sigs/prow/pull/555">github.com/kubernetes-sigs/prow/pull/555</a><br>
+  Head SHA: <code>27020ccb1915241d1af5cdb258ffb28888a668a4</code> &middot; Base: <code>main</code><br>
+  Reviewed: <code>2026-07-31T17:10:15Z</code> &middot; Author: <strong>hoxhaeris</strong> &middot; Assignee: ivankatliarchuk<br>
+  +1636 / &minus;1 &middot; <code>size/XXL</code> <code>needs-rebase</code> <code>ok-to-test</code> <code>area/peribolos</code><br>
+  Independent re-review (Opus 5), validating a prior multi-perspective review + gate
+</div>
+
+<div class="verdict">
+  <h2>Verdict: request changes</h2>
+  <p>The feature is well-built, opt-in, and follows peribolos conventions closely, but it contains a confirmed defect: with <code>--fix-org-roles</code> enabled, peribolos revokes organization roles from teams the operator explicitly excluded via <code>--ignore-secret-teams</code> or <code>--ignore-enterprise-teams</code>, and the config format offers no way to express an exemption. The cause is a filtered set being diffed against an unfiltered one. It is opt-in, so no existing deployment is affected until someone enables the flag — but the first operator who does, in combination with either ignore flag, silently loses permissions. The fix is small and local.</p>
+  <p>This re-review also supersedes the earlier finding set: two of the three previously "converging" concerns did not survive scrutiny (see the <span class="file-ref">nit</span> on <code>--fix-teams</code> coupling and the note on cleanup logging under Checked).</p>
+</div>
+
+<h2>What this PR does</h2>
+<ul>
+  <li>Adds a <code>--fix-org-roles</code> flag (default <code>false</code>) and a <code>roles:</code> section to the org config, for declaratively managing who holds GitHub custom organization roles. The roles themselves must already exist in GitHub.</li>
+  <li><code>configureOrgRoles</code> walks every role GitHub reports, syncing the ones named in config and stripping all assignments from the ones that are not.</li>
+  <li>Adds 7 client methods behind a new <code>OrganizationRolesClient</code> interface, which is embedded into the exported <code>github.Client</code>.</li>
+  <li><code>--dump</code> gains a <code>roles:</code> section; roles with no team or user assignments are omitted (the most recent commit).</li>
+  <li>Users holding a role indirectly through team membership are preserved, and users with pending org invitations are skipped until they accept.</li>
+</ul>
+
+<h2>Findings</h2>
+
+<h3>Blocking</h3>
+
+<div class="finding blocking">
+  <h3><span class="badge badge-blocking">blocking</span>Ignored teams silently lose their organization roles</h3>
+  <p><span class="file-ref">cmd/peribolos/main.go:1710-1768</span></p>
+  <p>Two sets are compared, and they are drawn from different worlds. <code>wantSet</code> is built from <code>githubTeams</code>, which holds <em>only config-declared teams</em> — <code>configureTeams</code> <code>continue</code>s past secret teams (<span class="file-ref">main.go:796</span>) and enterprise teams (<span class="file-ref">main.go:792</span>) before recording them, so an ignored team can never appear. <code>haveSet</code> comes straight from <code>ListTeamsWithRole</code>, which returns <em>every</em> team on GitHub holding the role. The difference is deleted.</p>
+<pre><code>normalizedTeams := make(map[string]string)
+for name, team := range <span class="hl">githubTeams</span> {          // config-declared teams only
+    normalizedTeams[strings.ToLower(name)] = team.Slug
+}
+...
+haveSet := sets.New[string]()
+for _, team := range <span class="hl">currentTeams</span> {          // everything GitHub reports
+    haveSet.Insert(team.Slug)
+}
+...
+toRemove := <span class="hl">haveSet.Difference(wantSet)</span>
+for teamSlug := range toRemove {
+    if err := client.RemoveOrganizationRoleFromTeam(orgName, teamSlug, roleID); err != nil {</code></pre>
+  <p>So <code>--fix-org-roles</code> revokes roles from exactly the teams the operator opted out of managing. That contradicts both flags' own help text at <span class="file-ref">main.go:92-93</span> — <em>"Do not dump or update secret teams if set"</em> and <em>"Skip enterprise teams and their members during reconciliation"</em> — and partially regresses <code>daa3c7a62</code> (PR #710, May 2026, same author), which exists specifically to stop peribolos reconciling enterprise-managed teams.</p>
+  <p>There is no escape hatch. <code>ValidateRoles</code> (<span class="file-ref">pkg/config/org/org.go:98</span>) rejects any role naming a team absent from <code>c.Teams</code>, so the exemption cannot be written down; and declaring the team instead routes it to <code>missing</code>, where peribolos attempts <code>CreateTeam</code> (<span class="file-ref">main.go:855-870</span>).</p>
+  <p>Confirmed empirically against this head — a throwaway test driving <code>configureOrgRoles</code> with one config-declared team plus one ignored team:</p>
+<pre><code>level=info msg="Removed role security-manager from team enterprise-sec"
+removed: [test-org/enterprise-sec/1]</code></pre>
+  <p><strong>Suggested fix:</strong> thread the ignored-team slugs through to <code>configureRoleTeamAssignments</code> and exclude them from <code>toRemove</code>, or build <code>haveSet</code> from the full team list so both sides of the diff share a domain.</p>
+</div>
+
+<h3>Should fix</h3>
+
+<div class="finding should">
+  <h3><span class="badge badge-should">should-fix</span><code>--dump</code> output is not round-trippable when teams are filtered</h3>
+  <p><span class="file-ref">cmd/peribolos/main.go:425-433</span></p>
+  <p>The same filtered-vs-unfiltered asymmetry, on the dump side.</p>
+<pre><code>for _, team := range teamsWithRole {
+    // Only include teams that are in slugToName (secret teams are excluded from this map)
+    if name, ok := slugToName[team.Slug]; ok {
+        teamNames = append(teamNames, name)
+    } else if !ignoreSecretTeams {
+        teamNames = append(teamNames, <span class="hl">team.Slug</span>)   // raw slug leaks into the config
+    }
+}</code></pre>
+  <p>A role held by a team missing from <code>slugToName</code> (enterprise teams under <code>--ignore-enterprise-teams</code>) gets the raw <strong>slug</strong> written into <code>roles.&lt;name&gt;.teams</code>, while the <code>teams:</code> section omits that team. Re-applying the dump fails peribolos' own validation:</p>
+<pre><code>role validation failed:
+  - role "security-manager" references undefined team "enterprise-sec"</code></pre>
+  <p>Under <code>--ignore-secret-teams</code> the team is instead dropped silently, which feeds straight into the blocking finding. Dump&rarr;apply idempotence is a property operators rely on. Verified by feeding a synthesized dump through <code>ValidateRoles</code>.</p>
+</div>
+
+<div class="finding should">
+  <h3><span class="badge badge-should">should-fix</span>Embedding <code>OrganizationRolesClient</code> in <code>Client</code> breaks downstream implementers</h3>
+  <p><span class="file-ref">pkg/github/client.go:79-89,291</span></p>
+<pre><code>type Client interface {
+    ...
+    OrganizationClient
+    <span class="hl">OrganizationRolesClient</span>
+    TeamClient</code></pre>
+  <p>Adding 7 methods to the exported <code>github.Client</code> interface is a compile-time break for any out-of-tree type satisfying it — custom fakes, throttling or caching wrappers, decorators. It is safe for <em>callers</em>, not for <em>implementers</em>. In-tree <code>fakegithub.FakeClient</code> is updated so the common case is covered, but this is an upstream library whose consumers we do not control. Worth a release note. (The earlier gate recorded this as unqualifiedly "additive, safe" — that was wrong.)</p>
+</div>
+
+<div class="finding should">
+  <h3><span class="badge badge-should">should-fix</span><code>errors</code> local variable shadows the imported <code>errors</code> package</h3>
+  <p><span class="file-ref">cmd/peribolos/main.go:1750</span>, <span class="file-ref">cmd/peribolos/main.go:1817</span></p>
+<pre><code>// Teams to add
+var <span class="hl">errors</span> []error</code></pre>
+  <p><code>errors</code> is imported at <span class="file-ref">main.go:20</span>. Neither function uses the package, so this compiles and <code>go vet</code> is clean — it is a convention issue, not a bug. Elsewhere the codebase uses <code>errs</code> / <code>allErrors</code> / <code>updateErrors</code>. Same pattern at <span class="file-ref">pkg/config/org/org.go:143</span>.</p>
+</div>
+
+<h3>Nits</h3>
+
+<div class="finding nit">
+  <h3><span class="badge badge-nit">nit</span><code>--fix-org-roles requires --fix-teams</code> error does not say why</h3>
+  <p><span class="file-ref">cmd/peribolos/main.go:155-157</span></p>
+<pre><code>if o.fixOrgRoles &amp;&amp; !o.fixTeams {
+    return fmt.Errorf("--fix-org-roles requires --fix-teams")
+}</code></pre>
+  <p>The dependency is genuine, not arbitrary: <code>configureOrg</code> returns early at <span class="file-ref">main.go:1065-1068</span> when <code>fixTeams</code> is false, so <code>configureOrgRoles</code> is unreachable without it, and team-name&rarr;slug resolution needs <code>configureTeams</code>' output. Two earlier reviewers flagged this as "overly strict" — that reading does not hold as the code stands, and the author's rebuttal is correct. Only the message needs a <em>why</em>.</p>
+</div>
+
+<div class="finding nit">
+  <h3><span class="badge badge-nit">nit</span>Comment omits the <code>mixed</code> assignment case</h3>
+  <p><span class="file-ref">cmd/peribolos/main.go:1793-1795</span></p>
+  <p>The comment explains that <code>indirect</code> users are skipped but not that <code>mixed</code> users — holding the role both directly and via a team — keep the indirect grant while losing the direct one. The behavior is right; the comment under-describes it.</p>
+</div>
+
+<div class="finding nit">
+  <h3><span class="badge badge-nit">nit</span><code>readPaginatedResults</code> used with a wrapper object</h3>
+  <p><span class="file-ref">pkg/github/client.go:5433-5451</span></p>
+  <p>List Organization Roles returns <code>{"total_count": N, "roles": [...]}</code>; every other <code>readPaginatedResults</code> caller in this file accumulates a bare array. It works because pagination keys off the <code>Link</code> header, but it is the sole wrapper-shaped usage and deserves a one-line comment.</p>
+</div>
+
+<div class="finding nit">
+  <h3><span class="badge badge-nit">nit</span><code>findOriginalRoleName</code> is O(n) inside the per-role loop</h3>
+  <p><span class="file-ref">cmd/peribolos/main.go:1701-1708</span></p>
+  <p>Called once per configured role inside the main processing loop. A <code>lowerToOriginal</code> map built alongside <code>configuredRoleNames</code> removes the scan. Negligible at realistic role counts.</p>
+</div>
+
+<div class="finding nit">
+  <h3><span class="badge badge-nit">nit</span>Two consecutive loops over <code>orgConfig.Roles</code></h3>
+  <p><span class="file-ref">cmd/peribolos/main.go:1645-1656</span></p>
+  <p>The role-existence validation loop and the <code>configuredRoleNames</code> construction loop iterate the same map back to back and can be merged.</p>
+</div>
+
+<div class="finding nit">
+  <h3><span class="badge badge-nit">nit</span><code>ValidateRoles</code> accumulates <code>[]string</code> rather than <code>[]error</code></h3>
+  <p><span class="file-ref">pkg/config/org/org.go:143-160</span></p>
+  <p>The rest of the codebase uses <code>[]error</code> + <code>utilerrors.NewAggregate</code>. Cosmetic consistency.</p>
+</div>
+
+<div class="finding nit">
+  <h3><span class="badge badge-nit">nit</span>Dump test never exercises slug&rarr;name resolution</h3>
+  <p><span class="file-ref">cmd/peribolos/main_test.go:2033-2090</span></p>
+  <p>The "dump organization with roles" case configures no teams, so <code>slugToName</code> is always empty and the mapping that makes dumps round-trippable is untested. Adding a team would cover the property the dump finding above breaks.</p>
+</div>
+
+<h3>Questions</h3>
+
+<div class="finding question">
+  <h3><span class="badge badge-question">question</span>Does <code>ListTeamsWithRole</code> return enterprise teams?</h3>
+  <p>The blocking finding assumes GitHub reports enterprise teams among the teams assigned to an org role, which is the documented purpose of enterprise team role grants. The manual testing was against a test org; confirming this specific case would settle the severity.</p>
+</div>
+
+<div class="finding question">
+  <h3><span class="badge badge-question">question</span>What is the intended contract for teams peribolos does not manage?</h3>
+  <p>The author's own test at <span class="file-ref">main_test.go:4734</span> ("remove team assignment", <code>githubTeams: {}</code>) asserts that a team unknown to the config loses the role. Defensible for unmanaged teams — but nothing in the code distinguishes "not in config" from "explicitly ignored". Which was intended determines whether the fix exempts ignored teams only, or restricts role management to declared teams entirely.</p>
+</div>
+
+<h2>Things I checked and was fine with</h2>
+<ul class="checked">
+  <li><code>go build ./...</code>, <code>go vet ./cmd/peribolos/...</code>, <code>go test ./cmd/peribolos/... ./pkg/config/org/...</code> — all pass on <code>27020ccb1</code>.</li>
+  <li>Diff against <code>merge-base(27020ccb1, upstream/main)</code> is purely additive (+1636/&minus;1); <code>TeamTypeEnterprise</code>, <code>Team.Type</code>, <code>OrgInvitation.FailedAt</code>/<code>FailedReason</code> are present and used. The rebase reverted nothing — the <code>needs-rebase</code> label is stale (<code>gh pr view</code> reports <code>mergeable: MERGEABLE</code>).</li>
+  <li>Role-existence validation runs before any mutation (<span class="file-ref">main.go:1637-1643</span>), and <code>configureOrg</code> validates config at <span class="file-ref">main.go:1013-1018</span> before API calls.</li>
+  <li><strong>Removals are logged at Info, not Debug</strong> (<span class="file-ref">main.go:1766</span>, <span class="file-ref">main.go:1839</span>), and peribolos defaults to <code>--log-level=info</code> (<span class="file-ref">main.go:104</span>). The earlier review's "cleanup is invisible at Debug level" claim is false, and its cited <span class="file-ref">main.go:411</span> is the dump path's role count, not the cleanup path.</li>
+  <li>Indirect-assignment filtering (<span class="file-ref">main.go:1795-1801</span>) correctly preserves users holding a role via team membership.</li>
+  <li>Pending-invitee skipping (<span class="file-ref">main.go:1822-1826</span>) and the invitee-set threading from <code>configureOrgMembers</code> (<span class="file-ref">main.go:607</span>) work as described.</li>
+  <li>Mutating client methods rely on <code>requestRawWithContext</code> short-circuiting non-GET in dry mode; no redundant <code>c.dry</code> guards remain.</li>
+  <li>Case-insensitive matching for role names, team names, and logins; role-name collision detection in <code>ValidateRoles</code>.</li>
+  <li><code>ListOrganizationRoles</code> paginates via <code>readPaginatedResults</code>.</li>
+  <li>All 13 items from @ivankatliarchuk's <code>CHANGES_REQUESTED</code> review are addressed in code, except the <code>--fix-teams</code> coupling, which the author declined with a justification that holds up.</li>
+  <li>No secrets, tokens, or credentials in the diff.</li>
+</ul>
+
+<h2>Open questions for the author</h2>
+<ul>
+  <li>Should <code>--fix-org-roles</code> exempt teams excluded by <code>--ignore-secret-teams</code> / <code>--ignore-enterprise-teams</code> from role removal, or should role management be restricted to config-declared teams altogether?</li>
+  <li>Should the dump emit anything at all for roles held by filtered-out teams, given the current raw-slug output produces a config that fails <code>ValidateRoles</code>?</li>
+  <li>Is a release note planned for the <code>github.Client</code> interface growth, for downstream implementers?</li>
+  <li>Was the enterprise-team + <code>--fix-org-roles</code> combination covered in the manual testing against the test org?</li>
+</ul>

@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Review: kubernetes-sigs/prow#833</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; line-height: 1.6; color: #1a1a1a; max-width: 860px; margin: 2rem auto; padding: 0 1.5rem; }
+  code, pre { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; }
+  header { border-bottom: 2px solid #ddd; padding-bottom: 1rem; margin-bottom: 1.5rem; }
+  header table { border-collapse: collapse; }
+  header td { padding: 2px 8px 2px 0; vertical-align: top; }
+  header td:first-child { font-weight: 600; color: #555; }
+  h1 { font-size: 1.4rem; margin-bottom: 0.3rem; }
+  h2 { font-size: 1.15rem; border-bottom: 1px solid #eee; padding-bottom: 0.3rem; margin-top: 2rem; }
+  .verdict { background: #eafaf0; border: 1px solid #b7e4c7; border-radius: 6px; padding: 1rem 1.2rem; margin: 1rem 0; }
+  .verdict .label { font-weight: 700; text-transform: uppercase; color: #1e7e34; }
+  ul { padding-left: 1.3rem; }
+  li { margin-bottom: 0.4rem; }
+  .none { color: #777; font-style: italic; }
+  code.path { background: #f2f2f2; padding: 1px 5px; border-radius: 4px; }
+  a { color: #0645ad; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Review: kubernetes-sigs/prow#833</h1>
+  <table>
+    <tr><td>PR</td><td><a href="https://github.com/kubernetes-sigs/prow/pull/833">kubernetes-sigs/prow#833</a></td></tr>
+    <tr><td>Title</td><td>chore(deps): bump google.golang.org/grpc from 1.79.3 to 1.82.1 in /hack/tools</td></tr>
+    <tr><td>Head SHA</td><td><code>b746fdd01caa2b9d78d484da5b417777d787f6c5</code></td></tr>
+    <tr><td>Base</td><td>main</td></tr>
+    <tr><td>Reviewed at</td><td>2026-08-18T15:13:19Z</td></tr>
+  </table>
+</header>
+
+<div class="verdict">
+  <div class="label">Verdict: Approve</div>
+  <p>Dep-only bump confined to the <code class="path">hack/tools</code> build-tooling module. grpc is only an indirect dependency there with zero import surface in prow's own code, and the root module's own direct grpc dependency (still v1.79.3) is untouched. The new release is ~34 days old, a real tagged release, and includes only a security fix that hardens the gRPC server side &mdash; irrelevant here since this copy of grpc never runs inside a prow binary.</p>
+</div>
+
+<h2>What this PR does</h2>
+<ul>
+  <li>Dependabot bump of <code>google.golang.org/grpc</code> from v1.79.3 to v1.82.1, scoped entirely to <code class="path">hack/tools/go.mod</code>/<code class="path">go.sum</code> (12/36 lines changed).</li>
+  <li>No project source touched.</li>
+  <li>Side-effect transitive bumps in the same module: <code>go.opentelemetry.io/otel{,/metric,/trace}</code> v1.42.0&rarr;v1.43.0 and <code>google.golang.org/genproto/googleapis/{api,rpc}</code> pseudo-versions moving from 2026-03-16 to 2026-04-14.</li>
+  <li><code class="path">hack/tools</code> is a separate, build-tooling-only Go module (see <code class="path">hack/tools/tools.go</code>) that pins binary deps for golangci-lint, k8s code-generator, controller-gen, protoc-gen-go, gotestsum, misspell, and ko &mdash; grpc is transitively pulled in by one of these, not imported by any prow source.</li>
+  <li>The root <code class="path">go.mod</code> (actual prow server binaries) has its own <strong>direct</strong> grpc dependency, still pinned at v1.79.3 and fully unaffected by this PR.</li>
+</ul>
+
+<h2>Dependency analysis</h2>
+<ul>
+  <li><strong>Freshness</strong>: v1.82.1 released 2026-07-15 (real grpc-go tag, not a pseudo-version) &mdash; ~34 days old at review time. Past the soak window, fine.</li>
+  <li><strong>Usage</strong>: indirect only; zero import surface in prow's own code; confined entirely to the <code class="path">hack/tools</code> dev-tooling module.</li>
+  <li><strong>Changelog (1.79.3&rarr;1.82.1)</strong>: xDS/RBAC bug fixes, a balancer-registry case-sensitivity behavior change, and a security fix in 1.82.1 (server-side mitigation for HTTP/2 frame-flooding DoS, plus xDS/RBAC ACL matcher fail-open fixes). None of this is reachable here &mdash; this copy of grpc only executes inside dev-time build/lint/codegen tooling, never inside a shipped prow binary.</li>
+</ul>
+
+<h2>Findings</h2>
+<p class="none">None.</p>
+
+<h2>Things I checked and was fine with</h2>
+<ul>
+  <li>Diff scope confined to <code class="path">hack/tools/go.mod</code> and <code class="path">hack/tools/go.sum</code> &mdash; no project code changes.</li>
+  <li>Root module's grpc dependency (v1.79.3, direct) is untouched and unaffected by this bump.</li>
+  <li>grpc import surface in prow source: none (indirect-only, dev tooling module).</li>
+  <li>New grpc release provenance: real tagged release on the grpc-go GitHub repo, not a pseudo-version.</li>
+</ul>
+
+<h2>Open questions for the author</h2>
+<p class="none">None.</p>
+
+</body>
+</html>

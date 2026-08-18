@@ -123,14 +123,29 @@
   li { margin: 0.25rem 0; }
 
   .checked li::marker { color: var(--green); }
+
+  .gate {
+    border: 2px solid var(--yellow);
+    border-radius: 6px;
+    padding: 1rem 1.25rem;
+    margin: 1rem 0 1.5rem;
+    background: rgba(210, 153, 34, 0.07);
+  }
+  .gate.merge        { border-color: var(--green); background: rgba(63, 185, 80, 0.07); }
+  .gate.do-not-merge { border-color: var(--red);    background: rgba(248, 81, 73, 0.07); }
+  .gate h2 { border: none; margin: 0 0 0.4rem; }
+  .gate.hold h2        { color: var(--yellow); }
+  .gate.merge h2       { color: var(--green); }
+  .gate.do-not-merge h2 { color: var(--red); }
+  .gate h3 { font-size: 0.95rem; margin: 1rem 0 0.3rem; }
 </style>
 
 <h1>kubernetes-sigs/prow#555 — <code>peribolos</code>: add org roles feature</h1>
 <div class="meta">
   <a href="https://github.com/kubernetes-sigs/prow/pull/555">github.com/kubernetes-sigs/prow/pull/555</a><br>
-  Head SHA: <code>27020ccb1915241d1af5cdb258ffb28888a668a4</code> &middot; Base: <code>main</code><br>
-  Reviewed: <code>2026-07-31T17:10:15Z</code> &middot; Author: <strong>hoxhaeris</strong> &middot; Assignee: ivankatliarchuk<br>
-  +1636 / &minus;1 &middot; <code>size/XXL</code> <code>needs-rebase</code> <code>ok-to-test</code> <code>area/peribolos</code><br>
+  Head SHA: <code>db4667f980c26d1a554b7e7ec22f1cceb14e29ad</code> &middot; Base: <code>main</code><br>
+  Reviewed: <code>2026-08-18T20:03:23Z</code> (refreshed) &middot; Author: <strong>hoxhaeris</strong> &middot; Assignee: ivankatliarchuk<br>
+  +1636 / &minus;1 &middot; <code>size/XXL</code> <code>ok-to-test</code> <code>area/peribolos</code><br>
   Independent re-review (Opus 5), validating a prior multi-perspective review + gate
 </div>
 
@@ -138,6 +153,27 @@
   <h2>Verdict: request changes</h2>
   <p>The feature is well-built, opt-in, and follows peribolos conventions closely, but it contains a confirmed defect: with <code>--fix-org-roles</code> enabled, peribolos revokes organization roles from teams the operator explicitly excluded via <code>--ignore-secret-teams</code> or <code>--ignore-enterprise-teams</code>, and the config format offers no way to express an exemption. The cause is a filtered set being diffed against an unfiltered one. It is opt-in, so no existing deployment is affected until someone enables the flag — but the first operator who does, in combination with either ignore flag, silently loses permissions. The fix is small and local.</p>
   <p>This re-review also supersedes the earlier finding set: two of the three previously "converging" concerns did not survive scrutiny (see the <span class="file-ref">nit</span> on <code>--fix-teams</code> coupling and the note on cleanup logging under Checked).</p>
+</div>
+
+<div class="gate hold">
+  <h2>Gate Decision: HOLD <span style="font-size:0.6em; color: var(--text-muted); text-transform:none;">(2026-08-18)</span></h2>
+  <p>No activity since the last review pass: head unchanged in substance (<code>db4667f98</code> is the same mechanical rebase already accounted for), no new commits, comments, or reviews from anyone. @ivankatliarchuk's <code>CHANGES_REQUESTED</code> review (2026-03-08) predates this review's own findings, and all 13 of its items are addressed except the <code>--fix-teams</code> coupling, which is dispositioned as correct-as-is (see Checked). Nothing in the current gating set has moved.</p>
+
+  <h3>Gating item (blocks merge)</h3>
+  <p><strong>Ignored teams silently lose their organization roles</strong> &mdash; <span class="file-ref">cmd/peribolos/main.go:1710-1768</span> (source: this review, <span class="badge badge-blocking">blocking</span>). <code>wantSet</code> (config-declared teams only) is diffed against <code>haveSet</code> (every team GitHub reports holding the role), and the difference is removed. A team excluded via <code>--ignore-secret-teams</code> or <code>--ignore-enterprise-teams</code> therefore has its org role stripped despite the flag's own contract, with no way in the config schema to exempt it. Confirmed empirically against this exact code (see Findings below). Not addressed, not discussed by the author. <strong>Blocks merge</strong> as-is: this is a live correctness defect in a code path that ships whenever <code>--fix-org-roles</code> is enabled, not a style nit.</p>
+
+  <h3>Should-fix items, not gating on their own</h3>
+  <ul>
+    <li><em>--dump output is not round-trippable when teams are filtered</em> (<span class="file-ref">main.go:425-433</span>) &mdash; same root cause as the blocking item; likely resolved by the same fix, or needs its own if the fix only touches the sync path.</li>
+    <li><em>Embedding OrganizationRolesClient in Client breaks downstream implementers</em> (<span class="file-ref">pkg/github/client.go:79-89,291</span>) &mdash; real but consistent with how this project has always grown <code>github.Client</code>; worth a release note, not a blocker.</li>
+    <li><em>errors variable shadows the errors package</em> (<span class="file-ref">main.go:1750</span>, <span class="file-ref">1817</span>) &mdash; cosmetic, <code>go vet</code> clean.</li>
+  </ul>
+
+  <h3>Merge risk (Area 2)</h3>
+  <p>No new risk beyond what the findings already capture. <code>--fix-org-roles</code> remains opt-in, default <code>false</code> &mdash; no existing deployment is affected by merging as-is. The risk is entirely inside the opt-in path: an operator who combines <code>--fix-org-roles</code> with <code>--ignore-secret-teams</code> or <code>--ignore-enterprise-teams</code> (the latter shipped on <code>main</code> in May 2026, <code>daa3c7a62</code>) silently loses role assignments on teams they explicitly asked peribolos not to touch. No CRD/API-server-facing surface &mdash; this is a CLI tool operators run themselves &mdash; so blast radius is bounded to whoever runs peribolos with that flag combination, but it is a silent permission change with no warning beyond the standard <code>--confirm=false</code> dry-run mechanism. No skill in <code>.claude/skills/</code> was applicable (no CRD/schema-compat skill present); assessed directly.</p>
+
+  <h3>Unblocks by</h3>
+  <p>Fixing the ignored-team/role-removal asymmetry (thread ignored-team slugs through to <code>configureRoleTeamAssignments</code> and exclude them from <code>toRemove</code>, or diff against the full team list on both sides). The should-fix items can ride along or follow in a fast-follow; they don't need to gate this hold.</p>
 </div>
 
 <h2>What this PR does</h2>
@@ -148,6 +184,8 @@
   <li><code>--dump</code> gains a <code>roles:</code> section; roles with no team or user assignments are omitted (the most recent commit).</li>
   <li>Users holding a role indirectly through team membership are preserved, and users with pending org invitations are skipped until they accept.</li>
 </ul>
+
+<p style="color: var(--text-muted); font-size: 0.9rem;"><strong>Since previous review (2026-08-18):</strong> head moved <code>27020ccb1</code> &rarr; <code>db4667f98</code> via a mechanical rebase onto current <code>main</code> (~140 unrelated upstream commits absorbed). The PR's own diff against its merge-base is unchanged except one forced one-line fix for a renamed test helper in <code>pkg/config/org/org_test.go</code>. No new PR activity. All findings below are unaffected.</p>
 
 <h2>Findings</h2>
 

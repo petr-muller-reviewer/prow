@@ -1,15 +1,14 @@
 ---
 pr: kubernetes-sigs/prow#555
 title: "`peribolos`: add org roles feature"
-head_sha: 27020ccb1915241d1af5cdb258ffb28888a668a4
+head_sha: db4667f980c26d1a554b7e7ec22f1cceb14e29ad
 base: main
-reviewed_at: 2026-07-31T17:10:15Z
+reviewed_at: 2026-08-18T20:03:23Z
 verdict: request-changes
 author: hoxhaeris
 assignee: ivankatliarchuk
 labels:
   - size/XXL
-  - needs-rebase
   - ok-to-test
   - area/peribolos
 stats: "+1636 / -1"
@@ -27,11 +26,15 @@ refresh_log:
     new_sha: "27020ccb1915241d1af5cdb258ffb28888a668a4"
     date: "2026-07-31T17:10:15Z"
     summary: "No code change. Independent re-review replaced the prior finding set: two of three converging concerns did not survive scrutiny, one new confirmed defect found (ignored teams lose org roles)."
+  - previous_sha: "27020ccb1915241d1af5cdb258ffb28888a668a4"
+    new_sha: "db4667f980c26d1a554b7e7ec22f1cceb14e29ad"
+    date: "2026-08-18T20:03:23Z"
+    summary: "Mechanical rebase only: PR content (fe920dbd9/90c8bb66a/db4667f98) diffs identically against merge-base except one unrelated one-line fix in pkg/config/org/org_test.go (diff.ObjectReflectDiff -> diff.Diff, a renamed test helper pulled in by the rebase). No new commits, comments, or reviews from the PR author or reviewers. needs-rebase label cleared; mergeable: MERGEABLE. All findings below stand unchanged."
 gate:
   decision: hold
-  gated_at: "2026-07-31T17:02:13Z"
-  gated_head_sha: "27020ccb1915241d1af5cdb258ffb28888a668a4"
-  reviewed_head_sha: "27020ccb1915241d1af5cdb258ffb28888a668a4"
+  gated_at: "2026-08-18T20:16:21Z"
+  gated_head_sha: "db4667f980c26d1a554b7e7ec22f1cceb14e29ad"
+  reviewed_head_sha: "db4667f980c26d1a554b7e7ec22f1cceb14e29ad"
 ---
 
 # kubernetes-sigs/prow#555
@@ -43,6 +46,23 @@ Adds declarative management of GitHub organization custom role *assignments* via
 - 7 new `github.Client` methods behind a new `OrganizationRolesClient` interface, embedded into `Client`.
 - `--dump` emits a `roles:` section; roles with no assignments are omitted.
 - Users holding a role indirectly (via team membership) are preserved; users with pending org invitations are skipped.
+
+Since previous review (2026-08-18): head moved `27020ccb1` → `db4667f98` via a mechanical rebase onto current `main` (~140 unrelated upstream commits absorbed). The PR's own diff against its merge-base is unchanged except one forced one-line fix for a renamed test helper in `pkg/config/org/org_test.go`. No new PR activity. All findings below are unaffected.
+
+## Gate: HOLD (2026-08-18)
+
+No activity since the last review pass: head unchanged in substance (`db4667f98` is the same mechanical rebase already accounted for), no new commits, comments, or reviews from anyone. `ivankatliarchuk`'s `CHANGES_REQUESTED` review (2026-03-08) predates this review's own findings and all 13 of its items are addressed except the `--fix-teams` coupling, which is dispositioned as correct-as-is (see Checked). Nothing in the current gating set has moved.
+
+**Gating item (blocks merge):** *Ignored teams silently lose their organization roles* — `cmd/peribolos/main.go:1710-1768` (source: this REVIEW.md, `[blocking]`). `wantSet` (config-declared teams only) is diffed against `haveSet` (every team GitHub reports holding the role), and the difference is removed. A team excluded via `--ignore-secret-teams` or `--ignore-enterprise-teams` therefore has its org role stripped despite the flag's own contract, with no way in the config schema to exempt it. Confirmed empirically against this exact code (see Findings). Not addressed, not discussed by the author. **Blocks merge** as-is: this is a live correctness defect in a code path that ships whenever `--fix-org-roles` is enabled, not a style nit.
+
+**Should-fix items, not gating on their own:**
+- *`--dump` output is not round-trippable when teams are filtered* (`main.go:425-433`) — same root cause as the blocking item; will be naturally addressed by the same fix or requires its own if the fix only touches the sync path.
+- *Embedding `OrganizationRolesClient` in `Client` breaks downstream implementers* (`pkg/github/client.go:79-89,291`) — real but consistent with how this project has always grown `github.Client`; worth a release note, not a blocker.
+- *`errors` variable shadows the `errors` package* (`main.go:1750`, `1817`) — cosmetic, `go vet` clean.
+
+**Merge risk (Area 2):** No new risk beyond what the findings already capture. `--fix-org-roles` remains opt-in, default `false` — no existing deployment is affected by merging as-is. The risk is entirely inside the opt-in path: an operator who combines `--fix-org-roles` with `--ignore-secret-teams` or `--ignore-enterprise-teams` (the latter shipped on `main` in May 2026, `daa3c7a62`) silently loses role assignments on teams they explicitly asked peribolos not to touch. No CRD/API-server-facing surface; this is a CLI tool operators run themselves, so blast radius is bounded to whoever runs peribolos with that flag combination, but it is a silent permission change with no warning or dry-run signal beyond the standard `--confirm=false` mechanism (which most operators won't rerun once they trust config as reviewed). No skill in `.claude/skills/` was applicable (no CRD/schema-compat skill present); assessed directly.
+
+**Unblocks by:** fixing the ignored-team/role-removal asymmetry (thread ignored-team slugs through to `configureRoleTeamAssignments` and exclude them from `toRemove`, or diff against the full team list on both sides). The should-fix items can ride along or follow in a fast-follow; they don't need to gate this hold.
 
 ## Findings
 

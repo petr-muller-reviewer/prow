@@ -3,8 +3,13 @@ pr: kubernetes-sigs/prow#853
 title: "chore(deps): bump the kubernetes group across 1 directory with 2 updates"
 head_sha: a6561e582ddc171130fa213eb90eab074615caeb
 base: main
-reviewed_at: 2026-08-17T17:06:29Z
+reviewed_at: 2026-08-19T11:42:30Z
 verdict: approve
+state: merged
+refresh_log:
+  - old_sha: a6561e582ddc171130fa213eb90eab074615caeb
+    new_sha: a6561e582ddc171130fa213eb90eab074615caeb
+    summary: No code changes. PR approved by petr-muller (2026-08-17T17:15:23Z), /lgtm'd (2026-08-17T17:27:36Z), auto-approved by OWNERS bot (2026-08-17T17:32:43Z), and merged.
 ---
 
 ## What this PR does
@@ -36,3 +41,9 @@ verdict: approve
 
 ## Open questions
 - None.
+
+## Since previous review
+- No code changes (head SHA unchanged at `a6561e582ddc171130fa213eb90eab074615caeb`).
+- petr-muller submitted an APPROVED review (2026-08-17T17:15:23Z) and commented `/lgtm` (2026-08-17T17:27:36Z).
+- `kubernetes-prow[bot]` posted the OWNERS approval notifier marking the PR APPROVED, with approvers cblecker (self) and petr-muller (2026-08-17T17:32:43Z).
+- PR state is now `MERGED`.

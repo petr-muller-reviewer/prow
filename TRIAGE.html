@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Triage: kubernetes-sigs/prow#815</title>
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+    color: #1a1a1a;
+    background: #fdfdfd;
+    margin: 0;
+    padding: 2rem 1rem;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; }
+  code, pre {
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 0.92em;
+  }
+  pre {
+    background: #f4f4f4;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    padding: 0.8rem 1rem;
+    overflow-x: auto;
+  }
+  code { background: #f0f0f0; padding: 0.1em 0.35em; border-radius: 4px; }
+  pre code { background: none; padding: 0; }
+  h1 { font-size: 1.5rem; margin-bottom: 0.2rem; }
+  h2 {
+    font-size: 1.15rem;
+    margin-top: 2.2rem;
+    border-bottom: 2px solid #e0e0e0;
+    padding-bottom: 0.3rem;
+  }
+  h3 { font-size: 1rem; margin-top: 1.4rem; margin-bottom: 0.4rem; }
+  .meta {
+    background: #f4f4f4;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 1rem 1.2rem;
+    margin: 1rem 0 1.5rem;
+    font-size: 0.95rem;
+  }
+  .meta table { border-collapse: collapse; width: 100%; }
+  .meta td { padding: 0.15rem 0.5rem 0.15rem 0; vertical-align: top; }
+  .meta td.k { color: #555; white-space: nowrap; width: 1%; }
+  .verdict {
+    background: #eaf5ea;
+    border: 1px solid #b7dfb7;
+    border-radius: 8px;
+    padding: 1rem 1.2rem;
+    margin: 1rem 0;
+  }
+  .verdict .label {
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    font-size: 0.85rem;
+    color: #2c6e2c;
+  }
+  ul { padding-left: 1.4rem; }
+  li { margin-bottom: 0.35rem; }
+  .finding {
+    border-left: 3px solid #cbd5e0;
+    padding-left: 1rem;
+    margin-bottom: 1.2rem;
+  }
+  .finding .tag {
+    display: inline-block;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-weight: 700;
+    color: #fff;
+    background: #6b7280;
+    border-radius: 4px;
+    padding: 0.1em 0.5em;
+    margin-right: 0.5em;
+  }
+  .finding.reproducibility .tag { background: #2b6cb0; }
+  .finding.cause .tag { background: #c05621; }
+  .finding.related-code .tag { background: #6b46c1; }
+  .finding.related-issue .tag { background: #2f855a; }
+  .finding.related-pr .tag { background: #2f855a; }
+  .finding h3 { display: inline; margin: 0; font-size: 1rem; }
+  a { color: #2b6cb0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Triage: kubernetes-sigs/prow#815</h1>
+<p><a href="https://github.com/kubernetes-sigs/prow/issues/815">https://github.com/kubernetes-sigs/prow/issues/815</a></p>
+
+<div class="meta">
+<table>
+<tr><td class="k">Issue</td><td>kubernetes-sigs/prow#815</td></tr>
+<tr><td class="k">Title</td><td>Prow issue: this-is-fine is documented but not working</td></tr>
+<tr><td class="k">State</td><td>open</td></tr>
+<tr><td class="k">Labels</td><td><code>kind/bug</code>, <code>area/plugins</code></td></tr>
+<tr><td class="k">Triaged at</td><td>2026-08-09T13:28:11Z</td></tr>
+<tr><td class="k">Main SHA</td><td><code>850dcba9be8689410a63a24ee741664ecf965494</code></td></tr>
+<tr><td class="k">Refresh log</td><td>
+2026-07-29T01:04:43Z — two new comments (t-inu, nasa9084) confirming the doc reference and long-standing breakage; no state/label change, no linked PRs — updated in place.<br>
+2026-08-03T22:16:34Z — labels applied (kind/bug, area/plugins); krzyzacy (original bucket author) confirmed ownership and asked BenTheElder for a community-owned bucket alternative — confirms existing provenance finding, updated in place.
+</td></tr>
+</table>
+</div>
+
+<div class="verdict">
+<div class="label">Verdict: Accepted</div>
+<p>Legitimate, reproducible bug in <code>pkg/plugins/dog</code>: the hardcoded external image bucket backing <code>/this-is-fine</code>, <code>/this-is-not-fine</code>, and <code>/this-is-unbearable</code> is dead (HTTP 403 on every object), and the plugin swallows the resulting error instead of surfacing anything to the user. The bucket traces back to an individual contributor's personal GCP project rather than community-owned infrastructure, so there is no owner to ask for renewal — the fix is to replace the hosting, not restore access, and is low-complexity once that's accepted.</p>
+</div>
+
+<h2>What the issue reports</h2>
+<ul>
+<li><code>/this-is-fine</code> is documented (via <code>helpProvider</code>'s command list) but produces no response when commented.</li>
+<li>The reporter, a project member, confirmed other commands (<code>/meow</code>) work normally in the same thread, isolating the failure to this specific command.</li>
+<li>The report is terse ("SSIA" — subject says it all) but the reproduction is trivial and unambiguous: comment the command, nothing happens.</li>
+</ul>
+
+<p><strong>Since previous triage (2026-07-29T01:04:43Z):</strong></p>
+<ul>
+<li><code>t-inu</code> pointed at the public docs entry (<a href="https://prow.k8s.io/command-help#woof">https://prow.k8s.io/command-help#woof</a>) confirming the command is documented as <code>/(woof|bark|this-is-{fine|not-fine|unbearable})</code> — matches the existing finding, no new information.</li>
+<li><code>nasa9084</code> reported that the command "was working two years ago" but now doesn't even show an image already posted, linking to a 2024-08-26 <code>/this-is-fine</code> comment on <code>kubernetes-sigs/contributor-playground#1375</code>. That comment's embedded image now 403s too — consistent with (and further confirming) the bucket-wide 403 finding rather than contradicting it: the breakage affects historical posts, not just new invocations.</li>
+</ul>
+
+<p><strong>Since previous triage (2026-08-03T22:16:34Z):</strong></p>
+<ul>
+<li>Labels <code>kind/bug</code> and <code>area/plugins</code> were applied to the issue (no <code>good-first-issue</code>).</li>
+<li><code>krzyzacy</code> — the bucket's original author per the traced <code>kubernetes/test-infra#9833</code> history — commented directly on the issue ("crap lol...") and asked <code>@BenTheElder</code> "any community owned bucket we can borrow :-)". This confirms the provenance finding directly from the source, and surfaces a maintainer-driven alternative to vendoring: hosting the images in an existing community-owned k8s-infra bucket instead. No bucket has been offered yet as of this refresh.</li>
+</ul>
+
+<h2>Analysis</h2>
+
+<h3>Reproducibility / observed behavior</h3>
+<ul>
+<li>100% reproducible, not timing-dependent. Confirmed independently of the report by tracing the code and testing the underlying image URLs directly.</li>
+<li><code>curl -sI https://storage.googleapis.com/this-is-fine-images/this_is_fine.png</code> → <code>HTTP/2 403</code>. Same result for <code>this_is_not_fine.png</code> and <code>this_is_unbearable.jpg</code> — <strong>all three "fine" commands are broken</strong>, not just the one in the issue title.</li>
+</ul>
+
+<h3>Probable cause</h3>
+<ul>
+<li><code>pkg/plugins/dog/dog.go:46</code> hardcodes <code>defaultFineImagesRoot = "https://storage.googleapis.com/this-is-fine-images/"</code> as an unconfigurable Go <code>const</code> (not plugin config). That GCS bucket now returns 403/401 for every object and for bucket-level metadata queries; GCS gives anonymous callers the same generic "AccessDenied ... or it may not exist" whether a bucket was deleted or merely made private, so this can't be resolved further without GCP project-owner access.</li>
+<li><strong>Bucket provenance, traced through <code>kubernetes/test-infra</code> history</strong> (this code predates the <code>kubernetes-sigs/prow</code> repo split — carried over verbatim in commit <code>db89760fe</code>, "move pkg, cmd &amp; test folders in inside prow to the root of the repo (#101)"): the feature was added by Sen Lu (<code>krzyzacy</code>) via <a href="https://github.com/kubernetes/test-infra/pull/9833">kubernetes/test-infra#9833</a> ("support /this-is-fine"), in two same-day commits on 2018-10-17. The first, <code>c18f4131</code>, served images from <code>https://dogechatbot.appspot.com/static/...</code> — a personal App Engine app (1:1 with an individual's own GCP project). The second, <code>aa11eb48</code> ("switch image hosting to gcs"), moved to the <code>this-is-fine-images</code> bucket the same day, with no PR discussion of which GCP project backs it.</li>
+<li>A GitHub code search of <code>kubernetes/k8s.io</code> (the repo that registers all community-owned GCP projects/buckets) for <code>this-is-fine-images</code> returns zero hits — this bucket was <strong>never onboarded as shared SIG-Testing/k8s-infra infrastructure</strong>. <code>krzyzacy</code> has had no visible upstream Kubernetes activity in years. Together this strongly suggests the bucket was an individual contributor's ad hoc personal-project asset that lapsed (e.g. GCP project cleanup/expiration), not infrastructure with a current owner to ask for renewal.</li>
+<li>Wayback Machine has exactly one crawl of the image URL on record, 2022-05-17, returning HTTP 200 — the only data point bounding when it broke (sometime between then and the 2026-07-29 report); no further crawls exist to narrow this down.</li>
+<li>The failure is silent because of how errors propagate: <code>readDog()</code> (<code>pkg/plugins/dog/dog.go:100-132</code>) calls <code>github.ImageTooBig()</code> (<code>pkg/github/helpers.go:54-70</code>), which does an HTTP HEAD and treats any non-200 response as an error (mislabeled "too big", but functionally the same outcome here). <code>handle()</code> (<code>dog.go:138-175</code>) retries 5 times against the identical dead URL, then returns a generic <code>errors.New("could not find a valid dog image")</code> that is logged server-side only — no comment is ever posted back to the issue/PR.</li>
+<li><code>/woof</code> and <code>/bark</code> are unaffected because they pass an empty URL into <code>readDog()</code>, which then hits a different, live API (<code>random.dog</code>) instead of the dead bucket — explaining why the reporter observed partial functionality.</li>
+</ul>
+
+<h3>Related code</h3>
+<pre><code>// pkg/plugins/dog/dog.go:36-51
+fineRegex       = regexp.MustCompile(`(?mi)^/this-is-fine\s*$`)
+notFineRegex    = regexp.MustCompile(`(?mi)^/this-is-not-fine\s*$`)
+unbearableRegex = regexp.MustCompile(`(?mi)^/this-is-unbearable\s*$`)
+...
+defaultFineImagesRoot = "https://storage.googleapis.com/this-is-fine-images/"</code></pre>
+<pre><code>// pkg/github/helpers.go:54-70
+func ImageTooBig(url string) (bool, error) {
+    resp, err := http.Head(url)
+    ...
+    if sc := resp.StatusCode; sc != http.StatusOK {
+        return true, fmt.Errorf("failing %d response", sc)
+    }
+    ...
+}</code></pre>
+<p>Existing tests in <code>pkg/plugins/dog/dog_test.go</code> mock the <code>pack</code>/<code>githubClient</code> interfaces rather than hitting the real bucket, which is why this breakage wasn't caught by CI.</p>
+<p><strong>Comments are plain markdown image links, not native GitHub attachments</strong> — <code>FormatURL()</code> (<code>dog.go:95-98</code>) composes the comment body as <code>[![dog image](%s)](%s)</code>, a markdown image link GitHub renders inline by fetching the URL client-side. There is no REST/GraphQL endpoint for a bot to upload a file and have GitHub host it as a native attachment (the web UI's drag-and-drop attachment flow uses an internal, session-authenticated endpoint, not available to PAT/App tokens). This rules out "post as an attachment" as a fix direction: whatever hosts the replacement images, the plugin still needs to hand GitHub a public URL.</p>
+
+<h3>Related issues / PRs</h3>
+<p>None found. No open PR currently addresses this.</p>
+
+<h2>What I checked</h2>
+<ul>
+<li>All three "fine" images return 403 — confirmed the scope is broader than the issue title suggests.</li>
+<li><code>/woof</code> and <code>/bark</code> use an unrelated live API and are unaffected — ruled out a systemic plugin-dispatch bug.</li>
+<li>Ruled out a plugin-configuration gap (e.g. <code>dog</code> disabled for the reporter's repo) — other bot interactions work in the same thread, and the command is silently ignored rather than rejected as unrecognized, consistent with the traced code path.</li>
+<li>Checked git history of <code>dog.go</code> in this repo: no recent change to the URL/constants — this is an external, bucket-side failure, not a code regression introduced in <code>kubernetes-sigs/prow</code>.</li>
+<li>Traced the bucket's provenance through <code>kubernetes/test-infra</code> history (PR #9833, commits <code>c18f4131</code>/<code>aa11eb48</code>) and confirmed via <code>kubernetes/k8s.io</code> code search that it was never registered as community-owned infra.</li>
+<li>Confirmed via <code>dog.go:95-98</code> that comments are plain markdown image links, not native attachments — ruled out a "post as attachment" fix; no such bot-accessible API exists on GitHub.</li>
+<li>Checked the Wayback Machine for the bucket URL: only one crawl on record (2022-05-17, HTTP 200), not enough to pin down exactly when it broke.</li>
+</ul>
+
+<h2>Recommended next steps</h2>
+<ul>
+<li>Do not pursue restoring/re-requesting access to the GCS bucket — it was an individual contributor's personal-project asset, never SIG-Testing/k8s-infra-owned, so there is no current owner to ask.</li>
+<li><strong>Recommended fix:</strong> vendor the three images into the repo (e.g. <code>pkg/plugins/dog/images/</code>) and point <code>defaultFineImagesRoot</code> (<code>dog.go:46</code>) at their <code>raw.githubusercontent.com</code> URL — no new external dependency, no infra provisioning needed, and matches an existing in-repo pattern of fetching content via <code>raw.githubusercontent.com</code> (<code>pkg/plugins/testfreeze/checker/checker.go:42</code>). Update <code>dog_test.go</code> to pin the new source.</li>
+<li><strong>Alternative</strong> if a fully self-contained solution is preferred: <code>go:embed</code> the images into the <code>hook</code> binary and add a small HTTP handler serving them at a stable Prow-owned URL (e.g. under <code>prow.k8s.io</code>), removing even the <code>raw.githubusercontent.com</code> dependency. More invasive (new route in a shared service) — only worth it if the team wants zero external dependencies rather than accepting GitHub's own CDN.</li>
+<li><strong>Not viable:</strong> posting images as native GitHub comment attachments — no bot-accessible API for this; rule this out if it comes up during discussion.</li>
+<li>Labels <code>kind/bug</code> and <code>area/plugins</code> have been applied (2026-08-03). Consider also adding <code>good-first-issue</code> — the vendoring fix remains fully actionable without waiting on any maintainer infra decision, regardless of whether a community bucket materializes.</li>
+<li>Consider a separate follow-up issue: <code>handle()</code> swallows failures into a log-only error with no user feedback; worth hardening across the plugin generally so future breakage isn't silent.</li>
+</ul>
+
+<h2>Open questions</h2>
+<ul>
+<li>"If we vendor via raw.githubusercontent.com, should the URL pin to a specific commit SHA rather than <code>main</code>? <code>main</code> auto-follows file moves/renames, but a future repo restructure could silently break the link the same way the GCS bucket did."</li>
+<li>"Is a fully self-contained (go:embed + Prow-served URL) approach worth the extra implementation cost versus depending on GitHub's own raw-content CDN?"</li>
+<li>If BenTheElder (or another maintainer) offers a community-owned bucket in response to krzyzacy's ask: does that change the recommendation away from vendoring/go:embed, or is vendoring still preferred as the simpler, dependency-free fix regardless? Worth resolving before a PR is opened, to avoid rework.</li>
+</ul>
+
+</div>
+</body>
+</html>

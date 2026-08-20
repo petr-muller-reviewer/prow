@@ -4,13 +4,15 @@ title: "Prow issue: this-is-fine is documented but not working"
 state: open
 labels: kind/bug, area/plugins
 main_sha: 850dcba9be8689410a63a24ee741664ecf965494
-triaged_at: 2026-08-09T13:28:11Z
+triaged_at: 2026-08-20T13:02:00Z
 verdict: accepted
 refresh_log:
   - at: 2026-07-29T01:04:43Z
     summary: Two new comments (t-inu, nasa9084) confirming the doc reference and long-standing breakage; no state/label change, no linked PRs — updated in place.
   - at: 2026-08-03T22:16:34Z
     summary: Labels applied (kind/bug, area/plugins); krzyzacy (original bucket author) confirmed ownership and asked BenTheElder for a community-owned bucket alternative — confirms existing provenance finding, updated in place.
+  - at: 2026-08-09T13:28:11Z
+    summary: BenTheElder suggested asking upodroid/sig-k8s-infra about a community-owned bucket; no state/label change — updated in place.
 ---
 
 ## Findings
@@ -64,6 +66,9 @@ Since previous triage (2026-08-03T22:16:34Z):
 - Labels `kind/bug` and `area/plugins` were applied to the issue (no `good-first-issue`).
 - `krzyzacy` — the bucket's original author per the traced `kubernetes/test-infra#9833` history — commented directly on the issue ("crap lol...") and asked `@BenTheElder` "any community owned bucket we can borrow :-)". This confirms the provenance finding (the bucket was indeed their own asset, now lapsed) directly from the source, and surfaces a maintainer-driven alternative to vendoring: hosting the images in an existing community-owned k8s-infra bucket instead. No bucket has been offered yet as of this refresh.
 
+Since previous triage (2026-08-09T13:28:11Z):
+- `BenTheElder` replied, suggesting `@upodroid` / sig-k8s-infra as a contact for a community-owned bucket. Still no bucket offered or confirmed — the maintainer-driven alternative remains open, not resolved.
+
 ## Checked
 
 - Confirmed all three "fine" images return 403 (`this_is_fine.png`, `this_is_not_fine.png`, `this_is_unbearable.jpg`), not just the one named in the issue title.
@@ -87,4 +92,4 @@ Since previous triage (2026-08-03T22:16:34Z):
 
 - If vendoring via `raw.githubusercontent.com`: pin the URL to a specific commit SHA vs. `main`? `main` auto-follows file moves/renames, but a future repo restructure could silently break the link the same way the GCS bucket did; a pinned SHA is more failure-proof but needs manual updating if the plugin package ever moves.
 - Is a fully self-contained (`go:embed` + Prow-served URL) approach worth the extra implementation cost versus depending on GitHub's own raw-content CDN?
-- If BenTheElder (or another maintainer) offers a community-owned bucket in response to `krzyzacy`'s ask: does that change the recommendation away from vendoring/`go:embed`, or is vendoring still preferred as the simpler, dependency-free fix regardless? Worth resolving before a PR is opened, to avoid rework.
+- If BenTheElder (or another maintainer) offers a community-owned bucket in response to `krzyzacy`'s ask: does that change the recommendation away from vendoring/`go:embed`, or is vendoring still preferred as the simpler, dependency-free fix regardless? Worth resolving before a PR is opened, to avoid rework. As of 2026-08-20, this is pointed at sig-k8s-infra (`upodroid`) but not yet resolved — no bucket has materialized.

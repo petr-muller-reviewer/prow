@@ -99,11 +99,12 @@
 <tr><td class="k">Title</td><td>Prow issue: this-is-fine is documented but not working</td></tr>
 <tr><td class="k">State</td><td>open</td></tr>
 <tr><td class="k">Labels</td><td><code>kind/bug</code>, <code>area/plugins</code></td></tr>
-<tr><td class="k">Triaged at</td><td>2026-08-09T13:28:11Z</td></tr>
+<tr><td class="k">Triaged at</td><td>2026-08-20T13:02:00Z</td></tr>
 <tr><td class="k">Main SHA</td><td><code>850dcba9be8689410a63a24ee741664ecf965494</code></td></tr>
 <tr><td class="k">Refresh log</td><td>
 2026-07-29T01:04:43Z — two new comments (t-inu, nasa9084) confirming the doc reference and long-standing breakage; no state/label change, no linked PRs — updated in place.<br>
-2026-08-03T22:16:34Z — labels applied (kind/bug, area/plugins); krzyzacy (original bucket author) confirmed ownership and asked BenTheElder for a community-owned bucket alternative — confirms existing provenance finding, updated in place.
+2026-08-03T22:16:34Z — labels applied (kind/bug, area/plugins); krzyzacy (original bucket author) confirmed ownership and asked BenTheElder for a community-owned bucket alternative — confirms existing provenance finding, updated in place.<br>
+2026-08-09T13:28:11Z — BenTheElder suggested asking upodroid/sig-k8s-infra about a community-owned bucket; no state/label change — updated in place.
 </td></tr>
 </table>
 </div>
@@ -130,6 +131,11 @@
 <ul>
 <li>Labels <code>kind/bug</code> and <code>area/plugins</code> were applied to the issue (no <code>good-first-issue</code>).</li>
 <li><code>krzyzacy</code> — the bucket's original author per the traced <code>kubernetes/test-infra#9833</code> history — commented directly on the issue ("crap lol...") and asked <code>@BenTheElder</code> "any community owned bucket we can borrow :-)". This confirms the provenance finding directly from the source, and surfaces a maintainer-driven alternative to vendoring: hosting the images in an existing community-owned k8s-infra bucket instead. No bucket has been offered yet as of this refresh.</li>
+</ul>
+
+<p><strong>Since previous triage (2026-08-09T13:28:11Z):</strong></p>
+<ul>
+<li><code>BenTheElder</code> replied, suggesting <code>@upodroid</code> / sig-k8s-infra as a contact for a community-owned bucket. Still no bucket offered or confirmed — the maintainer-driven alternative remains open, not resolved.</li>
 </ul>
 
 <h2>Analysis</h2>
@@ -197,7 +203,7 @@ func ImageTooBig(url string) (bool, error) {
 <ul>
 <li>"If we vendor via raw.githubusercontent.com, should the URL pin to a specific commit SHA rather than <code>main</code>? <code>main</code> auto-follows file moves/renames, but a future repo restructure could silently break the link the same way the GCS bucket did."</li>
 <li>"Is a fully self-contained (go:embed + Prow-served URL) approach worth the extra implementation cost versus depending on GitHub's own raw-content CDN?"</li>
-<li>If BenTheElder (or another maintainer) offers a community-owned bucket in response to krzyzacy's ask: does that change the recommendation away from vendoring/go:embed, or is vendoring still preferred as the simpler, dependency-free fix regardless? Worth resolving before a PR is opened, to avoid rework.</li>
+<li>If BenTheElder (or another maintainer) offers a community-owned bucket in response to krzyzacy's ask: does that change the recommendation away from vendoring/go:embed, or is vendoring still preferred as the simpler, dependency-free fix regardless? Worth resolving before a PR is opened, to avoid rework. As of 2026-08-20, this is pointed at sig-k8s-infra (upodroid) but not yet resolved — no bucket has materialized.</li>
 </ul>
 
 </div>

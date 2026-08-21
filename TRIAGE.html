@@ -77,6 +77,15 @@
   a { color: #0052cc; text-decoration: none; }
   a:hover { text-decoration: underline; }
   .section-note { font-size: 0.88em; color: #666; font-style: italic; }
+  .followup-callout {
+    background: #fff8e1;
+    border: 2px solid #f0d070;
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    margin: 1.5rem 0;
+  }
+  .followup-callout h2 { border-bottom: none; margin-top: 0; color: #9a6700; }
+  .rejected { text-decoration: line-through; color: #888; }
 </style>
 </head>
 <body>
@@ -222,6 +231,41 @@ interrupts.ListenAndServeTLS(server, o.tlsCertFile, o.tlsPrivateKeyFile, gracePe
     <li>When PR arrives, verify: both Deck <em>and</em> Hook covered; TLS is opt-in (HTTP default preserved); both cert+key flags required together or neither; options validation tested.</li>
     <li>Optionally leave a comment pointing the author to <code>cmd/admission/main.go</code> as the reference implementation to follow, and ask whether example Kubernetes manifests in <code>config/prow/</code> should also be updated.</li>
   </ul>
+
+  <div class="followup-callout">
+    <h2>⚑ FOLLOWUP: agentic-coding candidate</h2>
+    <p><strong>Do not reopen the issue</strong> — decision made 2026-08-21, overrides the "reopen" advice recorded below.</p>
+    <p>
+      This is a good candidate for an experiment: hand the <em>original issue text</em> (not PR #573) to a strong coding agent, let it implement optional TLS for Deck and Hook independently, and <strong>compare the result against PR #573</strong> (open, <code>CHANGES_REQUESTED</code>, stalled since 2026-06-12 — full PR history in the Advice section below). Scope is small, well-precedented (three reference implementations already in-tree: <code>cmd/admission/main.go</code>, <code>cmd/jenkins-operator/main.go</code>, <code>test/integration/cmd/fakegitserver/main.go</code>), and the existing PR's review feedback (flag-naming / CA-vs-client-cert confusion, missing docs, no cert-rotation story) gives a ready-made rubric to grade the agent's output against.
+    </p>
+    <p>
+      Comparison angles worth checking: does the agent avoid the <code>--client-cert-file</code> naming confusion flagged in PR #573's review; does it cover both Deck and Hook (not just one); is the cert+key pairing validated (required together or neither, per the <code>jenkins-operator</code> pattern); does it add tests and docs unprompted; how much back-and-forth review would it need versus the two rounds already spent on #573.
+    </p>
+  </div>
+
+  <h2>Advice</h2>
+  <p class="section-note">Advised at 2026-08-21T16:02:50Z, based on triage as of 2026-06-29T15:24:32Z.</p>
+  <p>
+    No new issue-side activity since the 2026-06-29 refresh (state, labels, comments unchanged). Live-state gathering surfaced a linked PR that predates the refresh but was never folded into this triage: <strong>PR <a href="https://github.com/kubernetes-sigs/prow/pull/573">#573</a></strong> ("Adding option to enable Back End HTTPS for Prow Ingress"), opened 2025-12-10 by the issue's own assignee (<a href="https://github.com/NiJuFirenzia">NiJuFirenzia</a>), implementing exactly the <code>--tls-cert-file</code>/<code>--tls-private-key-file</code> pattern this triage anticipated, touching <code>cmd/deck/main.go</code>, <code>cmd/hook/main.go</code>, and a new <code>pkg/flagutil/ssl.go</code>. It carries <code>area/deck</code>/<code>area/hook</code> labels and is <strong>CHANGES_REQUESTED</strong> (reviews from petr-muller and ivankatliarchuk — flag naming/stuttering nits, a <code>--client-cert-file</code> naming issue that's misleading about CA-vs-client-cert semantics, and a request for operator documentation). Last commit 2026-02-25; last activity is the author's 2026-06-12 comment promising to add documentation and address feedback — nothing since (over 2 months).
+  </p>
+  <ol>
+    <li>
+      <span class="rejected">Reopen the issue — bot auto-closed it as <code>not-planned</code> on 2026-06-28 for <code>lifecycle/rotten</code> inactivity, but there is a live, labeled, in-progress PR (#573) implementing it.</span><br>
+      <strong>Rejected 2026-08-21: keep the issue closed</strong> — see the FOLLOWUP callout above; the agentic-coding experiment is the preferred next step, not reopening.
+    </li>
+    <li>
+      <strong>Remove <code>lifecycle/rotten</code></strong> — cosmetic cleanup regardless of open/closed state; the label no longer reflects an active-vs-abandoned assessment now there's a concrete follow-up plan.
+      <pre>gh issue edit 328 --repo kubernetes-sigs/prow --remove-label lifecycle/rotten</pre>
+    </li>
+    <li>
+      <strong>Add <code>area/deck</code>, <code>area/hook</code></strong> — matches the labels already applied to PR #573; keeps the issue discoverable/filterable even while closed. Skip <code>help-wanted</code>/<code>good-first-issue</code>: the issue is already self-assigned with an active PR, so soliciting outside contributors would duplicate effort.
+      <pre>gh issue edit 328 --repo kubernetes-sigs/prow --add-label area/deck,area/hook</pre>
+    </li>
+    <li>
+      <strong>Ping PR #573, don't duplicate effort on the human side</strong> — the PR directly resolves this issue and is under active review, not abandoned, but has been stalled for over two months since the author's last promise to address feedback (naming fix, docs) and over five months since the last commit.
+      <pre>gh pr comment 573 --repo kubernetes-sigs/prow --body "Checking in — it's been a couple of months since your last update here (2026-06-12) where you mentioned you'd add documentation and address the flag-naming/stuttering feedback. Is this still something you're planning to pick up? Happy to review again once it's updated."</pre>
+    </li>
+  </ol>
 
   <h2>Open questions</h2>
   <ul>

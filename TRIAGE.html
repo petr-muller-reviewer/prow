@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Triage: kubernetes-sigs/prow#328</title>
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+    color: #1a1a1a;
+    background: #fff;
+    margin: 0;
+    padding: 2rem;
+  }
+  .container { max-width: 860px; margin: 0 auto; }
+  h1 { font-size: 1.4rem; margin-bottom: 0.3rem; }
+  h2 { font-size: 1.1rem; border-bottom: 1px solid #e0e0e0; padding-bottom: 0.25rem; margin-top: 2rem; }
+  h3 { font-size: 0.95rem; margin-bottom: 0.3rem; color: #333; }
+  code, pre { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; font-size: 0.85em; }
+  pre {
+    background: #f6f8fa;
+    border: 1px solid #e1e4e8;
+    border-radius: 4px;
+    padding: 0.75rem 1rem;
+    overflow-x: auto;
+    white-space: pre-wrap;
+  }
+  code { background: #f0f0f0; padding: 0.1em 0.35em; border-radius: 3px; }
+  .meta-block {
+    background: #f6f8fa;
+    border: 1px solid #e1e4e8;
+    border-radius: 6px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.5rem;
+  }
+  .meta-block table { border-collapse: collapse; width: 100%; }
+  .meta-block td { padding: 0.2rem 0.6rem 0.2rem 0; vertical-align: top; }
+  .meta-block td:first-child { font-weight: 600; white-space: nowrap; color: #555; min-width: 140px; }
+  .verdict-accepted { color: #22863a; font-weight: 700; }
+  .verdict-badge {
+    display: inline-block;
+    background: #e6f4ea;
+    color: #22863a;
+    border: 1px solid #a3d9b1;
+    border-radius: 4px;
+    padding: 0.15em 0.6em;
+    font-weight: 700;
+    font-size: 0.95em;
+  }
+  .effort-badge {
+    display: inline-block;
+    background: #fff8e1;
+    color: #9a6700;
+    border: 1px solid #f0d070;
+    border-radius: 4px;
+    padding: 0.15em 0.6em;
+    font-weight: 600;
+    font-size: 0.9em;
+  }
+  ul { padding-left: 1.4rem; }
+  li { margin-bottom: 0.3rem; }
+  .label {
+    display: inline-block;
+    background: #c7def8;
+    border-radius: 3px;
+    padding: 0.1em 0.5em;
+    font-size: 0.82em;
+    margin: 0.1em 0.15em;
+    font-family: monospace;
+  }
+  .label.rotten { background: #f3e0f7; color: #604460; }
+  .label.feature { background: #c7def8; color: #0052cc; }
+  .related-code { margin-bottom: 1rem; }
+  .related-code .loc { font-family: monospace; font-size: 0.9em; color: #0052cc; }
+  a { color: #0052cc; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .section-note { font-size: 0.88em; color: #666; font-style: italic; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="meta-block">
+    <h1><a href="https://github.com/kubernetes-sigs/prow/issues/328">kubernetes-sigs/prow#328</a>: Allow Option for Ingress to Reach pods through SSL</h1>
+    <table>
+      <tr><td>State</td><td>Closed (Not Planned — bot auto-close 2026-06-28)</td></tr>
+      <tr><td>Labels</td><td>
+        <span class="label feature">kind/feature</span>
+        <span class="label rotten">lifecycle/rotten</span>
+      </td></tr>
+      <tr><td>Author</td><td><a href="https://github.com/NiJuFirenzia">NiJuFirenzia</a> (Nikhil Jiju) — self-assigned</td></tr>
+      <tr><td>Opened</td><td>2024-11-20</td></tr>
+      <tr><td>Verdict</td><td><span class="verdict-badge">accepted</span></td></tr>
+      <tr><td>Effort</td><td><span class="effort-badge">Level 2 — help-wanted</span></td></tr>
+      <tr><td>Triaged at</td><td>2026-06-29T15:24:32Z (refreshed; initial 2026-05-30T13:20:42Z)</td></tr>
+      <tr><td>Main SHA</td><td><code>71428b9c282ee8c9e7e9512068fccce86e7915da</code></td></tr>
+    </table>
+  </div>
+
+  <h2>Verdict</h2>
+  <p><strong class="verdict-accepted">ACCEPTED</strong> — legitimate feature request, feasible, well-precedented, author committed to contributing a PR.</p>
+  <p>
+    Deck and Hook are HTTP-only backends; there is no option to serve HTTPS directly. This forces all deployments to terminate TLS at the Ingress or load balancer, which is incompatible with organizational policies requiring HTTPS backends. The fix is mechanical: add optional <code>--tls-cert-file</code> and <code>--tls-private-key-file</code> flags to both components and branch on whether they are set, using the already-existing <code>interrupts.ListenAndServeTLS()</code>. Three reference implementations of this exact pattern exist in the same codebase. The <code>lifecycle/rotten</code> label is stale-bot automation — the issue was reopened by the author in October 2025 and they remain actively engaged.
+  </p>
+
+  <h2>What the issue reports</h2>
+  <ul>
+    <li>Deck and Hook currently accept only HTTP connections — TLS is terminated at the Ingress level.</li>
+    <li>The author's organization requires all Ingresses to use an HTTPS backend protocol (end-to-end encryption, not just edge TLS).</li>
+    <li>The author found a working path via <code>interrupts.ListenAndServeTLS()</code> and wants an official option added to both components.</li>
+    <li>The author has a working prototype and plans to submit a PR once validation is complete.</li>
+    <li>BenTheElder (SIG Testing lead) noted the project has limited maintainer bandwidth but did not reject the feature — the author offered to contribute it themselves.</li>
+  </ul>
+
+  <h3>Since previous triage (2026-05-30 → 2026-06-29)</h3>
+  <ul>
+    <li>No author or contributor activity since initial triage; promised PR never materialized.</li>
+    <li>2026-06-28: k8s-triage-robot issued <code>/close not-planned</code> per <code>lifecycle/rotten</code> policy (30d inactivity after rotten label); issue auto-closed.</li>
+    <li>Technical analysis is unchanged — the closure is bot-driven, not a maintainer decision.</li>
+  </ul>
+
+  <h2>Analysis</h2>
+
+  <h3>Current behavior</h3>
+  <p>Both Deck and Hook create an <code>http.Server</code> and pass it to <code>interrupts.ListenAndServe()</code>:</p>
+  <div class="related-code">
+    <span class="loc">cmd/deck/main.go:505-514</span>
+    <pre>server := &amp;http.Server{Addr: ":8080", Handler: ...}
+interrupts.ListenAndServe(server, 5*time.Second)</pre>
+  </div>
+  <div class="related-code">
+    <span class="loc">cmd/hook/main.go:263-277</span>
+    <pre>httpServer := &amp;http.Server{Addr: o.port, Handler: ...}
+interrupts.ListenAndServe(httpServer, o.gracePeriod)</pre>
+  </div>
+
+  <h3>Probable cause</h3>
+  <p>
+    Prow's original design assumed TLS termination at the network edge (standard Kubernetes ingress pattern). Deck and Hook were never given TLS flags. The <code>interrupts</code> package later gained <code>ListenAndServeTLS</code> for components like Admission, but Deck and Hook were not updated.
+  </p>
+
+  <h3>Related code</h3>
+
+  <div class="related-code">
+    <span class="loc">pkg/interrupts/interrupts.go:171-181 — ListenAndServeTLS (already implemented, no changes needed)</span>
+    <pre>func ListenAndServeTLS(server *http.Server, certFile, keyFile string, gracePeriod time.Duration) {
+    // calls server.ListenAndServeTLS(certFile, keyFile) with graceful shutdown
+}</pre>
+  </div>
+
+  <div class="related-code">
+    <span class="loc">cmd/admission/main.go:52-59,85 — Best reference implementation (required TLS flags)</span>
+    <pre>fs.StringVar(&amp;o.tlsCertFile, "tls-cert-file", "", "Path to x509 certificate for HTTPS")
+fs.StringVar(&amp;o.tlsPrivateKeyFile, "tls-private-key-file", "", "Path to matching x509 private key.")
+// ...
+interrupts.ListenAndServeTLS(server, o.tlsCertFile, o.tlsPrivateKeyFile, gracePeriod)</pre>
+  </div>
+
+  <div class="related-code">
+    <span class="loc">test/integration/cmd/fakegitserver/main.go — Optional TLS pattern (conditional startup)</span>
+    <pre>if cert != "" &amp;&amp; key != "" {
+    interrupts.ListenAndServeTLS(server, cert, key, gracePeriod)
+} else {
+    interrupts.ListenAndServe(server, gracePeriod)
+}</pre>
+  </div>
+
+  <div class="related-code">
+    <span class="loc">cmd/jenkins-operator/main.go — Optional TLS with all-or-nothing validation</span>
+    <pre>// --cert-file, --key-file, --ca-cert-file; all three required together or none</pre>
+  </div>
+
+  <h3>Effort assessment</h3>
+  <table style="border-collapse:collapse; width:100%">
+    <tr style="background:#f6f8fa">
+      <th style="text-align:left;padding:0.3rem 0.6rem;border:1px solid #e1e4e8">Factor</th>
+      <th style="text-align:left;padding:0.3rem 0.6rem;border:1px solid #e1e4e8">Assessment</th>
+    </tr>
+    <tr>
+      <td style="padding:0.3rem 0.6rem;border:1px solid #e1e4e8">Scope</td>
+      <td style="padding:0.3rem 0.6rem;border:1px solid #e1e4e8">2–4 files, ~50–100 LOC (deck/main.go, hook/main.go, tests)</td>
+    </tr>
+    <tr>
+      <td style="padding:0.3rem 0.6rem;border:1px solid #e1e4e8">Complexity</td>
+      <td style="padding:0.3rem 0.6rem;border:1px solid #e1e4e8">Simple — mechanical, pattern is copy-paste from admission</td>
+    </tr>
+    <tr>
+      <td style="padding:0.3rem 0.6rem;border:1px solid #e1e4e8">Expertise needed</td>
+      <td style="padding:0.3rem 0.6rem;border:1px solid #e1e4e8">Go + Prow CLI options patterns + options validation tests</td>
+    </tr>
+    <tr>
+      <td style="padding:0.3rem 0.6rem;border:1px solid #e1e4e8">Backwards compat</td>
+      <td style="padding:0.3rem 0.6rem;border:1px solid #e1e4e8">Fully compatible — flags are opt-in, HTTP default unchanged</td>
+    </tr>
+    <tr>
+      <td style="padding:0.3rem 0.6rem;border:1px solid #e1e4e8">Architecture fit</td>
+      <td style="padding:0.3rem 0.6rem;border:1px solid #e1e4e8">Perfect — follows established pattern</td>
+    </tr>
+    <tr>
+      <td style="padding:0.3rem 0.6rem;border:1px solid #e1e4e8">External dependencies</td>
+      <td style="padding:0.3rem 0.6rem;border:1px solid #e1e4e8">None — standard library TLS, interrupts package already ready</td>
+    </tr>
+  </table>
+
+  <h2>What I checked</h2>
+  <ul>
+    <li><code>interrupts.ListenAndServeTLS</code> already implemented — no changes needed to that package.</li>
+    <li>Three reference implementations of the exact pattern in the same repo (admission, jenkins-operator, fakegitserver).</li>
+    <li><code>lifecycle/rotten</code> is stale-bot automation, not a maintainer close; author reopened Oct 2025 and is actively committed.</li>
+    <li>Deck's backend HTTP calls (to GCS, etc.) are independent of the Deck listening-side TLS — no interference.</li>
+    <li>Adding optional flags is fully backwards compatible; HTTP-only default path is unchanged.</li>
+  </ul>
+
+  <h2>Recommended next steps</h2>
+  <ul>
+    <li><strong>Reopen</strong> the issue (<code>/reopen</code>) — the bot closed a legitimate accepted feature request; no maintainer made a close decision.</li>
+    <li>Run <code>/remove-lifecycle rotten</code> to prevent stale-bot from auto-closing again.</li>
+    <li>Apply <code>/area deck</code>, <code>/area hook</code>, <code>/help-wanted</code> labels.</li>
+    <li>Wait for the author's PR — they claimed a working prototype.</li>
+    <li>When PR arrives, verify: both Deck <em>and</em> Hook covered; TLS is opt-in (HTTP default preserved); both cert+key flags required together or neither; options validation tested.</li>
+    <li>Optionally leave a comment pointing the author to <code>cmd/admission/main.go</code> as the reference implementation to follow, and ask whether example Kubernetes manifests in <code>config/prow/</code> should also be updated.</li>
+  </ul>
+
+  <h2>Open questions</h2>
+  <ul>
+    <li>Should Deck and Hook TLS be in a single PR or separate PRs?</li>
+    <li>Should the PR also update example Kubernetes deployment manifests in <code>config/prow/</code>?</li>
+    <li>Does the author's prototype account for Hook receiving webhooks over TLS — does this interact with GitHub's webhook delivery in any meaningful way for their setup?</li>
+  </ul>
+
+</div>
+</body>
+</html>

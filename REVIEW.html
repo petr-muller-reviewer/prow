@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Review of kubernetes-sigs/prow#859</title>
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+    color: #1a1a1a;
+    max-width: 860px;
+    margin: 2rem auto;
+    padding: 0 1.5rem;
+    background: #fdfdfd;
+  }
+  code, pre {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.92em;
+  }
+  pre {
+    background: #f4f4f4;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 0.75rem 1rem;
+    overflow-x: auto;
+  }
+  code.inline {
+    background: #f0f0f0;
+    padding: 0.1em 0.35em;
+    border-radius: 4px;
+  }
+  header {
+    border-bottom: 2px solid #333;
+    padding-bottom: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  header h1 { margin-bottom: 0.25rem; font-size: 1.4rem; }
+  header .meta { color: #555; font-size: 0.92rem; }
+  header .meta div { margin: 0.15rem 0; }
+  h2 {
+    border-bottom: 1px solid #ccc;
+    padding-bottom: 0.3rem;
+    margin-top: 2.2rem;
+  }
+  .verdict {
+    background: #e9f7ef;
+    border-left: 4px solid #2e8b57;
+    padding: 0.75rem 1rem;
+    border-radius: 4px;
+    margin-bottom: 1.5rem;
+  }
+  .verdict .label {
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #2e8b57;
+    letter-spacing: 0.03em;
+    font-size: 0.85rem;
+  }
+  .finding {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    margin: 1rem 0;
+  }
+  .finding h3 { margin: 0 0 0.4rem 0; font-size: 1.05rem; }
+  .finding .loc {
+    display: inline-block;
+    background: #eef1f5;
+    padding: 0.1em 0.5em;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    margin-bottom: 0.6rem;
+  }
+  .sev-should-fix { border-left: 4px solid #d9822b; }
+  .sev-nit { border-left: 4px solid #6c757d; }
+  .sev-blocking { border-left: 4px solid #c0392b; }
+  .sev-question { border-left: 4px solid #2b7fd9; }
+  .badge {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding: 0.15em 0.5em;
+    border-radius: 4px;
+    margin-right: 0.5em;
+  }
+  .badge-nit { background: #e9ecef; color: #444; }
+  .badge-should-fix { background: #fbe6d0; color: #7a3f00; }
+  .badge-blocking { background: #f8d7da; color: #7a1a1a; }
+  ul { padding-left: 1.4rem; }
+  li { margin: 0.35rem 0; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Review of <a href="https://github.com/kubernetes-sigs/prow/pull/859">kubernetes-sigs/prow#859</a></h1>
+  <div class="meta">
+    <div><strong>Title:</strong> Migrate to Pub/Sub v2</div>
+    <div><strong>Head SHA:</strong> <code class="inline">578f7668f880883394c56d9da777c27b119dd79a</code></div>
+    <div><strong>Base:</strong> main</div>
+    <div><strong>Reviewed at:</strong> 2026-08-18T21:04:05Z</div>
+  </div>
+</header>
+
+<div class="verdict">
+  <div class="label">Verdict: Approve</div>
+  <p>Clean, well-tested migration off the deprecated Pub/Sub v1 client. The one behavior change worth scrutiny (dropping <code class="inline">Synchronous</code> mode) was verified against the v2 library's flow-control source and does not regress fairness. Only two low-severity nits found, neither blocking.</p>
+</div>
+
+<h2>What this PR does</h2>
+<ul>
+  <li>Migrates <code class="inline">pkg/pubsub</code> and its callers from <code class="inline">cloud.google.com/go/pubsub</code> v1 to <code class="inline">cloud.google.com/go/pubsub/v2</code>.</li>
+  <li>Replaces the removed <code class="inline">ReceiveSettings.Synchronous = true</code> with <code class="inline">NumGoroutines = 1</code> on the subscriber, relying on v2's default client-wide flow controller for cross-replica fairness.</li>
+  <li>Adds shared test fixture helpers in <code class="inline">pkg/testutil/fixtures.go</code> (<code class="inline">WriteCredentialsFile</code>, <code class="inline">WriteAuthorizedUserCredentialsFile</code>) and adopts them in some tests.</li>
+  <li>Build and full test suite pass on the PR head.</li>
+</ul>
+
+<h2>Findings</h2>
+
+<div class="finding sev-nit">
+  <span class="badge badge-nit">Nit</span>
+  <h3>Comment misattributes fairness guarantee to NumGoroutines</h3>
+  <div class="loc"><code>pkg/pubsub/subscriber/server.go:98</code></div>
+  <pre>// Use one pull stream so multiple subscriber replicas can share work fairly.
+NumGoroutines: 1,</pre>
+  <p>The comment attributes fairness to the stream count, but in pubsub/v2 fairness actually comes from the default (non-per-stream) client-wide flow controller keyed on <code class="inline">MaxOutstandingMessages</code>, which applies regardless of <code class="inline">NumGoroutines</code>. Pinning <code class="inline">NumGoroutines = 1</code> mainly guards against the library's documented future default flip of <code class="inline">EnablePerStreamFlowControl</code> to <code class="inline">true</code> (which would multiply the outstanding-message cap by <code class="inline">NumGoroutines</code>). A future contributor trusting this comment could raise <code class="inline">NumGoroutines</code> for throughput and reintroduce that problem once the default flips.</p>
+</div>
+
+<div class="finding sev-nit">
+  <span class="badge badge-nit">Nit</span>
+  <h3>Duplicated credentials-fixture logic instead of reusing new test helper</h3>
+  <div class="loc"><code>pkg/io/opener_test.go:134</code></div>
+  <pre>f, err := os.CreateTemp(t.TempDir(), "creds-*.json")
+...
+f.Write(...)
+f.Close()</pre>
+  <p>This PR adds <code class="inline">pkg/testutil/fixtures.go</code> and uses it earlier in this same file, but <code class="inline">Test_opener_SignedURL</code> a few lines below still hand-rolls an equivalent credentials fixture. The same duplicate pattern also remains in <code class="inline">pkg/spyglass/storageartifact_fetcher_test.go</code> (~line 443), a file this PR already edits nearby. Three independent copies of the same fixture logic can now drift out of sync.</p>
+</div>
+
+<h2>Things I checked and was fine with</h2>
+<ul>
+  <li>Build and full test suite pass on the PR head.</li>
+  <li>The pre-existing panic in <code class="inline">pkg/pubsub/subscriber/subscriber_test.go</code> also reproduces on the pre-PR commit — unrelated to this change.</li>
+  <li>Verified by reading vendored <code class="inline">cloud.google.com/go/pubsub/v2@v2.6.0</code> source that replacing <code class="inline">Synchronous=true</code> with <code class="inline">NumGoroutines=1</code> does not regress per-replica fairness: <code class="inline">MaxOutstandingMessages</code> is enforced by a client-wide flow controller shared across streams by default, independent of <code class="inline">NumGoroutines</code>.</li>
+</ul>
+
+<h2>Open questions for the author</h2>
+<ul>
+  <li>Would you consider rewording the <code class="inline">NumGoroutines = 1</code> comment to reference the future <code class="inline">EnablePerStreamFlowControl</code> default flip rather than implying the fairness guarantee comes from the stream count itself?</li>
+  <li>Any interest in a quick follow-up to converge <code class="inline">Test_opener_SignedURL</code> and <code class="inline">storageartifact_fetcher_test.go</code> onto the new <code class="inline">testutil</code> credential-fixture helpers, now that they exist?</li>
+</ul>
+
+</body>
+</html>

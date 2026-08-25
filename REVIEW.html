@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Review: kubernetes-sigs/prow#787</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; line-height: 1.6; color: #24292f; max-width: 900px; margin: 2rem auto; padding: 0 1rem; }
+  h1 { font-size: 1.5rem; border-bottom: 1px solid #d0d7de; padding-bottom: 0.5rem; }
+  h2 { font-size: 1.25rem; margin-top: 2rem; border-bottom: 1px solid #d0d7de; padding-bottom: 0.3rem; }
+  h3 { font-size: 1rem; margin-top: 1.5rem; }
+  code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; font-size: 0.875em; background: #f6f8fa; padding: 0.15em 0.4em; border-radius: 3px; }
+  pre { background: #f6f8fa; padding: 1rem; overflow-x: auto; border-radius: 6px; font-size: 0.85em; line-height: 1.5; }
+  .header-meta { background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 6px; padding: 1rem; margin-bottom: 1.5rem; }
+  .header-meta p { margin: 0.2rem 0; }
+  .verdict { padding: 0.75rem 1rem; border-radius: 6px; margin: 1rem 0; }
+  .verdict-request-changes { background: #fff1e5; border-left: 4px solid #d1242f; }
+  .verdict-approve { background: #dafbe1; border-left: 4px solid #1a7f37; }
+  .verdict-needs-discussion { background: #fff8c5; border-left: 4px solid #9a6700; }
+  .severity { display: inline-block; font-size: 0.75rem; font-weight: 600; padding: 0.15em 0.5em; border-radius: 3px; text-transform: uppercase; margin-right: 0.5em; }
+  .blocking { background: #ffebe9; color: #cf222e; }
+  .should-fix { background: #fff8c5; color: #9a6700; }
+  .nit { background: #ddf4ff; color: #0969da; }
+  .question { background: #f6f8fa; color: #57606a; }
+  .resolved { background: #dafbe1; color: #1a7f37; }
+  .finding { margin-bottom: 1.5rem; padding-left: 0.5rem; border-left: 3px solid #d0d7de; }
+  .finding-blocking { border-left-color: #cf222e; }
+  .finding-should-fix { border-left-color: #bf8700; }
+  .finding-nit { border-left-color: #0969da; }
+  .finding-question { border-left-color: #57606a; }
+  .finding-resolved { border-left-color: #1a7f37; }
+  ul { padding-left: 1.5rem; }
+  a { color: #0969da; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .checked li { color: #57606a; }
+  .refresh-note { background: #ddf4ff; border: 1px solid #54aeff; border-radius: 6px; padding: 0.75rem 1rem; margin: 1rem 0; font-size: 0.9em; }
+</style>
+</head>
+<body>
+
+<h1>Review: rifle: smart reviewer selection; alternative to blunderbuss</h1>
+
+<div class="header-meta">
+  <p><strong>PR:</strong> <a href="https://github.com/kubernetes-sigs/prow/pull/787">kubernetes-sigs/prow#787</a></p>
+  <p><strong>Author:</strong> smg247</p>
+  <p><strong>Base:</strong> main</p>
+  <p><strong>Head SHA:</strong> <code>6bb540ddd3b64c06b752ee2d10aa43d0f6dd89cd</code></p>
+  <p><strong>Reviewed:</strong> 2026-08-21T11:59:37Z</p>
+  <p><strong>Previous head:</strong> <code>e67069f07</code> (2026-07-03T11:25:23Z)</p>
+</div>
+
+<div class="refresh-note">
+  <strong>Refresh (2026-07-03):</strong> 2 new commits. Fixed handleStatus err shadowing and return-nil-vs-continue in both plugins. Improved validateMutuallyExclusivePlugins to handle org/repo conflicts and ExcludedRepos, with tests. Improved blame_test.go. The infinite loop bug remained open &mdash; Prucek also flagged it in an inline comment.
+</div>
+
+<div class="refresh-note">
+  <strong>Refresh (2026-07-26):</strong> 2 new commits since previous review. Fixed the infinite-loop bug (<code>944dde12e</code>) by adding <code>else { break }</code> to both selector loops in <code>GetReviewers</code>. Added rifle documentation to the reviewers/approvers doc, including an API quota note. PR was self-approved by the author (<code>kubernetes-prow[bot]</code> APPROVALNOTIFIER). No blocking findings remain.
+</div>
+
+<div class="refresh-note">
+  <strong>Refresh (2026-08-21):</strong> No code changes (head SHA unchanged). New inline review comment from Prucek flags that <code>GetBlame</code> is called with <code>pr.Base.Ref</code> (current base tip) while diff hunk line numbers are relative to the merge-base, risking line misalignment when the base branch has advanced since the PR branched. Added as a new should-fix finding; verdict downgraded pending author response.
+</div>
+
+<h2>Verdict</h2>
+
+<div class="verdict verdict-needs-discussion">
+  <strong>Needs discussion.</strong>
+  <p>The blocking infinite-loop bug remains fixed. However, a newly raised concern about <code>GetBlame</code>'s ref potentially not matching the diff's merge-base could silently degrade scoring accuracy for PRs against a moving base branch, and needs the author's input before this can be called resolved. The other should-fix items (availability-check bypass in the fallback path, structural duplication between rifle and blunderbuss) and the insertion-sort nit remain non-blocking.</p>
+</div>
+
+<h2>What this PR does</h2>
+
+<ul>
+  <li>Introduces a new <strong>rifle</strong> plugin that selects PR reviewers by scoring OWNERS candidates against git blame data (lines touched &times; 10 + recency &times; 5 + owner bonus), rather than blunderbuss's random selection.</li>
+  <li>Extracts shared reviewer-selection logic (the <code>getReviewers</code>/<code>findReviewer</code>/<code>isUserBusy</code> functions, interfaces, and the <code>/auto-cc</code> regex) from blunderbuss into a new <code>pkg/reviewer</code> package.</li>
+  <li>Adds a <code>GetBlame</code> method to the GitHub client using the GraphQL blame API with GitHub Apps auth support.</li>
+  <li>Adds a smart fallback: when not enough reviewers are found in the per-file OWNERS scope, searches broader <code>AllOwners()</code> ranked by blame scores, then fills remaining slots randomly.</li>
+  <li>Adds config validation ensuring blunderbuss and rifle are mutually exclusive on the same repo.</li>
+</ul>
+
+<p><strong>Since previous review (2026-07-01):</strong></p>
+<ul>
+  <li>Fixed <code>handleStatus</code> err shadowing and <code>return nil</code> vs <code>continue</code> in both rifle and blunderbuss, using <code>utilerrors.NewAggregate</code> to collect errors.</li>
+  <li>Improved <code>validateMutuallyExclusivePlugins</code> to detect org-vs-repo conflicts and respect <code>ExcludedRepos</code>. Added 6 test cases.</li>
+  <li>Improved <code>TestReviewerScorer</code> to actually call <code>scorer.scoreReviewers()</code> instead of duplicating scoring logic inline.</li>
+  <li>Fixed import ordering, added <code>BlameData</code> field to <code>FakeClient</code>.</li>
+</ul>
+
+<p><strong>Since previous review (2026-07-03):</strong></p>
+<ul>
+  <li>Fixed the infinite-loop bug in <code>GetReviewers</code> (<code>pkg/reviewer/reviewer.go:121-136</code>) by adding <code>else { break }</code> to both selector loops.</li>
+  <li>Added documentation for the rifle plugin to <code>site/content/en/docs/components/plugins/approve/approvers/_index.md</code>, including algorithm description and API quota note.</li>
+</ul>
+
+<h2>Findings</h2>
+
+<h3>Should fix</h3>
+
+<div class="finding finding-should-fix">
+  <p><span class="severity should-fix">Should fix</span> <strong>GetBlame ref may not match the base the diff hunks were computed against</strong></p>
+  <p><code>pkg/plugins/rifle/rifle.go:279</code></p>
+  <p>Raised by Prucek in an inline review comment (2026-08-21T07:58:04Z, unverified by this review agent). <code>GetBlame</code> is called with <code>pr.Base.Ref</code> (e.g. <code>main</code> at its current tip), but the PR's <code>file.Patch</code> hunk headers use old-side line numbers computed against the merge-base commit (the last common ancestor of head and base at diff-generation time). If the base branch has advanced since the PR was branched, the current tip's line numbers no longer correspond to the diff's old-side line numbers, so <code>intersectBlameWithChanges</code> would intersect blame ranges against the wrong lines &mdash; silently degrading scoring accuracy (not a crash) for PRs opened against a moving base branch.</p>
+  <pre>scorer := &amp;reviewerScorer{
+    ghc:  ghc,
+    org:  repo.Owner.Login,
+    repo: repo.Name,
+    ref:  pr.Base.Ref,   // current tip of base, not the merge-base
+    ...
+}</pre>
+</div>
+
+<div class="finding finding-should-fix">
+  <p><span class="severity should-fix">Should fix</span> <strong>findFallbackReviewers bypasses UseStatusAvailability</strong></p>
+  <p><code>pkg/plugins/rifle/rifle.go:411-460</code></p>
+  <p>The primary selection path correctly checks <code>IsUserBusy</code> for each candidate, but <code>findFallbackReviewers</code> picks from <code>AllOwners()</code> purely by blame score or randomly &mdash; no availability check. A user whose busy status was correctly respected during initial selection can still be assigned via the fallback path. This is novel to rifle (blunderbuss has no all-owners fallback).</p>
+</div>
+
+<div class="finding finding-should-fix">
+  <p><span class="severity should-fix">Should fix</span> <strong>Massive code duplication between rifle and blunderbuss</strong></p>
+  <p><code>pkg/plugins/rifle/rifle.go:89-353</code>, <code>pkg/plugins/config.go:228-259</code></p>
+  <p><code>handlePullRequest</code>, <code>handleGenericComment</code>, <code>handleStatus</code>, and <code>handle</code> in rifle are near-identical copies of blunderbuss (only the config type and selector strategy differ). The <code>Rifle</code> config struct is identical to <code>Blunderbuss</code>. <code>validateRifle</code> is identical to <code>validateBlunderbuss</code>. The handleStatus fix was applied identically to both plugins &mdash; a concrete example of the duplication cost.</p>
+</div>
+
+<h3>Nits</h3>
+
+<div class="finding finding-nit">
+  <p><span class="severity nit">Nit</span> <strong>Hand-rolled insertion sort in selectBestReviewer</strong></p>
+  <p><code>pkg/plugins/rifle/rifle.go:380-384</code></p>
+  <p>Manual insertion sort after shuffle. <code>sort.SliceStable</code> after shuffle achieves the same stable-sort-with-random-tiebreaking in one line and is more readable:</p>
+  <pre>// Current:
+for i := 1; i &lt; len(ranked); i++ {
+    for j := i; j > 0 &amp;&amp; ranked[j].score > ranked[j-1].score; j-- {
+        ranked[j], ranked[j-1] = ranked[j-1], ranked[j]
+    }
+}
+
+// Simpler:
+sort.SliceStable(ranked, func(i, j int) bool {
+    return ranked[i].score > ranked[j].score
+})</pre>
+</div>
+
+<h3>Resolved</h3>
+
+<div class="finding finding-resolved">
+  <p><span class="severity resolved">Resolved</span> <strong>Infinite loop when all candidates are busy</strong></p>
+  <p>Resolved in <code>944dde12e</code>. <code>GetReviewers</code> (<code>pkg/reviewer/reviewer.go:121-136</code>) now breaks out of both selector loops when <code>selector()</code> returns <code>""</code>, instead of spinning while <code>unusedLeaves.Len() &gt; 0</code>/<code>fileReviewers.Len() &gt; 0</code> stays true. This was independently flagged by Prucek in an inline review comment on 2026-07-03.</p>
+  <pre>for reviewers.Len() &lt; minReviewers &amp;&amp; unusedLeaves.Len() &gt; 0 {
+    if r := selector(&amp;unusedLeaves); r != "" {
+        reviewers.Insert(1, r)
+    } else {
+        break
+    }
+}</pre>
+</div>
+
+<div class="finding finding-resolved">
+  <p><span class="severity resolved">Resolved</span> <strong>err shadowing in handleStatus silently drops handle() errors</strong></p>
+  <p>Resolved in <code>45d08fc6b</code>. Both rifle and blunderbuss now use <code>if err := handle(...); err != nil</code> (block-scoped <code>:=</code> that doesn't shadow) and collect errors via <code>utilerrors.NewAggregate</code>. Also changed <code>return nil</code> to <code>continue</code> for draft/ignored/already-reviewed PRs, fixing the early-exit issue.</p>
+</div>
+
+<div class="finding finding-resolved">
+  <p><span class="severity resolved">Resolved</span> <strong>validateMutuallyExclusivePlugins with old-format configs</strong></p>
+  <p>Resolved in <code>45d08fc6b</code>. Now detects org-vs-repo conflicts (e.g. org has blunderbuss, org/repo has rifle) and respects <code>ExcludedRepos</code>. Six test cases added covering no-conflict, same-entry conflict, org/repo cross-conflict, excluded-repo, and separate-orgs scenarios.</p>
+</div>
+
+<h2>Things I checked and was fine with</h2>
+
+<ul class="checked">
+  <li><code>GetBlame</code> GraphQL query structure and nil-safe <code>User</code> handling in <code>client.go:4459-4491</code></li>
+  <li><code>FallbackReviewersClient</code> correctly delegates <code>RequiredReviewers</code> (unlike old unexported version)</li>
+  <li><code>repoowners.RepoOwner</code> implements <code>AllOwners()</code> required by <code>reviewer.OwnersClient</code></li>
+  <li><code>fakegithub.FakeClient.GetBlame</code> satisfies <code>CommitClient</code> interface</li>
+  <li><code>diverseFileSelection</code> round-robin logic and removed-file filtering</li>
+  <li><code>parseDiffHunks</code> regex and range computation including pure-addition (count=0) case</li>
+  <li><code>intersectBlameWithChanges</code> overlap math and empty-login filtering</li>
+  <li>Plugin registration for rifle (PullRequest, GenericComment, StatusEvent handlers)</li>
+  <li><code>BlameRange</code> type in <code>types.go</code></li>
+  <li>Test coverage for <code>selectBestReviewer</code>, <code>findFallbackReviewers</code>, <code>diverseFileSelection</code>, blame scoring</li>
+  <li>handleStatus error handling fix: correct use of <code>utilerrors.NewAggregate</code>, <code>continue</code> instead of <code>return nil</code></li>
+  <li><code>validateMutuallyExclusivePlugins</code> org/repo cross-check logic and ExcludedRepos handling</li>
+  <li><code>TestValidateMutuallyExclusivePlugins</code> covers all relevant scenarios</li>
+  <li><code>else { break }</code> fix in <code>GetReviewers</code> correctly terminates both selector loops</li>
+  <li>New documentation for rifle in <code>approve/approvers/_index.md</code>: algorithm description, API quota note, mutual-exclusion note</li>
+</ul>
+
+<h2>Open questions for the author</h2>
+
+<ul>
+  <li>Would it make more sense to add blame-based scoring as a mode within blunderbuss rather than a separate plugin? The event-handling code is identical; only the selector strategy differs. This would eliminate the duplication and the risk of behavioral drift.</li>
+</ul>
+
+<h2>Discussion (informational, no action needed)</h2>
+
+<ul>
+  <li>stevekuznetsov asked about additional GitHub API quota load (2026-07-22). Author (smg247) answered: up to 20 additional REST <code>GetBlame</code> calls per PR (capped by <code>maxBlameFiles</code>), <code>IsUserBusy</code> GraphQL calls unchanged from blunderbuss and deduplicated via <code>busyReviewers</code>. Now also documented in the doc update.</li>
+  <li>PR self-approved by author (<code>kubernetes-prow[bot]</code> APPROVALNOTIFIER, 2026-07-22T16:51:23Z).</li>
+  <li>Prucek left an inline comment on <code>pkg/plugins/rifle/rifle.go:279</code> (2026-08-21T07:58:04Z) and a COMMENTED review (2026-08-21T09:14:19Z, no body) raising the base-ref/merge-base line-number concern captured above as a new finding.</li>
+</ul>
+
+</body>
+</html>

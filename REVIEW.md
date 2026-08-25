@@ -3,8 +3,14 @@ pr: kubernetes-sigs/prow#859
 title: "Migrate to Pub/Sub v2"
 head_sha: 578f7668f880883394c56d9da777c27b119dd79a
 base: main
-reviewed_at: 2026-08-18T21:04:05Z
+reviewed_at: 2026-08-25T15:25:07Z
 verdict: approve
+pr_state: merged
+refresh_log:
+  - at: 2026-08-25T15:25:07Z
+    old_sha: 578f7668f880883394c56d9da777c27b119dd79a
+    new_sha: 578f7668f880883394c56d9da777c27b119dd79a
+    summary: No code changes. ameukam left /lgtm /hold (2026-08-24T10:20:39Z); cblecker cleared the hold (2026-08-24T19:42:03Z) and PR was merged.
 ---
 
 ## Summary
@@ -40,3 +46,8 @@ verdict: approve
 ## Open questions
 - Would you consider rewording the `NumGoroutines = 1` comment to reference the future `EnablePerStreamFlowControl` default flip rather than implying the fairness guarantee comes from the stream count itself?
 - Any interest in a quick follow-up to converge `opener_test.go`'s `Test_opener_SignedURL` and `storageartifact_fetcher_test.go` onto the new `testutil` credential-fixture helpers, now that they exist?
+
+## Activity since previous review (2026-08-18T21:04:05Z)
+- 2026-08-24T10:20:39Z: ameukam (MEMBER) commented `/lgtm` `/hold`.
+- 2026-08-24T19:42:03Z: cblecker (MEMBER) commented `/hold cancel`, thanking ameukam.
+- PR merged (head SHA unchanged at 578f7668f880883394c56d9da777c27b119dd79a). Neither nit finding was addressed before merge; they remain valid as follow-up candidates.

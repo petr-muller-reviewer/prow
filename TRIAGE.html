@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Triage: kubernetes-sigs/prow#848</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; line-height: 1.55; color: #1a1a1a; max-width: 900px; margin: 2rem auto; padding: 0 1.5rem; background: #fff; }
+  code, pre { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; font-size: 0.9em; }
+  pre { background: #f5f5f5; padding: 0.75rem 1rem; border-radius: 6px; overflow-x: auto; border: 1px solid #e0e0e0; }
+  code { background: #f0f0f0; padding: 0.1em 0.35em; border-radius: 4px; }
+  pre code { background: none; padding: 0; }
+  h1 { font-size: 1.5rem; margin-bottom: 0.25rem; }
+  h2 { font-size: 1.2rem; margin-top: 2rem; border-bottom: 2px solid #eee; padding-bottom: 0.3rem; }
+  h3 { font-size: 1.02rem; margin-top: 1.3rem; }
+  .meta { color: #555; font-size: 0.92rem; margin-bottom: 1.5rem; }
+  .meta table { border-collapse: collapse; }
+  .meta td { padding: 0.15rem 0.6rem 0.15rem 0; vertical-align: top; }
+  .meta td:first-child { font-weight: 600; color: #333; white-space: nowrap; }
+  .verdict-box { background: #eef7ee; border: 1px solid #b8dab8; border-radius: 8px; padding: 1rem 1.25rem; margin: 1rem 0 1.5rem; }
+  .verdict-line { font-weight: 700; font-size: 1.05rem; margin-bottom: 0.4rem; }
+  .tag { display: inline-block; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; padding: 0.12rem 0.5rem; border-radius: 10px; margin-right: 0.5rem; }
+  .tag-cause { background: #fde3e3; color: #9a1f1f; }
+  .tag-repro { background: #e3ecfd; color: #1f3f9a; }
+  .tag-code { background: #ede3fd; color: #5a1f9a; }
+  .tag-issue { background: #fdf3e3; color: #9a6a1f; }
+  .tag-pr { background: #e3fdf0; color: #1f9a5e; }
+  ul { padding-left: 1.4rem; }
+  li { margin-bottom: 0.3rem; }
+  a { color: #0552b5; }
+  .finding { border-left: 3px solid #ddd; padding-left: 1rem; margin-bottom: 1.2rem; }
+</style>
+</head>
+<body>
+
+<h1>Triage: status-reconciler can permanently miss config changes when delta delivery times out</h1>
+<div class="meta">
+<table>
+<tr><td>Issue</td><td><a href="https://github.com/kubernetes-sigs/prow/issues/848">kubernetes-sigs/prow#848</a></td></tr>
+<tr><td>State at triage</td><td>open</td></tr>
+<tr><td>Labels at triage</td><td>(none)</td></tr>
+<tr><td>Main SHA</td><td><code>de7332b9aa43d1480db4c8099ca9ea7486b80743</code></td></tr>
+<tr><td>Triaged at</td><td>2026-08-17T22:57:43Z</td></tr>
+<tr><td>Verdict</td><td><strong>accepted</strong></td></tr>
+<tr><td>Advised at</td><td>2026-08-21T16:00:57Z (based on triage from 2026-08-17T22:57:43Z)</td></tr>
+</table>
+</div>
+
+<div class="verdict-box">
+<div class="verdict-line">Bottom line: Legitimate bug, root cause confirmed against current main, and a fix is already open in PR #849.</div>
+<div>
+<code>config.Agent.Set()</code> (<code>pkg/config/agent.go:403-425</code>) advances its live config synchronously before attempting to deliver the corresponding <code>Delta</code> to subscribers over a channel with a 1-minute timeout; a timed-out delivery is dropped with no logging. <code>status-reconciler</code> is the only subscriber that trusts a delta's <code>Before</code> value as an authoritative diff baseline, so a dropped delta's config transition becomes permanently invisible to it — e.g. a newly added blocking presubmit may never get triggered on already-open PRs. PR #849 already implements the requested fix (self-tracked <code>lastProcessed</code> state diffed against the live <code>Config()</code>, plus a warning log on drop), with one review-worthy gap: it advances <code>lastProcessed</code> even when reconciliation errors.
+</div>
+</div>
+
+<h2>What the issue reports</h2>
+<ul>
+<li><code>status-reconciler</code> can permanently miss a Prow config change if it's still busy (e.g. listing PRs, calling GitHub) when the agent's 1-minute delta-delivery timeout elapses.</li>
+<li>Because <code>config.Agent</code>'s internal config has already advanced by the time delivery is attempted, the next delta's <code>Before</code> masks the dropped transition — there's no way to discover it was missed.</li>
+<li>Concretely, a newly added blocking presubmit can go untriggered on already-open PRs indefinitely, until someone intervenes manually.</li>
+<li>Proposes: track a private <code>lastProcessed</code> config in the reconciler, diff against the agent's live <code>Config()</code> rather than trusting <code>delta.Before</code>, advance <code>lastProcessed</code> only after successful reconciliation, and log a warning whenever a delta delivery times out.</li>
+<li>Explicitly narrows the scope of #841, excluding the GitHub-ruleset context-retirement and Tide status-description concerns discussed there.</li>
+</ul>
+
+<h2>Analysis</h2>
+
+<h3>Reproducibility / observed behavior</h3>
+<p>Requires <code>status-reconciler</code> to be busy for the full 1-minute delivery window when <code>Agent.Set()</code> fires (e.g. mid-GitHub-API-call), and a further config change to land afterward so the dropped transition is masked by the next delta's advanced <code>Before</code>. Verified by direct code reading — the mechanics as described match current <code>main</code> exactly, no discrepancies found.</p>
+
+<h3>Probable cause</h3>
+<p><code>Agent.Set()</code> (<code>pkg/config/agent.go:403-425</code>) takes its lock, computes <code>oldConfig</code> from the current <code>ca.c</code>, builds <code>delta := Delta{oldConfig, *c}</code>, sets <code>ca.c = c</code> <strong>synchronously</strong>, then spawns one goroutine per subscriber:</p>
+<pre><code>go func(sub DeltaChan) {
+    end := time.NewTimer(time.Minute)
+    select {
+    case sub &lt;- delta:
+    case &lt;-end.C:
+    }
+    ...
+}(subscription)</code></pre>
+<p>The timeout branch drops <code>delta</code> silently. Because <code>ca.c</code> already advanced before delivery was attempted, a dropped delta is unrecoverable through the agent alone.</p>
+<p><code>statusreconciler.Controller.reconcile()</code> (<code>pkg/statusreconciler/controller.go:185-209</code>) diffs <code>delta.Before.PresubmitsStatic</code> against <code>delta.After.PresubmitsStatic</code> directly, with no independently tracked "last processed" state on <code>Controller</code> — so a dropped delta's transition is never re-diffed by any later delta.</p>
+
+<h3>Related code</h3>
+
+<div class="finding">
+<span class="tag tag-code">related-code</span><strong>SetWithoutBroadcast — existing pattern for consuming without re-triggering</strong>
+<p><code>pkg/config/agent.go:433-436</code></p>
+<pre><code>func (ca *Agent) SetWithoutBroadcast(c *Config) {
+    ca.mut.Lock()
+    defer ca.mut.Unlock()
+    ca.c = c
+}</code></pre>
+<p>Not currently used by status-reconciler, but already used by <code>pkg/moonraker/moonraker.go:134</code> as the mechanism a subscriber uses to update its own agent without re-broadcasting. Relevant prior art for the fix pattern.</p>
+</div>
+
+<div class="finding">
+<span class="tag tag-code">related-code</span><strong>Other DeltaChan subscribers use overwrite semantics, not vulnerable to this bug</strong>
+<p><code>pkg/moonraker/moonraker.go:107-134</code>, <code>pkg/pubsub/subscriber/server.go:158-159</code></p>
+<p>Both subscribers apply <code>event.After</code> wholesale as their new live config rather than diffing <code>event.Before</code> against independently tracked state. Confirms <code>status-reconciler</code> is the only subscriber exposed to this "lost intermediate diff" failure mode.</p>
+</div>
+
+<div class="finding">
+<span class="tag tag-code">related-code</span><strong>No unit tests exist for Agent.Set concurrency/timeout/drop behavior</strong>
+<p>No <code>pkg/config/agent_test.go</code> exists at all. The issue's acceptance criteria require a test demonstrating timeout-then-recover behavior; no scaffolding currently exists for it.</p>
+</div>
+
+<div class="finding">
+<span class="tag tag-code">related-code</span><strong>Existing controller tests never exercise Run() or the real channel</strong>
+<p><code>pkg/statusreconciler/controller_test.go:762-1309</code></p>
+<pre><code>func TestControllerReconcile(t *testing.T) {
+    // constructs config.Delta by hand and calls c.reconcile(delta, ...) directly
+}</code></pre>
+<p><code>TestControllerReconcile</code> bypasses <code>Run()</code> and the subscription channel entirely, so dropped/timeout scenarios are untested.</p>
+</div>
+
+<h3>Related issues / PRs</h3>
+<div class="finding">
+<span class="tag tag-issue">related-issue</span><strong><a href="https://github.com/kubernetes-sigs/prow/issues/841">kubernetes-sigs/prow#841</a></strong>
+<p>Related but distinct — covers orphaned required-contexts (<code>migrator.RetireMode</code>/<code>stateAny</code>, <code>migrator.go:171-174</code>), a Tide <code>requirementDiff</code> description-shadowing bug (<code>pkg/tide/status.go:265-267</code>), and GitHub-ruleset context retirement. Does not describe the dropped-delta/timeout mechanism; #848 correctly isolates itself from #841's ruleset/Tide items.</p>
+</div>
+<div class="finding">
+<span class="tag tag-pr">related-pr</span><strong><a href="https://github.com/kubernetes-sigs/prow/pull/849">kubernetes-sigs/prow#849</a></strong> — "fix: status-reconciler track own config state for dropped deltas"
+<p>Open, mergeable, CI passing, not yet <code>lgtm</code>/<code>approved</code>. Implements the issue's proposed fix almost exactly: tracks <code>lastProcessed</code> config on <code>Controller</code>, diffs it against the agent's live <code>Config()</code> instead of <code>delta.Before</code>, and adds a <code>logrus.Warn</code> in <code>Agent.Set()</code>'s timeout branch. Gap: <code>lastProcessed</code> advances after <code>reconcile()</code> regardless of its returned error, which could silently skip retrying a genuinely failed reconciliation.</p>
+</div>
+
+<h2>What I checked</h2>
+<ul>
+<li>Confirmed <code>Agent.Set()</code> and <code>Controller.reconcile()</code> mechanics against current <code>main</code> (<code>de7332b9a</code>) match the issue's description exactly.</li>
+<li>Checked all <code>DeltaChan</code> subscribers in the repo (<code>moonraker</code>, <code>pubsub/subscriber</code>) for the same vulnerability class; only <code>status-reconciler</code> is exposed.</li>
+<li>Checked git history on <code>agent.go</code>'s <code>Set</code> and <code>controller.go</code>'s <code>reconcile</code> — no prior related fix attempts.</li>
+<li>Checked for existing tests covering dropped/timeout delta scenarios — none exist.</li>
+<li>Confirmed PR #849 is open, mergeable, and CI-passing as of this triage.</li>
+<li>Compared #848 against #841 to confirm correct issue scoping / no duplication.</li>
+</ul>
+
+<h2>Recommended next steps</h2>
+<ul>
+<li>Review PR #849, specifically flagging that <code>lastProcessed</code> advances unconditionally after <code>reconcile()</code> even when it returns an error.</li>
+<li>Confirm or request tests covering the issue's four acceptance criteria: timeout-then-recover, blocking-presubmit-still-triggers, warning-log-content, no-double-reconcile.</li>
+<li>Cross-link #848 and #849 if not already referenced from one another.</li>
+<li>Apply labels manually: <code>kind/bug</code>, <code>area/status-reconciler</code>, <code>priority/important-soon</code>.</li>
+</ul>
+
+<h2>Advice (as of 2026-08-21T16:00:57Z)</h2>
+
+<div class="finding">
+<strong>Apply labels to the issue</strong>
+<p>None of the recommended labels are currently applied (<code>labels: []</code>). Triage recommended <code>kind/bug</code>, <code>area/status-reconciler</code>, <code>priority/important-soon</code>; all three exist in the repo's label set.</p>
+<pre><code>gh issue edit 848 --repo kubernetes-sigs/prow --add-label "kind/bug,area/status-reconciler,priority/important-soon"</code></pre>
+</div>
+
+<div class="finding">
+<strong>Comment on the issue linking PR #849</strong>
+<p>A fix is already in flight and PR #849's body already contains "Fixes #848", so it will auto-close on merge. Linking prevents duplicate contributor effort.</p>
+<pre><code>gh issue comment 848 --repo kubernetes-sigs/prow --body "Fix in flight: #849 implements the lastProcessed/live-Config() diff approach and the Agent.Set() drop-warning described above. Routing review effort there rather than duplicating it here."</code></pre>
+</div>
+
+<div class="finding">
+<strong>Leave a PR review comment on #849 flagging the error-handling gap</strong>
+<p>Confirmed by code research (see related-pr finding above) — <code>lastProcessed</code> advances even when <code>reconcile()</code> returns an error, which is worth resolving before merge.</p>
+<pre><code>gh pr comment 849 --repo kubernetes-sigs/prow --body "lastProcessed appears to advance unconditionally after reconcile() is called, even when it returns an error — this would silently skip retrying a transition whose reconciliation genuinely failed. Should this only advance on a nil error?"</code></pre>
+</div>
+
+<div class="finding">
+<strong>No action needed on PR approval routing</strong>
+<p>PR #849 is approved by kaovilai (issue author) and self-approved by Prucek (PR author) but not yet <code>lgtm</code>'d. The automated OWNERS bot comment already identifies cblecker as the required approver for <code>pkg/OWNERS</code>, so no manual assignment command is needed.</p>
+</div>
+
+<h2>Open questions</h2>
+<ul>
+<li>Should <code>lastProcessed</code> only advance after <code>reconcile()</code> returns <code>nil</code>, or is there a different intended retry story for partial/failed reconciliation? Worth resolving on PR #849 before merge rather than as new issue scope.</li>
+</ul>
+
+</body>
+</html>

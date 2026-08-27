@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Review of kubernetes-sigs/prow#870</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; line-height: 1.6; color: #1a1a1a; max-width: 900px; margin: 2rem auto; padding: 0 1.5rem; }
+  code, pre { font-family: "SF Mono", Consolas, Menlo, monospace; }
+  code { background: #f2f2f2; padding: 0.1em 0.35em; border-radius: 3px; font-size: 0.9em; }
+  pre { background: #f6f8fa; padding: 1em; border-radius: 6px; overflow-x: auto; font-size: 0.88em; }
+  h1 { font-size: 1.4rem; }
+  h2 { font-size: 1.15rem; margin-top: 2.2rem; border-bottom: 1px solid #ddd; padding-bottom: 0.3rem; }
+  h3 { font-size: 1rem; margin-bottom: 0.3rem; }
+  .meta { color: #555; font-size: 0.92em; }
+  .verdict { background: #eef7ee; border: 1px solid #bfe3bf; padding: 0.8em 1.2em; border-radius: 6px; }
+  .badge { display: inline-block; font-size: 0.75em; font-weight: 600; text-transform: uppercase; padding: 0.15em 0.5em; border-radius: 4px; margin-right: 0.4em; }
+  .badge-nit { background: #fff3cd; color: #7a5c00; }
+  .badge-blocking { background: #f8d7da; color: #7a1d24; }
+  .badge-should-fix { background: #ffe5cc; color: #7a3d00; }
+  .badge-question { background: #dbe9ff; color: #1d3f7a; }
+  ul { padding-left: 1.4em; }
+  .finding { margin-bottom: 1.6em; }
+  .where { color: #555; font-size: 0.9em; }
+</style>
+</head>
+<body>
+
+<h1>Review of <a href="https://github.com/kubernetes-sigs/prow/pull/870">kubernetes-sigs/prow#870</a></h1>
+<p class="meta">
+  statusreconciler: never drop config deltas (fix #848)<br>
+  head_sha: <code>ed41879ed05957591fd2e5a7bca5d2056c40c6ff</code> · base: <code>main</code><br>
+  reviewed_at: 2026-08-27T09:31:54Z
+</p>
+
+<h2>Verdict</h2>
+<div class="verdict">
+  <strong>Approve.</strong> Small, well-contained fix with a clearly reasoned invariant
+  (single-producer/single-consumer, deltas always chain) backed by tests for both the
+  coalescing path and the keep-up path. All three call sites were updated consistently and
+  no correctness or regression issues were found.
+</div>
+
+<h2>What this PR does</h2>
+<ul>
+  <li>Fixes #848: <code>config.Agent.Set</code> used to deliver each delta via a per-send goroutine with a
+    1-minute timeout, silently dropping the delta if the subscriber was still busy — the
+    status-reconciler relies on <code>Before</code> chaining to the previous <code>After</code>, so a dropped delta
+    permanently hid config changes.</li>
+  <li>Makes delivery lossless at the source: <code>Subscribe()</code> now creates and owns a single-slot
+    buffered channel, returning it as a receive-only <code>DeltaChan</code> (<code>&lt;-chan Delta</code>), instead of
+    taking a caller-supplied channel.</li>
+  <li><code>Set</code> calls the new <code>deliverDelta</code> helper, which coalesces into the single slot instead of
+    blocking or dropping: if a pending <code>{Before, _}</code> hasn't been drained, it's taken back and
+    replaced with <code>{Before, newAfter}</code>, widening the delta to the transition the subscriber
+    still owes.</li>
+  <li>Removes the per-send goroutine and one-minute timer entirely; fixes the bug for every
+    subscriber, not just status-reconciler.</li>
+  <li>Updates all three call sites (<code>moonraker</code>, <code>pubsub/subscriber</code>, <code>statusreconciler</code>) to the
+    new ownership model — they no longer allocate their own channel and just take back what
+    <code>Subscribe()</code> returns.</li>
+  <li>Adds two new tests in <code>pkg/config/agent_test.go</code> covering coalescing under a busy
+    subscriber and correct chaining when the subscriber keeps up.</li>
+</ul>
+
+<h2>Findings</h2>
+
+<div class="finding">
+  <h3><span class="badge badge-nit">Nit</span> <code>deliverDelta</code>'s double-select could be linearized</h3>
+  <div class="where"><code>pkg/config/agent.go:434-451</code></div>
+  <p>Given the documented single-producer/single-consumer invariant (<code>Set</code> is serialized by
+     <code>ca.mut</code>, and nothing else writes to <code>sub</code>), the loop always resolves in at most two
+     iterations — try-send, then (if full) drain-and-merge, then guaranteed send. It could be
+     written as a straight-line sequence instead of a <code>for { select { ... select ... } }</code>,
+     making the "no livelock" guarantee visible from the control flow rather than only from
+     the comment. Purely a readability suggestion, not a correctness issue.</p>
+  <pre>func deliverDelta(sub chan Delta, delta Delta) {
+	for {
+		select {
+		case sub &lt;- delta:
+			return
+		default:
+			select {
+			case pending := &lt;-sub:
+				delta = Delta{Before: pending.Before, After: delta.After}
+			default:
+			}
+		}
+	}
+}</pre>
+</div>
+
+<h2>Things I checked and was fine with</h2>
+<ul>
+  <li>Channel-ownership change (<code>Subscribe</code> returning <code>DeltaChan</code> instead of taking a
+    caller-supplied channel) — traced all three call sites (<code>moonraker.go</code>,
+    <code>pubsub/subscriber/server.go</code>, <code>statusreconciler/status.go</code>); all updated consistently and
+    compile against the new signature.</li>
+  <li>Delta-chaining correctness: since <code>Before</code> on the merged delta is the original pending
+    <code>Before</code> and deltas always chain (each <code>Before</code> equals the previous <code>After</code>), coalescing
+    preserves the invariant subscribers rely on.</li>
+  <li>Removed the old goroutine/timeout drop path does not regress moonraker or pubsub — both
+    already track their own last-seen config independently and don't depend on the drop
+    behavior.</li>
+  <li>New tests (<code>TestSetCoalescesForBusySubscriber</code>, <code>TestSetDeliversChainedDeltasWhenDrained</code>)
+    exercise both the coalescing path and the keep-up path correctly.</li>
+  <li>No other subscribers or <code>DeltaChan</code>/<code>Subscribe</code> usages left on the old API in the repo.</li>
+</ul>
+
+<h2>Open questions for the author</h2>
+<ul>
+  <li>None — the change is small, well-contained, and the reasoning is spelled out clearly in
+    the <code>deliverDelta</code> doc comment.</li>
+</ul>
+
+</body>
+</html>

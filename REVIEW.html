@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Review of kubernetes-sigs/prow#821</title>
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+    color: #1a1a1a;
+    max-width: 860px;
+    margin: 2rem auto;
+    padding: 0 1.5rem;
+    background: #fdfdfd;
+  }
+  code, pre {
+    font-family: "SF Mono", Consolas, Monaco, monospace;
+    font-size: 0.88em;
+  }
+  pre {
+    background: #f5f5f5;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    padding: 0.8rem 1rem;
+    overflow-x: auto;
+  }
+  code.inline {
+    background: #f0f0f0;
+    padding: 0.1em 0.35em;
+    border-radius: 4px;
+  }
+  header {
+    border-bottom: 2px solid #333;
+    padding-bottom: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  header dl {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 0.2rem 1rem;
+    margin: 0.5rem 0 0 0;
+  }
+  header dt { font-weight: 600; color: #555; }
+  header dd { margin: 0; }
+  h1 { font-size: 1.4rem; margin-bottom: 0.2rem; }
+  h2 {
+    margin-top: 2.2rem;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 0.3rem;
+  }
+  h3 { margin-bottom: 0.3rem; }
+  .verdict-box {
+    background: #fff3f0;
+    border-left: 4px solid #c0392b;
+    padding: 0.9rem 1.2rem;
+    border-radius: 4px;
+    margin: 1rem 0 2rem 0;
+  }
+  .verdict-box .label {
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #c0392b;
+    letter-spacing: 0.03em;
+    font-size: 0.85rem;
+  }
+  .finding {
+    margin-bottom: 1.6rem;
+    padding: 0.9rem 1.1rem;
+    border-radius: 6px;
+    border: 1px solid #e5e5e5;
+  }
+  .finding.blocking { border-left: 5px solid #c0392b; background: #fffaf9; }
+  .finding.should-fix { border-left: 5px solid #d68910; background: #fffdf7; }
+  .finding.nit { border-left: 5px solid #7f8c8d; background: #fafafa; }
+  .finding .loc {
+    display: inline-block;
+    margin-bottom: 0.5rem;
+    font-family: "SF Mono", Consolas, Monaco, monospace;
+    font-size: 0.85em;
+    background: #eef1f3;
+    padding: 0.15em 0.5em;
+    border-radius: 4px;
+  }
+  ul.severity-label {
+    list-style: none;
+    padding: 0;
+  }
+  .badge {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 0.1em 0.5em;
+    border-radius: 3px;
+    margin-right: 0.5em;
+    vertical-align: middle;
+  }
+  .badge.blocking { background: #c0392b; color: white; }
+  .badge.should-fix { background: #d68910; color: white; }
+  .badge.nit { background: #7f8c8d; color: white; }
+  a { color: #2563eb; }
+  .checked li, .questions li { margin-bottom: 0.4rem; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>feat(tide): shard large queries to avoid GitHub resource limits</h1>
+  <dl>
+    <dt>PR</dt><dd><a href="https://github.com/kubernetes-sigs/prow/pull/821">kubernetes-sigs/prow#821</a></dd>
+    <dt>Head SHA</dt><dd><code class="inline">2151f08e421277505a62f50bbe7175f9b4d890db</code></dd>
+    <dt>Base</dt><dd><code class="inline">main</code></dd>
+    <dt>Reviewed</dt><dd>2026-08-08T11:22:48Z</dd>
+  </dl>
+</header>
+
+<div class="verdict-box">
+  <div class="label">Request changes</div>
+  <p>The sharding logic itself is sound for the GitHub-Apps-auth path and well tested, but there are five blocking correctness/accuracy issues that undermine the PR's own goals: non-GitHub-Apps installs get no sharding at all, the query-changed resync doesn't work for sharded orgs, a quiet/failing shard can be pulled forward by its siblings and skip PRs, a commit explicitly titled <code class="inline">TEMP</code> silently removes the documented "unlimited concurrency" option for every existing install, and the PR description claims a design (a config-level <code class="inline">ShardQuery</code>/<code class="inline">ShardQueries</code> API covering both controllers) that doesn't match what's shipped. These need to be resolved (or the TEMP commit dropped, and the description corrected) before merge.</p>
+</div>
+
+<h2>What this PR does</h2>
+<ul>
+  <li>Splits large Tide <strong>status-controller</strong> GitHub queries into per-org(-shard) pieces via an unexported <code class="inline">shardQueries</code> string-based helper, to stay under GitHub's GraphQL query resource limits — the sync/merge-decision controller is not sharded by repo count.</li>
+  <li>Adds a <code class="inline">MaxQueryConcurrency</code> config option and bounds query fan-out with an <code class="inline">errgroup.Group</code> limit in both sync and status controllers.</li>
+  <li>Adds per-shard observability metrics: query duration, PRs returned, errors, partial results, and a shard-outcome gauge.</li>
+  <li>Includes a follow-on commit (<code class="inline">2151f08e4</code>) titled <code class="inline">TEMP: default max_query_concurrency to 25</code>, which its own message says should be dropped before merging upstream.</li>
+</ul>
+
+<h2>Findings</h2>
+
+<h3>Blocking</h3>
+
+<div class="finding blocking">
+  <span class="badge blocking">Blocking</span>
+  <h4 style="display:inline">Non-GitHub-Apps auth path re-merges sharded queries into one</h4>
+  <div class="loc"><code>pkg/tide/status.go:650-662</code></div>
+  <p>When <code class="inline">!sc.usesGitHubAppsAuth</code>, all shard entries from <code class="inline">openPRsQueries</code> are concatenated back into a single combined query under key <code class="inline">""</code>, completely undoing the sharding this PR implements. Any non-GitHub-Apps install with a large org still issues one oversized query and hits the exact resource-limit failures this PR is meant to fix.</p>
+  <pre>if !sc.usesGitHubAppsAuth {
+	var orgs []string
+	for org := range queries {
+		orgs = append(orgs, org)
+	}
+	sort.Strings(orgs)
+	var query strings.Builder
+	for _, org := range orgs {
+		query.WriteString(" " + queries[org])
+	}
+	queries = map[string]string{"": query.String()}
+}</pre>
+</div>
+
+<div class="finding blocking">
+  <span class="badge blocking">Blocking</span>
+  <h4 style="display:inline">Query-changed reset targets the wrong storedState key</h4>
+  <div class="loc"><code>pkg/tide/status.go:689-695</code></div>
+  <p><code class="inline">latestPR</code> is read from <code class="inline">sc.storedState[org]</code> (bare org key), but the "query changed" detection/reset writes to <code class="inline">sc.storedState[shardKey]</code> (<code class="inline">"org#N"</code>). For a sharded org, the reset never zeroes the value actually passed into <code class="inline">sc.ghProvider.search</code>, and <code class="inline">sc.storedState[org].PreviousQuery</code> is never populated — so the intended full resync after a query change (e.g. an org exception added/removed) never happens for sharded orgs.</p>
+  <pre>sc.storedStateLock.Lock()
+latestPR := sc.storedState[org].LatestPR
+if query != sc.storedState[shardKey].PreviousQuery {
+	log.WithField("previously", sc.storedState[shardKey].PreviousQuery).Info("Query changed, resetting start time to zero")
+	sc.storedState[shardKey] = storedState{PreviousQuery: query}
+}
+sc.storedStateLock.Unlock()</pre>
+</div>
+
+<div class="finding blocking">
+  <span class="badge blocking">Blocking</span>
+  <h4 style="display:inline">Quiet/failing shard doesn't gate its org's shared watermark</h4>
+  <div class="loc"><code>pkg/tide/status.go:679-773</code></div>
+  <p><code class="inline">shardLatest</code> is only populated for shards with <code class="inline">len(result) > 0</code>; the post-<code class="inline">Wait</code> aggregation takes the minimum only over reporting shards. A shard that is quiet or errors doesn't hold back the org's <code class="inline">LatestPR</code>, which sibling shards can still advance. On that shard's next run it reads the sibling-advanced, org-shared cursor as its own <code class="inline">since</code> bound, risking skipped PRs if GitHub's search index has any propagation lag for that shard's repos — the <code class="inline">-30s</code> margin only protects a shard against its own lag, not against being pulled forward by a sibling.</p>
+  <pre>if len(result) > 0 {
+	latest := result[len(result)-1].UpdatedAt
+	if !latest.IsZero() {
+		shardLatest[shardKey] = latest.Add(-30 * time.Second)
+	}
+}
+...
+for shardKey, t := range shardLatest {
+	org := shardOrg(shardKey)
+	if prev, ok := orgMinLatest[org]; !ok || t.Before(prev) {
+		orgMinLatest[org] = t
+	}
+}</pre>
+</div>
+
+<div class="finding blocking">
+  <span class="badge blocking">Blocking</span>
+  <h4 style="display:inline">TEMP commit makes MaxQueryConcurrency=0 (unlimited) unreachable</h4>
+  <div class="loc"><code>pkg/config/config.go:2717-2721</code></div>
+  <p><code class="inline">parseProwConfig</code> unconditionally coerces <code class="inline">MaxQueryConcurrency == 0</code> to <code class="inline">25</code> before the <code class="inline">if limit &gt; 0 { g.SetLimit(limit) }</code> checks ever see it, so the documented "0 means unlimited" behavior is unreachable. This is introduced by commit <code class="inline">2151f08e4</code>, titled <code class="inline">TEMP: default max_query_concurrency to 25</code> — its own message says it should be dropped before merging. Every existing install that doesn't set <code class="inline">max_query_concurrency</code> silently drops from unlimited fan-out to a hard cap of 25 with no way to restore old behavior.</p>
+  <pre>if c.Tide.MaxQueryConcurrency == 0 {
+	c.Tide.MaxQueryConcurrency = 25
+}
+if c.Tide.MaxQueryConcurrency &lt; 0 {
+	return fmt.Errorf("tide has invalid max_query_concurrency (%d), it must be non-negative", c.Tide.MaxQueryConcurrency)
+}</pre>
+</div>
+
+<div class="finding blocking">
+  <span class="badge blocking">Blocking</span>
+  <h4 style="display:inline">PR description does not match shipped implementation</h4>
+  <div class="loc">PR description vs. <code>pkg/tide/status.go</code></div>
+  <p>Description claims new <code class="inline">ShardQuery</code>/<code class="inline">ShardQueries</code> functions were added to <code class="inline">config.TideQuery</code>, partitioning by <code class="inline">orgs</code>/<code class="inline">repos</code> fields. The actual code is an unexported <code class="inline">shardQueries(map[string]string, int)</code> helper in <code class="inline">pkg/tide/status.go</code> that partitions already-rendered query <em>strings</em>, not structured config, and is wired only into the status controller (not the sync controller, despite the description's claim). Combined with the non-GitHub-Apps re-merge and sync-path gap, the description overstates what actually ships.</p>
+  <pre>// description: "Add ShardQuery and ShardQueries functions to config.TideQuery
+//  that partition queries based on orgs and repos fields"
+// actual: func shardQueries(queries map[string]string, maxRepos int) map[string]string { ... }
+//   in pkg/tide/status.go — unexported, string-based, not on config.TideQuery.</pre>
+</div>
+
+<h3>Should fix</h3>
+
+<div class="finding should-fix">
+  <span class="badge should-fix">Should fix</span>
+  <h4 style="display:inline">org_shard metric label never carries shard granularity</h4>
+  <div class="loc"><code>pkg/tide/tide.go:276,313-329</code> · <code>pkg/tide/github.go:127-151</code> · <code>pkg/tide/status.go:713-717</code></div>
+  <p><code class="inline">queryErrors</code>/<code class="inline">queryPartialResults</code> declare an <code class="inline">org_shard</code> label, but both callers pass the bare org (<code class="inline">shardOrg(shardKey)</code> in status.go, plain <code class="inline">org</code> in github.go) rather than the actual shard key. Despite sharding being this PR's headline feature, the new metrics can't distinguish which shard of a multi-shard org is failing.</p>
+  <pre>tideMetrics.queryErrors.WithLabelValues(controller, "", org, classifyQueryError(err)).Inc()</pre>
+</div>
+
+<div class="finding should-fix">
+  <span class="badge should-fix">Should fix</span>
+  <h4 style="display:inline">shardQueries recovers structure by re-parsing rendered query strings</h4>
+  <div class="loc"><code>pkg/tide/status.go:827-861</code> (<code>shardQueries</code>)</div>
+  <p>Sharding is implemented via <code class="inline">strings.Fields</code> plus a <code class="inline">repo:"</code> prefix check on the already-formatted GitHub search query string, re-deriving structure that was known before rendering. Any future change to token formatting (quoting style, a token legitimately starting with <code class="inline">repo:"</code>, negated <code class="inline">-repo:</code> filters) would silently mis-shard with no compiler/type-level signal.</p>
+  <pre>for _, tok := range strings.Fields(query) {
+	if strings.HasPrefix(tok, `repo:"`) {
+		repoTokens = append(repoTokens, tok)
+	} else {
+		prefix = append(prefix, tok)
+	}
+}</pre>
+</div>
+
+<div class="finding should-fix">
+  <span class="badge should-fix">Should fix</span>
+  <h4 style="display:inline">Sync-controller path lacks repo-count sharding</h4>
+  <div class="loc"><code>pkg/tide/github.go</code> <code>GitHubProvider.Query()</code> (~lines 115-124) · <code>pkg/config/tide.go:662</code> (<code>OrgQueries</code>)</div>
+  <p>Only the status controller's <code class="inline">openPRsQueries</code> is wired through <code class="inline">shardQueries</code>/<code class="inline">maxReposPerQuery</code>. The sync controller still uses <code class="inline">query.OrgQueries()</code>, sharding only by org, not repo count — a single org with &gt;100 repos in one Tide query can still hit GitHub's resource limits on the merge-decision path.</p>
+</div>
+
+<h3>Nits</h3>
+
+<div class="finding nit">
+  <span class="badge nit">Nit</span>
+  <h4 style="display:inline">classifyQueryError uses unanchored substring match on status codes</h4>
+  <div class="loc"><code>pkg/tide/github.go:257-285</code></div>
+  <p><code class="inline">strings.Contains(msg, "500"/"502"/"503"/"504")</code> against the full error text can misclassify unrelated errors (e.g. "query cost 502 exceeds budget", or a URL containing port 8500) as <code class="inline">server_error</code>, skewing dashboards/alerts keyed on <code class="inline">error_class</code>.</p>
+  <pre>if strings.Contains(msg, "500") || strings.Contains(msg, "502") || ...</pre>
+</div>
+
+<div class="finding nit">
+  <span class="badge nit">Nit</span>
+  <h4 style="display:inline">Dead PreviousQuery field at org-level storedState key</h4>
+  <div class="loc"><code>pkg/tide/status.go:767-770</code></div>
+  <p>With reset logic moved to per-shard keys, <code class="inline">sc.storedState[org].PreviousQuery</code> is only ever copied to itself — a no-op. Either remove it from org-level usage or restructure so the same struct type isn't reused with different semantics at two key granularities.</p>
+</div>
+
+<div class="finding nit">
+  <span class="badge nit">Nit</span>
+  <h4 style="display:inline">maxReposPerQuery is a bare hardcoded constant</h4>
+  <div class="loc"><code>pkg/tide/status.go</code> (<code>maxReposPerQuery = 100</code>)</div>
+  <p>No cross-reference to GitHub's documented query/resource limits, and no config knob, despite this PR adding a related config field (<code class="inline">MaxQueryConcurrency</code>).</p>
+</div>
+
+<h2>Things I checked and was fine with</h2>
+<ul class="checked">
+  <li>Sharding logic (<code class="inline">shardQueries</code>, <code class="inline">openPRsQueries</code>) itself looks correct for the GitHub-Apps-auth path: non-repo qualifiers (including <code class="inline">-repo:"..."</code> exclusions) are preserved verbatim per shard.</li>
+  <li>Concurrency bound (<code class="inline">g.SetLimit(limit)</code>) is wired correctly through errgroup in both sync and status controllers, with a <code class="inline">limit &gt; 0</code> guard avoiding a <code class="inline">SetLimit(0)</code> deadlock.</li>
+  <li>Per-shard duration/PR-count histograms (<code class="inline">queryDuration</code>, <code class="inline">queryPRsReturned</code>) are recorded correctly.</li>
+  <li><code class="inline">MaxQueryConcurrency</code> config field is optional, <code class="inline">omitempty</code>, and validated to reject negative values — existing configs otherwise parse unchanged.</li>
+  <li>New Prometheus metrics are additive; no existing metric is renamed or removed.</li>
+  <li>Persisted <code class="inline">storedState</code> remains <code class="inline">map[string]storedState</code>; old state files still deserialize under the new code (per-shard keys like <code class="inline">org#0</code> accumulate write-only and are never cleaned up if an org later shrinks below the shard threshold — low severity, not a data-loss risk).</li>
+  <li>Test coverage for sharding math and status controller integration (<code class="inline">TestShardQueries</code>, <code class="inline">TestStatusControllerSearch</code>) is comprehensive for the single-shard / GitHub-Apps-auth paths it covers, but does not exercise the &gt;100-repo end-to-end reset path or the non-GitHub-Apps re-merge path.</li>
+</ul>
+
+<h2>Open questions for the author</h2>
+<ul class="questions">
+  <li>Is the <code class="inline">TEMP: default max_query_concurrency to 25</code> commit intended to be squashed/dropped before merge, or is 25 meant to become the permanent default? As written it silently changes behavior for every existing install and contradicts the "0 = unlimited" doc.</li>
+  <li>For non-GitHub-Apps auth, was the query re-merge in <code class="inline">status.go:650-662</code> intentional (e.g. a known limitation of that auth mode), or is it a leftover from before sharding was introduced that should also shard per-org?</li>
+  <li>Was the org-level watermark/reset logic in <code class="inline">search()</code> designed against a single-shard-per-org model and just not updated for the multi-shard case, or is there a different intended design for per-shard state that I'm missing?</li>
+  <li>Is sync-controller sharding planned as a follow-up, and should the PR title/description be narrowed to "status controller" in the meantime?</li>
+</ul>
+
+</body>
+</html>

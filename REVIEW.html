@@ -31,9 +31,9 @@
   <h1>fix(githuboauth): fall back to fresh session on undecodable cookie</h1>
   <dl>
     <dt>PR</dt><dd><a href="https://github.com/kubernetes-sigs/prow/pull/862">kubernetes-sigs/prow#862</a></dd>
-    <dt>Head SHA</dt><dd><code>0be13d0bf259ef5239d32f6701cad0815074eff3</code></dd>
+    <dt>Head SHA</dt><dd><code>92a43670c34520975735e794c651e1ce7114ca35</code></dd>
     <dt>Base</dt><dd><code>main</code></dd>
-    <dt>Reviewed at</dt><dd>2026-08-19T16:30:41Z</dd>
+    <dt>Reviewed at</dt><dd>2026-08-25T23:18:31Z</dd>
   </dl>
 </header>
 
@@ -50,6 +50,13 @@
   <li>Leaves the <code>oauthSessionCookie</code> state-validation decode in <code>HandleRedirect</code> (line 242) as a hard error, since that cookie is short-lived (10 min) and CSRF-relevant — losing it mid-flow is a genuine failure, not routine rotation.</li>
   <li>Adds three new tests exercising the stale-cookie fallback behavior for <code>HandleLogin</code> and both <code>HandleRedirect</code> cookie paths, including one that locks in the still-fail-closed state-cookie behavior.</li>
   <li>No config/schema/CLI/RBAC changes; no overlap with the concurrently open PR #843 (gorilla/csrf removal in Deck), which touches unrelated files and explicitly retains gorilla/sessions.</li>
+</ul>
+
+<h2>Since previous review</h2>
+<ul>
+  <li>Addressed review thread from petr-muller (2026-08-19T16:57:41Z, line 160): asked for an explicit comment documenting the "New/Get always returns a session" assumption. Author added a one-line comment at all three remaining fallback sites (<code>HandleLogin</code>, <code>HandleLogout</code>, <code>HandleRedirect</code>).</li>
+  <li>Addressed review thread from petr-muller (2026-08-19T17:01:01Z, line 185): pointed out <code>GetLogin</code> would fail the <code>Values[tokenKey]</code> type assertion on an empty session anyway, just returning a more generic error. Author agreed ("ah, you are right", psalajova, 2026-08-20T11:19:31Z) and added <code>return "", err</code> back into <code>GetLogin</code>, restoring its pre-PR behavior on decode failure.</li>
+  <li>Net diff: <code>pkg/githuboauth/githuboauth.go</code> +4 lines only (3 comments, 1 <code>return</code>). No test changes.</li>
 </ul>
 
 <h2>Findings</h2>
@@ -78,21 +85,9 @@
 </div>
 
 <div class="finding">
-  <h4><span class="sev sev-nit">Nit</span>Undocumented reliance on gorilla/sessions non-nil-session invariant</h4>
-  <div class="loc"><code>pkg/githuboauth/githuboauth.go:159, 181, 200, 287</code></div>
-  <p>The fix depends on <code>CookieStore.New</code>/<code>Get</code> always returning a usable, non-nil <code>*Session</code> even on decode failure (verified against vendored gorilla/sessions v1.2.0). Not documented in a comment; a future library upgrade or internal change could silently reintroduce a nil-session panic risk. A one-line comment near the first changed site would future-proof this.</p>
-</div>
-
-<div class="finding">
   <h4><span class="sev sev-nit">Nit</span>Test-fixture duplication across 3 new tests</h4>
   <div class="loc"><code>pkg/githuboauth/githuboauth_test.go:373</code></div>
   <p><code>TestHandleRedirectWithStaleCookie</code>, <code>TestHandleLoginWithStaleCookie</code>, and <code>TestHandleRedirectWithStaleOAuthSessionCookie</code> each hand-roll ~15 identical lines building a stale-cookie fixture (old/new <code>CookieStore</code>, save with old key, extract <code>Set-Cookie</code>) instead of sharing one helper.</p>
-</div>
-
-<div class="finding">
-  <h4><span class="sev sev-nit">Nit</span>GetLogin's differing observable behavior is untested</h4>
-  <div class="loc"><code>pkg/githuboauth/githuboauth.go:178-186</code></div>
-  <p>Unlike the other three sites, an undecodable cookie in <code>GetLogin</code> falls through to a failed type-assertion, returning the generic "Could not find GitHub token" instead of the original decode error. None of the three new tests exercise <code>GetLogin</code> directly with an undecodable cookie.</p>
 </div>
 
 <h3 class="sevhead">Questions</h3>
@@ -102,10 +97,23 @@
   <p>Is there a metric/log-based alert on this handler that depended on the previous 500 responses to catch a persistent CookieStore misconfiguration? Also: expect a short-lived burst of new Warning logs across active sessions right after any cookie-secret rotation — worth a release-note mention if log-volume alerting exists.</p>
 </div>
 
+<h2>Resolved</h2>
 <div class="finding">
-  <h4><span class="sev sev-question">Question</span>Downstream string-matching on GetLogin's error text</h4>
-  <div class="loc"><code>pkg/githuboauth/githuboauth.go:178-186</code></div>
-  <p>Callers/tooling that previously matched on the raw securecookie decode error text from <code>GetLogin</code> (e.g. the private-deck rerun-failure alert this PR fixes) will now see "Could not find GitHub token" instead. Worth confirming nothing downstream depends on the old string.</p>
+  <h4><span class="sev sev-nit">Nit</span>Undocumented reliance on gorilla/sessions non-nil-session invariant — resolved 2026-08-25</h4>
+  <div class="loc"><code>pkg/githuboauth/githuboauth.go:159, 181, 203, 290</code></div>
+  <p>Author added a one-line comment at each of the three remaining fallback sites (<code>HandleLogin</code>, <code>HandleLogout</code>, <code>HandleRedirect</code>) documenting that <code>New</code>/<code>Get</code> always return a usable session and a decode error just means the existing cookie is invalid, e.g. <code>// New always returns a session; a decode error only means the existing cookie is invalid (e.g. stale signing key). Continue with this empty session so we can overwrite it.</code> Prompted by petr-muller's review comment on line 160.</p>
+</div>
+
+<div class="finding">
+  <h4><span class="sev sev-nit">Nit</span>GetLogin's differing observable behavior is untested — resolved 2026-08-25</h4>
+  <div class="loc"><code>pkg/githuboauth/githuboauth.go:178-187</code></div>
+  <p>Not just tested — the underlying behavior difference is gone. <code>GetLogin</code> now does <code>if err != nil { ...; return "", err }</code>, restoring the exact pre-PR early return. Prompted by petr-muller's review comment noting the type assertion would fail on an empty session anyway, just surfacing a more generic error; author agreed. <code>GetLogin</code>'s read path never touches <code>session.Values</code> after a decode error again.</p>
+</div>
+
+<div class="finding">
+  <h4><span class="sev sev-question">Question</span>Downstream string-matching on GetLogin's error text — resolved 2026-08-25</h4>
+  <div class="loc"><code>pkg/githuboauth/githuboauth.go:178-187</code></div>
+  <p>Moot — <code>GetLogin</code> returns the original securecookie decode error again on a decode failure, identical to pre-PR, so no downstream string changes.</p>
 </div>
 
 <h2>Things I checked and was fine with</h2>
@@ -122,7 +130,6 @@
 <ul>
   <li>Is there a metric/log-based alert on this handler that would need updating to still catch a persistent CookieStore misconfiguration now that decode failures no longer surface as 500s?</li>
   <li>Would it be worth a small helper (e.g. <code>ga.logStaleCookie(name, err)</code>) to keep the four fallback sites in lockstep, given the file already has <code>serverErrorAndPrint</code>/<code>serverError</code> as precedent?</li>
-  <li>Does any downstream tooling/dashboard match on the specific error string previously returned by <code>GetLogin</code> on decode failure?</li>
 </ul>
 
 </body>

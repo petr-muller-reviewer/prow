@@ -1,10 +1,14 @@
 ---
 pr: kubernetes-sigs/prow#843
 title: "fix(deck): replace gorilla/csrf with net/http.CrossOriginProtection"
-head_sha: 43b33864a72e472ca89f9f038506a9fe97239eea
+head_sha: 7953d2b1d708f6f44bad88ac423223ca64fae42c
 base: main
-reviewed_at: 2026-08-18T23:21:28Z
+reviewed_at: 2026-08-27T11:07:01Z
 verdict: needs-discussion
+refresh_log:
+  - old_head: 43b33864a72e472ca89f9f038506a9fe97239eea
+    new_head: 7953d2b1d708f6f44bad88ac423223ca64fae42c
+    summary: "PR merged (squash/rebase-merge to main). Only change vs previous review: csrf.md doc nit (kubectl -> curl example) addressing BenTheElder's inline comment; main_test.go delta is an unrelated apimachinery-bump rebase artifact, not part of this PR's own change. cmd/deck/main.go unchanged."
 ---
 
 ## What this PR does
@@ -13,6 +17,11 @@ verdict: needs-discussion
 - Drops the 32-byte cookie-secret validation that was specific to gorilla/csrf's token requirement; the OAuth session-cookie path keeps its own independent validation.
 - Removes the now-obsolete `--rerun-creates-job` fatal precondition requiring a 32-byte cookie secret, since CSRF protection is now always-on regardless of cookie-secret config.
 - Updates `csrf.md` and `github-oauth-setup.md` docs; cleans `go.mod`/`go.sum` of the `gorilla/csrf` dependency.
+
+Since previous review:
+- `site/content/en/docs/components/core/deck/csrf.md`: doc example changed `kubectl` -> `curl` per BenTheElder's review comment (non-browser API client example was misleading since kubectl doesn't talk to deck).
+- PR merged 2026-08-26 with approvals from BenTheElder, cblecker (self-approve), michelle192837; `/hold` placed by BenTheElder for the doc nit was cancelled by cblecker after the fix landed.
+- The should-fix finding below (no trusted origins / no escape hatch) was not addressed before merge and was not raised by other reviewers.
 
 ## Findings
 

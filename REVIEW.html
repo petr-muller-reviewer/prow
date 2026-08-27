@@ -43,9 +43,10 @@
   <p><strong>PR:</strong> <a href="https://github.com/kubernetes-sigs/prow/pull/787">kubernetes-sigs/prow#787</a></p>
   <p><strong>Author:</strong> smg247</p>
   <p><strong>Base:</strong> main</p>
-  <p><strong>Head SHA:</strong> <code>6bb540ddd3b64c06b752ee2d10aa43d0f6dd89cd</code></p>
-  <p><strong>Reviewed:</strong> 2026-08-21T11:59:37Z</p>
-  <p><strong>Previous head:</strong> <code>e67069f07</code> (2026-07-03T11:25:23Z)</p>
+  <p><strong>Head SHA:</strong> <code>76856c96e99c09c35cafce2e1998d6781db5da88</code></p>
+  <p><strong>Reviewed:</strong> 2026-08-25T23:12:00Z</p>
+  <p><strong>Previous head:</strong> <code>6bb540ddd</code> (2026-08-21T11:59:37Z)</p>
+  <p><strong>PR state:</strong> MERGED</p>
 </div>
 
 <div class="refresh-note">
@@ -60,11 +61,15 @@
   <strong>Refresh (2026-08-21):</strong> No code changes (head SHA unchanged). New inline review comment from Prucek flags that <code>GetBlame</code> is called with <code>pr.Base.Ref</code> (current base tip) while diff hunk line numbers are relative to the merge-base, risking line misalignment when the base branch has advanced since the PR branched. Added as a new should-fix finding; verdict downgraded pending author response.
 </div>
 
+<div class="refresh-note">
+  <strong>Refresh (2026-08-25):</strong> 1 new commit (<code>76856c96e</code>) fixes the merge-base finding &mdash; added <code>GetMergeBase</code> (REST compare API) to the GitHub client and fakegithub, and rifle now blames at the PR's merge-base SHA instead of the base branch tip, falling back to the base ref on error/empty. New test coverage for the fix and its fallback paths. Author acknowledged the finding; Prucek <code>/lgtm</code>'d. <strong>PR merged.</strong> No blocking or should-fix findings remain unresolved except the pre-existing structural ones noted below.
+</div>
+
 <h2>Verdict</h2>
 
-<div class="verdict verdict-needs-discussion">
-  <strong>Needs discussion.</strong>
-  <p>The blocking infinite-loop bug remains fixed. However, a newly raised concern about <code>GetBlame</code>'s ref potentially not matching the diff's merge-base could silently degrade scoring accuracy for PRs against a moving base branch, and needs the author's input before this can be called resolved. The other should-fix items (availability-check bypass in the fallback path, structural duplication between rifle and blunderbuss) and the insertion-sort nit remain non-blocking.</p>
+<div class="verdict verdict-approve">
+  <strong>Approve.</strong>
+  <p>The merge-base finding is fixed with test coverage for the fix and its fallback paths, and the PR has merged. The two remaining should-fix items (availability-check bypass in the fallback path, structural duplication between rifle and blunderbuss) and the insertion-sort nit are non-blocking and can be tracked as follow-ups.</p>
 </div>
 
 <h2>What this PR does</h2>
@@ -91,22 +96,15 @@
   <li>Added documentation for the rifle plugin to <code>site/content/en/docs/components/plugins/approve/approvers/_index.md</code>, including algorithm description and API quota note.</li>
 </ul>
 
+<p><strong>Since previous review (2026-08-25):</strong></p>
+<ul>
+  <li>Fixed the merge-base finding: added <code>GetMergeBase</code> to the GitHub client (REST compare-two-commits API) and <code>fakegithub.FakeClient</code>. Rifle's <code>handle</code> resolves the PR's merge-base SHA and blames at that ref, falling back to <code>pr.Base.Ref</code> if the lookup errors or returns empty.</li>
+  <li>PR merged.</li>
+</ul>
+
 <h2>Findings</h2>
 
 <h3>Should fix</h3>
-
-<div class="finding finding-should-fix">
-  <p><span class="severity should-fix">Should fix</span> <strong>GetBlame ref may not match the base the diff hunks were computed against</strong></p>
-  <p><code>pkg/plugins/rifle/rifle.go:279</code></p>
-  <p>Raised by Prucek in an inline review comment (2026-08-21T07:58:04Z, unverified by this review agent). <code>GetBlame</code> is called with <code>pr.Base.Ref</code> (e.g. <code>main</code> at its current tip), but the PR's <code>file.Patch</code> hunk headers use old-side line numbers computed against the merge-base commit (the last common ancestor of head and base at diff-generation time). If the base branch has advanced since the PR was branched, the current tip's line numbers no longer correspond to the diff's old-side line numbers, so <code>intersectBlameWithChanges</code> would intersect blame ranges against the wrong lines &mdash; silently degrading scoring accuracy (not a crash) for PRs opened against a moving base branch.</p>
-  <pre>scorer := &amp;reviewerScorer{
-    ghc:  ghc,
-    org:  repo.Owner.Login,
-    repo: repo.Name,
-    ref:  pr.Base.Ref,   // current tip of base, not the merge-base
-    ...
-}</pre>
-</div>
 
 <div class="finding finding-should-fix">
   <p><span class="severity should-fix">Should fix</span> <strong>findFallbackReviewers bypasses UseStatusAvailability</strong></p>
@@ -140,6 +138,11 @@ sort.SliceStable(ranked, func(i, j int) bool {
 </div>
 
 <h3>Resolved</h3>
+
+<div class="finding finding-resolved">
+  <p><span class="severity resolved">Resolved</span> <strong>GetBlame ref may not match the base the diff hunks were computed against</strong></p>
+  <p>Resolved in <code>76856c96e</code>. Added <code>GetMergeBase(org, repo, base, head string) (string, error)</code> to <code>pkg/github/client.go</code> (REST compare-two-commits API) and to <code>fakegithub.FakeClient</code> (configurable <code>MergeBaseSHA</code>). <code>handle</code> in <code>rifle.go:276-286</code> now resolves the merge-base of <code>pr.Base.Ref</code>/<code>pr.Head.SHA</code> and blames at that SHA instead of the base branch tip, logging a warning and falling back to <code>pr.Base.Ref</code> if the lookup errors or returns empty. <code>TestHandleRifleBlamesMergeBase</code> covers the success, error, and empty-merge-base fallback paths. Author (smg247) acknowledged: "this would definitely have led to incorrect results, especially as PRs age." Prucek <code>/lgtm</code>'d after the fix; PR merged.</p>
+</div>
 
 <div class="finding finding-resolved">
   <p><span class="severity resolved">Resolved</span> <strong>Infinite loop when all candidates are busy</strong></p>
@@ -181,20 +184,24 @@ sort.SliceStable(ranked, func(i, j int) bool {
   <li><code>TestValidateMutuallyExclusivePlugins</code> covers all relevant scenarios</li>
   <li><code>else { break }</code> fix in <code>GetReviewers</code> correctly terminates both selector loops</li>
   <li>New documentation for rifle in <code>approve/approvers/_index.md</code>: algorithm description, API quota note, mutual-exclusion note</li>
+  <li><code>GetMergeBase</code> REST call path (<code>/repos/{org}/{repo}/compare/{base}...{head}</code>), error handling, and empty-SHA guard in <code>client.go</code></li>
+  <li>Merge-base resolution and fallback-to-base-ref logic in <code>handle</code> (<code>rifle.go:276-286</code>)</li>
+  <li><code>TestHandleRifleBlamesMergeBase</code> covers success, error, and empty-merge-base fallback scenarios; <code>TestGetMergeBase</code> covers the REST client call</li>
 </ul>
 
 <h2>Open questions for the author</h2>
 
 <ul>
-  <li>Would it make more sense to add blame-based scoring as a mode within blunderbuss rather than a separate plugin? The event-handling code is identical; only the selector strategy differs. This would eliminate the duplication and the risk of behavioral drift.</li>
+  <li>Would it make more sense to add blame-based scoring as a mode within blunderbuss rather than a separate plugin? The event-handling code is identical; only the selector strategy differs. (Not addressed before merge; low priority now that the plugin has shipped.)</li>
 </ul>
 
 <h2>Discussion (informational, no action needed)</h2>
 
 <ul>
-  <li>stevekuznetsov asked about additional GitHub API quota load (2026-07-22). Author (smg247) answered: up to 20 additional REST <code>GetBlame</code> calls per PR (capped by <code>maxBlameFiles</code>), <code>IsUserBusy</code> GraphQL calls unchanged from blunderbuss and deduplicated via <code>busyReviewers</code>. Now also documented in the doc update.</li>
+  <li>stevekuznetsov asked about additional GitHub API quota load (2026-07-22). Author (smg247) answered: up to 20 additional REST <code>GetBlame</code> calls per PR (capped by <code>maxBlameFiles</code>), <code>IsUserBusy</code> GraphQL calls unchanged from blunderbuss and deduplicated via <code>busyReviewers</code>. Now also documented in the doc update. (Note: merge-base resolution adds one further REST call per PR event, on top of this estimate.)</li>
   <li>PR self-approved by author (<code>kubernetes-prow[bot]</code> APPROVALNOTIFIER, 2026-07-22T16:51:23Z).</li>
-  <li>Prucek left an inline comment on <code>pkg/plugins/rifle/rifle.go:279</code> (2026-08-21T07:58:04Z) and a COMMENTED review (2026-08-21T09:14:19Z, no body) raising the base-ref/merge-base line-number concern captured above as a new finding.</li>
+  <li>Prucek left an inline comment on <code>pkg/plugins/rifle/rifle.go:279</code> (2026-08-21T07:58:04Z) and a COMMENTED review (2026-08-21T09:14:19Z, no body) raising the base-ref/merge-base line-number concern, resolved in <code>76856c96e</code> (see Resolved).</li>
+  <li>Prucek commented <code>/test pull-prow-integration</code> and <code>/lgtm</code> (2026-08-21T14:53:44Z) after the fix landed. PR merged at <code>76856c96e99c09c35cafce2e1998d6781db5da88</code>.</li>
 </ul>
 
 </body>

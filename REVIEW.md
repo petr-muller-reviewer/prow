@@ -1,10 +1,10 @@
 ---
 pr: kubernetes-sigs/prow#787
 title: "rifle: smart reviewer selection; alternative to blunderbuss"
-head_sha: 6bb540ddd3b64c06b752ee2d10aa43d0f6dd89cd
+head_sha: 76856c96e99c09c35cafce2e1998d6781db5da88
 base: main
-reviewed_at: 2026-08-21T11:59:37Z
-verdict: needs-discussion
+reviewed_at: 2026-08-25T23:12:00Z
+verdict: approve
 refresh_log:
   - from: 8d69f902bcd18cfaf02cb90c26b097286278cdd4
     to: e67069f07a0361184518631dec1321bd5599e0f3
@@ -15,7 +15,9 @@ refresh_log:
   - from: 6bb540ddd3b64c06b752ee2d10aa43d0f6dd89cd
     to: 6bb540ddd3b64c06b752ee2d10aa43d0f6dd89cd
     summary: "No code change. New inline review comment from Prucek (2026-08-21) flags that GetBlame uses pr.Base.Ref (current base tip) while diff hunk line numbers are relative to the merge-base, causing potential line misalignment when base has advanced. Added as a new should-fix finding; verdict downgraded to needs-discussion pending author response."
----
+  - from: 6bb540ddd3b64c06b752ee2d10aa43d0f6dd89cd
+    to: 76856c96e99c09c35cafce2e1998d6781db5da88
+    summary: "Fixed the merge-base finding: added GetMergeBase (REST compare API) to the GitHub client and fakegithub, and rifle now resolves the PR's merge-base SHA and blames at that ref instead of pr.Base.Ref, falling back to the base ref if the lookup errors or returns empty. Added client_test.go and rifle_test.go coverage including the fallback paths. Author (smg247) acknowledged the finding inline. Prucek /lgtm'd. PR merged."
 
 ## Summary
 
@@ -33,19 +35,9 @@ Since previous review (2026-07-03):
 
 Since previous review (2026-08-21): no code changes; new inline review comment surfaces a potential blame/diff line-number misalignment (see findings).
 
-## Findings
+Since previous review (2026-08-25): merge-base finding fixed; PR merged (see Resolved).
 
-### [should-fix] GetBlame ref may not match the base the diff hunks were computed against
-- where: `pkg/plugins/rifle/rifle.go:279`
-- concern: raised by Prucek in an inline review comment (2026-08-21T07:58:04Z, unverified by this review agent). `GetBlame` is called with `pr.Base.Ref` (e.g. `main` at its current tip), but the PR's `file.Patch` hunk headers use old-side line numbers computed against the merge-base commit (the last common ancestor of head and base at diff-generation time). If the base branch has advanced since the PR was branched, the current tip's line numbers no longer correspond to the diff's old-side line numbers, so `intersectBlameWithChanges` would intersect blame ranges against the wrong lines — silently degrading scoring accuracy (not a crash) for PRs opened against a moving base branch.
-- excerpt: |
-    scorer := &reviewerScorer{
-        ghc:  ghc,
-        org:  repo.Owner.Login,
-        repo: repo.Name,
-        ref:  pr.Base.Ref,   // current tip of base, not the merge-base
-        ...
-    }
+## Findings
 
 ### [should-fix] findFallbackReviewers bypasses UseStatusAvailability
 - where: `pkg/plugins/rifle/rifle.go:411-460`
@@ -71,6 +63,10 @@ Since previous review (2026-08-21): no code changes; new inline review comment s
     }
 
 ## Resolved
+
+### [should-fix] GetBlame ref may not match the base the diff hunks were computed against
+- resolved_in: `76856c96e`
+- resolution: Added `GetMergeBase(org, repo, base, head string) (string, error)` to `pkg/github/client.go` (uses the REST compare-two-commits API) and to `fakegithub.FakeClient` (returns configurable `MergeBaseSHA`). `handle` in `pkg/plugins/rifle/rifle.go:276-286` now resolves `pr.Base.Ref`/`pr.Head.SHA`'s merge-base and blames at that SHA instead of the base branch tip, logging a warning and falling back to `pr.Base.Ref` if the lookup errors or returns empty. `rifle_test.go` adds `TestHandleRifleBlamesMergeBase` covering the success, error, and empty-merge-base fallback paths, plus asserts on `blameRefs` in the existing blame-scoring test. Author (smg247) acknowledged: "this would definitely have led to incorrect results, especially as PRs age." Reviewer (Prucek) `/lgtm`'d after the fix; PR merged.
 
 ### [blocking] Infinite loop when all candidates are busy
 - resolved_in: `944dde12e`
@@ -109,13 +105,17 @@ Since previous review (2026-08-21): no code changes; new inline review comment s
 - `TestValidateMutuallyExclusivePlugins` covers all relevant scenarios
 - `else { break }` fix in `GetReviewers` correctly terminates both selector loops
 - New documentation for rifle in `approve/approvers/_index.md`: algorithm description, API quota note, mutual-exclusion note
+- `GetMergeBase` REST call path (`/repos/{org}/{repo}/compare/{base}...{head}`), error handling, and empty-SHA guard in `client.go`
+- Merge-base resolution and fallback-to-base-ref logic in `handle` (`rifle.go:276-286`)
+- `TestHandleRifleBlamesMergeBase` covers success, error, and empty-merge-base fallback scenarios; `TestGetMergeBase` covers the REST client call
 
 ## Open questions
 
-- Would it make more sense to add blame-based scoring as a mode within blunderbuss rather than a separate plugin? The event-handling code is identical; only the selector strategy differs.
+- Would it make more sense to add blame-based scoring as a mode within blunderbuss rather than a separate plugin? The event-handling code is identical; only the selector strategy differs. (Not addressed before merge; low priority now that the plugin has shipped.)
 
 ## Discussion (informational, no action needed)
 
-- stevekuznetsov asked about additional GitHub API quota load (2026-07-22). Author (smg247) answered: up to 20 additional REST `GetBlame` calls per PR (capped by `maxBlameFiles`), `IsUserBusy` GraphQL calls unchanged from blunderbuss and deduplicated via `busyReviewers`. This is now also documented in the doc update.
+- stevekuznetsov asked about additional GitHub API quota load (2026-07-22). Author (smg247) answered: up to 20 additional REST `GetBlame` calls per PR (capped by `maxBlameFiles`), `IsUserBusy` GraphQL calls unchanged from blunderbuss and deduplicated via `busyReviewers`. This is now also documented in the doc update. (Note: merge-base resolution adds one further REST call per PR event, on top of this estimate.)
 - PR self-approved by author (kubernetes-prow bot APPROVALNOTIFIER, 2026-07-22T16:51:23Z).
-- Prucek left an inline comment on `pkg/plugins/rifle/rifle.go:279` (2026-08-21T07:58:04Z) and a COMMENTED review (2026-08-21T09:14:19Z, no body) raising the base-ref/merge-base line-number concern captured above as a new finding.
+- Prucek left an inline comment on `pkg/plugins/rifle/rifle.go:279` (2026-08-21T07:58:04Z) and a COMMENTED review (2026-08-21T09:14:19Z, no body) raising the base-ref/merge-base line-number concern, resolved in `76856c96e` (see Resolved).
+- Prucek commented `/test pull-prow-integration` and `/lgtm` (2026-08-21T14:53:44Z) after the fix landed. PR merged at `76856c96e99c09c35cafce2e1998d6781db5da88`.

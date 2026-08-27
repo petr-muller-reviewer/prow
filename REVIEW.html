@@ -108,10 +108,11 @@
   <h1>feat(tide): shard large queries to avoid GitHub resource limits</h1>
   <dl>
     <dt>PR</dt><dd><a href="https://github.com/kubernetes-sigs/prow/pull/821">kubernetes-sigs/prow#821</a></dd>
-    <dt>Head SHA</dt><dd><code class="inline">2151f08e421277505a62f50bbe7175f9b4d890db</code></dd>
+    <dt>Head SHA</dt><dd><code class="inline">96634e6746e25e6854cdd890abc25e762bb6f516</code></dd>
     <dt>Base</dt><dd><code class="inline">main</code></dd>
-    <dt>Reviewed</dt><dd>2026-08-08T11:22:48Z</dd>
+    <dt>Reviewed</dt><dd>2026-08-27T09:46:39Z</dd>
   </dl>
+  <p style="margin-top:0.8rem; font-size:0.85rem; color:#555;">Refreshed from <code class="inline">2151f08e4</code> → <code class="inline">96634e674</code> on 2026-08-27: pure rebase onto a newer <code class="inline">main</code>; the PR's own commits are content-identical. No findings changed.</p>
 </header>
 
 <div class="verdict-box">
@@ -124,8 +125,9 @@
   <li>Splits large Tide <strong>status-controller</strong> GitHub queries into per-org(-shard) pieces via an unexported <code class="inline">shardQueries</code> string-based helper, to stay under GitHub's GraphQL query resource limits — the sync/merge-decision controller is not sharded by repo count.</li>
   <li>Adds a <code class="inline">MaxQueryConcurrency</code> config option and bounds query fan-out with an <code class="inline">errgroup.Group</code> limit in both sync and status controllers.</li>
   <li>Adds per-shard observability metrics: query duration, PRs returned, errors, partial results, and a shard-outcome gauge.</li>
-  <li>Includes a follow-on commit (<code class="inline">2151f08e4</code>) titled <code class="inline">TEMP: default max_query_concurrency to 25</code>, which its own message says should be dropped before merging upstream.</li>
+  <li>Includes a follow-on commit (<code class="inline">96634e674</code>, formerly <code class="inline">2151f08e4</code> before a rebase) titled <code class="inline">TEMP: default max_query_concurrency to 25</code>, which its own message says should be dropped before merging upstream.</li>
 </ul>
+<p style="font-size:0.9rem; color:#555;"><em>Since previous review:</em> the branch was rebased onto a much newer <code class="inline">main</code> (picking up ~170 unrelated upstream files' worth of history). The PR's own 4 commits are unchanged in content — same messages, byte-identical diffs against <code class="inline">pkg/tide</code>/<code class="inline">pkg/config</code>. All findings below still apply unchanged; none resolved, none new.</p>
 
 <h2>Findings</h2>
 

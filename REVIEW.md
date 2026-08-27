@@ -1,15 +1,22 @@
 ---
 pr: kubernetes-sigs/prow#821
 title: "feat(tide): shard large queries to avoid GitHub resource limits"
-head_sha: 2151f08e421277505a62f50bbe7175f9b4d890db
+head_sha: 96634e6746e25e6854cdd890abc25e762bb6f516
 base: main
-reviewed_at: 2026-08-08T11:22:48Z
+reviewed_at: 2026-08-27T09:46:39Z
 verdict: request-changes
+refresh_log:
+  - from: 2151f08e421277505a62f50bbe7175f9b4d890db
+    to: 96634e6746e25e6854cdd890abc25e762bb6f516
+    at: 2026-08-27T09:46:39Z
+    summary: "Pure rebase onto a much newer main (hundreds of unrelated upstream commits, e.g. #878+). The PR's own 4 commits are byte-identical in tree diff (verified via `git diff 84cfe8b47~1..OLD` vs `git diff 15510bc1d~1..NEW` restricted to pkg/tide, pkg/config — only line-number context shifted). No new findings; all prior findings still apply unchanged. No PR comments, reviews, or label changes since last review."
 ---
 
 ## Summary
 
-Shards Tide status-controller GitHub queries into per-org(-shard) pieces to avoid GitHub GraphQL resource-limit failures on large orgs, adds `MaxQueryConcurrency` to bound query fan-out in both status and sync controllers, and adds new per-query/per-shard observability metrics. HEAD commit (`2151f08e4`) is explicitly titled `TEMP: default max_query_concurrency to 25` and its own message says it should be dropped before merging upstream.
+Shards Tide status-controller GitHub queries into per-org(-shard) pieces to avoid GitHub GraphQL resource-limit failures on large orgs, adds `MaxQueryConcurrency` to bound query fan-out in both status and sync controllers, and adds new per-query/per-shard observability metrics. HEAD commit (`96634e674`, formerly `2151f08e4`) is explicitly titled `TEMP: default max_query_concurrency to 25` and its own message says it should be dropped before merging upstream.
+
+Since previous review: the branch was rebased onto a much newer `main` (picking up ~170 unrelated upstream files' worth of history, e.g. dependabot bumps, the new `rifle` plugin, deck/entrypoint changes). The PR's own 4 commits are unchanged in content — same messages, byte-identical diffs against `pkg/tide`/`pkg/config` modulo line-number context shifts. All findings below still apply at the new head SHA; none resolved, none new.
 
 ## Findings
 

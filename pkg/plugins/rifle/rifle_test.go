@@ -140,8 +140,8 @@ type fakeOwnersClient struct {
 	allOwners     sets.Set[string]
 }
 
-func (foc *fakeOwnersClient) AllApprovers() sets.Set[string]    { return sets.Set[string]{} }
-func (foc *fakeOwnersClient) AllReviewers() sets.Set[string]    { return sets.Set[string]{} }
+func (foc *fakeOwnersClient) AllApprovers() sets.Set[string]      { return sets.Set[string]{} }
+func (foc *fakeOwnersClient) AllReviewers() sets.Set[string]      { return sets.Set[string]{} }
 func (foc *fakeOwnersClient) TopLevelApprovers() sets.Set[string] { return sets.Set[string]{} }
 
 func (foc *fakeOwnersClient) AllOwners() sets.Set[string] {
@@ -183,7 +183,7 @@ func (foc *fakeOwnersClient) FindLabelsForFile(path string) sets.Set[string] {
 	return sets.Set[string]{}
 }
 
-func (foc *fakeOwnersClient) IsNoParentOwners(path string) bool              { return false }
+func (foc *fakeOwnersClient) IsNoParentOwners(path string) bool               { return false }
 func (foc *fakeOwnersClient) IsAutoApproveUnownedSubfolders(path string) bool { return false }
 
 func (foc *fakeOwnersClient) ParseSimpleConfig(path string) (repoowners.SimpleConfig, error) {
@@ -502,6 +502,94 @@ func TestHandleRifleWithBlameScoring(t *testing.T) {
 			for _, ref := range fghc.blameRefs {
 				if ref != "mergebaseSHA" {
 					t.Errorf("GetBlame ref = %q, want merge-base SHA %q (not branch tip)", ref, "mergebaseSHA")
+				}
+			}
+		})
+	}
+}
+
+func TestHandleRifleWithExistingRequestedReviewers(t *testing.T) {
+	froc := &fakeRepoownersClient{
+		foc: &fakeOwnersClient{
+			owners: map[string]string{
+				"a.go": "1",
+			},
+			approvers: map[string]layeredsets.String{},
+			reviewers: map[string]layeredsets.String{
+				"a.go": layeredsets.NewString("bob", "christoph", "david"),
+			},
+			leafReviewers: map[string]sets.Set[string]{
+				"a.go": sets.New[string]("bob", "christoph", "david"),
+			},
+		},
+	}
+
+	testcases := []struct {
+		name               string
+		requestedReviewers []string
+		reviewerCount      int
+		expectedCount      int
+		allowedRequested   []string
+		mustNotRequest     []string
+	}{
+		{
+			name:               "eligible existing reviewer counts toward the quota",
+			requestedReviewers: []string{"christoph"},
+			reviewerCount:      2,
+			expectedCount:      1,
+			allowedRequested:   []string{"bob", "david"},
+			mustNotRequest:     []string{"christoph"},
+		},
+		{
+			name:               "quota fully satisfied by existing eligible reviewers",
+			requestedReviewers: []string{"christoph", "bob"},
+			reviewerCount:      2,
+			expectedCount:      0,
+		},
+		{
+			name:               "ineligible existing reviewer does not count",
+			requestedReviewers: []string{"stranger"},
+			reviewerCount:      2,
+			expectedCount:      2,
+			allowedRequested:   []string{"bob", "christoph", "david"},
+		},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			pr := github.PullRequest{
+				Number: 5,
+				User:   github.User{Login: "alice"},
+				Base:   github.PullRequestBranch{Ref: "main"},
+			}
+			for _, login := range tc.requestedReviewers {
+				pr.RequestedReviewers = append(pr.RequestedReviewers, github.User{Login: login})
+			}
+			repo := github.Repo{Owner: github.User{Login: "org"}, Name: "repo"}
+			fghc := &fakeRifleClient{
+				fakeGitHubClient: newFakeGitHubClient(&pr, []string{"a.go"}),
+			}
+
+			if err := handle(
+				fghc, froc, logrusEntry(),
+				&tc.reviewerCount, 0, true, false, &repo, &pr,
+			); err != nil {
+				t.Fatalf("unexpected error from handle: %v", err)
+			}
+
+			if len(fghc.requested) != tc.expectedCount {
+				t.Fatalf("expected %d newly requested reviewers, got %d: %v", tc.expectedCount, len(fghc.requested), fghc.requested)
+			}
+			allowed := sets.New[string](tc.allowedRequested...)
+			requested := sets.New[string](fghc.requested...)
+			for _, login := range fghc.requested {
+				if !allowed.Has(login) {
+					t.Errorf("requested reviewer %q is not in the allowed set %v", login, sets.List(allowed))
+				}
+			}
+			for _, login := range tc.mustNotRequest {
+				if requested.Has(login) {
+					t.Errorf("reviewer %q must not be requested again, got %v", login, fghc.requested)
 				}
 			}
 		})

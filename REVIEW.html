@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Review: prow#818</title>
+<style>
+  :root {
+    color-scheme: light dark;
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+    max-width: 880px;
+    margin: 2rem auto;
+    padding: 0 1.5rem;
+    color: #1c1c1c;
+    background: #fff;
+  }
+  @media (prefers-color-scheme: dark) {
+    body { color: #e4e4e4; background: #14161a; }
+    .card { background: #1e2126 !important; border-color: #333 !important; }
+    code, pre { background: #23262c !important; color: #e4e4e4 !important; }
+    a { color: #7db2ff !important; }
+    .meta-table td { border-color: #333 !important; }
+  }
+  h1 { font-size: 1.6rem; margin-bottom: 0.2rem; }
+  h2 { font-size: 1.25rem; margin-top: 2.5rem; border-bottom: 2px solid #ddd; padding-bottom: 0.3rem; }
+  h3 { font-size: 1.05rem; margin-bottom: 0.3rem; }
+  code, pre {
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+    background: #f4f4f4;
+    border-radius: 4px;
+  }
+  code { padding: 0.1em 0.35em; font-size: 0.9em; }
+  pre {
+    padding: 0.9rem 1rem;
+    overflow-x: auto;
+    font-size: 0.85rem;
+    line-height: 1.5;
+  }
+  .card {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 1rem 1.3rem;
+    margin-bottom: 1.1rem;
+    background: #fafafa;
+  }
+  .card.resolved { opacity: 0.75; }
+  .meta-table { border-collapse: collapse; margin: 1rem 0; }
+  .meta-table td { padding: 0.25rem 0.8rem 0.25rem 0; border-bottom: 1px solid #eee; vertical-align: top; }
+  .meta-table td:first-child { font-weight: 600; color: #666; white-space: nowrap; }
+  .verdict {
+    display: inline-block;
+    padding: 0.3rem 0.9rem;
+    border-radius: 999px;
+    font-weight: 700;
+    font-size: 0.95rem;
+    letter-spacing: 0.02em;
+  }
+  .verdict.request-changes { background: #fde2e1; color: #9a1c1c; }
+  .verdict.approve { background: #dcf5e3; color: #196c37; }
+  .verdict.needs-discussion { background: #fff3cd; color: #7a5b00; }
+  .verdict.merge { background: #dcf5e3; color: #196c37; }
+  .verdict.hold { background: #fff3cd; color: #7a5b00; }
+  .verdict.do-not-merge { background: #fde2e1; color: #9a1c1c; }
+  .gate-box { border-radius: 8px; padding: 0.9rem 1.2rem; margin: 1rem 0; border: 1px solid; }
+  .gate-box.hold { background: #fffaf0; border-color: #f0dca0; }
+  .gate-box.merge { background: #f2faf5; border-color: #b9e3c6; }
+  .gate-box.do-not-merge { background: #fdf2f1; border-color: #f0b8b3; }
+  .sev {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 0.15rem 0.55rem;
+    border-radius: 4px;
+    margin-right: 0.5rem;
+    vertical-align: middle;
+  }
+  .sev.blocking { background: #9a1c1c; color: #fff; }
+  .sev.should-fix { background: #b5650a; color: #fff; }
+  .sev.nit { background: #6b6b6b; color: #fff; }
+  .sev.question { background: #1b5fa8; color: #fff; }
+  .sev.resolved { background: #196c37; color: #fff; }
+  .loc { font-size: 0.85rem; color: #666; margin-bottom: 0.5rem; }
+  ul { padding-left: 1.4rem; }
+  li { margin-bottom: 0.35rem; }
+  .hl { background: #fff0a3; padding: 0 2px; border-radius: 2px; }
+  a { color: #0a5fc2; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .refresh-note { background: #eef5ff; border: 1px solid #cfe0f5; border-radius: 8px; padding: 0.9rem 1.2rem; margin: 1rem 0; }
+  blockquote { border-left: 3px solid #ccc; margin: 0.5rem 0; padding: 0.2rem 1rem; color: #555; font-style: italic; }
+</style>
+</head>
+<body>
+
+<h1>Review: kubernetes-sigs/prow#818</h1>
+<p style="margin-top:0;color:#666;">Fix sticky overrides being clobbered by retriggered ProwJobs</p>
+
+<table class="meta-table">
+  <tr><td>PR</td><td><a href="https://github.com/kubernetes-sigs/prow/pull/818">kubernetes-sigs/prow#818</a></td></tr>
+  <tr><td>Head SHA</td><td><code>82e1f167eb5b7a7a9af5b3ad83b90a27058936f1</code></td></tr>
+  <tr><td>Base branch</td><td><code>main</code></td></tr>
+  <tr><td>Reviewed at</td><td><code>2026-08-18T20:03:13Z</code></td></tr>
+</table>
+
+<div class="refresh-note">
+<strong>History:</strong> the original review (head <code>bc324a6d6</code>) found two blocking issues in the
+override-plugin abort path. The author removed that entire code path in commit <code>82e1f167e</code>
+("Skip already-passing presubmits in buildAll"), deferring it to a separate follow-up PR. This resolves both
+blocking findings. Only the <code>buildAll</code> skip-on-success fix remains in scope; its doc comment was
+reworded, no functional change. Worktree synced to this head; build and touched-package tests re-verified.
+</div>
+
+<div class="refresh-note">
+<strong>Since previous review:</strong> no code changes. The author replied to the outstanding review thread
+(2026-07-31T14:05:51Z), confirming the <code>buildAll</code> scope concern is settled:
+<blockquote>"looks like the above is correct. It uses the <code>TestAllFilter</code> which only filters out tests
+that match <code>NeedsExplicitTrigger</code>. It is unaffected by this change."</blockquote>
+This closes the previously open question on <code>buildAll</code>'s scope.
+</div>
+
+<div class="refresh-note">
+<strong>Since previous review:</strong> no code changes. Author posted <code>/hold cancel</code>
+(2026-08-03T11:29:41Z); the PR carries no hold label and is labeled <code>approved</code>.
+</div>
+
+<div class="refresh-note">
+<strong>Since previous review:</strong> no code changes. Reviewer (petr-muller) posted a <code>/cc</code>
+comment (2026-08-08T23:40:30Z); no new reviews, labels, or discussion followed.
+</div>
+
+<div class="refresh-note">
+<strong>Since previous review:</strong> no code changes. Author (smg247) pinged the reviewer directly:
+<blockquote>"@petr-muller can you give this another look?"</blockquote>
+(2026-08-17T18:07:30Z). No new reviews or label changes.
+</div>
+
+<h2>Verdict</h2>
+<p><span class="verdict needs-discussion">Needs discussion</span></p>
+<p>
+Both original blocking findings are resolved by removing the risky code entirely. What remains (the
+<code>buildAll</code> skip-on-success fix) has no blocking issues, only two minor should-fix/nit items. The PR
+author has explicitly acknowledged deferring the override-abort fix to a separate PR, and a review thread on the
+<code>buildAll</code> scope question is still open ("I still want to dig into this a bit more to make sure I'm
+not overlooking something") — worth letting that settle before merge, but nothing here blocks on its own.
+</p>
+
+<h2>Gate</h2>
+<div class="gate-box hold">
+<p><span class="verdict hold">Hold</span> &mdash; gated at <code>82e1f167e</code> (2026-08-18T20:17:29Z), same head the review covered.</p>
+<p>
+The scope reduction (dropping the override-abort path) resolved both original blocking findings and the open
+scope question, and the author's <code>/hold cancel</code> reflects that. Nothing in this PR is
+backward-incompatible or risky to existing deployments: <code>ListCheckRuns</code> is already part of production
+<code>pkg/github.Client</code>, so adding it to the trigger plugin's local interface subset is not an API break,
+and <code>buildAll</code>'s skip-on-success behavior only affects PR-open/reopen/LGTM/ok-to-test flows (confirmed
+independently and by the author not to touch <code>/test all</code>/<code>/ok-to-test</code>). What's missing is
+a close-out: the one remaining <span class="sev should-fix" style="font-size:0.65rem;">should-fix</span>
+(unconditional <code>ListCheckRuns</code> call, an avoidable API-rate-limit cost for installations without
+GitHub Apps/Checks) has never been addressed or explicitly waved off by a reviewer, and no reviewer (including me)
+has posted an actual approval/LGTM on the current, narrowed scope &mdash; the last substantive reviewer input was
+a "still want to dig into this" comment that got answered by the author, not a sign-off. The author's
+2026-08-17 ping is effectively asking for that sign-off. Recommend: either fix the <code>ListCheckRuns</code>
+gating (cheap, low-risk) or have the reviewer explicitly accept it as-is, then approve.
+</p>
+<p><strong>Gating list:</strong></p>
+<ul>
+  <li><code>pkg/plugins/trigger/pull-request.go:411-420</code> &mdash; should-fix: <code>ListCheckRuns</code>
+  called unconditionally in <code>buildAll</code> (from this review); still unaddressed in current head. Not
+  blocking on its own, but nothing has resolved or explicitly accepted it yet.</li>
+  <li>No reviewer approval/LGTM has been posted against the current (post-scope-reduction) diff &mdash; the last
+  reviewer engagement was a clarifying question, now answered by the author but not followed by a sign-off.</li>
+</ul>
+<p><strong>Independent merge risk (Area 2):</strong> no notable risk found. <code>ListCheckRuns</code> addition to
+<code>pkg/plugins/trigger</code>'s local <code>githubClient</code> interface is additive only and already
+implemented by production <code>pkg/github.Client</code> and <code>fakegithub.FakeClient</code> &mdash; no
+breakage for existing deployments. <code>buildAll</code>'s new skip-on-success filtering changes behavior only
+for contexts already reported <code>SUCCESS</code>/<code>neutral</code> on the PR head SHA at
+PR-open/reopen/label-trigger time; this is the intended fix and matches the PR's stated purpose, not an
+unannounced behavior change elsewhere.</p>
+</div>
+
+<h2>What this PR does</h2>
+<ul>
+  <li>Trigger plugin: <code>buildAll</code> fetches combined status + check runs for the PR head SHA and skips presubmits already <code>SUCCESS</code>, via <code>pjutil.TestAllWithExistingStatusFilter</code>.</li>
+  <li>Adds <code>ListCheckRuns</code> to <code>fakegithub.FakeClient</code> and to the trigger plugin's <code>githubClient</code> interface (production client already implements it).</li>
+  <li>Unit tests added for the new filter.</li>
+</ul>
+<p><strong>History:</strong></p>
+<ul>
+  <li>The override-plugin abort fix (source of both original blocking findings) was removed entirely in <code>82e1f167e</code>, along with ~150 lines of tests. PR title narrowed from "...clobbered by completing/retriggered ProwJobs" to "...clobbered by retriggered ProwJobs", matching the reduced scope.</li>
+  <li>Author (smg247) confirmed intentionally deferring: <blockquote>"I will re-work this part in a separate PR. I think the <code>trigger</code> issue is the more important one to solve."</blockquote> (2026-07-30T19:46:02Z)</li>
+  <li>Author separately confirmed <code>/test all</code> is unaffected by the <code>buildAll</code> change, matching this review's own independent finding: <blockquote>"<code>/test all</code> ... never calls <code>buildAll</code>. <code>buildAll</code> is only called from the PR event handler..."</blockquote> (2026-07-30T19:48:27Z)</li>
+  <li>A later comment on the same thread (2026-07-30T21:38:36Z): <blockquote>"I still want to dig into this a bit more to make sure I'm not overlooking something..."</blockquote> — since resolved (see refresh note above).</li>
+</ul>
+
+<h2>Findings</h2>
+
+<div class="card">
+<h3><span class="sev should-fix">Should fix</span>ListCheckRuns called unconditionally in buildAll, unlike the override plugin's own gating</h3>
+<div class="loc"><code>pkg/plugins/trigger/pull-request.go:411-420</code></div>
+<p>
+The (now-removed) override plugin abort logic gated its own <code>ListCheckRuns</code> call behind
+<code>oc.UsesAppAuth()</code>. <code>buildAll</code>'s call remains unconditional, adding an extra GitHub API call
+to every PR-opened/reopened/LGTM/ok-to-test-label event even for installations that don't use GitHub Apps/Checks
+(where it always returns empty). Not harmful, but avoidable rate-limit cost at scale.
+</p>
+<pre>checkRunList, err := c.GitHubClient.ListCheckRuns(org, repo, pr.Head.SHA)
+if err != nil {
+    c.Logger.WithError(err).Warn("Failed to list check runs; some passing checks may be re-triggered")
+}</pre>
+</div>
+
+<div class="card">
+<h3><span class="sev nit">Nit</span>no test exercises buildAll's new skip-on-success wiring directly</h3>
+<div class="loc"><code>pkg/plugins/trigger/pull-request_test.go</code> (unchanged)</div>
+<p>
+<code>TestAllWithExistingStatusFilter</code> is well unit-tested in isolation, but <code>buildAll</code>'s wiring —
+including the fallback-to-<code>TestAllFilter</code> behavior when the GitHub API calls error — has no direct
+test coverage.
+</p>
+</div>
+
+<h2>Resolved (prior review, no longer applicable)</h2>
+
+<div class="card resolved">
+<h3><span class="sev resolved">Resolved</span>abortJobsForContexts marked jobs Complete(), hiding them from plank and leaking the running pod</h3>
+<p>Entire <code>abortJobsForContexts</code> function and its call sites removed in <code>82e1f167e</code>. Author intends to rework in a separate PR.</p>
+</div>
+
+<div class="card resolved">
+<h3><span class="sev resolved">Resolved</span>missing PrevReportStates bookkeeping could let crier re-clobber the sticky status</h3>
+<p>Same removal as above — the code path that would have raced with crier no longer exists in this PR.</p>
+</div>
+
+<div class="card resolved">
+<h3><span class="sev resolved">Resolved</span>conflict on Update was logged as a successful abort</h3>
+<p>Removed along with <code>abortJobsForContexts</code>.</p>
+</div>
+
+<div class="card resolved">
+<h3><span class="sev resolved">Resolved</span>abort failures were silently swallowed, not surfaced to the PR comment</h3>
+<p>Removed along with <code>abortJobsForContexts</code>.</p>
+</div>
+
+<div class="card resolved">
+<h3><span class="sev resolved">Resolved</span>three divergent "abort a ProwJob" implementations</h3>
+<p>The third implementation (<code>abortJobsForContexts</code>) no longer exists in this PR. Worth re-raising when the deferred override-abort follow-up PR appears — <code>abortAllJobs</code> (trigger) and <code>TerminateOlderJobs</code> (pjutil) still duplicate similar logic between themselves.</p>
+</div>
+
+<div class="card resolved">
+<h3><span class="sev resolved">Resolved</span>override_test.go asserted CompletionTime is set on abort, encoding the problematic behavior</h3>
+<p>The entire <code>TestHandleStickyOverride</code> abort-related test cases and <code>makeProwJob</code> helper were removed along with the production code.</p>
+</div>
+
+<div class="card resolved">
+<h3><span class="sev resolved">Resolved</span>/override-sticky help text not updated</h3>
+<p>Moot — no abort behavior remains in this PR to document.</p>
+</div>
+
+<div class="card resolved">
+<h3><span class="sev resolved">Resolved</span>scope of buildAll's skip-if-already-successful beyond LGTM</h3>
+<p>Fully answered. Author confirmed <code>/test all</code>/<code>/ok-to-test</code> comments are unaffected (matches this review's independent finding), and on 2026-07-31T14:05:51Z confirmed the broader scope concern is settled: <code>/test all</code> uses <code>TestAllFilter</code>, which only filters on <code>NeedsExplicitTrigger</code> and is unaffected by this change.</p>
+</div>
+
+<h2>Things I checked and was fine with</h2>
+<ul>
+  <li><code>go build ./...</code> succeeds at head <code>82e1f167e</code>.</li>
+  <li><code>go test ./pkg/plugins/override/... ./pkg/pjutil/... ./pkg/plugins/trigger/...</code> passes at head <code>82e1f167e</code>.</li>
+  <li><code>git diff</code> between the old and new head confirmed clean, complete removal of <code>abortJobsForContexts</code>, the <code>sticky</code> abort-trigger block in <code>handle()</code>, and the <code>List</code>/<code>Update</code> additions to <code>prowJobClient</code> — no leftover fragments.</li>
+  <li><code>buildAll</code> is functionally unchanged from the original review; only its doc comment was reworded.</li>
+  <li>PR is still OPEN; no merge/close.</li>
+  <li>No config/API/RBAC breaking changes remain in scope; production <code>pkg/github.Client</code> already implements <code>ListCheckRuns</code>.</li>
+  <li><code>/test all</code> and <code>/ok-to-test</code> comments are unaffected by the <code>buildAll</code> change (separate code path), confirmed independently and by the author.</li>
+</ul>
+
+<h2>Open questions for the author</h2>
+<ul>
+  <li>Is there a tracking issue/PR yet for the deferred override-plugin abort rework you mentioned?</li>
+  <li>Given the override-abort fix is now out of scope, should the PR description be updated further to avoid implying the "completing ProwJobs" half of the original bug is fixed here?</li>
+</ul>
+
+</body>
+</html>

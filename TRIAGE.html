@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Triage: kubernetes-sigs/prow#913</title>
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+    color: #1a1a1a;
+    max-width: 880px;
+    margin: 2rem auto;
+    padding: 0 1.5rem;
+    background: #fdfdfd;
+  }
+  code, pre {
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 0.92em;
+  }
+  pre {
+    background: #f4f4f4;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    padding: 0.8rem 1rem;
+    overflow-x: auto;
+  }
+  code {
+    background: #f0f0f0;
+    padding: 0.1em 0.35em;
+    border-radius: 4px;
+  }
+  pre code { background: none; padding: 0; }
+  h1 { font-size: 1.5rem; }
+  h2 { font-size: 1.2rem; margin-top: 2rem; border-bottom: 1px solid #ddd; padding-bottom: 0.3rem; }
+  h3 { font-size: 1.02rem; margin-bottom: 0.3rem; }
+  .meta-block {
+    background: #f6f8fa;
+    border: 1px solid #d8dee4;
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    font-size: 0.92rem;
+  }
+  .meta-block dl { display: grid; grid-template-columns: max-content 1fr; gap: 0.25rem 1rem; margin: 0; }
+  .meta-block dt { font-weight: 600; color: #444; }
+  .meta-block dd { margin: 0; }
+  .verdict-line {
+    font-size: 1.15rem;
+    font-weight: 600;
+    padding: 0.75rem 1rem;
+    border-radius: 6px;
+    background: #eaf7ec;
+    border: 1px solid #b7e1bd;
+    color: #1e5c25;
+  }
+  .tag {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding: 0.1em 0.5em;
+    border-radius: 4px;
+    margin-right: 0.5em;
+    background: #e5e5e5;
+    color: #333;
+  }
+  .tag-cause { background: #fde2e2; color: #8a1f1f; }
+  .tag-related-code { background: #e2ecfd; color: #1f4a8a; }
+  ul { padding-left: 1.3rem; }
+  li { margin-bottom: 0.3rem; }
+  a { color: #0969da; }
+</style>
+</head>
+<body>
+
+<h1>Triage: kubernetes-sigs/prow#913</h1>
+
+<div class="meta-block">
+  <dl>
+    <dt>Issue</dt><dd><a href="https://github.com/kubernetes-sigs/prow/issues/913">kubernetes-sigs/prow#913</a></dd>
+    <dt>Title</dt><dd>Expose a public API for Tide status and blocking checks per PR</dd>
+    <dt>State</dt><dd>open</dd>
+    <dt>Labels</dt><dd><em>(none)</em></dd>
+    <dt>Main SHA</dt><dd><code>88f56c0e89c868ec4e6bf0305fe23c7efa984ae7</code></dd>
+    <dt>Triaged at</dt><dd>2026-08-31T17:41:26Z</dd>
+    <dt>Verdict</dt><dd>accepted</dd>
+  </dl>
+</div>
+
+<h2>Verdict</h2>
+<p class="verdict-line">Accepted — legitimate feature request, keep open.</p>
+<p>
+The issue asks for a documented, non-HTML way to learn Tide's verdict and blocking
+reasons for a specific PR, aimed at AI/agent integrations that otherwise have to
+scrape the <code>/tide</code> dashboard or infer status from generic GitHub APIs.
+Tide/Deck already compute most of the needed data internally, but no existing
+endpoint returns it per-PR in a structured form — this is a real, scoped gap, not
+a misconfiguration or duplicate.
+</p>
+
+<h2>What the issue reports</h2>
+<ul>
+  <li>No official API exists to get Tide's verdict for a given PR without a headless browser.</li>
+  <li>Current workarounds (inferring status from generic GitHub APIs) are error-prone and inefficient, especially for AI-driven integrations.</li>
+  <li>Author is specifically after Tide's <em>blocking conditions</em> — e.g. missing labels, failing required tests — not just pass/fail.</li>
+  <li>Author checked and could not find an existing endpoint for this.</li>
+</ul>
+
+<h2>Analysis</h2>
+
+<h3>Probable cause / gap</h3>
+<p>
+Tide already has two building blocks, but nothing connects them into a per-PR structured answer:
+</p>
+<ul>
+  <li>Pool-shaped JSON dumps (<code>/tide.js</code>, <code>/tide-history.js</code>) — bulk, not keyed by PR, no reason field.</li>
+  <li>A free-text "why not mergeable" string, only ever surfaced as a GitHub commit-status description.</li>
+</ul>
+
+<h3>Related code</h3>
+
+<h4><span class="tag tag-related-code">related-code</span>Existing pool JSON endpoints</h4>
+<p>where: <code>cmd/deck/main.go:1334-1382</code></p>
+<pre><code>mux.Handle("/tide.js", gziphandler.GzipHandler(handleTidePools(cfg, ta, logrus.WithField("handler", "/tide.js"))))
+mux.Handle("/tide-history.js", gziphandler.GzipHandler(handleTideHistory(ta, logrus.WithField("handler", "/tide-history.js"))))</code></pre>
+<p>Dumps all pools (<code>tide.PoolForDeck</code>: SuccessPRs / PendingPRs / MissingPRs / BatchPending / Action / Blockers) across every org/repo/branch Tide manages. A client must fetch the whole payload and scan for one PR; no reason field is included.</p>
+
+<h4><span class="tag tag-related-code">related-code</span>Source of pool data</h4>
+<p>where: <code>pkg/tide/tide.go:372</code> (<code>Controller.ServeHTTP</code>), <code>pkg/tide/tide.go:625</code> (<code>syncController.ServeHTTP</code>)</p>
+<p>Backing data source for <code>/tide.js</code>; a per-PR endpoint would look up the same in-memory <code>pools</code> rather than inventing new state.</p>
+
+<h4><span class="tag tag-related-code">related-code</span>Only existing per-PR "reason" text</h4>
+<p>where: <code>pkg/tide/status.go:277-395</code> (<code>expectedStatus</code>)</p>
+<pre><code>// statusNotInPool is a format string used when a PR is not in a tide pool.
+statusNotInPool = "Not mergeable.%s"
+...
+return github.StatusError, fmt.Sprintf(statusNotInPool, fmt.Sprintf(" Merging is blocked by issue%s %s.", s, strings.Join(numbers, ", "))), nil</code></pre>
+<p>This is the text posted as the GitHub <code>tide</code> commit-status description — the only place a per-PR "why" currently exists. It's unstructured, unversioned prose, not a stable API — exactly what the author calls error-prone to parse.</p>
+
+<h4><span class="tag tag-cause">cause</span>No per-PR structured status API exists</h4>
+<p>Tide exposes pool-shaped JSON and a free-text GitHub commit-status description, but nothing answers "for org/repo#N, what's Tide's verdict and structured blocking reason(s)" in one call.</p>
+
+<h3>Related issues / PRs</h3>
+<p>None found. Casual scan for duplicate open issues by title/body found none; not exhaustively searched against closed issues.</p>
+
+<h2>What I checked</h2>
+<ul>
+  <li>Confirmed <code>/tide.js</code> and <code>/tide-history.js</code> already exist as public, undocumented JSON endpoints — ruled out "no API exists at all"; gap is specifically per-PR + structured reason.</li>
+  <li>Confirmed the GitHub <code>tide</code> status context description is the only existing per-PR reason text, and it is free text.</li>
+  <li>Casual scan for duplicate open issues; none found (not exhaustive against closed issues).</li>
+</ul>
+
+<h2>Recommended next steps</h2>
+<ul>
+  <li>Ask the author to confirm whether <code>/tide.js</code>/<code>/tide-history.js</code> were already considered and found insufficient, and why.</li>
+  <li>Apply labels: <code>kind/feature</code>, <code>area/tide</code>, <code>area/deck</code>.</li>
+  <li>If a maintainer wants to pursue this, next concrete step is a design comment proposing the response schema/reason taxonomy before any PR is opened.</li>
+</ul>
+
+<h2>Open questions</h2>
+<ul>
+  <li>Should the new API report live/in-memory state only (matches <code>/tide.js</code> staleness) or trigger a fresh evaluation for the requested PR?</li>
+  <li>What response shape/taxonomy for "blocking reasons" is desired — free enumeration vs. fixed reason codes? This drives most of the implementation effort.</li>
+  <li>Should this be REST-ish (<code>/tide/status?org=&amp;repo=&amp;pr=</code>) or follow the existing <code>*.js</code> JSON-dump naming convention?</li>
+  <li>Any concern about making Tide's per-PR status easily scriptable/pollable from a load/abuse perspective, even though it's cheap in-memory data?</li>
+</ul>
+
+</body>
+</html>

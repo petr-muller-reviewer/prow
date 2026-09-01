@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Review: kubernetes-sigs/prow#889</title>
+  <style>
+    body { color: #1f2937; font: 16px/1.55 system-ui, sans-serif; margin: 0; background: #f8fafc; }
+    main { max-width: 920px; margin: 2.5rem auto; padding: 0 1.25rem 2.5rem; }
+    section, header { background: white; border: 1px solid #e2e8f0; border-radius: 8px; margin: 1rem 0; padding: 1.25rem 1.5rem; }
+    h1 { margin: 0 0 .25rem; font-size: 1.6rem; } h2 { font-size: 1.15rem; margin-top: 0; }
+    code { background: #eef2f7; border-radius: 3px; padding: .1em .3em; font-family: ui-monospace, monospace; }
+    .meta { color: #475569; margin: .25rem 0; } .approve { color: #166534; font-weight: 700; }
+    ul { padding-left: 1.25rem; } .empty { color: #475569; font-style: italic; }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Review: <a href="https://github.com/kubernetes-sigs/prow/pull/889">kubernetes-sigs/prow#889</a></h1>
+      <p class="meta">chore(deps): bump google.golang.org/protobuf from 1.36.12-0.20260120151049-f2248ac996af to 1.36.12</p>
+      <p class="meta">Head: <code>5d768d2bd1ab1f50fb3b0a61fe08bf8452f5e07b</code> · Base: <code>main</code> · Reviewed: 2026-09-01T16:37:29Z</p>
+    </header>
+    <section>
+      <h2>Verdict</h2>
+      <p class="approve">Approve</p>
+      <p>This dependency-only change replaces an untagged pseudo-version with the tagged <code>v1.36.12</code> release, published 2026-08-10 (22 days of soak). The limited runtime changes do not overlap Prow's direct production use, and all PR CI checks passed.</p>
+    </section>
+    <section>
+      <h2>What this PR does</h2>
+      <ul>
+        <li>Updates direct production dependency <code>google.golang.org/protobuf</code> from <code>v1.36.12-0.20260120151049-f2248ac996af</code> to <code>v1.36.12</code> in <code>go.mod</code>.</li>
+        <li>Replaces the matching module checksums in <code>go.sum</code>.</li>
+        <li>Moves from an untagged January pseudo-version to the August tagged release.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>Findings</h2>
+      <h3>Blocking</h3><p class="empty">None.</p>
+      <h3>Should fix</h3><p class="empty">None.</p>
+      <h3>Nits</h3><p class="empty">None.</p>
+      <h3>Questions</h3><p class="empty">None.</p>
+    </section>
+    <section>
+      <h2>Things I checked and was fine with</h2>
+      <ul>
+        <li>Only <code>go.mod</code> and <code>go.sum</code> change; no Prow source changes.</li>
+        <li>The Go proxy resolves <code>v1.36.12</code> to upstream tag <code>refs/tags/v1.36.12</code>; the release was published 2026-08-10.</li>
+        <li>The upstream delta after <code>f2248ac996af</code> is protobuf type metadata updates and hexadecimal/octal numeric-default parsing; no published security advisory.</li>
+        <li>12 Prow Go files import protobuf, primarily generated Gangway types and ResultStore timestamp/duration/wrapper construction. The only direct import of an affected encoder is example-only <code>prototext.Unmarshal</code> in <code>pkg/examples/gangway/main.go:25</code>.</li>
+        <li>Unit, integration, image-build, lint, and nonblocking race-detector CI checks succeeded.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>Open questions for the author</h2>
+      <p class="empty">None.</p>
+    </section>
+  </main>
+</body>
+</html>

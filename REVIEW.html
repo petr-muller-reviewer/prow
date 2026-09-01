@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Review: kubernetes-sigs/prow#884</title>
+<style>
+body { background: #fff; color: #1f2328; font: 16px/1.55 system-ui, sans-serif; margin: 0; }
+main { max-width: 900px; margin: 2rem auto; padding: 0 1.25rem 3rem; }
+h1 { line-height: 1.2; } h2 { border-bottom: 1px solid #d0d7de; margin-top: 2rem; padding-bottom: .35rem; }
+code, pre { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; } code { background: #f6f8fa; padding: .1em .3em; }
+pre { background: #f6f8fa; overflow-x: auto; padding: 1rem; } .meta { color: #57606a; } .verdict { border-left: 4px solid #cf222e; padding-left: 1rem; }
+.finding { border: 1px solid #d0d7de; border-left: 4px solid #cf222e; padding: .25rem 1rem 1rem; } a { color: #0969da; }
+</style>
+</head>
+<body><main>
+<h1>Review: <a href="https://github.com/kubernetes-sigs/prow/pull/884">kubernetes-sigs/prow#884</a></h1>
+<p class="meta">chore(deps): bump github.com/gorilla/sessions from 1.2.0 to 1.4.0<br>head: <code>9a989b9364b237d469412b355f1edf3294fe293e</code><br>base: <code>main</code><br>reviewed: 2026-09-01T16:37:50Z</p>
+<h2>Verdict</h2><div class="verdict"><strong>Request changes.</strong><p>The direct dependency bump changes CookieStore defaults on Deck's OAuth cookie path; <code>--allow-insecure</code> produces <code>SameSite=None</code> cookies without <code>Secure</code>, which browsers reject.</p></div>
+<h2>What this PR does</h2><ul><li>Updates the direct production module <code>github.com/gorilla/sessions</code> from <code>v1.2.0</code> to <code>v1.4.0</code>.</li><li>Regenerates the corresponding <code>go.sum</code> entries.</li><li>Does not modify project source, tests, configuration, or vendored code.</li><li>Pulls in releases that add FilesystemStore path traversal hardening, CookieStore <code>SameSite=None</code>/<code>Secure=true</code> defaults, and Go 1.23 <code>Partitioned</code> cookie support.</li></ul>
+<h2>Findings</h2><h3>Blocking</h3><article class="finding"><h4>Preserve OAuth cookies for insecure Deck deployments</h4><p><code>cmd/deck/main.go:598</code>, <code>pkg/githuboauth/githuboauth.go:150-165</code>, <code>pkg/githuboauth/githuboauth.go:223-294</code></p><p>Sessions v1.3 changes <code>CookieStore</code> defaults to <code>SameSite=None</code> and <code>Secure=true</code>. Deck deliberately overrides <code>Secure</code> with <code>!o.allowInsecure</code>; with <code>--allow-insecure</code>, the OAuth state and access-token cookies become <code>SameSite=None</code> without <code>Secure</code>. Modern browsers reject that combination, so the GitHub OAuth flow cannot retain its state/session on an HTTP Deck deployment. Set an explicit compatible SameSite mode when insecure mode is selected and cover the emitted cookie attributes in a regression test.</p><pre>secure := !o.allowInsecure
+// ...
+mux.Handle("/github-login", goa.HandleLogin(oauthClient, secure))
+// ...
+oauthSession.Options.Secure = secure</pre></article><h3>Should fix</h3><p>None.</p><h3>Nits</h3><p>None.</p><h3>Questions</h3><p>None.</p>
+<h2>Things I checked and was fine with</h2><ul><li>Classification: dep-only; only <code>go.mod</code> and <code>go.sum</code> changed.</li><li><code>github.com/gorilla/sessions v1.4.0</code> is a tagged release from 2024-08-20, not a pseudo-version; it had 742 days of soak at review time.</li><li>Prow requires Go 1.26.4, satisfying v1.4.0's Go 1.23 requirement.</li><li>The module is imported by three production files: <code>cmd/deck/main.go</code>, <code>pkg/githuboauth/githuboauth.go</code>, and <code>pkg/prstatus/prstatus.go</code>; it stores GitHub OAuth access tokens in signed cookie sessions.</li><li>FilesystemStore path traversal hardening does not affect Prow, which constructs only <code>sessions.NewCookieStore</code>.</li><li>GitHub's Go security-advisory query returned no advisories for <code>github.com/gorilla/sessions</code>.</li></ul>
+<h2>Open questions for the author</h2><p>Are HTTP Deck deployments using <code>--allow-insecure</code> supported in practice? If so, this must be fixed before taking v1.4.0; if not, document that OAuth requires HTTPS and consider rejecting that flag together with GitHub OAuth.</p>
+</main></body></html>

@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Review of prow#909</title>
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+    color: #1a1a1a;
+    max-width: 900px;
+    margin: 2rem auto;
+    padding: 0 1.5rem;
+    background: #fdfdfd;
+  }
+  code, pre {
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 0.9em;
+  }
+  h1 { font-size: 1.5rem; }
+  h2 { font-size: 1.2rem; margin-top: 2.5rem; border-bottom: 1px solid #ddd; padding-bottom: 0.3rem; }
+  h3 { font-size: 1.05rem; margin-bottom: 0.3rem; }
+  .meta { color: #555; font-size: 0.9em; }
+  .meta code { background: #eee; padding: 0.1em 0.4em; border-radius: 3px; }
+  .verdict {
+    padding: 0.8rem 1rem;
+    border-radius: 6px;
+    background: #fff3cd;
+    border-left: 4px solid #e0a800;
+  }
+  .finding {
+    margin-bottom: 1.5rem;
+    padding: 0.8rem 1rem;
+    border-radius: 6px;
+    border-left: 4px solid #ccc;
+    background: #fafafa;
+  }
+  .finding.should-fix { border-left-color: #d9822b; background: #fff8f0; }
+  .finding.question { border-left-color: #4a90d9; background: #f0f6fc; }
+  .finding.nit { border-left-color: #999; background: #f5f5f5; }
+  .badge {
+    display: inline-block;
+    font-size: 0.75em;
+    font-weight: 600;
+    text-transform: uppercase;
+    padding: 0.1em 0.5em;
+    border-radius: 3px;
+    margin-right: 0.5em;
+    color: #fff;
+  }
+  .badge.should-fix { background: #d9822b; }
+  .badge.question { background: #4a90d9; }
+  .badge.nit { background: #999; }
+  .where { display: block; margin: 0.3rem 0; }
+  .where code { background: #eee; padding: 0.1em 0.4em; border-radius: 3px; }
+  ul { padding-left: 1.3rem; }
+  li { margin-bottom: 0.4rem; }
+</style>
+</head>
+<body>
+
+<h1>Review of <a href="https://github.com/kubernetes-sigs/prow/pull/909">kubernetes-sigs/prow#909</a></h1>
+<p class="meta">
+  <strong>blunderbuss, rifle: count existing eligible reviewers toward the reviewer count</strong><br>
+  head_sha: <code>bf10026abb714fae5dfcc1f9353046bdc6d5980f</code> &middot; base: <code>main</code> &middot; reviewed: 2026-08-31T22:28:26Z
+</p>
+
+<div class="verdict">
+  <strong>Verdict: needs discussion.</strong>
+  The core quota/exclusion arithmetic is correct and well-tested, but the PR introduces a subtle
+  inconsistency in how required reviewers are collected when the quota is already met, and it
+  duplicates a fair amount of orchestration logic between blunderbuss and rifle instead of
+  sharing it via <code>pkg/reviewer</code>. Worth a discussion before merge, not necessarily a hard block.
+</div>
+
+<h2>What this PR does</h2>
+<ul>
+  <li>Makes blunderbuss and rifle count pre-existing eligible reviewers/approvers toward <code>reviewer_count</code> and <code>max_reviewer_count</code>, instead of always adding <code>reviewer_count</code> new reviewers on top of whoever is already requested.</li>
+  <li>Adds an <code>EligibleRequestedReviewers</code> helper in <code>pkg/reviewer/reviewer.go</code> to compute which existing requested reviewers count toward the OWNERS reviewer/approver pool.</li>
+  <li>Adds a new branch in both plugins for when the quota is already satisfied by existing reviewers, which still needs to pick up any <code>RequiredReviewers</code> entries.</li>
+  <li>New tests cover case normalization, approver-only eligibility, the <code>max_reviewer_count</code> interaction, and the <code>reviewer_count: 0</code> no-op case (mostly on the blunderbuss side).</li>
+</ul>
+
+<h2>Findings</h2>
+
+<h3>Should fix</h3>
+
+<div class="finding should-fix">
+  <h3><span class="badge should-fix">should-fix</span>Required-reviewer collection diverges from GetReviewers's dedup</h3>
+  <span class="where"><code>pkg/plugins/blunderbuss/blunderbuss.go:297</code>, <code>pkg/plugins/rifle/rifle.go:361</code></span>
+  <p>The new "quota already met by existing reviewers" branch collects required reviewers by unioning
+  <code>oc.RequiredReviewers(change.Filename)</code> over every changed file, while <code>reviewer.GetReviewers</code>'s
+  existing loop (<code>pkg/reviewer/reviewer.go:102-107</code>) dedups files by their nearest reviewers-OWNERS
+  directory (<code>ownersSeen</code>) before collecting required reviewers. <code>RequiredReviewers</code> walks a
+  separate, independent directory chain per file, so two files sharing a nearest reviewers-OWNERS dir
+  can still have distinct required-reviewer entries in their own subdirectory OWNERS files.</p>
+  <p><strong>Failure scenario:</strong> if the quota still needs filling, <code>GetReviewers</code>'s <code>ownersSeen</code>
+  dedup silently drops the second file's required reviewer. If pre-existing /cc'd reviewers already
+  satisfy the quota, the new manual branch (no dedup) picks up both files' required reviewers. The
+  same PR/file set ends up requesting a different set of required reviewers purely depending on
+  whether existing reviewers happened to fill the quota.</p>
+</div>
+
+<div class="finding should-fix">
+  <h3><span class="badge should-fix">should-fix</span>Quota-orchestration logic duplicated between blunderbuss and rifle</h3>
+  <span class="where"><code>pkg/plugins/blunderbuss/blunderbuss.go:290-320</code>, <code>pkg/plugins/rifle/rifle.go:340-370</code></span>
+  <p>The entire <code>existingEligible</code>/<code>neededReviewers</code>/<code>maxNewReviewers</code> orchestration, plus the
+  required-reviewers-only block above, is duplicated near-identically between the two plugins instead
+  of living once in <code>pkg/reviewer</code>. Rifle's copy already needed one extra line blunderbuss's doesn't
+  (<code>excludeFromFallback.Union(existingEligible)</code> for its blame-fallback stage), showing the copies
+  can already drift.</p>
+  <p><strong>Failure scenario:</strong> a future fix to quota accounting (including the dedup inconsistency above)
+  must be applied identically in three places (<code>GetReviewers</code> plus two plugin copies) or the two
+  plugins silently diverge — the same class of bug this PR set out to fix.</p>
+</div>
+
+<h3>Questions</h3>
+
+<div class="finding question">
+  <h3><span class="badge question">question</span>max_reviewer_count still not a hard ceiling</h3>
+  <span class="where"><code>pkg/plugins/blunderbuss/blunderbuss.go:308</code>, <code>pkg/plugins/rifle/rifle.go</code> (same computation)</span>
+  <p><code>maxNewReviewers</code> only discounts <code>existingEligible</code> (pre-existing reviewers that are also in the
+  OWNERS reviewer/approver pool), not all currently-requested reviewers, so <code>max_reviewer_count</code> is
+  still not a hard cap on the PR's total requested-reviewer count when reviewers already requested
+  aren't in the OWNERS pool.</p>
+  <p><strong>Failure scenario:</strong> a PR already has 2 manually /cc'd reviewers who are not in the OWNERS pool
+  for the changed files, with <code>max_reviewer_count=2</code>. <code>existingEligible.Len()==0</code>, so
+  <code>maxNewReviewers</code> stays 2 and blunderbuss adds 2 more, leaving 4 total requested reviewers despite
+  the configured cap. Not a regression (old code had the identical limitation), but this PR revisits
+  this exact accounting without closing the gap.</p>
+</div>
+
+<div class="finding question">
+  <h3><span class="badge question">question</span>GetReviewers short-circuits before collecting required reviewers at minReviewers==0</h3>
+  <span class="where"><code>pkg/reviewer/reviewer.go:98</code></span>
+  <p><code>GetReviewers</code> returns early when <code>minReviewers==0</code> — exactly the case the new "quota already
+  satisfied" scenario hits — forcing both plugins to bolt on a second, independent required-reviewer
+  computation rather than <code>GetReviewers</code> handling <code>minReviewers==0</code> by skipping only reviewer
+  selection while still collecting required reviewers.</p>
+  <p><strong>Failure scenario:</strong> this is the root cause of the two should-fix findings above. Fixing
+  <code>GetReviewers</code> to always collect required reviewers consistently (regardless of <code>minReviewers</code>)
+  would let both plugins reuse it instead of hand-rolling a duplicate branch.</p>
+</div>
+
+<h3>Nits</h3>
+
+<div class="finding nit">
+  <h3><span class="badge nit">nit</span>rifle_test.go missing a required-reviewers-at-quota-met case</h3>
+  <span class="where"><code>pkg/plugins/rifle/rifle_test.go:475</code></span>
+  <p><code>TestHandleRifleWithExistingRequestedReviewers</code> has no case for "quota already met by existing
+  reviewers AND a <code>RequiredReviewers</code> entry exists," unlike <code>blunderbuss_test.go</code>'s equivalent
+  "quota satisfied but required reviewers still requested" case.</p>
+  <p><strong>Failure scenario:</strong> a regression in rifle.go's else-if branch (<code>rifle.go:361-369</code>) — e.g.
+  wrong client used for <code>RequiredReviewers</code>, or a copy-paste slip — would go undetected by rifle's
+  test suite even though the identical branch in blunderbuss is covered.</p>
+</div>
+
+<div class="finding nit">
+  <h3><span class="badge nit">nit</span>Repeated OWNERS walks across overlapping loops</h3>
+  <span class="where"><code>pkg/reviewer/reviewer.go:156</code> (EligibleRequestedReviewers), rifle's candidate loop</span>
+  <p><code>EligibleRequestedReviewers</code> iterates changed files calling <code>oc.Reviewers()</code>/<code>oc.Approvers()</code> to
+  build the eligibility pool, duplicating OWNERS-lookup work already done by <code>GetReviewers</code>'s own
+  per-file loop and by rifle's separate candidate loop right below it.</p>
+  <p><strong>Failure scenario:</strong> for PRs touching many files, three-to-four overlapping passes over the
+  same file list and OWNERS data occur per plugin invocation — wasted OWNERS-walk work that scales
+  with file count on every PR event, though not a correctness issue.</p>
+</div>
+
+<h2>Things I checked and was fine with</h2>
+<ul>
+  <li>Quota/exclusion arithmetic itself (subtracting existing eligible reviewers from the target count) is correct and covered by new tests: case normalization, approver-only eligibility, <code>maxReviewerCount</code> interaction, <code>reviewerCount: 0</code> no-op.</li>
+  <li>Used the single-commit diff (<code>git diff HEAD~1..HEAD</code>), not <code>main...HEAD</code> — local <code>main</code> was far stale relative to this branch.</li>
+</ul>
+
+<h2>Open questions for the author</h2>
+<ul>
+  <li>Is the <code>max_reviewer_count</code> gap (see above) intentional/out of scope for this PR, or should it be tightened here since the accounting is already being revisited?</li>
+  <li>Would you be open to moving the <code>existingEligible</code>/<code>neededReviewers</code>/required-reviewers orchestration into <code>pkg/reviewer.GetReviewers</code> itself, to avoid the blunderbuss/rifle duplication (and the dedup inconsistency it introduces)?</li>
+</ul>
+
+</body>
+</html>

@@ -4,9 +4,16 @@ title: "tide fails to merge stacked PRs that use github's new stacked PR system"
 state: open
 labels:
 main_sha: 88f56c0e89c868ec4e6bf0305fe23c7efa984ae7
-triaged_at: 2026-08-31T18:04:33Z
+triaged_at: 2026-09-01T15:18:31Z
 verdict: accepted
+refresh_log:
+  - previous_triaged_at: 2026-08-31T18:04:33Z
+    summary: "Reporter comment confirms that GitHub's stacked-PR API merges the stack rather than one selected PR."
 ---
+
+## What the issue reports
+Since previous triage:
+- `dobesv` commented on 2026-08-31T19:37:47Z that GitHub does not permit merging an individual stacked PR; it merges the stack. This confirms the reported async whole-stack behavior.
 
 ## Findings
 
@@ -50,6 +57,10 @@ verdict: accepted
 - where: `pkg/tide/tide_test.go:933` (`TestDividePool`), `pkg/tide/tide_test.go:2689` (`TestFilterSubpool`), `pkg/tide/github_test.go:182` (`TestPrepareMergeDetails`)
 - excerpt: |
     Natural homes for stack-grouping regression tests. None of the existing merge tests assert on the sequence/count of `Merge()` calls for a subpool — that coverage would need to be added for any multi-PR-per-call semantics.
+
+### [confirmation] Reporter confirms whole-stack merge semantics
+- detail: On 2026-08-31T19:37:47Z, issue author `dobesv` noted that they had expected Tide to merge only the PR targeting the configured branch, but GitHub's API instead does not allow merging a single member of the stack. This confirms, rather than changes, the existing finding that Tide needs stack-level merge semantics.
+- evidence: `dobesv` comment, kubernetes-sigs/prow#912#issuecomment-5483512075.
 
 ## Checked
 - Repo-wide grep for `stacked`, `merge-async`, `merge_async`, `MergeAsync`, `MergeQueue` — no existing scaffolding.

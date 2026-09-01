@@ -104,7 +104,7 @@
     <dt>State</dt><dd>open</dd>
     <dt>Labels</dt><dd>(none)</dd>
     <dt>Main SHA</dt><dd><code>88f56c0e89c868ec4e6bf0305fe23c7efa984ae7</code></dd>
-    <dt>Triaged at</dt><dd>2026-08-31T18:04:33Z</dd>
+    <dt>Triaged at</dt><dd>2026-09-01T15:18:31Z</dd>
     <dt>Verdict</dt><dd><strong>accepted</strong></dd>
   </dl>
 </header>
@@ -120,6 +120,10 @@
   <li>GitHub returns: "Merging stacked PRs via this endpoint is not supported. Use the asynchronous merge endpoint instead."</li>
   <li>A maintainer (Prucek) commented that this isn't a simple API swap: Tide's PR discovery, subpool grouping, and merge call all assume non-stacked, independent PRs.</li>
   <li>No design work has started; the maintainer stated a design doc is needed before implementation.</li>
+</ul>
+<p>Since previous triage:</p>
+<ul>
+  <li>On 2026-08-31T19:37:47Z, reporter <a href="https://github.com/dobesv">dobesv</a> confirmed that GitHub does not permit merging an individual stacked PR; it merges the stack. This confirms the reported async whole-stack behavior.</li>
 </ul>
 
 <h2>Analysis</h2>
@@ -195,6 +199,11 @@ func (c *syncController) dividePool(pool map[string]CodeReviewCommon) (map[strin
 <div class="finding">
   <span class="tag related-code">related-code</span> Test extension points
   <p><code>pkg/tide/tide_test.go:933</code> (<code>TestDividePool</code>), <code>:2689</code> (<code>TestFilterSubpool</code>), <code>pkg/tide/github_test.go:182</code> (<code>TestPrepareMergeDetails</code>). None of the existing merge tests assert on the sequence/count of <code>Merge()</code> calls for a subpool.</p>
+</div>
+
+<div class="finding">
+  <span class="tag related-issue">confirmation</span> Reporter confirms whole-stack merge semantics
+  <p>On 2026-08-31T19:37:47Z, issue author <a href="https://github.com/dobesv">dobesv</a> said they expected Tide to merge only the PR targeting the configured branch, but GitHub's API does not allow merging a single stack member. This confirms, rather than changes, the existing finding that Tide needs stack-level merge semantics. <a href="https://github.com/kubernetes-sigs/prow/issues/912#issuecomment-5483512075">Comment</a>.</p>
 </div>
 
 <h2>What I checked</h2>

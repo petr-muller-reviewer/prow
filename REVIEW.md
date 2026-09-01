@@ -3,28 +3,27 @@ pr: kubernetes-sigs/prow#863
 title: "announcement: notify addition of new /test-manual-required trigger command"
 head_sha: 9ac7939fce9413c1548d0c1075e1f0d1ef28a18c
 base: main
-reviewed_at: 2026-08-20T13:18:49Z
-verdict: approve
+reviewed_at: 2026-09-01T11:18:38Z
+verdict: request-changes
 ---
 
 ## What it does
-- Adds a 3-line entry to `site/content/en/docs/announcements.md` announcing the `/test-manual-required` trigger-plugin command.
-- Placed newest-first, above the August 11 entry, matching the file's existing ordering convention.
+- Adds an announcement for the `/test-manual-required` command in the `trigger` plugin.
+- Places the August 20, 2026 entry before the older announcements.
+- Describes which required presubmit jobs the command starts and which it excludes.
 
 ## Findings
 
-### [question] "manual_trigger: required" not a literal config field
+### [should-fix] Replace the nonexistent `manual_trigger` configuration with the real selection criteria
 - where: `site/content/en/docs/announcements.md:12-14`
-- concern: The phrase "with `manual_trigger: required`" reads like a literal plugins.yaml/presubmit field, but the actual behavior in `pkg/pjutil/filter.go` (`TestManualRequiredFilter.ShouldRun`) derives from `NeedsExplicitTrigger()`/`AlwaysRun`/`RunIfChanged`, not a field with that name. Likely just loose phrasing describing a concept, not a factual error worth blocking on.
+- concern: `manual_trigger: required` is not a Prow configuration field, so the announcement may cause users to add invalid configuration or misunderstand how to opt a job into this command. The implementation selects required (`optional: false`) presubmits for which `NeedsExplicitTrigger()` is true — `always_run: false` (or omitted) with neither `run_if_changed` nor `skip_if_only_changed`. Describe those conditions in prose, or refer to the existing trigger-plugin documentation.
 - excerpt: |
-    - *August 20, 2026* New `/test-manual-required` command in the `trigger` plugin. Triggers all
-        required presubmits with `manual_trigger: required` that have no file-change conditions.
-        Optional, automatically-triggered, and file-change-conditional jobs are excluded.
+    required presubmits with `manual_trigger: required` that have no file-change conditions.
 
 ## Checked
-- Newest-first ordering of announcements is preserved.
-- Description matches actual filter logic in `pkg/pjutil/filter.go` (`TestManualRequiredFilter.ShouldRun`).
-- No code changes in this PR; doc-only.
+- The announcement remains newest-first.
+- `pkg/pjutil/filter.go:275-279` and its tests select required manually triggered jobs without change conditions, as the announcement otherwise states.
+- This PR changes documentation only; no runtime or test changes are needed.
 
 ## Open questions
-- Is "manual_trigger: required" meant as a literal config key/value, or just descriptive prose? If literal, it doesn't match current config field names.
+- None.

@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Review of kubernetes-sigs/prow#902</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; line-height: 1.6; max-width: 860px; margin: 2rem auto; padding: 0 1rem; color: #1a1a1a; }
+  code, pre { font-family: "SF Mono", Consolas, Monaco, monospace; background: #f4f4f4; padding: 0.1em 0.35em; border-radius: 3px; }
+  pre { padding: 0.75em; overflow-x: auto; }
+  h1, h2, h3 { line-height: 1.3; }
+  header { border-bottom: 1px solid #ddd; padding-bottom: 1rem; margin-bottom: 1.5rem; }
+  .verdict { font-weight: 600; padding: 0.5rem 0.75rem; border-radius: 4px; background: #e6f4ea; color: #1e7b34; display: inline-block; }
+  .meta { color: #666; font-size: 0.9em; }
+  ul { padding-left: 1.4em; }
+  .section { margin-top: 2rem; }
+</style>
+</head>
+<body>
+
+<header>
+<h1>Review of <a href="https://github.com/kubernetes-sigs/prow/pull/902">kubernetes-sigs/prow#902</a></h1>
+<div class="meta">
+  chore(deps): bump github.com/google/ko from 0.18.1 to 0.19.1 in /hack/tools<br>
+  head_sha: <code>00ca0969b4245e14b873439e4c8cb4513542b8cb</code> · base: <code>main</code><br>
+  reviewed_at: 2026-09-01T00:01:19Z
+</div>
+</header>
+
+<div class="section">
+<h2>Verdict</h2>
+<p><span class="verdict">Approve</span></p>
+<p>Dep-only bump of a build-time-only tool (<code>google/ko</code>, used in the separate <code>hack/tools</code> module) to a release that's had two months of soak time, with no CVEs and only minor bug fixes in the changelog. No project code changed.</p>
+</div>
+
+<div class="section">
+<h2>What this PR does</h2>
+<ul>
+<li>Dependabot bump of <code>github.com/google/ko</code> <code>v0.18.1 → v0.19.1</code> in the separate <code>hack/tools</code> go module (build tooling, not the shipped Prow binaries).</li>
+<li>Only <code>hack/tools/go.mod</code> and <code>hack/tools/go.sum</code> change; no project source touched. Dep-only PR.</li>
+<li>Drags a large sweep of transitive/indirect version bumps in <code>ko</code>'s own dependency graph (cosign v2→v3, docker/moby, sigstore family, go-openapi, otel, etc.) — normal <code>go mod tidy</code> churn from the direct bump, nothing independently notable.</li>
+<li><code>ko</code> is used as a blank import in <code>hack/tools/tools.go:43</code> and built as a standalone binary by <code>hack/tools/prowimagebuilder/main.go:74</code> (<code>go build -o _bin/ko github.com/google/ko</code>), used only in the image-build pipeline.</li>
+</ul>
+</div>
+
+<div class="section">
+<h2>Dependency analysis</h2>
+<ul>
+<li><strong>Freshness</strong>: <code>v0.19.1</code> released 2026-06-29 (proxy.golang.org / GitHub release). ~2 months old at review time — fine, well past soak time.</li>
+<li><strong>Usage</strong>: direct dependency of <code>hack/tools</code> only, a separate go.mod for build tooling. Not linked into any Prow runtime component. Exposure limited to the image-build pipeline (CI/release tooling), not a sensitive runtime path.</li>
+<li><strong>Changelog (v0.18.1 → v0.19.1)</strong>: v0.19.0 added a repeatable <code>--ldflags</code> flag, fixed <code>defaultFlags</code> in <code>.ko.yaml</code> being silently ignored, and fixed missing directory headers in kodata tar archives (some strict tar implementations failed extraction) — plus routine dep bumps. v0.19.1 added one fix: skip YAML encoding when a selector filters out all documents. No CVEs/security advisories in range.</li>
+<li><strong>Exposure verdict</strong>: light. Build-time tool only, no change to how we invoke it.</li>
+<li><strong>Take</strong>: safe to take, already merged with no reported issues.</li>
+</ul>
+</div>
+
+<div class="section">
+<h2>Findings</h2>
+<p>None.</p>
+</div>
+
+<div class="section">
+<h2>Things I checked and was fine with</h2>
+<ul>
+<li>Confirmed no project source files (only <code>hack/tools/go.mod</code>/<code>go.sum</code>) changed between base <code>995ff1ae3</code> and head <code>00ca0969b</code>.</li>
+<li>Confirmed <code>ko</code> import surface: <code>hack/tools/tools.go:43</code> (blank import) and <code>hack/tools/prowimagebuilder/main.go:74</code> (built as <code>_bin/ko</code>).</li>
+<li>Confirmed release age and changelog contents for v0.19.0/v0.19.1 via GitHub releases and commit compare.</li>
+</ul>
+</div>
+
+<div class="section">
+<h2>Open questions for the author</h2>
+<p>None.</p>
+</div>
+
+</body>
+</html>

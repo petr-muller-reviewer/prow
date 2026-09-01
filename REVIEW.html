@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Review of kubernetes-sigs/prow#908</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; line-height: 1.55; color: #1a1a1a; max-width: 900px; margin: 2rem auto; padding: 0 1.5rem; }
+  code, pre { font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 0.9em; }
+  pre { background: #f5f5f5; border: 1px solid #ddd; border-radius: 6px; padding: 0.8rem 1rem; overflow-x: auto; }
+  code { background: #f0f0f0; padding: 0.1em 0.35em; border-radius: 4px; }
+  h1 { font-size: 1.4rem; }
+  h2 { font-size: 1.15rem; border-bottom: 1px solid #ddd; padding-bottom: 0.3rem; margin-top: 2.2rem; }
+  h3 { font-size: 1rem; margin-bottom: 0.3rem; }
+  .meta { color: #555; font-size: 0.92rem; }
+  .verdict { font-weight: 600; }
+  .badge { display: inline-block; padding: 0.1em 0.6em; border-radius: 4px; font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; margin-right: 0.5em; }
+  .blocking { background: #fde2e1; color: #8a1f1f; }
+  .should-fix { background: #fff3cd; color: #7a5b00; }
+  .nit { background: #e6f0ff; color: #234b8a; }
+  .question { background: #eee; color: #444; }
+  .finding { margin-bottom: 1.6rem; }
+  .where { font-size: 0.85rem; color: #555; margin-bottom: 0.4rem; }
+  ul { padding-left: 1.3rem; }
+</style>
+</head>
+<body>
+
+<h1>Review of <a href="https://github.com/kubernetes-sigs/prow/pull/908">kubernetes-sigs/prow#908</a></h1>
+<p class="meta">
+  <strong>Title:</strong> <code>override</code>: abort in-flight jobs so they cannot clobber <code>/override</code> or <code>/override-sticky</code><br>
+  <strong>Base:</strong> main &nbsp;|&nbsp; <strong>Head SHA:</strong> <code>a3936e14f4cde303f9d6faea039c6345097a3c2b</code><br>
+  <strong>Reviewed at:</strong> 2026-08-31T16:04:33Z
+</p>
+
+<h2>Verdict</h2>
+<p class="verdict">Request changes.</p>
+<p>The abort-in-flight-jobs protection is real and correctly implemented for commit-status-reported contexts, but it is not wired into the Checks-API (App-auth) override path, so the exact clobbering bug this PR describes fixing can still happen for GitHub Apps-backed repos. That gap should be closed or explicitly scoped out before merge.</p>
+
+<h2>What this PR does</h2>
+<ul>
+  <li>Adds <code>abortActiveJob</code> (and helper <code>prowJobSelectorForPR</code>) in <code>pkg/plugins/override/override.go</code>, which lists ProwJobs for a PR by org/repo/pull/type label selector, filters by job name, and sets <code>AbortedState</code> on any that aren't yet complete.</li>
+  <li>Wires <code>abortActiveJob</code> into the commit-status override loop (<code>handleOverride</code>), called right after the override's synthetic success <code>ProwJob</code> is created for a context, so a still-running real job for that context can't later have crier report its actual result over the override.</li>
+  <li>Leaves <code>AbortedState</code> set but does not call <code>SetComplete</code>, deliberately, so Plank/Jenkins still owns tearing down the running pod/build and completing the job.</li>
+  <li>No changes to the Checks-API (App-auth) branch of <code>handleOverride</code>, which creates <code>CheckRun</code>s for <code>checkrunContexts</code> independently of the <code>statuses</code>/<code>abortActiveJob</code> loop.</li>
+</ul>
+
+<h2>Findings</h2>
+
+<div class="finding">
+  <span class="badge blocking">Blocking</span><h3>Checks-API override path never aborts in-flight jobs</h3>
+  <div class="where"><code>pkg/plugins/override/override.go:632-658</code></div>
+  <p>The new abort protection is only invoked from the commit-status loop (<code>abortActiveJob</code> call at line 623). The separate <code>if oc.UsesAppAuth()</code> block that follows marks checkrun contexts as successful via <code>oc.CreateCheckRun</code> but never creates a ProwJob or calls <code>abortActiveJob</code> for them. For a repo where <code>oc.UsesAppAuth()</code> is true, <code>/override</code>ing a checkrun-backed context whose presubmit is still running leaves that ProwJob running; when it completes, crier reports its real result via the Checks API and overwrites the override's success checkrun &mdash; the exact clobbering bug this PR's commit message says it fixes, just left unfixed for App-auth repos.</p>
+  <pre>if oc.UsesAppAuth() {
+	for _, checkrun := range checkrunContexts {
+		if overrides.Has(checkrun.Context) {
+			prowOverrideCR := github.CheckRun{
+				Name:       checkrun.Context,
+				...
+			}
+			if _, err := oc.CreateCheckRun(org, repo, prowOverrideCR); err != nil {
+				...
+			}
+			done.Insert(checkrun.Context)
+		}
+	}
+}</pre>
+</div>
+
+<div class="finding">
+  <span class="badge should-fix">Should fix</span><h3>Duplicates existing job-abort helper from the trigger package</h3>
+  <div class="where"><code>pkg/plugins/override/override.go:174-186</code></div>
+  <p><code>prowJobSelectorForPR</code> + <code>abortActiveJob</code> reimplement the same org/repo/pull/type selector and List+Complete()-check+Update+IsConflict-swallow pattern as <code>labelSelectorForPR</code> + <code>abortAllJobs</code> in <code>pkg/plugins/trigger/pull-request.go</code>. Two near-identical implementations now have to be kept in sync; a future change to selector construction or conflict handling risks drifting between the two packages.</p>
+  <pre>func prowJobSelectorForPR(org, repo string, number int) (klabels.Selector, error) {
+	set := klabels.Set{
+		kube.OrgLabel:         org,
+		kube.RepoLabel:        repo,
+		kube.PullLabel:        strconv.Itoa(number),
+		kube.ProwJobTypeLabel: string(prowapi.PresubmitJob),
+	}
+	...
+}</pre>
+</div>
+
+<div class="finding">
+  <span class="badge nit">Nit</span><h3>Redundant <code>List()</code> per overridden context</h3>
+  <div class="where"><code>pkg/plugins/override/override.go:623</code></div>
+  <p><code>abortActiveJob</code> issues a fresh <code>List()</code> call (plus one <code>Update()</code> per matching job) on every loop iteration, i.e. once per overridden context, instead of listing the PR's presubmit ProwJobs once per invocation and filtering by job name in memory. Overriding several contexts on the same PR multiplies API calls proportionally to the number of contexts for no functional benefit.</p>
+  <pre>contextsWithCreatedJobs.Insert(status.Context)
+abortActiveJob(oc, log, org, repo, number, pre.Name)</pre>
+</div>
+
+<h2>Things I checked and was fine with</h2>
+<ul>
+  <li><code>abortActiveJob</code> correctly skips completed jobs (<code>pj.Complete()</code> check) and swallows <code>IsConflict</code> errors from concurrent updates without failing the override.</li>
+  <li>The comment explaining why <code>SetComplete</code> is deliberately not called (leaves teardown to Plank/Jenkins) is accurate against the implementation.</li>
+  <li>The commit-status loop's placement of <code>abortActiveJob</code> (only after a new override ProwJob was successfully created, via <code>contextsWithCreatedJobs</code>) avoids aborting jobs when no override job exists yet.</li>
+</ul>
+
+<h2>Open questions for the author</h2>
+<ul>
+  <li>Is the omission of <code>abortActiveJob</code> from the <code>UsesAppAuth()</code>/checkrun branch intentional (e.g. Checks-API repos handle in-flight jobs differently elsewhere) or an oversight? If checkrun-backed repos are in scope for this fix, that branch needs the same treatment.</li>
+  <li>Given the duplication with <code>pkg/plugins/trigger/pull-request.go</code>'s <code>abortAllJobs</code>/<code>labelSelectorForPR</code>, would extracting a shared helper be worth doing now rather than after a second consumer appears?</li>
+</ul>
+
+</body>
+</html>

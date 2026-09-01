@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Triage: prow#912</title>
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+    color: #1a1a1a;
+    background: #fff;
+    margin: 0;
+    padding: 2rem 1rem;
+  }
+  main {
+    max-width: 860px;
+    margin: 0 auto;
+  }
+  code, pre {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.92em;
+  }
+  pre {
+    background: #f5f5f7;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    padding: 0.8rem 1rem;
+    overflow-x: auto;
+  }
+  code {
+    background: #f0f0f2;
+    padding: 0.1em 0.35em;
+    border-radius: 3px;
+  }
+  pre code {
+    background: none;
+    padding: 0;
+  }
+  header {
+    border-bottom: 2px solid #222;
+    padding-bottom: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  header dl {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 0.25rem 1rem;
+    margin: 0.5rem 0;
+  }
+  header dt { font-weight: 600; color: #555; }
+  header dd { margin: 0; }
+  .verdict {
+    background: #eef7ee;
+    border-left: 4px solid #2e7d32;
+    padding: 0.75rem 1rem;
+    border-radius: 4px;
+    margin-bottom: 2rem;
+  }
+  .verdict .headline {
+    font-weight: 700;
+    font-size: 1.1rem;
+  }
+  h2 {
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 0.3rem;
+    margin-top: 2.5rem;
+  }
+  h3 { margin-top: 1.5rem; }
+  .finding {
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    padding: 0.9rem 1.1rem;
+    margin-bottom: 1rem;
+  }
+  .tag {
+    display: inline-block;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding: 0.15em 0.5em;
+    border-radius: 4px;
+    margin-right: 0.5rem;
+    color: #fff;
+    background: #555;
+  }
+  .tag.reproducibility { background: #6a4fbf; }
+  .tag.cause { background: #b3541e; }
+  .tag.related-code { background: #1565c0; }
+  .tag.related-issue { background: #2e7d32; }
+  .tag.related-pr { background: #00796b; }
+  ul { padding-left: 1.4rem; }
+  a { color: #1565c0; }
+</style>
+</head>
+<body>
+<main>
+
+<header>
+  <h1>Triage: kubernetes-sigs/prow#912</h1>
+  <dl>
+    <dt>Title</dt><dd>tide fails to merge stacked PRs that use github's new stacked PR system</dd>
+    <dt>Issue</dt><dd><a href="https://github.com/kubernetes-sigs/prow/issues/912">kubernetes-sigs/prow#912</a></dd>
+    <dt>State</dt><dd>open</dd>
+    <dt>Labels</dt><dd>(none)</dd>
+    <dt>Main SHA</dt><dd><code>88f56c0e89c868ec4e6bf0305fe23c7efa984ae7</code></dd>
+    <dt>Triaged at</dt><dd>2026-08-31T18:04:33Z</dd>
+    <dt>Verdict</dt><dd><strong>accepted</strong></dd>
+  </dl>
+</header>
+
+<div class="verdict">
+  <div class="headline">Bottom line: accepted — legitimate, large (Level 3) architectural gap in Tide.</div>
+  <p>Tide has no concept of a GitHub "stacked PR" as a unit: its search-based discovery, its per-branch subpool partitioning, and its one-call-per-PR synchronous merge logic all independently break when applied to stacked PRs. The maintainer's own comment already scopes the three root causes correctly. This needs a design doc before implementation — not a quick patch.</p>
+</div>
+
+<h2>What the issue reports</h2>
+<ul>
+  <li>Tide fails to merge a PR that is part of GitHub's newer "stacked PR" feature.</li>
+  <li>GitHub returns: "Merging stacked PRs via this endpoint is not supported. Use the asynchronous merge endpoint instead."</li>
+  <li>A maintainer (Prucek) commented that this isn't a simple API swap: Tide's PR discovery, subpool grouping, and merge call all assume non-stacked, independent PRs.</li>
+  <li>No design work has started; the maintainer stated a design doc is needed before implementation.</li>
+</ul>
+
+<h2>Analysis</h2>
+
+<h3>Reproducibility / observed behavior</h3>
+<p>Any attempt by Tide to merge a PR belonging to a GitHub stacked-PR chain hits the classic merge endpoint's new rejection. No special repro steps beyond having a stacked PR in a Tide-managed repo and letting Tide reach merge time for it.</p>
+
+<h3>Probable cause</h3>
+<p>Tide's data model assumes every PR is independent, identified by a single <code>(org, repo, base-branch)</code> tuple, and mergeable via one synchronous API call. GitHub's stacked-PR feature breaks all three assumptions simultaneously:</p>
+<ul>
+  <li><strong>Discovery</strong>: the GitHub search query is built from <code>IncludedBranches</code>/<code>ExcludedBranches</code>, emitted as <code>base:"&lt;branch&gt;"</code> qualifiers. Only the bottom PR of a stack has <code>base == main</code>/<code>master</code>; PRs above it target synthetic intermediate branches the query never matches &mdash; they are invisible to Tide, not just mis-pooled.</li>
+  <li><strong>Pooling</strong>: PRs are grouped into subpools keyed by <code>org/repo:branch</code>. Even if discovered, each stack member would land in a different subpool (different base branch), so status/blocker/merge logic &mdash; which runs independently per subpool &mdash; can never treat a stack as one unit.</li>
+  <li><strong>Merge semantics</strong>: Tide's merge loop assumes one API call resolves exactly one PR, synchronously. GitHub's async merge endpoint for stacked PRs merges the whole stack up to the given PR in one call and requires polling a job UUID &mdash; a different call/response shape Tide has no support for.</li>
+</ul>
+
+<h3>Related code</h3>
+
+<div class="finding">
+  <span class="tag cause">cause</span> Discovery query construction
+  <p><code>pkg/config/tide.go:596-644</code> (<code>TideQuery.constructQuery</code>), <code>pkg/config/tide.go:657</code> (<code>OrgQueries</code>)</p>
+  <pre><code>for _, b := range tq.ExcludedBranches {
+    queryString = append(queryString, fmt.Sprintf("-base:\"%s\"", b))
+}
+for _, b := range tq.IncludedBranches {
+    queryString = append(queryString, fmt.Sprintf("base:\"%s\"", b))
+}</code></pre>
+</div>
+
+<div class="finding">
+  <span class="tag cause">cause</span> Subpool keying/partitioning
+  <p><code>pkg/tide/tide.go:1902-1920</code> (<code>subpool</code> struct), <code>:1934-1936</code> (<code>poolKey</code>), <code>:1940-1967</code> (<code>dividePool</code>)</p>
+  <pre><code>func poolKey(org, repo, branch string) string {
+    return fmt.Sprintf("%s/%s:%s", org, repo, branch)
+}
+
+func (c *syncController) dividePool(pool map[string]CodeReviewCommon) (map[string]*subpool, error) {
+    sps := make(map[string]*subpool)
+    for _, pr := range pool {
+        org := pr.Org
+        repo := pr.Repo
+        branch := pr.BaseRefName
+        ...
+        fn := poolKey(org, repo, branch)
+        ...
+        sps[fn].prs = append(sps[fn].prs, pr)
+    }
+    ...
+}</code></pre>
+</div>
+
+<div class="finding">
+  <span class="tag cause">cause</span> Synchronous per-PR merge loop
+  <p><code>pkg/tide/github.go:243-297</code> (<code>GitHubProvider.mergePRs</code>), <code>pkg/github/client.go:4236-4247</code> (<code>client.Merge</code>)</p>
+  <pre><code>for i, pr := range prs {
+    ...
+    keepTrying, err := tryMerge(func() error {
+        ghMergeDetails := gi.prepareMergeDetails(commitTemplates, pr, *mergeMethod)
+        return gi.ghc.Merge(sp.org, sp.repo, pr.Number, ghMergeDetails)
+    })
+    ...
+    if err == nil && i+1 < len(prs) {
+        sleep(time.Second * 5)
+    }
+}</code></pre>
+  <p><code>client.Merge</code> issues a single synchronous <code>PUT /repos/{org}/{repo}/pulls/{pr}/merge</code>; no async/job-polling variant exists anywhere in <code>pkg/github</code>.</p>
+</div>
+
+<div class="finding">
+  <span class="tag related-code">related-code</span> No existing stack-awareness
+  <p>Repo-wide search (excluding vendor) for <code>stacked</code>, <code>merge-async</code>, <code>merge_async</code>, <code>MergeAsync</code>, <code>MergeQueue</code> found nothing relevant &mdash; one unrelated comment in <code>pkg/statusreconciler/doc.go:18</code> about GitHub's older native merge-queue feature. This is a greenfield gap.</p>
+</div>
+
+<div class="finding">
+  <span class="tag related-code">related-code</span> Test extension points
+  <p><code>pkg/tide/tide_test.go:933</code> (<code>TestDividePool</code>), <code>:2689</code> (<code>TestFilterSubpool</code>), <code>pkg/tide/github_test.go:182</code> (<code>TestPrepareMergeDetails</code>). None of the existing merge tests assert on the sequence/count of <code>Merge()</code> calls for a subpool.</p>
+</div>
+
+<h2>What I checked</h2>
+<ul>
+  <li>Repo-wide grep for <code>stacked</code>, <code>merge-async</code>, <code>merge_async</code>, <code>MergeAsync</code>, <code>MergeQueue</code> &mdash; no existing scaffolding.</li>
+  <li>Confirmed Tide (<code>pkg/tide/</code>, <code>cmd/tide/</code>) is in-scope for this repository.</li>
+  <li>Read the maintainer's (Prucek) scoping comment on the issue, which independently confirms the same three root causes above.</li>
+</ul>
+
+<h2>Recommended next steps</h2>
+<ul>
+  <li>Confirm ownership of a design doc covering discovery, pooling, and async-merge semantics before any implementation starts &mdash; the maintainer explicitly requested this.</li>
+  <li>Verify stability/maturity of GitHub's stacked-PR async merge API before committing to a design.</li>
+  <li>If incremental progress is wanted, scope a narrower stopgap separately (swap in the async merge endpoint only for detected stack members, without fixing discovery/pooling) and label it explicitly as partial.</li>
+  <li>Apply labels <code>area/tide</code>, <code>kind/feature</code>; hold off on <code>good-first-issue</code>/<code>help-wanted</code> until a design exists.</li>
+</ul>
+
+<h2>Open questions</h2>
+<ul>
+  <li>Does GitHub's stacked-PR async merge API have documented stability/versioning guarantees suitable to build against?</li>
+  <li>Should stack-awareness be opt-in per org/repo via config, or auto-detected?</li>
+  <li>Is a design doc already in progress, or does one need to be initiated from scratch?</li>
+</ul>
+
+</main>
+</body>
+</html>

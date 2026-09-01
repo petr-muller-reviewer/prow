@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Triage: kubernetes-sigs/prow#910</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+         line-height: 1.55; color: #1a1a1a; max-width: 860px; margin: 2rem auto; padding: 0 1.5rem; }
+  code, pre { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; }
+  pre { background: #f5f5f5; border: 1px solid #ddd; border-radius: 6px; padding: 0.8rem 1rem; overflow-x: auto; font-size: 0.88rem; }
+  code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 4px; font-size: 0.9em; }
+  h1, h2, h3 { line-height: 1.25; }
+  h1 { font-size: 1.5rem; }
+  h2 { font-size: 1.2rem; border-bottom: 1px solid #ddd; padding-bottom: 0.3rem; margin-top: 2.2rem; }
+  h3 { font-size: 1.02rem; margin-bottom: 0.3rem; }
+  .meta { background: #f8f8f8; border: 1px solid #e0e0e0; border-radius: 8px; padding: 1rem 1.3rem; font-size: 0.92rem; }
+  .meta dl { display: grid; grid-template-columns: max-content 1fr; gap: 0.25rem 1rem; margin: 0; }
+  .meta dt { font-weight: 600; color: #555; }
+  .meta dd { margin: 0; }
+  .verdict { font-size: 1.1rem; font-weight: 600; padding: 0.8rem 1rem; border-radius: 8px; background: #e7f5ec; border: 1px solid #b7e3c6; }
+  .tag { display: inline-block; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em;
+         padding: 0.1rem 0.5rem; border-radius: 4px; background: #eee; color: #444; margin-right: 0.5rem; }
+  .tag.cause { background: #fde2e2; color: #9a2b2b; }
+  .tag.reproducibility { background: #e2ecfd; color: #2b4f9a; }
+  .tag.related-code { background: #eee3fd; color: #5b2b9a; }
+  .tag.related-pr { background: #fdf3e2; color: #9a6c2b; }
+  ul { padding-left: 1.3rem; }
+  a { color: #1a56db; }
+  .qbox { background: #fffbea; border: 1px solid #f0e2a3; border-radius: 6px; padding: 0.6rem 1rem; margin-bottom: 0.6rem; }
+</style>
+</head>
+<body>
+
+<h1>Triage: kubernetes-sigs/prow#910</h1>
+
+<div class="meta">
+<dl>
+  <dt>Issue</dt><dd><a href="https://github.com/kubernetes-sigs/prow/issues/910">kubernetes-sigs/prow#910</a></dd>
+  <dt>Title</dt><dd>mistakenly failed to remove <code>approved</code> after requirements changed</dd>
+  <dt>State</dt><dd>open</dd>
+  <dt>Labels</dt><dd><em>(none)</em></dd>
+  <dt>Triaged at</dt><dd>2026-09-01T00:28:53Z</dd>
+  <dt>Main SHA</dt><dd><code>5765df26189ddc41cb9c975e89d613f6c26282ef</code></dd>
+  <dt>Verdict</dt><dd>accepted</dd>
+</dl>
+</div>
+
+<h2>Verdict</h2>
+<div class="verdict">Accepted — legitimate correctness bug in the <code>approve</code> plugin.</div>
+<p>The reporter (a Kubernetes approver) demonstrated, with an exact reproduction on an external PR, that the <code>approve</code> plugin's "manually added approval" bypass keeps the <code>approved</code> label in place even after a PR's file set changes to one the original approver has no OWNERS authority over. This is a real gap in <code>ManuallyApproved()</code>'s logic, not a misconfiguration or misunderstanding — it's actionable without further reproduction work, though the exact failure mode (bot misidentification vs. under-scoped override) needs one more piece of evidence before a fix is written.</p>
+
+<h2>What the issue reports</h2>
+<ul>
+  <li>A KEP PR (<a href="https://github.com/kubernetes/enhancements/pull/5923">kubernetes/enhancements#5923</a>) was opened under <code>keps/sig-network/</code>; the author is a sig-network approver, so self-approval correctly satisfied requirements and the bot added <code>approved</code>.</li>
+  <li>The PR was later repushed with the KEP moved to <code>keps/sig-architecture/</code>, where the author is <em>not</em> an approver.</li>
+  <li>The bot's re-evaluation should have removed the <code>approved</code> label, but instead the notifier comment read "Approval requirements bypassed by manually added approval" and the label stayed.</li>
+  <li>The reporter correctly identifies this as wrong: their sig-network approval authority has no bearing on a PR now scoped to sig-architecture.</li>
+</ul>
+
+<h2>Analysis</h2>
+
+<h3>Reproducibility / observed behavior</h3>
+<p>Not independently reproduced in this repo (the bug manifests against <code>kubernetes/enhancements</code>, a downstream consumer of this plugin), but the linked PR comment is unambiguous evidence: <code>kubernetes/enhancements#5923#issuecomment-5453924514</code> shows both "Author self-approved" attribution <em>and</em> the "bypassed by manually added approval" branch of the notifier template rendering simultaneously — meaning <code>RequirementsMet()</code> was false (correctly, post file-set change) while <code>ManuallyApproved()</code> was true (incorrectly, or at least unexpectedly to the reporter).</p>
+
+<h3>Probable cause</h3>
+<p><code>Approvers.IsApproved()</code> is defined as:</p>
+<pre>func (ap Approvers) IsApproved() bool {
+	return ap.RequirementsMet() || ap.ManuallyApproved()
+}</pre>
+<p><code>RequirementsMet()</code> / <code>AreFilesApproved()</code> correctly recompute against the PR's <em>current</em> file set on every <code>handle()</code> run — self-approval is properly OWNERS-scoped (verified by reading <code>UnapprovedFiles</code>), so it did flip to <code>false</code> once the KEP moved directories. The problem is <code>ManuallyApproved()</code>: it's computed once and cached per <code>handle()</code> call, and its only signal is "was the actor of the most recent <code>labeled</code> GitHub event for the <code>approved</code> label non-bot?" That check has no correlation to <em>which file set</em> was active when that event fired, and no expiry when later pushes change the file set entirely — so once true, it silently masks correct, freshly-computed <code>false</code> results indefinitely.</p>
+<p>Two candidate explanations, not yet disambiguated:</p>
+<ul>
+  <li><strong>(a) Bot-identity misdetection</strong> — <code>WasLabelAddedByHuman</code>/<code>BotUserChecker</code> may not correctly recognize the actual bot/GitHub App identity acting on <code>kubernetes/enhancements</code>, making a genuinely-automated label add look human. Narrow fix if true.</li>
+  <li><strong>(b) Under-scoped intentional override</strong> — a human really did force the label once (a documented, intentional design feature — see doc comment below), but the override has no bound tied to the file set it was granted for. Broader design fix if true.</li>
+</ul>
+<p>Disambiguating requires the actual GitHub issue-events timeline for <code>kubernetes/enhancements#5923</code>, not available during this triage pass.</p>
+
+<h3>Related code</h3>
+
+<p><code>pkg/plugins/approve/approvers/owners.go:556-563</code> — <code>RequirementsMet</code>/<code>IsApproved</code>, and the doc comment stating the override is by-design permanent:</p>
+<pre>// IsApproved returns a bool indicating whether the PR is fully approved.
+// If a human manually added the approved label, this returns true, ignoring normal approval rules.
+func (ap Approvers) IsApproved() bool {
+	return ap.RequirementsMet() || ap.ManuallyApproved()
+}</pre>
+
+<p><code>pkg/plugins/approve/approve.go:508-527</code> — <code>humanAddedApproved</code>, the per-<code>handle()</code> cached wrapper:</p>
+<pre>func humanAddedApproved(ghc githubClient, log *logrus.Entry, org, repo string, number int, hasLabel bool) func() bool {
+	findOut := func() bool {
+		if !hasLabel {
+			return false
+		}
+		humanApproved, err := ghc.WasLabelAddedByHuman(org, repo, number, labels.Approved)
+		...
+		return humanApproved
+	}
+	var cache *bool
+	return func() bool {
+		if cache == nil {
+			val := findOut()
+			cache = &val
+		}
+		return *cache
+	}
+}</pre>
+
+<p><code>pkg/plugins/approve/approve.go:490-505</code> — where the <code>IsApproved()</code> result drives the actual label add/remove:</p>
+<pre>if !approversHandler.IsApproved() {
+	if hasApprovedLabel {
+		ghc.RemoveLabel(pr.org, pr.repo, pr.number, labels.Approved)
+	}
+} else if !hasApprovedLabel {
+	ghc.AddLabel(pr.org, pr.repo, pr.number, labels.Approved)
+}</pre>
+
+<p><code>pkg/github/client.go:3157-3176</code> — <code>WasLabelAddedByHuman</code>, the actor-vs-bot check with no time/file-set correlation:</p>
+<pre>func (c *client) WasLabelAddedByHuman(org, repo string, number int, label string) (bool, error) {
+	isBot, err := c.BotUserChecker()
+	...
+	events, err := c.ListIssueEvents(org, repo, number)
+	var lastAdded ListedIssueEvent
+	for _, event := range events {
+		if event.Event != IssueActionLabeled || event.Label.Name != label {
+			continue
+		}
+		lastAdded = event
+	}
+	if lastAdded.Actor.Login == "" || isBot(lastAdded.Actor.Login) {
+		return false, nil
+	}
+	return true, nil
+}</pre>
+
+<p><code>pkg/github/client.go:1309-1325</code> — <code>BotUserChecker</code>, the other place a misidentification could originate (candidate (a) above):</p>
+<pre>func (c *client) BotUserCheckerWithContext(ctx context.Context) (func(candidate string) bool, error) {
+	...
+	botUser := c.userData.Login
+	return func(candidate string) bool {
+		if c.usesAppsAuth {
+			candidate = strings.TrimSuffix(candidate, "[bot]")
+		}
+		return candidate == botUser
+	}, nil
+}</pre>
+
+<h3>Related issues / PRs</h3>
+<ul>
+  <li><a href="https://github.com/kubernetes-sigs/prow/pull/707">kubernetes-sigs/prow#707</a> — "approve: fix silent approval bypass when PR exceeds GitHub file list API limit." Different mechanism (pagination truncation vs. label-history staleness), but same bug family: <code>approve</code> plugin label state silently diverging from the true current-file-set approval state. Useful precedent for the test/review rigor a fix here should get.</li>
+  <li><a href="https://github.com/kubernetes/enhancements/pull/5923">kubernetes/enhancements#5923</a> — the external PR that exhibits the bug; evidence/reproduction only, not a duplicate to link/close against.</li>
+</ul>
+
+<h2>What I checked</h2>
+<ul>
+  <li>Confirmed self-approval (<code>AddAuthorSelfApprover</code>) is correctly OWNERS-scoped via <code>AreFilesApproved</code>/<code>UnapprovedFiles</code> — ruled out "self-approval is a blanket bypass" as the cause.</li>
+  <li>Searched for duplicate issues/PRs via <code>gh search</code> — none found beyond the unrelated-but-similar #707.</li>
+  <li>Read <code>pkg/plugins/approve/approve_test.go</code> and <code>pkg/plugins/approve/approvers/approvers_test.go</code> — no test exercises "label added by actor X, then file set changes to unrelated Y"; confirmed genuine coverage gap.</li>
+</ul>
+
+<h2>Recommended next steps</h2>
+<ul>
+  <li>Pull the GitHub issue-events timeline for <code>kubernetes/enhancements#5923</code> (<code>gh api repos/kubernetes/enhancements/issues/5923/events</code>) to see the actual actor login on the relevant <code>labeled</code> event(s) — disambiguates bot-misidentification from genuine manual override.</li>
+  <li>Get maintainer consensus on intended <code>ManuallyApproved</code> semantics: permanent override vs. scoped/expiring when the file set changes materially.</li>
+  <li>Open a PR touching <code>pkg/plugins/approve/approvers/owners.go</code>, <code>pkg/plugins/approve/approve.go</code>, and/or <code>pkg/github/client.go</code>, with new test coverage for "label added, then unrelated file-set change."</li>
+  <li>Apply <code>kind/bug</code> and an appropriate <code>area/</code> label (exact label name not verified against this repo's label set during triage).</li>
+</ul>
+
+<h2>Open questions</h2>
+<div class="qbox">Is the "once <code>ManuallyApproved</code> is true, it stays true regardless of later file changes" behavior intentional (per the <code>IsApproved</code> doc comment), or should it only bypass requirements for the diff state at the time the label was added?</div>
+<div class="qbox">What GitHub identity performs Prow's bot actions against <code>kubernetes/enhancements</code>, and does <code>BotUserChecker</code> correctly recognize it there?</div>
+<div class="qbox">Should any change to the set of OWNERS-protected files touched by a PR force a fresh <code>RequirementsMet</code> re-evaluation and label removal, with <code>ManuallyApproved</code> only ever acting as a one-time, non-persistent override?</div>
+
+</body>
+</html>

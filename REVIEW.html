@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Review: kubernetes-sigs/prow#890</title>
+  <style>
+    body { background: #fff; color: #202124; font: 16px/1.55 system-ui, sans-serif; margin: 0; }
+    main { max-width: 900px; margin: 3rem auto; padding: 0 1.5rem; }
+    h1 { margin-bottom: .25rem; } h2 { margin-top: 2rem; }
+    code, .meta { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
+    .meta { color: #5f6368; font-size: .9rem; } .verdict { border-left: 4px solid #188038; padding-left: 1rem; }
+    .none { color: #5f6368; font-style: italic; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Review: <a href="https://github.com/kubernetes-sigs/prow/pull/890">kubernetes-sigs/prow#890</a></h1>
+    <p class="meta">chore(deps): bump google.golang.org/grpc from 1.82.1 to 1.83.1<br>
+      Head: <code>84b2c62092ef3ab688ba282a736f9d165787adde</code> · Base: <code>main</code> · Reviewed: 2026-09-01T16:37:22Z</p>
+
+    <section class="verdict"><h2>Verdict: approve</h2>
+      <p>This is a dependency-only update with no project-source changes. The grpc-go 1.83.1 security fixes are confined to xDS RBAC parsing, which Prow does not import; its passed PR CI and the release's transport memory-bound improvement leave no identified regression risk for Prow's grpc use.</p>
+    </section>
+
+    <section><h2>What this PR does</h2><ul>
+      <li>Updates the direct <code>google.golang.org/grpc</code> requirement from <code>v1.82.1</code> to <code>v1.83.1</code> in <code>go.mod</code>.</li>
+      <li>Refreshes the corresponding <code>go.sum</code> entries.</li>
+      <li>Updates three indirect module selections: <code>cel.dev/expr</code>, the GCP OpenTelemetry detector, and the OpenTelemetry GCP detector.</li>
+    </ul></section>
+
+    <section><h2>Findings</h2>
+      <h3>Blocking</h3><p class="none">None.</p>
+      <h3>Should fix</h3><p class="none">None.</p>
+      <h3>Nits</h3><p class="none">None.</p>
+      <h3>Questions</h3><p class="none">None.</p>
+    </section>
+
+    <section><h2>Things I checked and was fine with</h2><ul>
+      <li>The PR changes only <code>go.mod</code> and <code>go.sum</code>; <code>git diff --check</code> is clean.</li>
+      <li>grpc-go <code>v1.83.1</code> is a tagged release published 2026-08-19. It was six days old when this PR merged and 13 days old at review time.</li>
+      <li>The release fixes xDS RBAC header-matcher fail-open cases and bounds buffering overhead for small transport frames. Prow has no grpc xDS imports.</li>
+      <li>Prow imports grpc from 11 Go files: Gangway's server and Google client, ResultStore client/writer, Pub/Sub reporter, generated Gangway stubs, and integration tests. These use ordinary client/server, TLS, metadata, status, and health APIs; Gangway and ResultStore are network-facing, but none use the changed xDS RBAC surface.</li>
+      <li>PR CI passed: image build, integration, unit, race-detector, and lint jobs.</li>
+    </ul></section>
+
+    <section><h2>Open questions for the author</h2><p class="none">None.</p></section>
+  </main>
+</body>
+</html>

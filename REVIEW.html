@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Review: kubernetes-sigs/prow#892</title>
+  <style>
+    body { color: #1f2328; font: 16px/1.55 system-ui, sans-serif; margin: 2rem auto; max-width: 900px; padding: 0 1rem; }
+    h1, h2 { line-height: 1.2; } code { background: #f6f8fa; border-radius: 4px; font: .9em ui-monospace, monospace; padding: .12em .3em; }
+    .meta { color: #57606a; } .approve { color: #1a7f37; font-weight: 700; } a { color: #0969da; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Review: <a href="https://github.com/kubernetes-sigs/prow/pull/892">kubernetes-sigs/prow#892</a></h1>
+    <p class="meta">Base: <code>main</code> · Head: <code>9ec3e553adbe7a2a3bc456be0646aabb039a4ad0</code> · Reviewed: 2026-09-01T16:55:49Z</p>
+  </header>
+  <section>
+    <h2>Verdict</h2>
+    <p class="approve">Approve</p>
+    <p>This is a tool-only, direct dependency update from an untagged pseudo-version to its corresponding 22-day-old tagged release. The relevant upstream changes do not affect Prow's use of <code>protoc-gen-go</code>.</p>
+  </section>
+  <section>
+    <h2>What this PR does</h2>
+    <ul>
+      <li>Updates <code>google.golang.org/protobuf</code> in the nested <code>hack/tools</code> Go module.</li>
+      <li>Replaces pseudo-version <code>v1.36.12-0.20260120151049-f2248ac996af</code> with tagged <code>v1.36.12</code>.</li>
+      <li>Updates only the associated two <code>go.sum</code> checksums.</li>
+      <li>Leaves Prow application code and the root Go module unchanged.</li>
+    </ul>
+  </section>
+  <section><h2>Findings</h2><h3>Blocking</h3><p>None.</p><h3>Should fix</h3><p>None.</p><h3>Nits</h3><p>None.</p><h3>Questions</h3><p>None.</p></section>
+  <section>
+    <h2>Things I checked and was fine with</h2>
+    <ul>
+      <li>Classification: dep-only; only <code>hack/tools/go.mod</code> and <code>hack/tools/go.sum</code> change.</li>
+      <li><code>google.golang.org/protobuf</code> is direct in <code>hack/tools/go.mod:12</code>; its sole tools-module use is blank-importing <code>google.golang.org/protobuf/cmd/protoc-gen-go</code> at <code>hack/tools/tools.go:35</code>.</li>
+      <li>The release is tagged, dated 2026-08-10, and was 22 days old at review; the previous version was an untagged pseudo-version.</li>
+      <li>The upstream range contains the release commit, numeric descriptor-default parsing that accepts hexadecimal/octal literals, and protobuf/protoc edition/test metadata updates. No stated security fix or API incompatibility affects this generator-only use.</li>
+      <li><code>go mod verify</code> in <code>hack/tools</code> passed.</li>
+    </ul>
+  </section>
+  <section><h2>Open questions for the author</h2><p>None.</p></section>
+</body>
+</html>

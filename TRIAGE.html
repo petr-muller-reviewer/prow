@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Triage: kubernetes-sigs/prow#587</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+         line-height: 1.55; color: #1a1a1a; max-width: 860px; margin: 2rem auto; padding: 0 1.5rem; }
+  code, pre { font-family: "SF Mono", Consolas, Monaco, monospace; background: #f4f4f4; border-radius: 4px; }
+  code { padding: 0.1em 0.35em; font-size: 0.92em; }
+  pre { padding: 0.8em 1em; overflow-x: auto; }
+  h1 { font-size: 1.5rem; border-bottom: 2px solid #333; padding-bottom: 0.4rem; }
+  h2 { font-size: 1.2rem; margin-top: 2.2rem; border-bottom: 1px solid #ddd; padding-bottom: 0.3rem; }
+  h3 { font-size: 1.02rem; margin-top: 1.4rem; }
+  .meta { background: #f8f8f8; border: 1px solid #e0e0e0; border-radius: 6px; padding: 1rem 1.3rem; margin: 1rem 0 1.5rem; }
+  .meta dl { display: grid; grid-template-columns: max-content 1fr; gap: 0.25rem 1rem; margin: 0; }
+  .meta dt { font-weight: 600; color: #555; }
+  .meta dd { margin: 0; }
+  .verdict { background: #eef7ee; border-left: 4px solid #3a9d3a; padding: 0.9rem 1.2rem; border-radius: 4px; }
+  .tag { display: inline-block; font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
+         letter-spacing: 0.03em; padding: 0.1em 0.5em; border-radius: 3px; margin-right: 0.5em;
+         background: #e0e8f5; color: #2a4d8f; }
+  .finding { border: 1px solid #e5e5e5; border-radius: 6px; padding: 0.9rem 1.2rem; margin: 0.9rem 0; }
+  ul { padding-left: 1.4rem; }
+  a { color: #2a5db0; }
+</style>
+</head>
+<body>
+
+<h1>Triage: prow v1 release pre-reqs</h1>
+
+<div class="meta">
+  <dl>
+    <dt>Issue</dt><dd><a href="https://github.com/kubernetes-sigs/prow/issues/587">kubernetes-sigs/prow#587</a></dd>
+    <dt>State at triage</dt><dd>closed</dd>
+    <dt>Labels at triage</dt><dd>(none)</dd>
+    <dt>Triaged at</dt><dd>2026-08-31T22:52:09Z</dd>
+    <dt>Main SHA</dt><dd><code>5765df26189ddc41cb9c975e89d613f6c26282ef</code></dd>
+    <dt>Legitimacy</dt><dd>LEGITIMATE</dd>
+    <dt>Verdict</dt><dd><strong>accepted</strong></dd>
+    <dt>Effort</dt><dd>4 (Very Large, as currently scoped)</dd>
+    <dt>Recommended labels</dt><dd><code>kind/feature</code>, <code>help wanted</code>, <code>priority/backlog</code></dd>
+  </dl>
+</div>
+
+<h2>Verdict</h2>
+<div class="verdict">
+  <strong>Accepted.</strong> This is a legitimate, still-unresolved maintainer roadmap issue that expired via
+  stale-bot inactivity (90d stale → 30d rotten → 30d close), not because a maintainer decided the release goal
+  was abandoned or complete. Recommend confirming the goal is still active, then reopening and splitting the
+  seven prerequisites into independently-closeable sub-issues rather than re-triaging this as one omnibus checklist.
+</div>
+
+<h2>What the issue reports</h2>
+<ul>
+  <li>Maintainer (upodroid) proposes prerequisites for Prow's first tagged release (v0.1.0/v1).</li>
+  <li>Seven items: create <code>prow-announcements@kubernetes.io</code>; tag+release main as v0.1.0; resolve #585;
+      make any other desired breaking changes; convert <code>prowjobs.js</code> to a versioned API served like
+      <code>deck/v1/</code> with kubernetes semantics; dependency cleanup; deprecate unneeded components.</li>
+  <li>Also describes intended release mechanics: cut a release in this repo, promote images to
+      <code>registry.k8s.io/prow/[COMPONENTS]</code>.</li>
+</ul>
+
+<h2>Analysis</h2>
+
+<h3>Why the issue stalled</h3>
+<div class="finding">
+  <span class="tag">cause</span>
+  <p>Closed 2026-06-07 by <code>k8s-triage-robot</code> as "not-planned" purely from the inactivity lifecycle.
+  Only prior activity was one unfollowed <code>/assign</code> comment (rajibmitra, 2026-01-08). No maintainer
+  discussion ever occurred; none of the 7 prerequisites were actually resolved or rejected.</p>
+</div>
+<div class="finding">
+  <span class="tag">cause</span>
+  <p>Bundling seven independent workstreams into one issue meant no single unit of progress could ever close it,
+  so it never accumulated visible activity and fell to the stale-bot.</p>
+</div>
+
+<h3>Related code</h3>
+<div class="finding">
+  <span class="tag">related-code</span>
+  <p><strong>Deck's prowjobs API is unversioned</strong> (target of prereq #5) &mdash;
+  <code>prow/cmd/deck/main.go:457</code> (<code>handleProwJobs</code>, serves <code>/prowjobs.js</code>),
+  <code>main.go:456</code> (<code>/data.js</code>), <code>main.go:528</code> (singular <code>/prowjob</code>),
+  <code>main.go:315-316</code> (<code>/config</code>, <code>/plugin-config</code>).</p>
+  <p>No <code>/v1/</code>-prefixed path exists anywhere in the repo (searched <code>cmd/deck</code>,
+  <code>pkg/gangway</code>). <code>pkg/gangway/gangway.proto</code> (gRPC/REST job-trigger gateway) also has no
+  version segment.</p>
+</div>
+<div class="finding">
+  <span class="tag">related-code</span>
+  <p><strong>Partial release-build plumbing exists</strong> (prereq #2) &mdash; <code>.ko.yaml</code> (repo root,
+  goreleaser-format, ~35 build entries), <code>cloudbuild.yaml</code>, <code>.prow-images.yaml</code>.</p>
+  <pre>ldflags -X sigs.k8s.io/prow/pkg/version.Version={{.Env.VERSION}}</pre>
+  <p>Drives per-commit image pushes to <code>us-docker.pkg.dev/k8s-infra-prow/images</code>, not a tagged release.
+  No <code>.github/workflows/</code> exist (only <code>.github/dependabot.yaml</code>). <code>git tag</code>
+  returns zero tags; <code>gh release list</code> returns none.</p>
+</div>
+<div class="finding">
+  <span class="tag">related-code</span>
+  <p><strong>RELEASE.md is unmodified template boilerplate</strong> &mdash; <code>prow/RELEASE.md</code> still
+  references the generic "Kubernetes Template Project" process and <code>kubernetes-dev@googlegroups.com</code>,
+  not <code>prow-announcements@kubernetes.io</code> or any Prow-specific release process.</p>
+</div>
+
+<h3>Related issues / PRs</h3>
+<div class="finding">
+  <span class="tag">related-issue</span>
+  <p><a href="https://github.com/kubernetes-sigs/prow/issues/585">kubernetes-sigs/prow#585</a> &mdash;
+  "Remove unneeded prow plugins/cmds", explicit blocker for prerequisite #3, confirmed still <strong>open</strong>
+  with no recent activity.</p>
+</div>
+<div class="finding">
+  <span class="tag">related-pr</span>
+  <p>Incremental plugin/cmd reorg (partial progress on #3/#7): commits <code>feeddb49e</code> (delete
+  <code>cmd/grandmatriarch</code>), <code>ccdbac4ea</code> (extract <code>rifle</code> plugin from
+  <code>blunderbuss</code>), <code>76112a601</code> (split <code>review_assignment</code> into its own package).
+  Reorganization, not net reduction &mdash; 37 dirs remain under <code>cmd/</code>, 62 under
+  <code>pkg/plugins/</code>.</p>
+</div>
+<div class="finding">
+  <span class="tag">related-pr</span>
+  <p>Isolated dependency cleanup (partial progress on #6): commit <code>7953d2b1d</code> ("fix(deck): replace
+  gorilla/csrf with net/http.CrossOriginProtection"). Only deliberate manual dependency-reduction commit found;
+  <code>go.mod</code> still has 229 <code>require</code> entries with no larger pruning effort visible.</p>
+</div>
+
+<h2>What I checked</h2>
+<ul>
+  <li><code>gh release list --repo kubernetes-sigs/prow</code> &mdash; no releases exist; <code>git tag</code> &mdash; no tags exist.</li>
+  <li>Issue #585 status &mdash; confirmed still open via <code>gh issue view</code>.</li>
+  <li>Cross-referenced PR <code>openshift/release#81376</code> ("Add z-stream testing") &mdash; unrelated downstream consumer PR, not relevant.</li>
+  <li>Full comment/timeline history on #587 &mdash; only bot lifecycle comments plus one unfollowed <code>/assign</code>.</li>
+  <li>Searched repo for <code>/v1/</code>-style versioned API paths (<code>cmd/deck</code>, <code>pkg/gangway</code>) &mdash; none found.</li>
+  <li><code>git log -- go.mod</code> &mdash; dominated by routine dependabot bumps.</li>
+</ul>
+
+<h2>Recommended next steps</h2>
+<ul>
+  <li>Confirm with SIG Testing / Prow maintainers whether the v0.1.0 release effort is still desired before reopening.</li>
+  <li>If still desired: reopen #587, clear <code>lifecycle/rotten</code>, and split into per-prerequisite tracking
+      issues (release tagging/automation + RELEASE.md + mailing list; #585 cleanup; dependency cleanup;
+      versioned-API design) so each can progress and close independently.</li>
+  <li>Comment on #585 to unblock prerequisite #3 &mdash; the one concrete, still-open, actionable sub-item with no
+      current activity.</li>
+  <li>Apply labels if reopened: <code>kind/feature</code>, <code>help wanted</code> (on split sub-issues),
+      <code>priority/backlog</code>.</li>
+</ul>
+
+<h2>Open questions</h2>
+<ul>
+  <li>Is a Prow v1 release still an active goal for maintainers, or has planning moved elsewhere (a KEP, a
+      different tracking issue, informal SIG consensus)?</li>
+  <li>Should this be split into separate, independently-triageable issues per prerequisite rather than tracked as
+      one omnibus checklist?</li>
+  <li>What does "kubernetes semantics" mean concretely for the versioned prowjobs API (pagination? watch support?
+      which verbs?) &mdash; needs a design proposal before implementation.</li>
+</ul>
+
+</body>
+</html>

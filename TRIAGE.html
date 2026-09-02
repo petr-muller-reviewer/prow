@@ -1,152 +1,82 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Triage: kubernetes-sigs/prow#729</title>
-<style>
-  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; line-height: 1.6; color: #1a1a1a; margin: 0; padding: 2rem; }
-  .container { max-width: 860px; margin: 0 auto; }
-  h1 { font-size: 1.4rem; margin-bottom: 0.25rem; }
-  h2 { font-size: 1.1rem; border-bottom: 1px solid #ddd; padding-bottom: 0.25rem; margin-top: 2rem; }
-  h3 { font-size: 0.95rem; margin-bottom: 0.25rem; }
-  .meta { background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 6px; padding: 1rem 1.25rem; margin-bottom: 1.5rem; font-size: 0.88rem; }
-  .meta table { border-collapse: collapse; width: 100%; }
-  .meta td { padding: 0.15rem 0.5rem 0.15rem 0; vertical-align: top; }
-  .meta td:first-child { font-weight: 600; white-space: nowrap; color: #57606a; width: 130px; }
-  .verdict-badge { display: inline-block; background: #2da44e; color: white; border-radius: 12px; padding: 0.15rem 0.75rem; font-size: 0.85rem; font-weight: 600; }
-  .verdict-section { background: #f0fff4; border-left: 4px solid #2da44e; padding: 0.75rem 1rem; border-radius: 0 6px 6px 0; margin: 1rem 0; }
-  code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; font-size: 0.85em; background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 3px; padding: 0.1em 0.35em; }
-  pre { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; font-size: 0.82em; background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 6px; padding: 0.75rem 1rem; overflow-x: auto; line-height: 1.45; }
-  ul { padding-left: 1.5rem; }
-  li { margin-bottom: 0.3rem; }
-  .tag { display: inline-block; font-size: 0.75rem; font-weight: 600; border-radius: 12px; padding: 0.1rem 0.6rem; margin-right: 0.25rem; }
-  .tag-feature { background: #ddf4ff; color: #0969da; border: 1px solid #b6e3ff; }
-  .tag-gfi { background: #ddf4ff; color: #7c3aed; border: 1px solid #d8b4fe; }
-  .tag-hw { background: #e6f4ea; color: #1a7f37; border: 1px solid #aad8a9; }
-  .warning { background: #fff8c5; border-left: 4px solid #d4a017; padding: 0.6rem 1rem; border-radius: 0 6px 6px 0; margin: 0.75rem 0; font-size: 0.9rem; }
-  a { color: #0969da; }
-</style>
+  <meta charset="utf-8">
+  <title>Issue #729 triage — kubernetes-sigs/prow</title>
+  <style>
+    body { color: #202124; font: 16px/1.55 system-ui, sans-serif; margin: 2rem auto; max-width: 900px; padding: 0 1rem; }
+    header { background: #f6f8fa; border-left: 4px solid #0969da; padding: 1rem 1.25rem; }
+    h1 { font-size: 1.7rem; line-height: 1.25; margin: 0 0 .7rem; }
+    h2 { border-bottom: 1px solid #d0d7de; margin-top: 2rem; padding-bottom: .3rem; }
+    h3 { margin-bottom: .25rem; }
+    code, pre { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
+    pre { background: #f6f8fa; overflow-x: auto; padding: .8rem; }
+    dt { font-weight: 650; } dd { margin: 0 0 .3rem; }
+  </style>
 </head>
 <body>
-<div class="container">
+  <header>
+    <h1>Issue #729: Trigger required tests with <code>/test-required</code></h1>
+    <dl>
+      <dt>Issue</dt><dd><a href="https://github.com/kubernetes-sigs/prow/issues/729">kubernetes-sigs/prow#729</a></dd>
+      <dt>State</dt><dd>closed</dd>
+      <dt>Labels</dt><dd>kind/feature, good first issue, help wanted</dd>
+      <dt>Triaged at</dt><dd>2026-09-02T15:08:31Z</dd>
+      <dt>Main SHA</dt><dd><code>e2e19f37128f251b39be4e9ebf14ab52584e8dd5</code></dd>
+      <dt>Verdict</dt><dd>accepted (completed)</dd>
+      <dt>Legitimacy / effort</dt><dd>LEGITIMATE / Level 2 — Moderate</dd>
+    </dl>
+  </header>
 
-<div class="meta">
-  <table>
-    <tr><td>Issue</td><td><a href="https://github.com/kubernetes-sigs/prow/issues/729">kubernetes-sigs/prow#729</a></td></tr>
-    <tr><td>Title</td><td>[Feature] Trigger required tests with /test-required</td></tr>
-    <tr><td>State</td><td>open</td></tr>
-    <tr><td>Labels</td><td>
-      <span class="tag tag-feature">kind/feature</span>
-      <span class="tag tag-gfi">good first issue</span>
-      <span class="tag tag-hw">help wanted</span>
-    </td></tr>
-    <tr><td>Triaged at</td><td>2026-07-26T11:40:35Z</td></tr>
-    <tr><td>Main SHA</td><td><code>71428b9c282ee8c9e7e9512068fccce86e7915da</code></td></tr>
-    <tr><td>Verdict</td><td><span class="verdict-badge">accepted</span></td></tr>
-  </table>
-</div>
+  <h2>Verdict</h2>
+  <p><strong>Accepted and completed.</strong></p>
+  <p>This was a valid, actionable Prow trigger-plugin feature request. It is closed because <a href="https://github.com/kubernetes-sigs/prow/pull/735">PR #735</a> merged on 2026-08-19, not because it was invalid.</p>
 
-<div class="warning" style="margin-bottom:1.5rem">
-  <strong>Refreshed 2026-07-26</strong> (previously triaged 2026-06-15T16:38:16Z): ranibharti385 self-assigned via <code>/assign</code> on 2026-07-25. No other activity.
-</div>
+  <h2>What the issue reports</h2>
+  <ul>
+    <li>Projects such as Metal3 use required presubmits that are intentionally not automatically triggered.</li>
+    <li>Users previously had to copy every pending job name into a separate <code>/test &lt;job&gt;</code> invocation.</li>
+    <li><code>/test all</code> would run unnecessary jobs, while <code>/retest</code> addresses failures.</li>
+    <li>The requester preferred triggering the required manual jobs; the implementation names that capability <code>/test-manual-required</code>.</li>
+  </ul>
 
-<h1>[Feature] Trigger required tests with /test-required</h1>
+  <h2>Analysis</h2>
+  <h3>Observed behavior and probable cause</h3>
+  <p>Before the fix, <code>/test all</code> excluded jobs requiring explicit triggers and <code>/retest-required</code> only selected required failures. No bulk command selected required manual presubmits, making individual <code>/test &lt;job&gt;</code> commands necessary.</p>
+  <p><code>NeedsExplicitTrigger()</code> identifies non-<code>always_run</code> jobs with no file-match conditions. PR #735 adds a dedicated filter that selects non-optional jobs in that class and returns <code>forced=true</code>, which makes <code>Presubmit.ShouldRun</code> bypass file-condition evaluation.</p>
 
-<h2>Verdict</h2>
-<div class="verdict-section">
-  <strong>ACCEPTED — legitimate feature request, ready for a contributor with one design clarification needed.</strong>
-  <p style="margin:0.5rem 0 0">
-    The gap is real and non-redundant: neither <code>/test all</code> nor <code>/retest-required</code> can trigger required presubmits that have <code>AlwaysRun: false</code> and no file-change pattern (<code>NeedsExplicitTrigger() = true</code>). These are precisely the jobs the author wants to batch-trigger. The implementation is small (~50-80 LOC across 4 files) and follows established patterns with one non-obvious twist: the new filter must return <code>forced = true</code> for explicit-trigger required jobs, or the author's use case won't actually be solved.
-  </p>
-</div>
+  <h3>Related code</h3>
+  <ul>
+    <li><code>pkg/config/jobs.go:510-539</code> — defines <code>NeedsExplicitTrigger()</code> and honors forced presubmits.</li>
+    <li><code>pkg/pjutil/filter.go:141-155,261-307</code> — prior bulk filters and the new manual-required filter.</li>
+    <li><code>pkg/pjutil/filter.go:312-346</code> — command-to-filter wiring.</li>
+    <li><code>pkg/plugins/trigger/generic-comment.go:217-280</code> — command recognition and trigger dispatch.</li>
+    <li><code>pkg/plugins/trigger/trigger.go:147-153</code> — featured command help.</li>
+  </ul>
+  <pre><code>if ps.Optional || !ps.NeedsExplicitTrigger() || ps.RunIfChanged != "" || ps.SkipIfOnlyChanged != "" {
+    return false, false, false
+}
+return true, true, false</code></pre>
+  <p>The scope deliberately excludes optional and file-conditional jobs. It can rerun an already-present manual context, so it is not a status-aware missing-only command.</p>
 
-<h2>What the issue reports</h2>
-<ul>
-  <li>The metal3-io project has required presubmits that are <em>not</em> auto-triggered (<code>AlwaysRun: false</code>, no <code>run_if_changed</code>) — they must be manually kicked off to save resources.</li>
-  <li>Today, contributors must copy each pending job name from the GitHub checks UI and type <code>/test &lt;name1&gt; &lt;name2&gt; ...</code> — tedious across many dependabot PRs and many repos.</li>
-  <li>The request is for a single <code>/test-required</code> command that triggers all required presubmits not yet run, analogous to how <code>/retest-required</code> handles required jobs that failed.</li>
-  <li><code>/test all</code> is not a substitute: it also runs optional jobs (wasteful) and skips explicit-trigger required jobs entirely.</li>
-</ul>
+  <h3>Related PR and coverage</h3>
+  <p><a href="https://github.com/kubernetes-sigs/prow/pull/735">PR #735: trigger: add /test-manual-required command</a> merged on 2026-08-19 and is the issue's GitHub closing reference. It touched five Go files and added roughly 176 lines.</p>
+  <p><code>pkg/pjutil/filter_test.go:812-868</code> verifies selection plus exclusion of optional, always-run, and file-conditional jobs. <code>pkg/plugins/trigger/generic-comment_test.go:599-679</code> exercises command handling and the same exclusions.</p>
 
-<h2>Analysis</h2>
+  <h2>What I checked</h2>
+  <ul>
+    <li>Issue state, labels, comments, close event, and closing PR reference.</li>
+    <li>PR #735 metadata and changed files.</li>
+    <li>Current filter, trigger-dispatch, help, unit-test, and integration-test paths.</li>
+  </ul>
 
-<h3>Why existing commands don't help</h3>
-<ul>
-  <li><strong><code>/test all</code></strong> — <code>TestAllFilter.ShouldRun</code> returns <code>!p.NeedsExplicitTrigger(), false, false</code>. For required jobs where <code>NeedsExplicitTrigger() = true</code>, this is <code>false</code> — job skipped. Also runs optional jobs.</li>
-  <li><strong><code>/retest-required</code></strong> — <code>RetestFilter.ShouldRun</code> returns <code>failed || (!p.NeedsExplicitTrigger() &amp;&amp; !allContexts.Has(p.Context))</code>. The "not yet run" clause also gates on <code>!NeedsExplicitTrigger()</code> — explicit-trigger required jobs still skipped unless they've failed.</li>
-</ul>
+  <h2>Recommended next steps</h2>
+  <ul>
+    <li>Keep the issue closed as completed; no code or label action remains.</li>
+    <li>If the command fails operationally, file a new bug with the relevant presubmit configuration and command output.</li>
+  </ul>
 
-<h3>Probable cause of the gap</h3>
-<p>All bulk-trigger commands were designed around auto-triggered jobs. Explicit-trigger jobs (manually kicked off) were always expected to be named explicitly in the comment. No command was ever built to say "force-start all required explicit-trigger jobs that haven't run yet."</p>
-
-<h3>Related code</h3>
-
-<p><code>pkg/pjutil/filter.go:30-37</code> — existing regexes; new <code>TestRequiredRe</code> goes here:</p>
-<pre>var TestAllRe = regexp.MustCompile(`(?m)^/test all,?($|\s.*)`)
-var RetestRe = regexp.MustCompile(`(?m)^/retest\s*$`)
-var RetestRequiredRe = regexp.MustCompile(`(?m)^/retest-required\s*$`)</pre>
-
-<p><code>pkg/pjutil/filter.go:244-263</code> — <code>RetestRequiredFilter</code>, the direct model for <code>TestRequiredFilter</code>:</p>
-<pre>func (rrf *RetestRequiredFilter) ShouldRun(ps config.Presubmit) (bool, bool, bool) {
-    if ps.Optional {
-        return false, false, false
-    }
-    return NewRetestFilter(rrf.failedContexts, rrf.allContexts).ShouldRun(ps)
-}</pre>
-
-<p><code>pkg/config/jobs.go:518-530</code> — <code>Presubmit.ShouldRun</code>; <code>forced = true</code> bypasses both <code>AlwaysRun</code> and file-change checks:</p>
-<pre>func (ps Presubmit) ShouldRun(baseRef string, changes ChangedFilesProvider, forced, defaults bool) (bool, error) {
-    if !ps.CouldRun(baseRef) { return false, nil }
-    if ps.AlwaysRun       { return true, nil }
-    if forced             { return true, nil }   // &larr; leverage point
-    determined, shouldRun, err := ps.RegexpChangeMatcher.ShouldRun(changes)
-    return (determined && shouldRun) || defaults, err
-}</pre>
-
-<p><code>pkg/plugins/trigger/generic-comment.go:217-230</code> — <code>commentMatchesTrigger</code>; needs <code>pjutil.TestRequiredRe</code> added to the guard conditions.</p>
-
-<p><code>pkg/plugins/trigger/generic-comment.go:165-167</code> — <code>RetestLabel</code> logic; should <em>not</em> be extended to <code>/test-required</code> (it's not a retest).</p>
-
-<h3>Key implementation insight</h3>
-<div class="warning">
-  <strong>The @Prucek implementation sketch in the comments would not solve the author's use case if naively followed.</strong>
-  The sketch says "new filter following the <code>RetestRequiredFilter</code> pattern." But <code>RetestFilter.ShouldRun</code> uses <code>!p.NeedsExplicitTrigger()</code> in the "not yet run" clause — which skips the exact jobs the author wants to trigger.
-  <br><br>
-  The correct <code>TestRequiredFilter.ShouldRun</code> should be approximately:
-<pre style="margin-top:0.5rem">func (trf *TestRequiredFilter) ShouldRun(ps config.Presubmit) (bool, bool, bool) {
-    if ps.Optional { return false, false, false }
-    notRun := !trf.allContexts.Has(ps.Context)
-    // forced=true for NeedsExplicitTrigger jobs so Presubmit.ShouldRun
-    // bypasses the explicit-trigger check
-    forced := notRun &amp;&amp; ps.NeedsExplicitTrigger()
-    return notRun, forced, false
-}</pre>
-</div>
-
-<h2>What I checked</h2>
-<ul>
-  <li>Traced <code>TestAllFilter.ShouldRun</code> &rarr; <code>!p.NeedsExplicitTrigger()</code> &rarr; confirmed it skips <code>AlwaysRun: false</code> + no file-pattern jobs.</li>
-  <li>Traced <code>RetestFilter.ShouldRun</code> &rarr; second clause requires <code>!NeedsExplicitTrigger()</code> &rarr; confirmed <code>/retest-required</code> also skips these jobs unless they've failed.</li>
-  <li>Confirmed <code>Presubmit.ShouldRun</code> at <code>jobs.go:525</code>: <code>if forced { return true, nil }</code> — this is the correct bypass for explicit-trigger jobs.</li>
-  <li>Confirmed <code>RetestLabel</code> logic at <code>generic-comment.go:165</code> only fires on <code>/retest</code> and <code>/retest-required</code> — new command should not extend this.</li>
-  <li>Confirmed existing labels (<code>kind/feature</code>, <code>good-first-issue</code>, <code>help-wanted</code>) are already applied by @Prucek — no label action needed.</li>
-</ul>
-
-<h2>Recommended next steps</h2>
-<ul>
-  <li><strong>Post a clarifying comment</strong> on the issue explaining that the filter must return <code>forced = true</code> for <code>NeedsExplicitTrigger() = true</code> jobs — without this the feature won't solve the author's actual use case.</li>
-  <li>Confirm the narrow-vs-superset question (missing-only vs missing+failed) — author prefers missing-only, which is the right call.</li>
-  <li>Consider adding <code>/area plugins</code> label for discoverability.</li>
-  <li>ranibharti385 is now assigned (2026-07-25) — the clarifying comment above should be posted for their benefit if not already done.</li>
-</ul>
-
-<h2>Open questions</h2>
-<ul>
-  <li>Should <code>/test-required</code> cover only jobs with no prior context (not yet run) or also failed required jobs (= superset of <code>/retest-required</code>)? Author leans toward missing-only — confirm this.</li>
-  <li>Should required <code>run_if_changed</code> jobs be included when file changes don't match? The proposed filter returns <code>forced = false</code> for them (they'd be skipped by <code>Presubmit.ShouldRun</code> if files don't match) — is that the right behavior?</li>
-</ul>
-
-</div>
+  <h2>Open questions</h2>
+  <p>None. The command's intentionally limited scope is documented above.</p>
 </body>
 </html>

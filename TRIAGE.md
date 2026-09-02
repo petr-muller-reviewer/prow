@@ -1,78 +1,55 @@
 ---
 issue: kubernetes-sigs/prow#729
 title: "[Feature] Trigger required tests with /test-required"
-state: open
+state: closed
 labels: kind/feature, good first issue, help wanted
-main_sha: 71428b9c282ee8c9e7e9512068fccce86e7915da
-triaged_at: 2026-07-26T11:40:35Z
+main_sha: e2e19f37128f251b39be4e9ebf14ab52584e8dd5
+triaged_at: 2026-09-02T15:08:31Z
 verdict: accepted
 legitimacy: LEGITIMATE
-effort: 1
+effort: 2
 recommended_labels: [kind/feature, good-first-issue, help-wanted, area/plugins]
-refresh_log:
-  - at: 2026-07-26T11:40:35Z
-    previous: 2026-06-15T16:38:16Z
-    summary: "ranibharti385 self-assigned via /assign comment on 2026-07-25; no other activity."
 ---
 
 ## Findings
 
-### [cause] No bulk command triggers explicit-trigger required presubmits not yet run
-- detail: Jobs with `AlwaysRun: false` and no file-change pattern have `NeedsExplicitTrigger() = true`. Every existing bulk command excludes them: `TestAllFilter` returns `!p.NeedsExplicitTrigger()` (false → skip); `RetestFilter` "not yet run" clause is `!p.NeedsExplicitTrigger() && !allContexts.Has(p.Context)` (also skips). Only `/test <name>` works, requiring manual enumeration.
-- evidence: `pkg/pjutil/filter.go:148,237`; `pkg/config/jobs.go:538-539`
+### [reproducibility] Required manual presubmits could only be started individually
+- detail: Before the fix, `/test all` skipped explicit-trigger jobs and `/retest-required` only covered required failures. Users had to enumerate each pending job with `/test <job>`.
+- evidence: `pkg/pjutil/filter.go:141-155,261-290`; issue report from lentzi90.
 
-### [cause] Prucek implementation sketch would not solve the use case if naively followed
-- detail: Comment on issue says "new filter following `RetestRequiredFilter` pattern." But `RetestRequiredFilter` delegates to `RetestFilter` which uses `!p.NeedsExplicitTrigger()` — explicit-trigger jobs still skipped. The correct filter needs `forced = true` for `NeedsExplicitTrigger() = true` jobs so `Presubmit.ShouldRun` bypasses the explicit-trigger check via its `if forced { return true, nil }` branch.
-- evidence: `pkg/pjutil/filter.go:255-260`; `pkg/config/jobs.go:525`
+### [cause] No bulk filter selected manual required jobs
+- detail: `NeedsExplicitTrigger()` identifies non-`always_run` jobs without file-match conditions. Existing bulk filters exclude them, so no command selected that job class.
+- evidence: `pkg/config/jobs.go:510-539`; `pkg/pjutil/filter.go:141-155,261-290`.
 
-### [related-code] Regex definitions — TestRequiredRe goes here
-- where: `pkg/pjutil/filter.go:30-37`
+### [related-code] Dedicated forced filter and trigger dispatch
+- where: `pkg/pjutil/filter.go:294-346`
 - excerpt: |
-    var TestAllRe = regexp.MustCompile(`(?m)^/test all,?($|\s.*)`)
-    var RetestRe = regexp.MustCompile(`(?m)^/retest\s*$`)
-    var RetestRequiredRe = regexp.MustCompile(`(?m)^/retest-required\s*$`)
-
-### [related-code] RetestRequiredFilter — direct model for TestRequiredFilter
-- where: `pkg/pjutil/filter.go:244-263`
-- excerpt: |
-    func (rrf *RetestRequiredFilter) ShouldRun(ps config.Presubmit) (bool, bool, bool) {
-        if ps.Optional { return false, false, false }
-        return NewRetestFilter(rrf.failedContexts, rrf.allContexts).ShouldRun(ps)
+    if ps.Optional || !ps.NeedsExplicitTrigger() || ps.RunIfChanged != "" || ps.SkipIfOnlyChanged != "" {
+        return false, false, false
     }
+    return true, true, false
+- relevance: `forced=true` makes `Presubmit.ShouldRun` start the selected job without file-condition evaluation.
 
-### [related-code] Presubmit.ShouldRun — forced=true bypass is the key leverage point
-- where: `pkg/config/jobs.go:518-530`
-- excerpt: |
-    if ps.AlwaysRun { return true, nil }
-    if forced       { return true, nil }   // ← bypasses NeedsExplicitTrigger jobs
-    determined, shouldRun, err := ps.RegexpChangeMatcher.ShouldRun(changes)
-    return (determined && shouldRun) || defaults, err
+### [related-code] Command recognition and help
+- where: `pkg/plugins/trigger/generic-comment.go:217-280`; `pkg/plugins/trigger/trigger.go:147-153`
+- detail: The trigger plugin recognizes `/test-manual-required`, builds the presubmit filter, and documents it as a featured command.
 
-### [related-code] PresubmitFilter factory — new TestRequiredRe branch goes here
-- where: `pkg/pjutil/filter.go:269-299`
-
-### [related-code] commentMatchesTrigger — needs pjutil.TestRequiredRe added
-- where: `pkg/plugins/trigger/generic-comment.go:217-230`
-
-### [related-code] RetestLabel — must NOT be extended to /test-required
-- where: `pkg/plugins/trigger/generic-comment.go:165-167`
+### [related-pr] PR #735 implemented the feature
+- ref: kubernetes-sigs/prow#735
+- relevance: Merged 2026-08-19; GitHub records it as closing this issue. It added `/test-manual-required` rather than the proposed `/test-required` name.
 
 ## Checked
-- `TestAllFilter.ShouldRun` returns `!p.NeedsExplicitTrigger(), false, false` — confirmed skips `AlwaysRun: false` + no-file-pattern jobs
-- `RetestFilter.ShouldRun` "not yet run" clause requires `!NeedsExplicitTrigger()` — confirmed `/retest-required` also skips these jobs unless failed
-- `Presubmit.ShouldRun` at `jobs.go:525`: `if forced { return true, nil }` — correct bypass for explicit-trigger jobs
-- `RetestLabel` at `generic-comment.go:165` only fires on `/retest` and `/retest-required` — new command should not touch this
-- Existing labels (`kind/feature`, `good-first-issue`, `help-wanted`) already applied by @Prucek
 
-## Since previous triage
-- 2026-07-25: ranibharti385 commented `/assign` and is now assigned to the issue. No design discussion, no PR opened yet.
+- Issue #729 state, labels, comments, close event, and GitHub closing reference.
+- PR #735 metadata and changed files.
+- Current filter, trigger-dispatch, command-help, and focused test paths.
+- `pkg/pjutil/filter_test.go:812-868` and `pkg/plugins/trigger/generic-comment_test.go:599-679` cover selection and exclusion cases.
 
 ## Next steps
-- Post clarifying comment: filter must return `forced = true` for `NeedsExplicitTrigger() = true` jobs; without it the naive implementation won't work
-- Confirm missing-only vs missing+failed behavior with author (author prefers missing-only — note it so contributor doesn't over-engineer)
-- Consider adding `/area plugins` label
-- ranibharti385 is now assigned — the clarifying comment above should be posted for their benefit if not already done
+
+- Keep closed as completed; no code or label action is needed.
+- Treat an operational failure of `/test-manual-required` as a new bug report with presubmit configuration and command output.
 
 ## Open questions
-- Should `/test-required` cover only jobs with no prior context (missing-only) or also failed required jobs? Author leans missing-only — needs confirmation.
-- Should required `run_if_changed` jobs be included when file changes don't match? Proposed filter returns `forced = false` for them (skipped by `Presubmit.ShouldRun` if files don't match) — is that correct?
+
+- None. The implementation intentionally targets required, explicitly triggered jobs without file conditions; it is not a status-aware missing-only command.

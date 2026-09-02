@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Review: kubernetes-sigs/prow#774</title>
+<style>
+  :root {
+    --fg: #1d2327; --bg: #ffffff; --muted: #59636e;
+    --border: #d1d9e0; --code-bg: #f6f8fa;
+    --blocking: #cf222e; --shouldfix: #bc4c00; --nit: #0969da; --question: #8250df;
+    --ok: #1a7f37;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --fg: #e6edf3; --bg: #0d1117; --muted: #9198a1;
+      --border: #3d444d; --code-bg: #161b22;
+      --blocking: #ff7b72; --shouldfix: #f0883e; --nit: #58a6ff; --question: #bc8cff;
+      --ok: #3fb950;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    color: var(--fg); background: var(--bg);
+    line-height: 1.55; margin: 0; padding: 2rem 1rem;
+  }
+  main { max-width: 54rem; margin: 0 auto; }
+  h1 { font-size: 1.5rem; margin: 0 0 .25rem; }
+  h2 { font-size: 1.2rem; margin-top: 2.2rem; border-bottom: 1px solid var(--border); padding-bottom: .3rem; }
+  h3 { font-size: 1.02rem; margin: 1.6rem 0 .4rem; }
+  code, pre {
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    font-size: .88em;
+  }
+  code { background: var(--code-bg); padding: .12em .35em; border-radius: 4px; }
+  pre {
+    background: var(--code-bg); border: 1px solid var(--border); border-radius: 6px;
+    padding: .7rem .9rem; overflow-x: auto; line-height: 1.45;
+  }
+  pre code { background: none; padding: 0; }
+  .meta { color: var(--muted); font-size: .92rem; margin-bottom: 1.5rem; }
+  .meta dt { font-weight: 600; display: inline; }
+  .meta dd { display: inline; margin: 0 1.2rem 0 .35rem; }
+  .meta a { color: var(--nit); }
+  .badge {
+    display: inline-block; font-size: .74rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .04em; padding: .1em .55em; border-radius: 999px;
+    border: 1.5px solid currentColor; vertical-align: middle; margin-right: .5em;
+  }
+  .b-shouldfix { color: var(--shouldfix); }
+  .b-nit { color: var(--nit); }
+  .b-question { color: var(--question); }
+  .verdict-line { font-size: 1.08rem; font-weight: 600; color: var(--ok); }
+  .finding { margin-bottom: 1.9rem; }
+  .where { color: var(--muted); font-size: .9rem; margin: .15rem 0 .5rem; }
+  ul { padding-left: 1.4rem; }
+  li { margin: .3rem 0; }
+  .hl { background: rgba(255, 200, 0, .25); border-radius: 3px; padding: 0 .15em; }
+  .checked li::marker { color: var(--ok); }
+  .panel-note {
+    font-size: .85rem; color: var(--muted); border-left: 3px solid var(--border);
+    padding-left: .8rem; margin: .5rem 0 0;
+  }
+</style>
+</head>
+<body>
+<main>
+
+<h1>Review: peribolos: add internal repository visibility support</h1>
+<dl class="meta">
+  <dt>PR:</dt><dd><a href="https://github.com/kubernetes-sigs/prow/pull/774">kubernetes-sigs/prow#774</a></dd>
+  <dt>Base:</dt><dd><code>main</code></dd>
+  <dt>Head:</dt><dd><code>98babf79b963f6375b1ed97bb529097caa850e2a</code></dd>
+  <dt>Reviewed:</dt><dd>2026-07-22T14:54:24Z</dd>
+</dl>
+
+<h2>Verdict</h2>
+<p class="verdict-line">Approve — with two robustness suggestions and two design questions to settle explicitly.</p>
+<p>This review combines an 8-angle line-by-line finder pass with a 3-perspective maintainer panel
+(code quality, maintainability, deployment risk) synthesized by an advisor agent — all four
+independent assessments converge on approve. The change is internally consistent, well-tested,
+and handles backward compatibility carefully (deprecated <code>private:</code> translation,
+<code>null</code> handling, both-set rejection, parse-time typo validation). Nothing blocking on
+supported GitHub deployments. The should-fix items share one root cause — an API that returns an
+empty <code>visibility</code> string — with a security-flavored failure mode on repo creation, and
+the ungated private→internal transition plus the <code>pkg/github.RepoRequest</code> API break for
+downstream vendors are deliberate choices that deserve an explicit maintainer sign-off.</p>
+
+<h2>What this PR does</h2>
+<ul>
+  <li>Replaces <code>Private *bool</code> with <code>Visibility *RepoVisibility</code>
+      (<code>public</code>/<code>private</code>/<code>internal</code>) on <code>org.Repo</code>,
+      validated at parse time via <code>UnmarshalText</code>.</li>
+  <li>Adds a custom <code>Repo.UnmarshalJSON</code> that translates the deprecated
+      <code>private: true/false</code> to the equivalent visibility (with a throttled deprecation
+      warning), errors when both fields are set, and treats JSON <code>null</code> as absent.</li>
+  <li>Swaps <code>github.RepoRequest.Private</code> for <code>Visibility *string</code>; adds a
+      <code>Visibility string</code> field to <code>github.Repo</code> (keeping <code>Private bool</code>).</li>
+  <li>Narrows the <code>sanitizeRepoDelta</code> guard: only transitions <em>to</em>
+      <code>public</code> require <code>--allow-repo-publish</code>; private↔internal is free.</li>
+  <li>Dump path reads <code>Visibility</code> from the API response and prunes
+      <code>"public"</code> as the default in <code>PruneRepoDefaults</code>.</li>
+</ul>
+
+<h2>Findings</h2>
+
+<h3>Should fix</h3>
+
+<div class="finding">
+  <p><span class="badge b-shouldfix">should fix</span><strong>Empty/unknown API visibility silently drops privacy info or causes a perpetual delta</strong></p>
+  <p class="where"><code>cmd/peribolos/main.go:371-377</code> (dumpOrgConfig) and <code>cmd/peribolos/main.go:1105-1111</code> (newRepoUpdateRequest)</p>
+<pre><code>if err := visibility.UnmarshalText([]byte(full.Visibility)); err != nil {
+    logrus.WithField("repo", full.FullName).WithField("visibility", full.Visibility).Warn("Unknown repo visibility from GitHub API, <span class="hl">omitting field</span>")
+} else {
+    visibilityPtr = &amp;visibility
+}
+...
+var visibilityPtr *string
+if repo.Visibility != nil {
+    want := string(*repo.Visibility)
+    if <span class="hl">want != current.Visibility</span> {
+        visibilityPtr = &amp;want
+    }
+}</code></pre>
+  <p>Old code always had <code>full.Private</code>/<code>current.Private</code> populated. New
+  code parses <code>Visibility</code> and, on an empty/unrecognized string, the dump only warns
+  and omits the field (a private repo dumped from such an API loses its privacy marking; recreating
+  from that dump yields a public repo), while the update path treats empty
+  <code>current.Visibility</code> as unequal to any configured value — generating a delta
+  <em>every run</em>, including a perpetual publish-gated error for legacy
+  <code>private: false</code> configs. Flagged independently by the finder review and by both the
+  code-quality and deployment-risk maintainer-panel reviewers.</p>
+  <p class="panel-note">Maintainer panel (code quality + deployment risk): suggest falling back to
+  <code>Private</code> bool when <code>Visibility</code> string is empty, in both the dump and the
+  update-delta comparison.</p>
+</div>
+
+<div class="finding">
+  <p><span class="badge b-shouldfix">should fix</span><strong>Repo-creation wire format change is a confidentiality hazard on older GHE</strong></p>
+  <p class="where"><code>cmd/peribolos/main.go:1030-1044</code> (newRepoCreateRequest)</p>
+<pre><code>var visibility *string
+if definition.Visibility != nil {
+    s := string(*definition.Visibility)
+    visibility = &amp;s  // <span class="hl">sent as "visibility", not "private: true"</span>
+}</code></pre>
+  <p>Sends <code>visibility: private</code> where the old code sent <code>private: true</code>. If
+  a GHE version's repo-create endpoint ignores an unrecognized <code>visibility</code> parameter,
+  a repo configured private would be silently created public — no error, a genuine
+  confidentiality failure. Flagged by the deployment-risk maintainer-panel reviewer; a hazard only
+  for peribolos users on older/unverified GHE.</p>
+</div>
+
+<h3>Questions</h3>
+
+<div class="finding">
+  <p><span class="badge b-question">question</span><strong>private→internal is ungated — intended scope of the safety valve?</strong></p>
+  <p class="where"><code>cmd/peribolos/main.go:1145-1148</code> (sanitizeRepoDelta)</p>
+<pre><code>if delta.Visibility != nil &amp;&amp; <span class="hl">*delta.Visibility == string(org.RepoVisibilityPublic)</span> &amp;&amp; !opt.allowRepoPublish {</code></pre>
+  <p>The guard only blocks transitions to <code>public</code>. Private→internal widens exposure
+  from repo collaborators to the <em>entire enterprise</em> with no flag. Not a regression
+  (internal wasn't expressible before) and the PR description plus tests explicitly declare
+  private↔internal free; the deployment-risk maintainer-panel reviewer judged this a reasonable,
+  safe narrowing. Still, an exposure-widening transition is exactly what this flag family exists
+  to guard, so it deserves an explicit "yes, this is fine" from maintainers.</p>
+</div>
+
+<div class="finding">
+  <p><span class="badge b-question">question</span><strong><code>pkg/github.RepoRequest</code> API break for downstream vendors</strong></p>
+  <p class="where"><code>pkg/github/types.go:382-390</code> (RepoRequest)</p>
+  <p><code>Private *bool</code> removed, replaced with <code>Visibility *string</code>. In-tree
+  only peribolos is affected, but Prow is widely vendored — any downstream tool constructing
+  <code>RepoCreateRequest</code>/<code>RepoUpdateRequest</code> directly gets a compile break on
+  the next update. Flagged by the deployment-risk maintainer-panel reviewer; worth a release-note
+  callout rather than a code change.</p>
+</div>
+
+<h3>Nits</h3>
+
+<div class="finding">
+  <p><span class="badge b-nit">nit</span><strong>Both-set config error and deprecation warning lack repo/org identification</strong></p>
+  <p class="where"><code>pkg/config/org/org.go:138-140</code>, <code>pkg/config/org/org.go:147-148</code></p>
+  <p>"may not specify both 'private' and 'visibility'" aborts the whole config parse with no
+  pointer to the offending entry; the deprecation warning likewise names neither org nor repo. In
+  a config with hundreds of repos this hurts debuggability. Flagged by both code-quality and
+  deployment-risk maintainer-panel reviewers.</p>
+</div>
+
+<div class="finding">
+  <p><span class="badge b-nit">nit</span><strong>Visibility delta hand-rolls the <code>setString</code> helper defined in the same function</strong></p>
+  <p class="where"><code>cmd/peribolos/main.go:1105-1111</code>; conversion also duplicated in <code>newRepoCreateRequest</code> (<code>main.go:1033-1037</code>) and <code>dumpOrgConfig</code> (<code>main.go:371-377</code>)</p>
+  <p><code>setString</code> (main.go:1093) already does the nil-check + not-equal + return-pointer
+  logic. Three ad-hoc <code>*RepoVisibility → *string</code> conversion blocks instead of one
+  shared helper. Flagged by both code-quality and maintainability maintainer-panel reviewers.</p>
+</div>
+
+<div class="finding">
+  <p><span class="badge b-nit">nit</span><strong><code>UnmarshalJSON</code> double-parses the payload; dead null assignment</strong></p>
+  <p class="where"><code>pkg/config/org/org.go:116-158</code></p>
+<pre><code>rawVisibility, hasVisibility := raw["visibility"]
+if hasVisibility &amp;&amp; string(rawVisibility) == "null" {
+    hasVisibility = false
+    <span class="hl">alias.Visibility = nil</span>  // dead: json null already leaves the pointer nil
+}</code></pre>
+  <p>The second unmarshal into <code>map[string]json.RawMessage</code> plus manual
+  <code>== "null"</code> checks exist only to detect presence of two keys; a probe struct
+  <code>struct{ Private, Visibility *json.RawMessage }</code> gives the same in one small pass.
+  The highlighted assignment can never change anything — <code>encoding/json</code> sets a pointer
+  field to nil for JSON <code>null</code> and never invokes <code>UnmarshalText</code>.</p>
+</div>
+
+<div class="finding">
+  <p><span class="badge b-nit">nit</span><strong>No sunset marker on the <code>private</code>-compat shim</strong></p>
+  <p class="where"><code>pkg/config/org/org.go:110-158</code></p>
+  <p><code>UnmarshalJSON</code>'s private-translation block and the
+  <code>privateFieldDeprecationWarningLast</code> package global have no TODO or tracking-issue
+  reference; deprecations without a marker tend to become permanent. The alias-type pattern means
+  it deletes cleanly whenever removed. Flagged by the maintainability maintainer-panel
+  reviewer.</p>
+</div>
+
+<div class="finding">
+  <p><span class="badge b-nit">nit</span><strong><code>github.Repo</code> carries unsynced dual state (<code>Private bool</code> / <code>Visibility string</code>)</strong></p>
+  <p class="where"><code>pkg/github/types.go:332-336</code>; <code>ToRepo</code> at <code>pkg/github/types.go:427</code></p>
+  <p><code>RepoRequest.ToRepo()</code> sets only <code>Visibility</code>, leaving
+  <code>Private</code> at its zero value for a private/internal request. Verified as not
+  currently observable: <code>configureRepos</code> only reads <code>.Visibility</code> from
+  CreateRepo/UpdateRepo results, and branchprotector reads <code>Private</code> only from live API
+  <code>GetRepo</code> responses (always populated), so no code path observes the divergence
+  today. A one-line comment relating the two fields would prevent future confusion (code-quality
+  + maintainability maintainer-panel reviewers).</p>
+</div>
+
+<div class="finding">
+  <p><span class="badge b-nit">nit</span><strong>Visibility enum lives in <code>pkg/config/org</code>; the wire type is a raw <code>*string</code></strong></p>
+  <p class="where"><code>pkg/github/types.go:385</code>; symptom at <code>cmd/peribolos/main.go:1145</code></p>
+  <p><code>RepoRequest.Visibility *string</code> drops type safety exactly at the API boundary, and
+  <code>sanitizeRepoDelta</code> compares a github-layer value against
+  <code>string(org.RepoVisibilityPublic)</code>, coupling that layer to the org config enum.
+  Defining <code>RepoVisibility</code> in <code>pkg/github</code> (which <code>pkg/config/org</code>
+  already imports) fixes both the dependency direction and the typing.</p>
+</div>
+
+<div class="finding">
+  <p><span class="badge b-nit">nit</span><strong>Bespoke pointer helpers duplicate <code>ptr.To</code></strong></p>
+  <p class="where"><code>cmd/peribolos/main_test.go:37</code>, <code>pkg/config/org/org_test.go:219</code></p>
+  <p>The repo depends on <code>k8s.io/utils/ptr</code> and uses <code>ptr.To</code> widely;
+  <code>visibilityPtr</code> and <code>strPtr</code> are one-off reimplementations.</p>
+</div>
+
+<h2>Things I checked and was fine with</h2>
+<ul class="checked">
+  <li>Config loading goes through <code>sigs.k8s.io/yaml</code> (YAML→JSON), so the custom
+      <code>Repo.UnmarshalJSON</code> <em>is</em> honored; no <code>gopkg.in/yaml</code> bypass
+      anywhere; <code>pkg/config/org</code> is imported only by <code>cmd/peribolos</code>.</li>
+  <li>Marshal round-trip for dump is correct (<code>RepoVisibility</code> is a string kind), and
+      <code>PruneRepoDefaults</code> prunes only <code>public</code>, so <code>private</code> and
+      <code>internal</code> survive dumps.</li>
+  <li>No stale references to the removed <code>org.Repo.Private</code> /
+      <code>RepoRequest.Private</code>; branchprotector reads <code>github.Repo.Private</code> from
+      live API responses, which still populate it.</li>
+  <li><code>RepoRequest.Defined()</code> was updated to include <code>Visibility</code>.</li>
+  <li>No extra GitHub mutations on the happy path: the update request omits visibility when it
+      equals the current value, matching the old <code>setBool</code> omit-when-equal behavior.</li>
+  <li>The hard error on both <code>private</code> and <code>visibility</code> set is stated PR
+      intent and tested — not flagged.</li>
+  <li><code>ThrottledWarnf</code> firing at most once per 5 minutes is adequate for a single-run
+      CLI: one deprecation warning per run.</li>
+  <li>Peribolos site docs don't document the <code>private</code>/<code>visibility</code> repo
+      fields, so no docs went stale.</li>
+  <li><code>UnmarshalJSON</code> test coverage is thorough (null handling, both-set conflict,
+      typo rejection, migration paths).</li>
+  <li><code>sanitizeRepoDelta</code>'s policy change (public-only gating, free private↔internal)
+      is behavior-tested, including <code>internal</code>→<code>public</code> gating.</li>
+  <li>No new flags, RBAC, scopes, or endpoints; visibility rides the existing repo
+      GET/PATCH/POST calls.</li>
+  <li>Rollback to an older peribolos after adopting <code>visibility:</code> configs (especially
+      <code>internal</code>) doesn't fail outright — <code>sigs.k8s.io/yaml</code> is non-strict —
+      but silently stops reconciling visibility with zero error signal (deployment-risk
+      maintainer-panel finding).</li>
+</ul>
+
+<h2>Open questions for the author</h2>
+<ul>
+  <li>Should exposure-widening private→internal require <code>--allow-repo-publish</code> (or a
+      dedicated flag)? The PR declares it free — was the security implication (visible to all
+      enterprise members) weighed deliberately, given the flag family's purpose?</li>
+  <li>Does the minimum GHES version prow supports always populate <code>visibility</code> on the
+      repos API and accept it on create/edit? The old create path sent <code>private: true</code>,
+      which every API version honors.</li>
+  <li>Is the <code>pkg/github.RepoRequest</code> API break (<code>Private</code> →
+      <code>Visibility</code>) called out in release notes for downstream vendors of the Go
+      module?</li>
+</ul>
+
+</main>
+</body>
+</html>

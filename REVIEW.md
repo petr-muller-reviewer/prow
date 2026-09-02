@@ -5,6 +5,11 @@ head_sha: 98babf79b963f6375b1ed97bb529097caa850e2a
 base: main
 reviewed_at: 2026-07-22T14:54:24Z
 verdict: approve
+recommended_rereview:
+  - at: 2026-09-02T16:53:20Z
+    old_sha: 98babf79b963f6375b1ed97bb529097caa850e2a
+    new_sha: 674a52169165592fc021626d57c951cc4654df3b
+    reason: The reviewed SHA is no longer reachable; the replacement PR head substantially rewrites the peribolos visibility implementation and tests in areas with existing findings.
 ---
 
 # Review: kubernetes-sigs/prow#774
@@ -18,6 +23,23 @@ throttled warning, rejects both-set, treats `null` as absent; `github.RepoReques
 finder review + verification, plus a 3-perspective maintainer-review panel (code quality,
 maintainability, deployment risk) synthesized by an advisor agent. All reviewers converge
 on APPROVE_WITH_SUGGESTIONS / approve; no blocking findings.
+
+## Re-review Recommended
+
+### 2026-09-02T16:53:20Z — `98babf79b963f6375b1ed97bb529097caa850e2a` → `674a52169165592fc021626d57c951cc4654df3b`
+
+- The original reviewed SHA is not an ancestor of the current PR head. The current PR contains
+  one replacement commit, `674a52169 peribolos: add internal repository visibility support`,
+  authored 2026-08-18, with 492 additions and 136 deletions across seven files.
+- The replacement touches `cmd/peribolos/main.go`, `cmd/peribolos/main_test.go`,
+  `pkg/config/org/{org.go,org_test.go}`, and `pkg/github/{types.go,types_test.go,client_test.go}`:
+  the same implementation and test paths covered by the existing visibility findings.
+- Since the prior review, the author stated that they simplified/DRYed the code and added tests;
+  review-thread replies marked several comments addressed. The PR was merged on 2026-08-18.
+
+The unreachable baseline plus substantial replacement code in the areas of the existing findings
+meets the full re-review threshold. The existing findings remain preserved and have not been
+revalidated against `674a52169`.
 
 ## Findings
 

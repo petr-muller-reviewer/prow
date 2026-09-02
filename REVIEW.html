@@ -73,6 +73,7 @@
   <dt>Base:</dt><dd><code>main</code></dd>
   <dt>Head:</dt><dd><code>98babf79b963f6375b1ed97bb529097caa850e2a</code></dd>
   <dt>Reviewed:</dt><dd>2026-07-22T14:54:24Z</dd>
+  <dt>Re-review recommended:</dt><dd>2026-09-02T16:53:20Z</dd>
 </dl>
 
 <h2>Verdict</h2>
@@ -102,6 +103,17 @@ downstream vendors are deliberate choices that deserve an explicit maintainer si
   <li>Dump path reads <code>Visibility</code> from the API response and prunes
       <code>"public"</code> as the default in <code>PruneRepoDefaults</code>.</li>
 </ul>
+
+<h2>Re-review Recommended</h2>
+<div class="finding">
+  <h3>2026-09-02T16:53:20Z — <code>98babf79b963f6375b1ed97bb529097caa850e2a</code> → <code>674a52169165592fc021626d57c951cc4654df3b</code></h3>
+  <ul>
+    <li>The original reviewed SHA is not an ancestor of the current PR head. The current PR contains one replacement commit, <code>674a52169 peribolos: add internal repository visibility support</code>, authored 2026-08-18, with 492 additions and 136 deletions across seven files.</li>
+    <li>The replacement touches <code>cmd/peribolos/main.go</code>, <code>cmd/peribolos/main_test.go</code>, <code>pkg/config/org/{org.go,org_test.go}</code>, and <code>pkg/github/{types.go,types_test.go,client_test.go}</code>: the same implementation and test paths covered by the existing visibility findings.</li>
+    <li>Since the prior review, the author stated that they simplified/DRYed the code and added tests; review-thread replies marked several comments addressed. The PR was merged on 2026-08-18.</li>
+  </ul>
+  <p>The unreachable baseline plus substantial replacement code in the areas of the existing findings meets the full re-review threshold. The existing findings remain preserved and have not been revalidated against <code>674a52169</code>.</p>
+</div>
 
 <h2>Findings</h2>
 

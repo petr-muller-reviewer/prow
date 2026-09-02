@@ -243,6 +243,22 @@
   Recommend: approve with minor suggestions
 </div>
 
+<h2>Gate</h2>
+<div class="verdict verdict-approve">
+  <span class="verdict-icon">&#10003;</span>
+  Decision: merge
+</div>
+<div class="card">
+  <p>PR #691 is now merged at <code>8738db108e8cd0bcfc808328fd23ef7078f879f2</code>, the same commit the review covered. The change is documentation-only (<code>site/content/en/docs/components/core/sinker.md</code>, +62/-2); it introduces no API, configuration-schema, flag, or runtime behavior change.</p>
+  <h3>Gating list</h3>
+  <ul class="checklist">
+    <li class="pass">None. There are no blocking or should-fix findings, reviewer change requests, substantive inline comments, or explicit holds.</li>
+    <li class="pass">The review observations on orphaned-pod cleanup, ProwJob verbs, <code>max_pod_age</code> semantics, and metrics organization remain useful follow-up improvements, but do not create deployment or compatibility risk.</li>
+  </ul>
+  <h3>Independent merge risk</h3>
+  <p>No notable merge risk. Existing deployments are unaffected because the PR changes only a rendered documentation page.</p>
+</div>
+
 <h2>Since Previous Review <span style="color: var(--text-muted); font-size: 0.85rem; font-weight: normal;">(refreshed 2026-06-01)</span></h2>
 <div class="card">
   <ul class="checklist">
@@ -425,6 +441,17 @@ None of these block the merge. Thanks for the contribution!
 
 /ok-to-test
 /lgtm</span><span class="copy-hint">click to copy</span>
+</div>
+
+<h2>Post-merge follow-up</h2>
+<div class="card">
+  <p>After PR #691 merges, carry over the strongest additions from closed PR #622:</p>
+  <ul class="checklist">
+    <li>Document orphaned-pod cleanup (pods whose associated ProwJob no longer exists).</li>
+    <li>Add explicit defaults for each <code>sinker</code> configuration field and a link to <code>cmd/sinker</code>.</li>
+    <li>Expand the flag reference where useful, while retaining a focused operator-facing page.</li>
+    <li>Preserve the <code>max_pod_age</code> qualification: it is based on pod start time and does not delete pods whose associated ProwJob is still active.</li>
+  </ul>
 </div>
 
 <h2>Reviewer Actions</h2>

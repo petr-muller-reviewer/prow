@@ -10,6 +10,11 @@ refresh_log:
     new_sha: "8738db108e8cd0bcfc808328fd23ef7078f879f2"
     refreshed_at: "2026-06-01T00:31:09Z"
     summary: "No code changes; /ok-to-test granted by ameukam on 2026-05-23"
+gate:
+  decision: merge
+  gated_at: "2026-09-02T15:58:17Z"
+  gated_head_sha: "8738db108e8cd0bcfc808328fd23ef7078f879f2"
+  reviewed_head_sha: "8738db108e8cd0bcfc808328fd23ef7078f879f2"
 ---
 
 # PR #691: Document sinker component
@@ -23,6 +28,19 @@ refresh_log:
 ## Verdict
 
 > **APPROVE WITH MINOR SUGGESTIONS**
+
+## Gate
+
+**Decision: merge.** PR #691 is now merged at `8738db108e8cd0bcfc808328fd23ef7078f879f2`, the same commit the review covered. The change is documentation-only (`site/content/en/docs/components/core/sinker.md`, +62/-2); it introduces no API, configuration-schema, flag, or runtime behavior change.
+
+### Gating list
+
+- None. There are no blocking or should-fix findings, reviewer change requests, substantive inline comments, or explicit holds.
+- The review observations on orphaned-pod cleanup, ProwJob verbs, `max_pod_age` semantics, and metrics organization remain useful follow-up improvements, but do not create deployment or compatibility risk.
+
+### Independent merge risk
+
+- No notable merge risk. Existing deployments are unaffected because the PR changes only a rendered documentation page.
 
 ## Since Previous Review (refreshed 2026-06-01)
 
@@ -141,6 +159,15 @@ None of these block the merge. Thanks for the contribution!
 /ok-to-test
 /lgtm
 ```
+
+## Post-merge follow-up
+
+After PR #691 merges, carry over the strongest additions from closed PR #622:
+
+- Document orphaned-pod cleanup (pods whose associated ProwJob no longer exists).
+- Add explicit defaults for each `sinker` configuration field and a link to `cmd/sinker`.
+- Expand the flag reference where useful, while retaining a focused operator-facing page.
+- Preserve the `max_pod_age` qualification: it is based on pod start time and does not delete pods whose associated ProwJob is still active.
 
 ## Reviewer Actions
 

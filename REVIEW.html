@@ -5,308 +5,55 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Review — kubernetes-sigs/prow#735</title>
 <style>
-  :root {
-    --bg: #fbfbfa; --fg: #1e1e1c; --muted: #6b6b66; --rule: #dedcd6;
-    --card: #ffffff; --code-bg: #f2f1ed; --accent: #7a4b1e;
-    --block: #b3261e; --should: #a35c00; --nit: #4a6b3a; --quest: #3a5a7a; --done: #6b6b66;
-  }
-  * { box-sizing: border-box; }
-  body {
-    margin: 0; padding: 2.5rem 1.5rem 6rem; background: var(--bg); color: var(--fg);
-    font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-  }
-  main { max-width: 52rem; margin: 0 auto; }
-  code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
-  code { background: var(--code-bg); padding: 0.1em 0.35em; border-radius: 3px; font-size: 0.88em; }
-  pre {
-    background: var(--code-bg); padding: 0.85rem 1rem; border-radius: 5px;
-    overflow-x: auto; font-size: 0.84em; line-height: 1.5; border-left: 3px solid var(--rule);
-  }
-  pre code { background: none; padding: 0; font-size: 1em; }
-  h1 { font-size: 1.5rem; margin: 0 0 0.3rem; letter-spacing: -0.01em; }
-  h2 {
-    font-size: 1.15rem; margin: 2.75rem 0 0.9rem; padding-bottom: 0.35rem;
-    border-bottom: 2px solid var(--rule);
-  }
-  h3 { font-size: 0.98rem; margin: 1.8rem 0 0.5rem; }
-  p { margin: 0.65rem 0; }
-  ul { margin: 0.6rem 0; padding-left: 1.35rem; }
-  li { margin: 0.35rem 0; }
-  .meta { color: var(--muted); font-size: 0.86rem; margin-bottom: 1.75rem; }
-  .meta div { margin: 0.15rem 0; }
-  .meta strong { color: var(--fg); font-weight: 600; }
-  .verdict {
-    background: var(--card); border: 1px solid var(--rule); border-left: 4px solid var(--accent);
-    border-radius: 5px; padding: 1rem 1.2rem; margin: 1.25rem 0;
-  }
-  .verdict .line { font-weight: 650; font-size: 1.05rem; margin-bottom: 0.4rem; }
-  .finding {
-    background: var(--card); border: 1px solid var(--rule); border-radius: 5px;
-    padding: 0.9rem 1.1rem; margin: 1rem 0;
-  }
-  .finding h3 { margin-top: 0; }
-  .tag {
-    display: inline-block; font-size: 0.66rem; font-weight: 700; letter-spacing: 0.07em;
-    text-transform: uppercase; padding: 0.16em 0.5em; border-radius: 3px; color: #fff;
-    vertical-align: 0.15em; margin-right: 0.5rem;
-  }
-  .t-blocking { background: var(--block); }
-  .t-should { background: var(--should); }
-  .t-nit { background: var(--nit); }
-  .t-question { background: var(--quest); }
-  .t-done { background: var(--done); }
-  .where { font-size: 0.82rem; color: var(--muted); margin: 0.2rem 0 0.55rem; }
-  .note { font-size: 0.9rem; color: var(--muted); border-left: 2px solid var(--rule); padding-left: 0.8rem; margin: 0.7rem 0; }
-  a { color: var(--accent); }
-  .sub { color: var(--muted); font-size: 0.9rem; margin-top: -0.4rem; }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #17171a; --fg: #e6e5e0; --muted: #9a988f; --rule: #34343a;
-      --card: #1e1e22; --code-bg: #26262b; --accent: #d9a273;
-      --block: #e05a52; --should: #d99340; --nit: #7fae66; --quest: #6f9dc7; --done: #74736c;
-    }
-    .tag { color: #17171a; }
-  }
+  :root { --bg:#fbfbfa; --fg:#1e1e1c; --muted:#6b6b66; --rule:#dedcd6; --card:#fff; --accent:#7a4b1e; --should:#a35c00; --done:#6b6b66; }
+  * { box-sizing:border-box; } body { margin:0; padding:2.5rem 1.5rem 6rem; background:var(--bg); color:var(--fg); font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif; }
+  main { max-width:52rem; margin:0 auto; } code,pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; } code { background:#f2f1ed; padding:.1em .35em; border-radius:3px; font-size:.88em; } h1 { font-size:1.5rem; margin:0 0 .3rem; } h2 { font-size:1.15rem; margin:2.75rem 0 .9rem; padding-bottom:.35rem; border-bottom:2px solid var(--rule); } h3 { font-size:.98rem; margin:1.3rem 0 .5rem; } p { margin:.65rem 0; } ul { margin:.6rem 0; padding-left:1.35rem; } li { margin:.35rem 0; } .meta { color:var(--muted); font-size:.86rem; margin-bottom:1.75rem; } .meta div { margin:.15rem 0; } .verdict,.finding { background:var(--card); border:1px solid var(--rule); border-radius:5px; padding:1rem 1.2rem; margin:1.25rem 0; } .verdict { border-left:4px solid var(--accent); } .finding { padding:.9rem 1.1rem; } .tag { display:inline-block; font-size:.66rem; font-weight:700; letter-spacing:.07em; text-transform:uppercase; padding:.16em .5em; border-radius:3px; color:#fff; vertical-align:.15em; margin-right:.5rem; background:var(--should); } .done { background:var(--done); } .where { font-size:.82rem; color:var(--muted); } pre { background:#f2f1ed; padding:.85rem 1rem; overflow-x:auto; border-left:3px solid var(--rule); }
 </style>
 </head>
-<body>
-<main>
-
-<h1>trigger: add /test-required command</h1>
+<body><main>
+<h1>trigger: add /test-manual-required command</h1>
 <div class="meta">
   <div><strong>PR:</strong> <a href="https://github.com/kubernetes-sigs/prow/pull/735">kubernetes-sigs/prow#735</a></div>
-  <div><strong>Head SHA:</strong> <code>124f7da44fcbfd71622252c9d7459ecd1e267ee4</code></div>
+  <div><strong>Head SHA:</strong> <code>dedd4fc90801a7b2c23936a9c53f2cb6a42e2e4f</code></div>
   <div><strong>Base:</strong> <code>main</code></div>
-  <div><strong>Reviewed at:</strong> 2026-08-08T19:41:04Z</div>
-  <div><strong>Related:</strong> <a href="https://github.com/kubernetes-sigs/prow/issues/729">#729</a> (feature request)</div>
+  <div><strong>Reviewed at:</strong> 2026-09-02T00:25:25Z</div>
 </div>
-
-<div class="verdict">
-  <div class="line">Needs discussion — design change requested, no code change since 124f7da44</div>
-  <p>The implementation is clean and follows codebase patterns. The disagreement is entirely about
-  <em>which set of jobs</em> the command selects. This session converged on a definition:
-  <code>ContextRequired() &amp;&amp; NeedsExplicitTrigger()</code>, triggered unconditionally — the exact complement of
-  <code>/test all</code> — with no context inspection and no awareness of branch-protection or Tide config.
-  That answers the earlier open questions (the command should <em>not</em> read
-  <code>require_manually_triggered_jobs</code>), works for the #729 requester with no config change on their side,
-  and results in <em>less</em> code than is currently on the branch. It needs a rename. A design comment to this
-  effect was posted on the PR on 2026-08-08; the author has not yet pushed the different version they described
-  on 2026-08-04, so steering is time-sensitive.</p>
-</div>
-
+<div class="verdict"><strong>Request changes — one required-context edge case remains.</strong><p>The PR has merged, but the saved review records the outstanding correctness issue below.</p></div>
 <h2>What this PR does</h2>
 <ul>
-  <li>Adds <code>/test-required</code>, which triggers non-optional presubmits whose context has not yet been reported, including jobs that need an explicit trigger (passed as <code>forcedToRun = true</code>).</li>
-  <li>Introduces <code>TestRequiredFilter</code> in <code>pkg/pjutil/filter.go</code>, wired into <code>commentMatchesTrigger</code> and <code>PresubmitFilter</code>.</li>
-  <li>Unlike <code>/retest-required</code>, it does not re-run failed jobs — it only fills in missing ones.</li>
-  <li>Adds a help provider entry and extends the plugin description. +161/-0 across 4 files.</li>
-  <li>Motivated by #729: metal3 maintainers manually trigger a few required-but-not-automatic e2e jobs by copying job names, and want one command for it.</li>
+  <li>Adds <code>/test-manual-required</code> to start manually triggered, non-optional presubmits without file-change conditions.</li>
+  <li>Forces selected jobs to run and wires the command into trigger matching and plugin help.</li>
 </ul>
-
+<p>Since previous review:</p>
+<ul>
+  <li>Renamed <code>/test-required</code>, removed status-context lookup, and implemented unconditional manual-job selection.</li>
+  <li>Updated unit and trigger-plugin coverage; the PR is now merged.</li>
+</ul>
 <h2>Findings</h2>
-
-<h3>Should fix</h3>
-
 <div class="finding">
-  <h3><span class="tag t-should">should fix</span>Filter predicate should be <code>ContextRequired() &amp;&amp; NeedsExplicitTrigger()</code>, forced unconditionally</h3>
-  <div class="where"><code>pkg/pjutil/filter.go:269-287</code>, <code>pkg/pjutil/filter.go:317-323</code></div>
-  <p>The current predicate is a <code>/retest</code>-shaped context check under a <code>/test</code> name, and its
-  <code>NeedsExplicitTrigger()</code> term only feeds the <code>forced</code> return value. Moving that term into the
-  match predicate makes the command the exact complement of <code>TestAllFilter</code>
-  (<code>!p.NeedsExplicitTrigger()</code>, <code>filter.go:150</code>): two disjoint sets whose union is every
-  non-optional job. The set is then small by construction, so unconditional triggering costs nothing and the context
-  check becomes unnecessary rather than merely inconsistent. No config plumbing is needed, so the
-  <code>require_manually_triggered_jobs</code> question disappears entirely.</p>
-<pre><code>// current
-func (trf *TestRequiredFilter) ShouldRun(ps config.Presubmit) (bool, bool, bool) {
-    if ps.Optional {
-        return false, false, false
-    }
-    return !trf.allContexts.Has(ps.Context), ps.NeedsExplicitTrigger(), false
-}
-
-// target
-func (trf *TestRequiredFilter) ShouldRun(ps config.Presubmit) (bool, bool, bool) {
-    return ps.ContextRequired() &amp;&amp; ps.NeedsExplicitTrigger(), true, false
+  <h3><span class="tag">should fix</span>Define “required” with <code>ContextRequired()</code></h3>
+  <div class="where"><code>pkg/pjutil/filter.go:276</code></div>
+  <p><code>!ps.Optional</code> still selects a <code>skip_report: true</code> manual job. It publishes no GitHub context, so it cannot be a required presubmit context. Use <code>ps.ContextRequired()</code> and add a <code>skip_report: true</code> regression case.</p>
+  <pre><code>if ps.Optional || !ps.NeedsExplicitTrigger() || ps.RunIfChanged != "" || ps.SkipIfOnlyChanged != "" {
+    return false, false, false
 }</code></pre>
-  <p class="note"><strong>Not merely "drop the context check."</strong> Dropping it alone yields "trigger every
-  non-optional job unconditionally", including <code>always_run: true</code> jobs that already ran — the wasteful
-  variant, and exactly what the author described implementing on 2026-08-04.</p>
-  <p><strong>Side effects, all subtractive:</strong> the <code>allContexts</code> field and constructor argument are
-  deleted; the <code>contextGetter()</code> call in <code>PresubmitFilter</code> (<code>filter.go:317-323</code>) goes
-  away, so the command stops issuing a <code>GetCombinedStatus</code> call and the block collapses to match the
-  <code>NewTestAllFilter()</code> line below it.</p>
-  <p><strong>Works for #729 unchanged:</strong> the requester's jobs are <code>always_run: false, optional: false</code>
-  with no conditional matcher, so they satisfy the predicate with no config change on their side.</p>
 </div>
-
-<div class="finding">
-  <h3><span class="tag t-should">should fix</span>Command name is misleading</h3>
-  <div class="where"><code>pkg/pjutil/filter.go:39</code>, help provider entry in <code>pkg/plugins/trigger/trigger.go</code></div>
-  <p><code>/test-required</code> implies all required jobs, including <code>always_run: true</code> ones, which the
-  target predicate deliberately excludes. <code>/test-manual-required</code> was proposed. If the name stays, the
-  exclusion needs prominent documentation in the help entry.</p>
-<pre><code>var TestRequiredRe = regexp.MustCompile(`(?m)^/test-required\s*$`)</code></pre>
-</div>
-
-<h3>Nits</h3>
-
-<div class="finding">
-  <h3><span class="tag t-nit">nit</span>Use <code>ContextRequired()</code> rather than <code>!ps.Optional</code></h3>
-  <div class="where"><code>pkg/pjutil/filter.go:281</code></div>
-  <p><code>ContextRequired()</code> is <code>!ps.Optional &amp;&amp; !ps.SkipReport</code>
-  (<code>pkg/config/jobs.go:550-552</code>). A <code>skip_report: true</code> job posts no context and cannot be
-  required in any meaningful sense. <code>RetestRequiredFilter</code> (<code>filter.go:254</code>) uses bare
-  <code>ps.Optional</code>, so precedent is mixed.</p>
-</div>
-
-<div class="finding">
-  <h3><span class="tag t-nit">nit</span>Tests need inverting, not extending</h3>
-  <div class="where"><code>pkg/pjutil/filter_test.go</code>, <code>pkg/plugins/trigger/generic-comment_test.go:595-649</code></div>
-  <p>Under the target predicate the "skips jobs with already-reported contexts" expectations invert, and a new case
-  should assert that <code>always_run: true</code> required jobs are <em>not</em> triggered. The previously-noted
-  missing coverage for already-reported contexts becomes moot.</p>
-</div>
-
-<div class="finding">
-  <h3><span class="tag t-nit">nit</span>No job provenance label</h3>
-  <div class="where"><code>pkg/plugins/trigger/generic-comment.go:164-167</code></div>
-  <p><code>/retest</code> and <code>/retest-required</code> add <code>kube.RetestLabel</code>; this command does not.
-  Semantically correct, minor observability gap — operators cannot distinguish it from <code>/test all</code>.</p>
-</div>
-
-<h3>Questions</h3>
-
-<div class="finding">
-  <h3><span class="tag t-question">question</span>Dash-command form vs <code>/test &lt;arg&gt;</code> form</h3>
-  <div class="where"><code>pkg/pjutil/filter.go:30,39</code></div>
-  <p><code>TestAllRe</code> is <code>^/test all,?($|\s.*)</code> — a set selector expressed as an <em>argument</em>.
-  Dashes are used for command <em>variants</em> (<code>/retest-required</code>, <code>/ok-to-test</code>). A set
-  selector under <code>/test</code> arguably belongs in argument form (<code>/test manual-required</code>). Not
-  blocking; raised in the posted comment for the author and maintainers to settle.</p>
-</div>
-
-<h3>Resolved in 124f7da44</h3>
+<h3>Resolved</h3>
 <ul>
-  <li><span class="tag t-done">done</span><strong>NeedsExplicitTrigger check excluded explicitly-triggered required jobs</strong> — filter now returns <code>!trf.allContexts.Has(ps.Context), ps.NeedsExplicitTrigger(), false</code>.</li>
-  <li><span class="tag t-done">done</span><strong>Missing help provider entry</strong> — <code>pluginHelp.AddCommand</code> entry added.</li>
-  <li><span class="tag t-done">done</span><strong>Plugin long description omitted the command</strong> — sentence added.</li>
+  <li><span class="tag done">done</span><strong>Filter predicate should select manual jobs and force them</strong> — addressed in <code>dedd4fc90</code>: it requires <code>NeedsExplicitTrigger()</code>, excludes change matchers, forces matching jobs, and no longer fetches status contexts.</li>
+  <li><span class="tag done">done</span><strong>Command name was misleading</strong> — addressed in <code>dedd4fc90</code> by renaming it to <code>/test-manual-required</code>.</li>
+  <li><span class="tag done">done</span><strong>Tests needed to reflect the manual-only selection</strong> — addressed in <code>dedd4fc90</code>.</li>
 </ul>
-
-<h3>Superseded</h3>
-<p class="sub">The two earlier <em>should-fix</em> findings on context-checking inconsistency and on the command's
-assumptions about <code>require_manually_triggered_jobs</code>, plus the question of whether to respect that config,
-all collapse into the single predicate change above. The answer to the question is now a firm <strong>no</strong>: the
-trigger plugin should not read branch-protection or Tide config.</p>
-
-<h2>Things I checked and was fine with</h2>
-
-<h3>The requester's actual configuration (<code>metal3-io/project-infra</code>)</h3>
+<h2>Checked</h2>
 <ul>
-  <li><code>prow/config/config.yaml</code>: <code>tide.context_options.from-branch-protection: true</code>;
-  <code>branch-protection:</code> is only <code>protect: true</code> for orgs <code>Nordix</code> and
-  <code>metal3-io</code>. <strong>No <code>require_manually_triggered_jobs</code> anywhere.</strong></li>
-  <li>Target jobs (<code>cluster-api-provider-metal3.yaml:170-185</code>, <code>ip-address-manager.yaml:149-164</code>,
-  <code>ironic-image.yaml:52-67</code>): <code>always_run: false, optional: false</code>, no conditional matcher.</li>
-  <li><code>baremetal-operator.yaml:124-205</code> carries ~10 <code>always_run: false, optional: true</code> e2e jobs
-  — the concrete reason <code>/test all</code> is unacceptable to them.</li>
-  <li>No branchprotector deployment found in the repo (only a doc-comment mention). The GitHub <code>Required</code>
-  badge in the #729 screenshot is therefore likely hand-managed outside Prow, since <code>BranchRequirements</code>
-  would place these contexts in <code>requiredIfPresent</code>, and branchprotector replaces rather than unions the
-  context list (<code>cmd/branchprotector/protect.go:542</code>).</li>
+  <li><code>NeedsExplicitTrigger()</code> excludes <code>always_run</code> and file-conditional jobs; explicit matcher checks are redundant but correct.</li>
+  <li>Filter ordering, command recognition, help pruning, and help-provider wiring are correct.</li>
+  <li>The focused refresh diff is 78 additions / 101 deletions across five trigger and pjutil files.</li>
 </ul>
-
-<h3>Existing commands genuinely do not cover the use case</h3>
+<h2>Activity since previous review</h2>
 <ul>
-  <li><code>/retest-required</code> → <code>RetestRequiredFilter</code> (<code>filter.go:254</code>) →
-  <code>RetestFilter</code> (<code>filter.go:236</code>):
-  <code>failed || (!p.NeedsExplicitTrigger() &amp;&amp; !allContexts.Has(p.Context))</code>. For a never-run manual job,
-  <code>failed</code> is false and the second clause is short-circuited → not triggered.</li>
-  <li><code>/test all</code> → <code>TestAllFilter</code> (<code>filter.go:150</code>) excludes
-  <code>NeedsExplicitTrigger()</code> by construction.</li>
+  <li>2026-08-10: Amulyam24 pushed <code>dedd4fc90</code>, implementing the discussed design and rename.</li>
+  <li>2026-08-11 and 2026-08-13: petr-muller and Amulyam24 confirmed trusted-member behavior matches <code>/test</code>.</li>
+  <li>2026-08-19: petr-muller submitted an approval; the PR is now merged.</li>
 </ul>
-
-<h3>Config-level workarounds that exist today</h3>
-<ul>
-  <li>A shared <code>trigger:</code> regex across jobs is legal — only job <em>names</em> are checked for uniqueness
-  (<code>config.go:2306-2336</code>), and <code>CommandFilter</code> (<code>filter.go:127</code>) returns
-  <code>forced = true</code>, so matched jobs run despite <code>always_run: false</code>.</li>
-  <li><code>rerun_command</code> is mandatory when <code>trigger</code> is set (<code>config.go:3134</code>; defaulting
-  only fires when both are empty, <code>config.go:3245</code>) and must itself match the trigger regex
-  (<code>config.go:3274-3275</code>). It is copied into the ProwJob (<code>pjutil.go:177</code>) and printed in the
-  failure report (<code>report/report.go:313</code>), so a shared <code>rerun_command</code> makes a single failure
-  advertise a rerun of the whole set. Widen <code>trigger</code>, keep <code>rerun_command</code> per-job.</li>
-  <li><code>run_before_merge: true</code> (<code>jobs.go:216-220</code>) is the per-job equivalent of
-  <code>require_manually_triggered_jobs</code> — same <code>forceRun</code> expression, but it does not feed
-  <code>BranchRequirements</code>, so it does not change what GitHub requires.</li>
-</ul>
-
-<h3>Tide's treatment of manually-triggered required jobs, without the flag: enforced but unmanaged</h3>
-<ul>
-  <li><code>jobIsRequiredByTide</code> (<code>tide/github.go:443-445</code>) =
-  <code>ContextRequired() || RunBeforeMerge</code> → passes.</li>
-  <li><code>forceRun</code> (<code>tide.go:1708</code>) is false → <code>ps.ShouldRun(branch, changes, false, false)</code>
-  returns false (<code>jobs.go:518-530</code>, with <code>RegexpChangeMatcher.ShouldRun</code> returning
-  <code>determined=false</code>, <code>jobs.go:449-456</code>) → the job is absent from
-  <code>sp.presubmits[pr.Number]</code>.</li>
-  <li>Consequence: <code>accumulate</code> (<code>tide.go:1108-1122</code>) never sees it → never in
-  <code>missingTests</code> → <strong>Tide never triggers or retests it.</strong></li>
-  <li>But <code>IsOptional</code> is false for <code>RequiredIfPresentContexts</code>
-  (<code>config/tide.go:1015-1016</code>), so <code>unsuccessfulContexts</code> (<code>tide.go:865-877</code>) still
-  gates on it: <em>failure</em> → PR filtered from the pool (<code>tide.go:781</code>) with no possible retrigger;
-  <em>pending</em> → filtered as "not Prow-controlled" (<code>tide.go:785-788</code>); <em>success</em> → accepted
-  forever, never revalidated when the base moves, because the base-SHA staleness check in <code>accumulate</code>
-  only covers jobs in the required set.</li>
-  <li>With <code>require_manually_triggered_jobs</code> + <code>from-branch-protection</code>
-  (<code>tide.go:2395-2405</code>): <code>forceRun</code> is true → Tide triggers the job itself once the PR is in the
-  pool. Introduced by <code>c13d06d6c</code> (2024-01-21, "tide: Fix require_manually_triggered_jobs tide handling",
-  <em>"resulted in missing protection for this kind of jobs"</em>). The auto-trigger machinery itself is old
-  (<code>75b0d3a36</code>, 2019-08-03).</li>
-  <li>Batches already use union semantics: <code>presubmitsForBatch</code> (<code>tide.go:1731-1776</code>) recomputes
-  from <code>batchChanges(prs)</code> (union of changed files) and is the single chokepoint for both
-  <code>pickBatch</code> (<code>:1242</code>) and <code>accumulateBatch</code> (<code>:1005</code>), so pick-time and
-  validate-time cannot drift.</li>
-</ul>
-
-<h3>Unchanged from earlier reviews</h3>
-<ul>
-  <li>Filter ordering (test-required after retest-required, before test-all) is correct in <code>AggregateFilter</code>.</li>
-  <li><code>commentMatchesTrigger</code> wiring is correct; help pruning works (<code>/test-required</code> matches
-  <code>anyTestRe</code>, <code>help.go:33</code>).</li>
-  <li>Purely additive; no config/API/behavioral change to existing commands; cleanly revertible; no security concerns.</li>
-</ul>
-
-<h2>Open questions for the author</h2>
-<ul>
-  <li>Naming: <code>/test-manual-required</code> (precise, long), <code>/test-required</code> plus prominent
-  documentation of the exclusion, or the argument form <code>/test manual-required</code> matching the
-  <code>/test all</code> precedent?</li>
-  <li>For the #729 reporters: do you hand-manage GitHub branch protection for these contexts? Prow classifies them as
-  <em>required-if-present</em>, so Tide would consider a PR mergeable without them — the answer determines whether
-  <code>require_manually_triggered_jobs: true</code> or <code>run_before_merge: true</code> is the config fix you
-  actually want, independent of this PR.</li>
-  <li>Follow-up issue candidate against Tide, independent of this PR: make a <em>present</em> context imply
-  <em>managed</em> — add "context already present on this PR" as a <code>forceRun</code> disjunct in
-  <code>presubmitsByPull</code> (<code>tide.go:1708</code>), so a maintainer's manual trigger produces a genuinely
-  first-class required check (retriggered on base drift, self-healing on failure) without the org-wide flag. Same
-  defect class as <code>c13d06d6c</code>, adjacent axis. Open risks: batch composition (union over per-PR context
-  presence) and <code>headContexts</code> fetch cost, possibly already cached (<code>tide.go:1211-1212</code>).</li>
-</ul>
-
-<h2>Activity since last review (2026-08-08T17:20:19Z)</h2>
-<ul>
-  <li><strong>2026-08-08</strong> — petr-muller posted a design comment proposing <code>/test-manual-required</code>
-  with the predicate above, explicitly rejecting <code>require_manually_triggered_jobs</code> awareness ("I dislike
-  trying to be too smart"), and noting <code>/test-required</code> would need prominent documentation if kept.</li>
-  <li><strong>Correction still owed on that comment:</strong> its second bullet claims that with
-  <code>require_manually_triggered_jobs</code> set, Tide will not merge "until someone triggers them manually and they
-  pass". Tide triggers them itself (<code>forceRun</code>, <code>tide.go:1708</code>). The command's value in that
-  configuration is <em>earliness</em> — starting jobs before the PR enters the pool, i.e. before lgtm/approved — not
-  necessity.</li>
-  <li>The author has not yet pushed the version described on 2026-08-04 (unconditional trigger plus
-  <code>require_manually_triggered_jobs</code> gating). Steering away from it is time-sensitive.</li>
-</ul>
-
-</main>
-</body>
-</html>
+</main></body></html>

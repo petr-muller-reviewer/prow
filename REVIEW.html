@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Review of kubernetes-sigs/prow#861</title>
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+    max-width: 860px;
+    margin: 2rem auto;
+    padding: 0 1.5rem;
+    color: #1a1a1a;
+  }
+  code, pre {
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    background: #f4f4f4;
+    border-radius: 4px;
+  }
+  code { padding: 0.1em 0.35em; font-size: 0.9em; }
+  pre {
+    padding: 0.8em 1em;
+    overflow-x: auto;
+    font-size: 0.85em;
+    border-left: 3px solid #ccc;
+  }
+  header {
+    border-bottom: 2px solid #ddd;
+    padding-bottom: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  header dl {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 0.2em 1em;
+    font-size: 0.95em;
+  }
+  header dt { font-weight: 600; color: #555; }
+  h1 { font-size: 1.4em; margin-bottom: 0.3em; }
+  h2 {
+    font-size: 1.15em;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 0.3em;
+    margin-top: 2em;
+  }
+  .verdict {
+    display: inline-block;
+    padding: 0.3em 0.8em;
+    border-radius: 4px;
+    font-weight: 600;
+    background: #e6f4ea;
+    color: #1e7b34;
+  }
+  .finding { margin: 1em 0; padding: 0.8em 1em; border-left: 3px solid #ccc; background: #fafafa; }
+  .finding h3 { margin: 0 0 0.4em 0; font-size: 1em; }
+  .sev-blocking { border-left-color: #c0392b; }
+  .sev-should-fix { border-left-color: #d68910; }
+  .sev-nit { border-left-color: #999; }
+  .sev-question { border-left-color: #2e86c1; }
+  ul { padding-left: 1.4em; }
+  li { margin: 0.3em 0; }
+  a { color: #2e6da4; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Review of kubernetes-sigs/prow#861</h1>
+  <dl>
+    <dt>PR</dt><dd><a href="https://github.com/kubernetes-sigs/prow/pull/861">kubernetes-sigs/prow#861</a></dd>
+    <dt>Title</dt><dd>pkg/config/secret: fix TestAddWithParser flake</dd>
+    <dt>Base</dt><dd>main</dd>
+    <dt>Head SHA</dt><dd><code>b5a4bf7d2fe6a8c21cc565fbb0d9ca9a7bcda8c8</code></dd>
+    <dt>Reviewed at</dt><dd>2026-08-18T19:58:11Z</dd>
+  </dl>
+</header>
+
+<h2>Verdict</h2>
+<p><span class="verdict">Approve</span></p>
+<p>
+This is a well-reasoned, test-only fix for a genuine happens-before bug in the test itself
+(not the reloader). The new synchronization point (<code>reloadCensor</code>) is provably
+correct because it runs only after the value store under lock, and the rewritten bad-parse
+assertion replaces an unprovable "never observed" check with a waitable ordering guarantee.
+No production code changes, no behavior regressions in coverage — the split-out
+<code>TestAddWithParserRegistersSecret</code> restores the public-API assertions that the
+timing rewrite gave up.
+</p>
+
+<h2>What this PR does</h2>
+<ul>
+  <li>Fixes a flaky <code>TestAddWithParser</code> failure (<code>expected value 2 from generator, got 1</code>) that has intermittently failed the race-detector job since January.</li>
+  <li>Root cause: the test synchronized on the user parser callback, which runs at <code>reloader.go:72</code> — before the parsed value is stored at <code>reloader.go:80</code> — so there was no happens-before edge guaranteeing the getter saw the new value.</li>
+  <li>Rewrites the test to synchronize on <code>reloadCensor</code> instead, which fires only after <code>p.lock.Unlock()</code> at both call sites (<code>reloader.go:44</code>, <code>:82</code>), giving a real happens-before edge per the Go memory model.</li>
+  <li>Replaces point-in-time getter sampling for the bad-parse case with an assertion on the ordered sequence of published values — a liveness property that can be waited on, with no sleeps or observation windows.</li>
+  <li>Adds <code>TestAddWithParserRegistersSecret</code> to recover synchronous public-API coverage that the timing-focused rewrite no longer exercises.</li>
+</ul>
+
+<h2>Findings</h2>
+<p><em>None. No blocking, should-fix, or nit issues found.</em></p>
+
+<h2>Things I checked and was fine with</h2>
+<ul>
+  <li><code>reloadCensor</code> call sites are exactly <code>reloader.go:44</code> and <code>:82</code>, both after the lock releases — matches the PR's synchronization claim.</li>
+  <li><code>writeSecret</code>'s <code>time.Now().Add(generation*time.Second)</code> guarantees strictly increasing mtimes across generations, independent of filesystem timestamp granularity.</li>
+  <li><code>awaitPublish</code>'s repeat-skipping logic (<code>got == last &amp;&amp; got != want</code>) correctly absorbs the one remaining benign race: a poll landing between <code>os.WriteFile</code> and <code>os.Chtimes</code>.</li>
+  <li>No exported API changed; nothing else in the tree depends on the old synchronization pattern.</li>
+  <li>The PR's claim of a synthetic-regression check (temporarily removing the <code>continue</code> at <code>reloader.go:75</code>) is consistent with how the rewritten assertions are structured — that scenario would indeed surface as a value mismatch in <code>awaitPublish</code>.</li>
+</ul>
+
+<h2>Open questions for the author</h2>
+<p><em>None — the PR description already explicitly flags the deferred <code>time.Tick</code> goroutine-leak and <code>lastModTime</code> zero-value quirks as known, deliberately out-of-scope warts.</em></p>
+
+</body>
+</html>

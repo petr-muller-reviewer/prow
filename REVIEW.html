@@ -71,7 +71,7 @@
     <dt>Title</dt><dd>pkg/config/secret: fix TestAddWithParser flake</dd>
     <dt>Base</dt><dd>main</dd>
     <dt>Head SHA</dt><dd><code>b5a4bf7d2fe6a8c21cc565fbb0d9ca9a7bcda8c8</code></dd>
-    <dt>Reviewed at</dt><dd>2026-08-18T19:58:11Z</dd>
+    <dt>Reviewed at</dt><dd>2026-09-04T17:25:51Z</dd>
   </dl>
 </header>
 
@@ -94,6 +94,12 @@ timing rewrite gave up.
   <li>Rewrites the test to synchronize on <code>reloadCensor</code> instead, which fires only after <code>p.lock.Unlock()</code> at both call sites (<code>reloader.go:44</code>, <code>:82</code>), giving a real happens-before edge per the Go memory model.</li>
   <li>Replaces point-in-time getter sampling for the bad-parse case with an assertion on the ordered sequence of published values — a liveness property that can be waited on, with no sleeps or observation windows.</li>
   <li>Adds <code>TestAddWithParserRegistersSecret</code> to recover synchronous public-API coverage that the timing-focused rewrite no longer exercises.</li>
+</ul>
+<p>Since previous review:</p>
+<ul>
+  <li>No code changes (<code>b5a4bf7d2fe6a8c21cc565fbb0d9ca9a7bcda8c8</code> unchanged).</li>
+  <li><code>petr-muller</code> approved the PR at <code>2026-08-18T20:12:14Z</code>; the approval bot recorded it at <code>20:12:21Z</code>.</li>
+  <li>The PR merged into <code>main</code> at <code>2026-08-18T20:33:19Z</code>.</li>
 </ul>
 
 <h2>Findings</h2>

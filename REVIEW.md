@@ -3,8 +3,12 @@ pr: kubernetes-sigs/prow#861
 title: "pkg/config/secret: fix TestAddWithParser flake"
 head_sha: b5a4bf7d2fe6a8c21cc565fbb0d9ca9a7bcda8c8
 base: main
-reviewed_at: 2026-08-18T19:58:11Z
+reviewed_at: 2026-09-04T17:25:51Z
 verdict: approve
+refresh_log:
+  - old_sha: b5a4bf7d2fe6a8c21cc565fbb0d9ca9a7bcda8c8
+    new_sha: b5a4bf7d2fe6a8c21cc565fbb0d9ca9a7bcda8c8
+    summary: "No code changes; recorded approval activity and the PR merge."
 ---
 
 ## Summary
@@ -19,6 +23,12 @@ from inside it does establish a happens-before edge per the Go memory
 model. Bad-parse case is now asserted via publish-sequence ordering
 instead of point-in-time sampling of the getter, eliminating the
 observation-window/sleep pattern entirely. No production code changed.
+
+Since previous review:
+
+- No code changes (`b5a4bf7d2fe6a8c21cc565fbb0d9ca9a7bcda8c8` unchanged).
+- `petr-muller` approved the PR at `2026-08-18T20:12:14Z`; the approval bot recorded it at `20:12:21Z`.
+- The PR merged into `main` at `2026-08-18T20:33:19Z`.
 
 ## Findings
 

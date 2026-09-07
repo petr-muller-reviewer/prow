@@ -62,7 +62,7 @@
 <h1>Review of <a href="https://github.com/kubernetes-sigs/prow/pull/909">kubernetes-sigs/prow#909</a></h1>
 <p class="meta">
   <strong>blunderbuss, rifle: count existing eligible reviewers toward the reviewer count</strong><br>
-  head_sha: <code>bf10026abb714fae5dfcc1f9353046bdc6d5980f</code> &middot; base: <code>main</code> &middot; reviewed: 2026-08-31T22:28:26Z
+  head_sha: <code>722c9ebb2a70508c3a5d723c49a79415d6410252</code> &middot; base: <code>main</code> &middot; reviewed: 2026-09-07T13:25:41Z
 </p>
 
 <div class="verdict">
@@ -79,6 +79,8 @@
   <li>Adds an <code>EligibleRequestedReviewers</code> helper in <code>pkg/reviewer/reviewer.go</code> to compute which existing requested reviewers count toward the OWNERS reviewer/approver pool.</li>
   <li>Adds a new branch in both plugins for when the quota is already satisfied by existing reviewers, which still needs to pick up any <code>RequiredReviewers</code> entries.</li>
   <li>New tests cover case normalization, approver-only eligibility, the <code>max_reviewer_count</code> interaction, and the <code>reviewer_count: 0</code> no-op case (mostly on the blunderbuss side).</li>
+  <li>Since the previous review, the PR was rebased onto current <code>main</code>; the only functional source changes are equivalent log-message clarifications in blunderbuss and rifle.</li>
+  <li><code>pkg/plugins/rifle/rifle_test.go</code> now mirrors the quota, cap, approver, and required-reviewer coverage, and adds a rifle blame-fallback exclusion regression test.</li>
 </ul>
 
 <h2>Findings</h2>
@@ -145,17 +147,6 @@
 <h3>Nits</h3>
 
 <div class="finding nit">
-  <h3><span class="badge nit">nit</span>rifle_test.go missing a required-reviewers-at-quota-met case</h3>
-  <span class="where"><code>pkg/plugins/rifle/rifle_test.go:475</code></span>
-  <p><code>TestHandleRifleWithExistingRequestedReviewers</code> has no case for "quota already met by existing
-  reviewers AND a <code>RequiredReviewers</code> entry exists," unlike <code>blunderbuss_test.go</code>'s equivalent
-  "quota satisfied but required reviewers still requested" case.</p>
-  <p><strong>Failure scenario:</strong> a regression in rifle.go's else-if branch (<code>rifle.go:361-369</code>) — e.g.
-  wrong client used for <code>RequiredReviewers</code>, or a copy-paste slip — would go undetected by rifle's
-  test suite even though the identical branch in blunderbuss is covered.</p>
-</div>
-
-<div class="finding nit">
   <h3><span class="badge nit">nit</span>Repeated OWNERS walks across overlapping loops</h3>
   <span class="where"><code>pkg/reviewer/reviewer.go:156</code> (EligibleRequestedReviewers), rifle's candidate loop</span>
   <p><code>EligibleRequestedReviewers</code> iterates changed files calling <code>oc.Reviewers()</code>/<code>oc.Approvers()</code> to
@@ -171,6 +162,14 @@
   <li>Quota/exclusion arithmetic itself (subtracting existing eligible reviewers from the target count) is correct and covered by new tests: case normalization, approver-only eligibility, <code>maxReviewerCount</code> interaction, <code>reviewerCount: 0</code> no-op.</li>
   <li>Used the single-commit diff (<code>git diff HEAD~1..HEAD</code>), not <code>main...HEAD</code> — local <code>main</code> was far stale relative to this branch.</li>
 </ul>
+
+<h2>Resolved</h2>
+
+<div class="finding nit">
+  <h3><span class="badge nit">nit</span>rifle_test.go missing a required-reviewers-at-quota-met case</h3>
+  <span class="where"><code>pkg/plugins/rifle/rifle_test.go</code></span>
+  <p><strong>Resolved 2026-09-07T13:25:41Z:</strong> <code>TestHandleRifleWithExistingRequestedReviewers</code> now includes the quota-met required-reviewer case and mirrors blunderbuss coverage for case normalization, approvers, and <code>maxReviewerCount</code>. <code>TestHandleRifleFallbackExcludesExistingRequestedReviewers</code> also covers the rifle-specific blame fallback.</p>
+</div>
 
 <h2>Open questions for the author</h2>
 <ul>

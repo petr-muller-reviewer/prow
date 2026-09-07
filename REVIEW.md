@@ -1,10 +1,14 @@
 ---
 pr: kubernetes-sigs/prow#909
 title: "blunderbuss, rifle: count existing eligible reviewers toward the reviewer count"
-head_sha: bf10026abb714fae5dfcc1f9353046bdc6d5980f
+head_sha: 722c9ebb2a70508c3a5d723c49a79415d6410252
 base: main
-reviewed_at: 2026-08-31T22:28:26Z
+reviewed_at: 2026-09-07T13:25:41Z
 verdict: needs-discussion
+refresh_log:
+  - old_sha: bf10026abb714fae5dfcc1f9353046bdc6d5980f
+    new_sha: 722c9ebb2a70508c3a5d723c49a79415d6410252
+    summary: Rebasing onto main and expanded rifle coverage; resolved the missing required-reviewer test finding.
 ---
 
 ## Summary
@@ -18,6 +22,13 @@ tests (case normalization, approver-only eligibility, `maxReviewerCount` interac
 `reviewerCount: 0` no-op). Main concern is duplicated orchestration between the two plugins
 and an inconsistency in required-reviewer collection introduced by the new "quota already
 met" branch.
+
+Since previous review:
+
+- The PR was rebased onto current `main`; its only functional source changes are two
+  equivalent log-message clarifications in blunderbuss and rifle.
+- `pkg/plugins/rifle/rifle_test.go` now mirrors blunderbuss's quota, cap, approver, and
+  required-reviewer coverage, and adds a rifle blame-fallback exclusion regression test.
 
 ## Findings
 
@@ -71,16 +82,6 @@ met" branch.
   `GetReviewers` to always collect required reviewers consistently (regardless of
   `minReviewers`) would let both plugins reuse it instead of hand-rolling a duplicate branch.
 
-### [nit] rifle_test.go missing a required-reviewers-at-quota-met case
-- where: `pkg/plugins/rifle/rifle_test.go:475`
-- concern: `TestHandleRifleWithExistingRequestedReviewers` has no case for "quota already met
-  by existing reviewers AND a `RequiredReviewers` entry exists," unlike
-  `blunderbuss_test.go`'s equivalent "quota satisfied but required reviewers still requested"
-  case.
-- failure_scenario: A regression in rifle.go's else-if branch (`rifle.go:361-369`) — e.g.
-  wrong client used for `RequiredReviewers`, or a copy-paste slip — would go undetected by
-  rifle's test suite even though the identical branch in blunderbuss is covered.
-
 ### [nit] Repeated OWNERS walks across overlapping loops
 - where: `pkg/reviewer/reviewer.go:156` (`EligibleRequestedReviewers`), plus rifle's own `allReviewerCandidates`/`allApproverCandidates` loop
 - concern: `EligibleRequestedReviewers` iterates changed files calling
@@ -98,6 +99,15 @@ met" branch.
   `maxReviewerCount` interaction, `reviewerCount: 0` no-op.
 - Used the single-commit diff (`git diff HEAD~1..HEAD`), not `main...HEAD` — local `main` was
   far stale relative to this branch.
+
+## Resolved
+
+### [nit] rifle_test.go missing a required-reviewers-at-quota-met case
+- resolved_at: `2026-09-07T13:25:41Z`
+- resolution: `TestHandleRifleWithExistingRequestedReviewers` now includes the quota-met
+  required-reviewer case and mirrors blunderbuss coverage for case normalization, approvers,
+  and `maxReviewerCount`; `TestHandleRifleFallbackExcludesExistingRequestedReviewers` also
+  covers the rifle-specific blame fallback.
 
 ## Open questions
 

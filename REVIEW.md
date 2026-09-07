@@ -3,8 +3,12 @@ pr: kubernetes-sigs/prow#919
 title: "chore(deps): bump cloud.google.com/go/storage from 1.65.1 to 1.66.0"
 head_sha: e675cf7a0a330384203b5d728201eee039bcf2ef
 base: main
-reviewed_at: 2026-09-04T17:10:37Z
+reviewed_at: 2026-09-07T14:47:06Z
 verdict: needs-discussion
+refresh_log:
+  - old_sha: e675cf7a0a330384203b5d728201eee039bcf2ef
+    new_sha: e675cf7a0a330384203b5d728201eee039bcf2ef
+    summary: "No code changes; petr-muller approved the PR and it merged."
 ---
 
 ## Verdict
@@ -17,6 +21,11 @@ needs-discussion — this is a narrowly scoped, API-compatible dependency-only u
 - Regenerates the corresponding two checksums in `go.sum`.
 - Does not alter Prow source, configuration, generated project code, or tests.
 - Takes a tagged Google Cloud Storage client release published 2026-08-27.
+
+Since previous review:
+
+- No code changes: `e675cf7a0a330384203b5d728201eee039bcf2ef` remains the PR head.
+- `petr-muller` approved at 2026-09-04T17:11:35Z; the PR merged at 2026-09-04T17:12:25Z.
 
 ## Findings
 

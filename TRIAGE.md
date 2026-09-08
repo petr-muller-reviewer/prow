@@ -24,6 +24,9 @@ refresh_log:
     summary: "Label escalated lifecycle/stale → lifecycle/rotten by k8s-triage-robot on 2026-05-23; no human activity, no linked PRs"
   - triaged_at: 2026-06-24T00:04:02Z
     summary: "Auto-closed by k8s-triage-robot on 2026-06-22 (lifecycle/rotten 30d expiry). No human activity. /reopen to restore."
+advice:
+  advised_at: 2026-09-08T17:45:12Z
+  based_on_triaged_at: 2026-06-24T00:04:02Z
 ---
 
 # Triage: Issue #51
@@ -93,6 +96,26 @@ Extend DecorationConfig with the missing SecurityContext fields (following the e
 2. **(API)** Extend DecorationConfig: `RunAsNonRoot`, `AllowPrivilegeEscalation`, `ReadOnlyRootFilesystem`, `SeccompProfile`, `Capabilities`
 3. **(plumbing)** Apply container-level SecurityContext to utility containers in `decorateSpec()`
 4. **(docs)** "Running Prow in PSS-restricted environments" guide
+
+---
+
+## Follow-ups
+
+### Low-hanging: Harden the shipped starter manifests for PSS restricted
+
+This is the one independently useful small slice from the issue. Add the baseline PSS restricted settings to every Pod template and container in `config/prow/cluster/starter/starter-gcs.yaml`:
+
+- Pod level: `runAsNonRoot: true` and `seccompProfile.type: RuntimeDefault`
+- Container level: `allowPrivilegeEscalation: false` and `capabilities.drop: [ALL]`
+- Add a focused manifest check that prevents those settings from regressing
+
+Keep `readOnlyRootFilesystem` out of this first change: it is not required by PSS restricted, and the triage identified that it still needs a writable-path audit. Before proposing the change, verify the `alpine` periodic job and each shipped Prow image can run as non-root. This follow-up improves new installations without changing the ProwJob API or existing operator configuration.
+
+### Not low-hanging
+
+Extending `DecorationConfig` and plumbing container security contexts into all injected utility containers remains worthwhile, but it requires API design, generated CRD/config updates, merge semantics, and decoration tests. A documentation-only change is also insufficient because operators currently have no native way to set the required fields on injected utility containers. Neither should be presented as a quick follow-up.
+
+The live issue adds no narrower OPA constraint to target: its only human activity after the report was reopening/removing lifecycle labels, and it has no linked PRs or cross-referenced issues. A generic OPA/Gatekeeper integration would therefore be speculative.
 
 ---
 

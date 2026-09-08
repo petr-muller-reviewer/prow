@@ -95,6 +95,18 @@ This is a good candidate for an experiment: hand the *original issue text* (not 
 
 Comparison angles worth checking: does the agent avoid the `--client-cert-file` naming confusion flagged in PR #573's review; does it cover both Deck and Hook (not just one); is the cert+key pairing validated (required together or neither, per the `jenkins-operator` pattern); does it add tests and docs unprompted; how much back-and-forth review would it need versus the two rounds already spent on #573.
 
+## Follow-up opportunities (2026-09-08)
+
+There is one worthwhile low-hanging fruit: add an operator-facing documentation page before (or alongside) any implementation. It directly answers the outstanding PR #573 review, makes the support boundary explicit, and is useful even if the feature remains unmerged. It should describe the existing ingress-terminates-TLS model; the narrow compliance use case for backend TLS; alternatives such as a service mesh, network-level encryption, or workload identity; certificate mounting, trust, and rotation responsibilities; and the fact that the proposed design is one-way TLS unless mTLS is deliberately added. Link the page from the Deck and Hook component documentation and, if PR #573 resumes, include it in that PR.
+
+Suggested handoff:
+
+> Add an operator guide for optional backend TLS between an ingress and Prow's Deck/Hook services. Document the current TLS-termination model, when backend TLS is appropriate, supported alternatives and their trade-offs, secret/certificate mounting, certificate rotation ownership, and the distinction between one-way TLS and mTLS. Do not change runtime behavior. Link the guide from the Deck and Hook docs, and ensure terminology does not call a CA trust bundle a client certificate.
+
+The other inexpensive follow-up is a short ownership check on PR #573: it remains open with `CHANGES_REQUESTED`, its last commit was 2026-02-25, and the author last promised documentation on 2026-06-12. Ask whether the author intends to resume it; if not, explicitly adopt or close the PR before starting a replacement. This avoids two competing implementations.
+
+No independent production-code cleanup is recommended: the remaining code work is inseparable from deciding whether the optional backend-TLS feature and its certificate lifecycle are acceptable. The existing agentic-coding comparison remains the appropriate way to evaluate a replacement implementation if #573 is abandoned.
+
 ## Advice
 
 No new issue-side activity since the 2026-06-29 refresh (state, labels, comments unchanged). Live-state gathering surfaced a linked PR that predates the refresh but was never folded into `TRIAGE.md`/`TRIAGE.html`: **PR #573** ("Adding option to enable Back End HTTPS for Prow Ingress"), opened 2025-12-10 by the issue's own assignee (NiJuFirenzia), implementing exactly the `--tls-cert-file`/`--tls-private-key-file` pattern this triage anticipated, touching `cmd/deck/main.go`, `cmd/hook/main.go`, and a new `pkg/flagutil/ssl.go`. It carries `area/deck`/`area/hook` labels and is `CHANGES_REQUESTED` (reviews from petr-muller and ivankatliarchuk — flag naming/stuttering nits, a `--client-cert-file` naming issue that's misleading about CA-vs-client-cert semantics, and a request for operator documentation). Last commit 2026-02-25; last activity is the author's 2026-06-12 comment promising to add documentation and address feedback — nothing since (over 2 months).

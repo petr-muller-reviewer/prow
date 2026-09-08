@@ -243,6 +243,14 @@ interrupts.ListenAndServeTLS(server, o.tlsCertFile, o.tlsPrivateKeyFile, gracePe
     </p>
   </div>
 
+  <div class="followup-callout">
+    <h2>⚑ Follow-up opportunities (2026-09-08)</h2>
+    <p><strong>Low-hanging fruit: operator documentation.</strong> Add a guide before (or alongside) an implementation. It directly resolves the outstanding PR #573 documentation feedback and is useful even if the feature is never merged.</p>
+    <p>The guide should cover the current ingress-terminates-TLS model; the narrow compliance case for backend TLS; alternatives (service mesh, network encryption, workload identity); certificate mounting, trust, and rotation responsibilities; and that the proposed model is one-way TLS unless mTLS is explicitly implemented. Link it from the Deck and Hook docs. Do not call a CA trust bundle a client certificate.</p>
+    <p><strong>Ownership checkpoint:</strong> PR #573 remains open with changes requested; its last commit was 2026-02-25 and the author last promised documentation on 2026-06-12. Ask whether it will be resumed. If not, explicitly adopt or close it before beginning a replacement, avoiding competing implementations.</p>
+    <p>No separate production-code cleanup is low-risk: the remaining code work depends on the feature and certificate-lifecycle decision. The existing agentic-coding comparison remains the appropriate replacement path if #573 is abandoned.</p>
+  </div>
+
   <h2>Advice</h2>
   <p class="section-note">Advised at 2026-08-21T16:02:50Z, based on triage as of 2026-06-29T15:24:32Z.</p>
   <p>

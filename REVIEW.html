@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Review: kubernetes-sigs/prow#929</title>
+  <style>
+    body { color: #1f2328; font: 16px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 0; }
+    main { margin: 3rem auto; max-width: 52rem; padding: 0 1.25rem; }
+    h1 { line-height: 1.2; } h2 { border-bottom: 1px solid #d0d7de; margin-top: 2rem; padding-bottom: .3rem; }
+    code { background: #f6f8fa; border-radius: 4px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; padding: .12em .28em; }
+    .meta { color: #57606a; } .verdict { background: #dafbe1; border-left: 4px solid #1a7f37; padding: 1rem; }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Review: <a href="https://github.com/kubernetes-sigs/prow/pull/929">kubernetes-sigs/prow#929</a></h1>
+    <p class="meta">Added a case for tarball files on gcs<br>HEAD: <code>be2354fe7245b1629b9ab84aff381342ae798784</code> · Base: <code>main</code> · Reviewed: 2026-09-09T11:01:57Z</p>
+  </header>
+
+  <section>
+    <h2>Verdict</h2>
+    <div class="verdict"><strong>Approve with non-blocking follow-up suggestions.</strong><p>The tarball exception preserves the uploaded archive name and gzip bytes while retaining ordinary <code>.gz</code> content-encoding behavior. Unit coverage verifies the relevant object-name and metadata contracts.</p></div>
+  </section>
+
+  <section>
+    <h2>What this PR does</h2>
+    <ul>
+      <li>Detects <code>.tar.gz</code> and <code>.tar.gzip</code> as archives rather than HTTP gzip-encoded files.</li>
+      <li>Retains the full archive filename instead of stripping the compression suffix.</li>
+      <li>Serves these archives as <code>application/gzip</code> with no <code>Content-Encoding</code>.</li>
+      <li>Leaves existing gzip handling for logs and other files unchanged.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Findings</h2>
+    <h3>Blocking</h3><p>None.</p>
+    <h3>Should fix</h3><p>None.</p>
+    <h3>Nits</h3><p>None.</p>
+    <h3>Questions</h3><p>None blocking review approval.</p>
+  </section>
+
+  <section>
+    <h2>Things I checked and was fine with</h2>
+    <ul>
+      <li><code>pkg/pod-utils/gcs/metadata.go:42-69</code>: archive suffixes preserve the filename and omit <code>Content-Encoding</code>.</li>
+      <li><code>pkg/pod-utils/gcs/metadata.go:48-63</code>: non-tar gzip files retain their prior suffix-stripping and MIME derivation behavior.</li>
+      <li><code>pkg/pod-utils/gcs/metadata_test.go:113-135</code>: tests cover plain tar plus both supported compressed-tar suffixes.</li>
+      <li>The externally visible object-key change is intentional and explained in the PR description.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Open questions for the author</h2>
+    <ul><li>For rollout: do downstream artifact consumers, dashboards, and bucket policies that reference the historical <code>foo.tar</code> key tolerate the new <code>foo.tar.gz</code>/<code>foo.tar.gzip</code> names?</li></ul>
+  </section>
+
+  <section>
+    <h2>Suggestions</h2>
+    <ul>
+      <li>Consider extending the <code>WriterOptionsFromFileName</code> doc comment to state that tarball suffixes are intentionally preserved.</li>
+      <li>Consider an end-to-end upload test that verifies the object name, unmodified gzip bytes, and absent <code>Content-Encoding</code>.</li>
+    </ul>
+  </section>
+</main>
+</body>
+</html>

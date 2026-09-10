@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Review: kubernetes-sigs/prow#930</title>
+<style>
+  body { background: #fff; color: #1f2328; font: 16px/1.55 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 0; }
+  main { max-width: 900px; margin: 40px auto; padding: 0 24px 48px; }
+  h1 { line-height: 1.2; margin-bottom: .25rem; }
+  h2 { border-bottom: 1px solid #d0d7de; margin-top: 2rem; padding-bottom: .35rem; }
+  code { background: #f6f8fa; border-radius: 4px; font: .9em ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; padding: .15em .3em; }
+  .meta { color: #57606a; }
+  .verdict { background: #dafbe1; border-left: 4px solid #1a7f37; border-radius: 4px; padding: 14px 18px; }
+  .gate { background: #dafbe1; border-left: 4px solid #1a7f37; border-radius: 4px; margin-top: 14px; padding: 14px 18px; }
+  a { color: #0969da; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Review: kubernetes-sigs/prow#930</h1>
+    <p class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/930">tide: exclude PR from subpool when its changed files cannot be fetched</a><br>
+    Base: <code>main</code> · Head: <code>0d14409f7124015f44dc25c4a29ce89f81407470</code> · Reviewed: <code>2026-09-10T12:10:52Z</code></p>
+  </header>
+
+  <section>
+    <h2>Verdict</h2>
+    <div class="verdict"><strong>Approve.</strong> A changed-files lookup failure is now isolated to that PR instead of discarding its whole Tide subpool. The implementation removes partial presubmit state before excluding the PR, keeps unaffected PRs eligible, and has focused regression coverage.</div>
+    <div class="gate"><strong>Gate: merge.</strong> The current head is the reviewed head (<code>0d14409f7124015f44dc25c4a29ce89f81407470</code>), so there are no post-review changes to reassess. There are no blocking or should-fix findings and no substantive PR feedback requiring disposition. The change has no API or configuration compatibility impact; it deliberately isolates an unevaluable PR before context checking, batch selection, or merge selection.</div>
+  </section>
+
+  <section>
+    <h2>Gate</h2>
+    <h3>Gating list</h3>
+    <p>None. No prior blocking or should-fix findings, and no substantive PR feedback remains unresolved.</p>
+    <h3>Independent merge risk</h3>
+    <ul>
+      <li><code>pkg/tide/tide.go:1724-1734</code>: Tide will exclude a PR whenever changed-file evaluation errors, including transient non-422 errors. The affected PR cannot be batch-tested or merged by Tide, while other PRs in the subpool may proceed. This is an intentional, bounded availability tradeoff and matches existing per-PR presubmit-loading failure handling.</li>
+      <li>No exported API, configuration schema/default, CLI, permission, or deployment-manifest change exists. Existing installations need no migration or release action.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>What this PR does</h2>
+    <ul>
+      <li>Treats errors while evaluating changed-file-sensitive presubmits as per-PR failures.</li>
+      <li>Removes any presubmits accumulated before that error and excludes the PR from the subpool.</li>
+      <li>Defers adding a PR to the filtered subpool until all required-presubmit evaluation succeeds.</li>
+      <li>Tests that another PR in the same subpool retains its required jobs and remains eligible.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Findings</h2>
+    <h3>Blocking</h3><p>None.</p>
+    <h3>Should fix</h3><p>None.</p>
+    <h3>Nits</h3><p>None.</p>
+    <h3>Questions</h3><p>None.</p>
+  </section>
+
+  <section>
+    <h2>Things I checked and was fine with</h2>
+    <ul>
+      <li><code>pkg/tide/tide.go:1724-1734</code>: partial presubmit results are deleted and the failed PR is absent from <code>sp.prs</code> before context checking, batching, or merge selection.</li>
+      <li><code>pkg/tide/tide.go:1695-1735</code>: the flow matches the existing per-PR handling of <code>GetPresubmits</code> failures and preserves the presubmits/subpool membership invariant.</li>
+      <li><code>pkg/tide/tide_test.go:3644-3691</code>: the regression test exercises a 422-style changed-files error after an <code>always_run</code> job, plus a second eligible PR.</li>
+      <li>No configuration, API, schema, CLI, permission, or rollout changes are introduced.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Open questions for the author</h2>
+    <p>None.</p>
+  </section>
+</main>
+</body>
+</html>

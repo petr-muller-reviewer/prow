@@ -6,31 +6,51 @@
   <title>Review: kubernetes-sigs/prow#929</title>
   <style>
     body { color: #1f2328; font: 16px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 0; }
-    main { margin: 3rem auto; max-width: 52rem; padding: 0 1.25rem; }
-    h1 { line-height: 1.2; } h2 { border-bottom: 1px solid #d0d7de; margin-top: 2rem; padding-bottom: .3rem; }
-    code { background: #f6f8fa; border-radius: 4px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; padding: .12em .28em; }
-    .meta { color: #57606a; } .verdict { background: #dafbe1; border-left: 4px solid #1a7f37; padding: 1rem; }
+    main { margin: 3rem auto; max-width: 54rem; padding: 0 1.25rem; }
+    h1 { line-height: 1.2; }
+    h2 { border-bottom: 1px solid #d0d7de; margin-top: 2rem; padding-bottom: .3rem; }
+    h3 { margin-top: 1.4rem; }
+    code, pre { background: #f6f8fa; border-radius: 4px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    code { padding: .12em .28em; }
+    pre { overflow-x: auto; padding: 1rem; }
+    .meta { color: #57606a; }
+    .verdict, .gate { border-left: 4px solid #1a7f37; padding: 1rem; }
+    .verdict { background: #dafbe1; }
+    .gate { background: #dafbe1; }
+    .finding { border-left: 4px solid #bf8700; padding-left: 1rem; }
   </style>
 </head>
 <body>
 <main>
   <header>
     <h1>Review: <a href="https://github.com/kubernetes-sigs/prow/pull/929">kubernetes-sigs/prow#929</a></h1>
-    <p class="meta">Added a case for tarball files on gcs<br>HEAD: <code>be2354fe7245b1629b9ab84aff381342ae798784</code> · Base: <code>main</code> · Reviewed: 2026-09-09T11:01:57Z</p>
+    <p class="meta">Added a case for tarball files on gcs<br>HEAD: <code>be2354fe7245b1629b9ab84aff381342ae798784</code> · Base: <code>main</code> · Reviewed: 2026-09-10T12:10:32Z</p>
   </header>
 
   <section>
     <h2>Verdict</h2>
-    <div class="verdict"><strong>Approve with non-blocking follow-up suggestions.</strong><p>The tarball exception preserves the uploaded archive name and gzip bytes while retaining ordinary <code>.gz</code> content-encoding behavior. Unit coverage verifies the relevant object-name and metadata contracts.</p></div>
+    <div class="verdict"><strong>Approve.</strong><p>The implementation correctly preserves compressed tarball names and stored gzip bytes while retaining the existing transparent gzip behavior for logs and other compressible files. Focused unit coverage exercises <code>.tar</code>, <code>.tar.gz</code>, and <code>.tar.gzip</code>.</p></div>
+  </section>
+
+  <section>
+    <h2>Gate</h2>
+    <div class="gate"><strong>Decision: merge.</strong><p>There are no unresolved blocking or should-fix findings. The object-key and HTTP-representation change is backward-incompatible for consumers that depend on the old transformed <code>.tar</code> path or metadata, but it is the intentional substance of the fix, is explicitly disclosed in the PR description, and restores the filename and bytes produced by the job. <code>Prucek</code> approved the current head; <code>dtantsur</code> independently confirmed the current behavior causes real KDE-user friction.</p></div>
+    <h3>Gating list</h3>
+    <p>None.</p>
+    <h3>Independent merge risks</h3>
+    <ul>
+      <li><code>pkg/pod-utils/gcs/metadata.go:42-69</code>: future <code>.tar.gz</code>/<code>.tar.gzip</code> objects use a different key, MIME type, and content-encoding contract. Hard-coded object URLs, MIME-sensitive clients, and suffix-based bucket rules may need adjustment. This is acceptable because the compatibility break is documented and directly implements the requested behavior.</li>
+      <li>The helper feeds the generic upload writer, so the behavior is not necessarily limited to GCS-backed deployments. The same filename-preservation contract is appropriate for other object stores, but this blast radius should remain visible in release communication.</li>
+    </ul>
   </section>
 
   <section>
     <h2>What this PR does</h2>
     <ul>
-      <li>Detects <code>.tar.gz</code> and <code>.tar.gzip</code> as archives rather than HTTP gzip-encoded files.</li>
+      <li>Recognizes <code>.tar.gz</code> and <code>.tar.gzip</code> as downloadable compressed archives rather than HTTP-encoded tar streams.</li>
       <li>Retains the full archive filename instead of stripping the compression suffix.</li>
-      <li>Serves these archives as <code>application/gzip</code> with no <code>Content-Encoding</code>.</li>
-      <li>Leaves existing gzip handling for logs and other files unchanged.</li>
+      <li>Stores these archives as <code>application/gzip</code> without <code>Content-Encoding</code>, preventing decompressive transcoding.</li>
+      <li>Leaves existing <code>.gz</code> handling for logs and other files unchanged.</li>
     </ul>
   </section>
 
@@ -39,30 +59,39 @@
     <h3>Blocking</h3><p>None.</p>
     <h3>Should fix</h3><p>None.</p>
     <h3>Nits</h3><p>None.</p>
-    <h3>Questions</h3><p>None blocking review approval.</p>
+    <h3>Questions</h3>
+    <div class="finding">
+      <h4>Confirm downstream compatibility is acceptable</h4>
+      <p><code>pkg/pod-utils/gcs/metadata.go:42-69</code></p>
+      <pre>isTarball := isGzip &amp;&amp; index &gt; 0 &amp;&amp; segments[index-1] == "tar"
+if !isTarball &amp;&amp; segment != "" {
+    if mediaType := mime.TypeByExtension("." + segment); mediaType != "" {
+        attrs.ContentType = new(mediaType)
+    }
+}
+if attrs.ContentType == nil &amp;&amp; isGzip {
+    attrs.ContentType = new("application/gzip")
+    attrs.ContentEncoding = nil
+}</pre>
+      <p>Future objects move from <code>foo.tar</code> to <code>foo.tar.gz</code>/<code>foo.tar.gzip</code> and change from <code>application/x-tar</code> plus <code>Content-Encoding: gzip</code> to <code>application/gzip</code> without an encoding. Hard-coded URLs, clients that expect decompressed tar bytes, and suffix-based storage rules may need adjustment; this is non-blocking because the PR explicitly documents the key change and the changed representation is the intended fix.</p>
+    </div>
   </section>
 
   <section>
     <h2>Things I checked and was fine with</h2>
     <ul>
-      <li><code>pkg/pod-utils/gcs/metadata.go:42-69</code>: archive suffixes preserve the filename and omit <code>Content-Encoding</code>.</li>
-      <li><code>pkg/pod-utils/gcs/metadata.go:48-63</code>: non-tar gzip files retain their prior suffix-stripping and MIME derivation behavior.</li>
-      <li><code>pkg/pod-utils/gcs/metadata_test.go:113-135</code>: tests cover plain tar plus both supported compressed-tar suffixes.</li>
-      <li>The externally visible object-key change is intentional and explained in the PR description.</li>
+      <li><code>pkg/pod-utils/gcs/metadata.go:42-69</code>: tarball suffixes preserve the filename and omit <code>Content-Encoding</code>; ordinary gzip inputs retain the previous suffix-stripping behavior.</li>
+      <li><code>pkg/pod-utils/gcs/metadata_test.go:109-135</code>: tests cover plain tar and both compressed-tar suffixes with their expected names and metadata.</li>
+      <li><code>go test ./pkg/pod-utils/gcs</code> passes.</li>
+      <li>The PR description explicitly warns that future artifacts previously stored as <code>foo.tar</code> will be stored as <code>foo.tar.gz</code>.</li>
+      <li><code>dtantsur</code> reported on 2026-09-09 that KDE users currently need to rename every affected CI download manually.</li>
+      <li><code>Prucek</code> approved head <code>be2354fe7245b1629b9ab84aff381342ae798784</code> on 2026-09-09.</li>
     </ul>
   </section>
 
   <section>
     <h2>Open questions for the author</h2>
-    <ul><li>For rollout: do downstream artifact consumers, dashboards, and bucket policies that reference the historical <code>foo.tar</code> key tolerate the new <code>foo.tar.gz</code>/<code>foo.tar.gzip</code> names?</li></ul>
-  </section>
-
-  <section>
-    <h2>Suggestions</h2>
-    <ul>
-      <li>Consider extending the <code>WriterOptionsFromFileName</code> doc comment to state that tarball suffixes are intentionally preserved.</li>
-      <li>Consider an end-to-end upload test that verifies the object name, unmodified gzip bytes, and absent <code>Content-Encoding</code>.</li>
-    </ul>
+    <ul><li>Have known consumers that construct archive paths directly, rather than listing artifacts, been considered for the <code>foo.tar</code> to <code>foo.tar.gz</code> transition? This does not block merge, but the compatibility note should be retained in release communication.</li></ul>
   </section>
 </main>
 </body>

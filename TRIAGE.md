@@ -4,9 +4,11 @@ title: "branchprotector cannot manage required status check GitHub App identity"
 state: open
 labels: []
 main_sha: ffc57790ba3e94ab2081a4a5d498d8baba5db8f1
-triaged_at: 2026-09-07T18:54:32Z
+triaged_at: 2026-09-10T12:49:48Z
 verdict: accepted
 refresh_log:
+  - previous_triaged_at: 2026-09-07T18:54:32Z
+    summary: "Incorporated @kaovilai's non-substantive '@mpryc fyi' comment; state and labels unchanged, with no new cross-reference."
   - previous_triaged_at: 2026-09-04T11:25:42Z
     summary: "Incorporated @weshayutin's non-substantive '@myprc fyi' comment; state and labels unchanged, with no new cross-reference."
 ---

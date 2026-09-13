@@ -21,19 +21,19 @@
   <header>
     <h1>Review: kubernetes-sigs/prow#930</h1>
     <p class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/930">tide: exclude PR from subpool when its changed files cannot be fetched</a><br>
-    Base: <code>main</code> · Head: <code>0d14409f7124015f44dc25c4a29ce89f81407470</code> · Reviewed: <code>2026-09-10T12:10:52Z</code></p>
+    Base: <code>main</code> · Head: <code>0d14409f7124015f44dc25c4a29ce89f81407470</code> · Reviewed: <code>2026-09-13T20:00:21Z</code></p>
   </header>
 
   <section>
     <h2>Verdict</h2>
     <div class="verdict"><strong>Approve.</strong> A changed-files lookup failure is now isolated to that PR instead of discarding its whole Tide subpool. The implementation removes partial presubmit state before excluding the PR, keeps unaffected PRs eligible, and has focused regression coverage.</div>
-    <div class="gate"><strong>Gate: merge.</strong> The current head is the reviewed head (<code>0d14409f7124015f44dc25c4a29ce89f81407470</code>), so there are no post-review changes to reassess. There are no blocking or should-fix findings and no substantive PR feedback requiring disposition. The change has no API or configuration compatibility impact; it deliberately isolates an unevaluable PR before context checking, batch selection, or merge selection.</div>
+    <div class="gate"><strong>Gate: merge.</strong> The current head is the reviewed head (<code>0d14409f7124015f44dc25c4a29ce89f81407470</code>), so there are no post-review changes to reassess. There are no blocking or should-fix findings. PR-level visibility for an excluded PR was explicitly accepted as a separate follow-up, not a gate for this narrowly scoped fix. The change has no API or configuration compatibility impact; it deliberately isolates an unevaluable PR before context checking, batch selection, or merge selection.</div>
   </section>
 
   <section>
     <h2>Gate</h2>
     <h3>Gating list</h3>
-    <p>None. No prior blocking or should-fix findings, and no substantive PR feedback remains unresolved.</p>
+    <p>None. No prior blocking or should-fix findings; PR-level visibility is explicitly deferred to a follow-up.</p>
     <h3>Independent merge risk</h3>
     <ul>
       <li><code>pkg/tide/tide.go:1724-1734</code>: Tide will exclude a PR whenever changed-file evaluation errors, including transient non-422 errors. The affected PR cannot be batch-tested or merged by Tide, while other PRs in the subpool may proceed. This is an intentional, bounded availability tradeoff and matches existing per-PR presubmit-loading failure handling.</li>
@@ -48,6 +48,16 @@
       <li>Removes any presubmits accumulated before that error and excludes the PR from the subpool.</li>
       <li>Defers adding a PR to the filtered subpool until all required-presubmit evaluation succeeds.</li>
       <li>Tests that another PR in the same subpool retains its required jobs and remains eligible.</li>
+    </ul>
+    <p>Since previous review:</p>
+    <ul>
+      <li>No code changes; the PR head remains <code>0d14409f7124015f44dc25c4a29ce89f81407470</code>.</li>
+      <li>@petr-muller asked how an indefinitely excluded PR should be made visible; @KR-Ravindra proposed a separate follow-up to expose the error through Tide status and the dashboard, or to fold it into this PR if preferred.</li>
+    </ul>
+    <p>Since previous review:</p>
+    <ul>
+      <li>No code changes; the PR head remains <code>0d14409f7124015f44dc25c4a29ce89f81407470</code>.</li>
+      <li>@petr-muller agreed to keep PR-level failure visibility as a focused follow-up and approved this PR on 2026-09-13.</li>
     </ul>
   </section>
 

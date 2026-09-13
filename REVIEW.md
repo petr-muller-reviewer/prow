@@ -3,13 +3,20 @@ pr: kubernetes-sigs/prow#930
 title: "tide: exclude PR from subpool when its changed files cannot be fetched"
 head_sha: 0d14409f7124015f44dc25c4a29ce89f81407470
 base: main
-reviewed_at: 2026-09-10T12:10:52Z
+reviewed_at: 2026-09-13T20:00:21Z
 verdict: approve
 gate:
   decision: merge
-  gated_at: 2026-09-10T12:22:08Z
+  gated_at: 2026-09-13T20:00:41Z
   gated_head_sha: 0d14409f7124015f44dc25c4a29ce89f81407470
   reviewed_head_sha: 0d14409f7124015f44dc25c4a29ce89f81407470
+refresh_log:
+  - old_sha: 0d14409f7124015f44dc25c4a29ce89f81407470
+    new_sha: 0d14409f7124015f44dc25c4a29ce89f81407470
+    summary: "No code changes; incorporated maintainer/author discussion of PR-level visibility as a follow-up."
+  - old_sha: 0d14409f7124015f44dc25c4a29ce89f81407470
+    new_sha: 0d14409f7124015f44dc25c4a29ce89f81407470
+    summary: "No code changes; incorporated approval of the separate PR-level visibility follow-up."
 ---
 
 ## Verdict
@@ -18,11 +25,11 @@ Approve. A changed-files lookup failure is now isolated to that PR instead of di
 
 ## Gate
 
-**Decision: merge.** The current head is the reviewed head (`0d14409f7124015f44dc25c4a29ce89f81407470`), so there are no post-review changes to reassess. `REVIEW.md` contains no blocking or should-fix findings, and there are no substantive human reviews, inline comments, or issue comments requiring disposition. The change has no API or configuration compatibility impact; its behavior deliberately isolates an unevaluable PR while preventing it from entering context checking, batch selection, or merge selection.
+**Decision: merge.** The current head is the reviewed head (`0d14409f7124015f44dc25c4a29ce89f81407470`), so there are no post-review changes to reassess. `REVIEW.md` contains no blocking or should-fix findings. The only substantive discussion—PR-level visibility for an excluded PR—was explicitly accepted as a separate follow-up; it does not gate this narrowly scoped fix. The change has no API or configuration compatibility impact; its behavior deliberately isolates an unevaluable PR while preventing it from entering context checking, batch selection, or merge selection.
 
 ### Gating list
 
-- None. No prior blocking or should-fix findings, and no substantive PR feedback remains unresolved.
+- None. No prior blocking or should-fix findings; PR-level visibility is explicitly deferred to a follow-up.
 
 ### Independent merge risk
 
@@ -35,6 +42,16 @@ Approve. A changed-files lookup failure is now isolated to that PR instead of di
 - Removes any presubmits accumulated before that error and excludes the PR from the subpool.
 - Defers adding a PR to the filtered subpool until all required-presubmit evaluation succeeds.
 - Tests that another PR in the same subpool retains its required jobs and remains eligible.
+
+Since previous review:
+
+- No code changes; the PR head remains `0d14409f7124015f44dc25c4a29ce89f81407470`.
+- @petr-muller asked how an indefinitely excluded PR should be made visible; @KR-Ravindra proposed a separate follow-up to expose the error through Tide status and the dashboard, or to fold it into this PR if preferred.
+
+Since previous review:
+
+- No code changes; the PR head remains `0d14409f7124015f44dc25c4a29ce89f81407470`.
+- @petr-muller agreed to keep PR-level failure visibility as a focused follow-up and approved this PR on 2026-09-13.
 
 ## Findings
 

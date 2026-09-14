@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Review: kubernetes-sigs/prow#938</title>
+  <style>
+    body { font-family: system-ui, sans-serif; line-height: 1.55; color: #17202a; margin: 0; background: #f7f9fa; }
+    main { max-width: 900px; margin: 2rem auto; padding: 2rem; background: #fff; box-shadow: 0 1px 4px #0002; }
+    code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    code { background: #eef1f3; padding: .1rem .25rem; }
+    pre { background: #f6f8fa; border-left: 4px solid #d0d7de; padding: 1rem; overflow-x: auto; }
+    .meta { color: #57606a; } .verdict { border-left: 5px solid #cf222e; padding: .75rem 1rem; background: #ffebe9; }
+    .severity { color: #cf222e; font-weight: 700; } a { color: #0969da; }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Review: <a href="https://github.com/kubernetes-sigs/prow/pull/938">kubernetes-sigs/prow#938</a></h1>
+    <p class="meta">tide: report excluded PRs on their tide status context<br>Head: <code>aac8df64b8281e8830abf8a0e31339c6600f0c09</code> · Base: <code>main</code> · Reviewed: 2026-09-14T22:47:50Z</p>
+  </header>
+  <section>
+    <h2>Verdict</h2>
+    <p class="verdict"><strong>Request changes.</strong> The change is focused and low-risk, but one existing per-PR exclusion path still cannot produce the explanatory Tide status promised by this PR.</p>
+  </section>
+  <section>
+    <h2>What this PR does</h2>
+    <ul>
+      <li>Isolates a Tide context-policy setup failure to its affected PR instead of dropping the entire subpool.</li>
+      <li>Stores exclusion reasons while constructing a subpool.</li>
+      <li>Passes exclusions from raw subpools to the asynchronous status controller.</li>
+      <li>Publishes an error <code>tide</code> status with the reason, before recreating a failing context checker.</li>
+    </ul>
+  </section>
+  <section>
+    <h2>Findings</h2>
+    <h3 class="severity">Blocking — Preserve the GetPresubmits exclusion reason</h3>
+    <p><code>pkg/tide/tide.go:1717-1720</code></p>
+    <pre>presubmitsForPull, err := c.provider.GetPresubmits(...)
+if err != nil {
+    log.WithError(err).Debug("Failed to get presubmits for PR, excluding from subpool")
+    continue
+}</pre>
+    <p>A per-PR <code>GetPresubmits</code> error still removes the PR without calling <code>excludePR</code>. The status controller may invoke <code>GetPresubmits</code> again while rebuilding the context policy and fail before setting the promised explanatory <code>tide</code> status. Record the reason in <code>sp.excluded</code> and add an end-to-end status-path test.</p>
+    <h3>Should fix</h3><p>None.</p>
+    <h3>Nits</h3><p>None.</p>
+    <h3>Questions</h3><p>Could this failure be recorded through <code>excludePR</code> alongside changed-files and context-policy failures, with a test exercising the complete <code>Sync()</code> handoff?</p>
+  </section>
+  <section>
+    <h2>Things I checked and was fine with</h2>
+    <ul>
+      <li>Context-policy failures are isolated while valid sibling PRs remain eligible.</li>
+      <li>Raw subpools retain exclusions after all their PRs are filtered.</li>
+      <li>Merge-conflict status remains higher priority than an exclusion reason.</li>
+      <li>No config schema, migration, permission, or external-dependency change is introduced.</li>
+      <li>Unit coverage includes changed-file/context-policy failures and the dropped-subpool edge case.</li>
+    </ul>
+  </section>
+  <section><h2>Open questions for the author</h2><p>Could <code>GetPresubmits</code> failures be recorded through <code>excludePR</code> alongside changed-files and context-policy failures, with a status assertion that exercises the full <code>Sync()</code> handoff?</p></section>
+</main>
+</body>
+</html>

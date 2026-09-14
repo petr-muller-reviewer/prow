@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Review: kubernetes-sigs/prow#934</title>
+  <style>
+    body { background: #fff; color: #202124; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; line-height: 1.55; margin: 0; }
+    main { margin: 2.5rem auto; max-width: 54rem; padding: 0 1.25rem; }
+    h1 { font-size: 1.7rem; line-height: 1.25; margin-bottom: .35rem; }
+    h2 { border-bottom: 1px solid #dadce0; font-size: 1.2rem; margin-top: 2rem; padding-bottom: .3rem; }
+    code { background: #f1f3f4; border-radius: 3px; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; padding: .1em .25em; }
+    .meta { color: #5f6368; font-size: .92rem; }
+    .verdict { background: #e6f4ea; border-left: 4px solid #137333; margin: 1.25rem 0; padding: .8rem 1rem; }
+    .empty { color: #5f6368; font-style: italic; }
+    a { color: #1967d2; }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Review: <a href="https://github.com/kubernetes-sigs/prow/pull/934">kubernetes-sigs/prow#934</a></h1>
+      <p class="meta"><code>0560f22619b146cff991705f4b3ea097d59d0ab4</code> · base <code>main</code> · reviewed 2026-09-14T21:20:44Z</p>
+    </header>
+
+    <section>
+      <h2>Verdict</h2>
+      <div class="verdict"><strong>Approve.</strong> This is a narrow, direct Go dependency update. Upstream v0.297.0 only raises <code>google.golang.org/api</code>'s minimum Go version from 1.25 to 1.26; Prow already requires Go 1.26.4.</div>
+    </section>
+
+    <section>
+      <h2>What this PR does</h2>
+      <ul>
+        <li>Updates direct dependency <code>google.golang.org/api</code> from <code>v0.296.0</code> to <code>v0.297.0</code> in <code>go.mod</code>.</li>
+        <li>Replaces the corresponding two module checksums in <code>go.sum</code>.</li>
+        <li>Takes upstream's Go 1.26 minimum-version change; it does not add code or alter Prow configuration.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Findings</h2>
+      <h3>Blocking</h3><p class="empty">None.</p>
+      <h3>Should fix</h3><p class="empty">None.</p>
+      <h3>Nits</h3><p class="empty">None.</p>
+      <h3>Questions</h3><p class="empty">None.</p>
+    </section>
+
+    <section>
+      <h2>Things I checked and were fine with</h2>
+      <ul>
+        <li>Classification: dep-only; changed files are <code>go.mod</code> and <code>go.sum</code> only.</li>
+        <li><code>v0.297.0</code> is a tagged release published 2026-09-02 (about 12 days before review), not a pseudo-version.</li>
+        <li>The upstream range <code>v0.296.0...v0.297.0</code> contains only the Go 1.26 minimum-version change and release commit; no functional, dependency-graph, or security changes were identified.</li>
+        <li>The module is direct and imported in 9 Go files (7 production): Cloud Build, Secret Manager, storage/I/O, and test helpers. Those paths involve credentials and cloud APIs, but none of the upstream change affects their behavior.</li>
+        <li>Prow's <code>go.mod</code> declares <code>go 1.26.4</code>, satisfying the new dependency baseline.</li>
+        <li><code>git diff --check</code> passes.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Open questions for the author</h2>
+      <p class="empty">None.</p>
+    </section>
+  </main>
+</body>
+</html>

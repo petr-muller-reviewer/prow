@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Triage: kubernetes-sigs/prow#939</title><style>body{font-family:system-ui,sans-serif;line-height:1.55;color:#1f2937;margin:2rem auto;max-width:900px;padding:0 1rem}header{background:#f3f4f6;padding:1.25rem;border-radius:8px}h1{margin-top:0}h2{margin-top:2rem;border-bottom:1px solid #d1d5db;padding-bottom:.25rem}h3{margin-top:1.5rem}code,pre{font-family:ui-monospace,SFMono-Regular,monospace}pre{background:#111827;color:#f9fafb;padding:1rem;overflow:auto;border-radius:6px}dt{font-weight:700}dd{margin:0 0 .6rem}a{color:#2563eb}</style></head><body>
+<header><h1>Triage: kubernetes-sigs/prow#939</h1><dl><dt>Issue</dt><dd><a href="https://github.com/kubernetes-sigs/prow/issues/939">kubernetes-sigs/prow#939</a></dd><dt>Title</dt><dd>ReloadingCensorer does not censor fields extracted from JSON/INI secrets</dd><dt>State / labels</dt><dd>open / none</dd><dt>Triaged at</dt><dd>2026-09-14T22:47:55Z</dd><dt>Main SHA</dt><dd><code>d91e0f84e0f2050b41390b28b69a05f5284ba4a2</code></dd><dt>Verdict</dt><dd>needs-discussion</dd></dl></header>
+<h2>Verdict</h2><p><strong>Keep open as needs-discussion.</strong> The disclosure gap is reproducible and affects Prow-owned shared code, but maintainers need to define the supported structured-format/value-extraction policy before accepting an implementation. Automatically making JSON and INI special raises the same question for YAML, TOML, XML, and other structured secrets.</p>
+<h2>What the issue reports</h2><ul><li>A complete JSON or INI secret file is censored when emitted verbatim.</li><li>A job can extract and log one child value, which is not currently registered for replacement.</li><li>The reporter supplied dummy AWS INI and JSON examples plus an external reproduction.</li><li>The report correctly notes that sidecar-only work would not protect in-process logs.</li></ul>
+<h2>Analysis</h2><h3>Reproducibility / observed behavior</h3><p><code>Refresh</code> registers the payload, its trimmed representation, and base64 encodings. A child value from a valid JSON/INI document is none of those strings, so it remains visible when logged alone. Evidence: reporter reproduction and <code>pkg/secretutil/censor.go:101-126</code>.</p>
+<h3>Probable cause</h3><p>The shared raw-payload registration has no structure awareness:</p><pre>for _, secret := range secrets {
+    toEncode := []string{secret}
+    ...
+    addReplacement(secret)
+    for _, item := range toEncode {
+        encoded := base64.StdEncoding.EncodeToString([]byte(item))
+        addReplacement(encoded)
+    }
+}
+c.Replacer = bytereplacer.New(replacements...)</pre><p>This is <code>pkg/secretutil/censor.go:101-131</code>; no JSON, INI, or other child-value extraction occurs before replacements are built.</p>
+<h3>Related code</h3><p>Process logging shares the affected censorer (<code>pkg/config/secret/agent.go:155-172</code>):</p><pre>for _, value := range a.secretsMap {
+    secrets = append(secrets, value.getRaw())
+}
+...
+a.ReloadingCensorer.RefreshBytes(secrets...)</pre><p>Therefore a sidecar-only change leaves process formatter/output censoring with the same limitation.</p><p>The sidecar has narrow duplicate extraction (<code>pkg/sidecar/censor.go:507-545,567-619</code>):</p><pre>secrets = append(secrets, raw)
+if info.Name() == ".dockercfg" { parser = loadDockercfgAuths }
+if info.Name() == ".dockerconfigjson" { parser = loadDockerconfigJsonAuths }
+if slices.Contains(iniFilenames, info.Name()) { parser = loadIniData }
+extra, parseErr := parser(raw)</pre><p>Docker auth fields and explicitly configured INI filenames receive special treatment; generic JSON does not. <code>loadIniData</code> already recursively collects INI key values.</p>
+<h3>Policy boundary</h3><p>Extracting all JSON/INI values centrally fixes the supplied cases but creates an arbitrary format boundary and can redact harmless configuration values. YAML, TOML, XML, and other structured formats have the same child-value property. Current INI extraction is explicit filename opt-in in <code>pkg/sidecar/options.go:125-132</code>; the generic JSON fixture <code>pkg/sidecar/testdata/secrets/a/service-account.json</code> is not individually extracted.</p>
+<h3>Related issues / PRs</h3><p>GitHub searches for <code>censor secret JSON INI</code> and <code>secret censor</code> found no related issue or open PR beyond #939.</p>
+<h2>What I checked</h2><ul><li>Checked upstream-main revision <code>d91e0f84e0f2050b41390b28b69a05f5284ba4a2</code>.</li><li><code>pkg/secretutil/censor_test.go:25-218</code> covers raw, trimmed, base64, boolean, and minimum-length behavior but no generic structured payload.</li><li><code>pkg/sidecar/censor_test.go:151-166,309-367</code> covers opt-in INI and Docker extraction only.</li><li>The boolean exception and <code>minimum_secret_length</code> are intentional shared-censorer protections; <code>gopkg.in/ini.v1</code> and <code>encoding/json</code> are already available.</li></ul>
+<h2>Recommended next steps</h2><ol><li>Decide the contract: whole-blob-only, a bounded built-in format set, or explicit opt-in format/value extraction.</li><li>If extraction is chosen, apply it at shared secret registration so sidecar and process logging have identical coverage; retain raw registration on parse failures.</li><li>Define whether all string leaves or only explicit sensitive paths are registered; do not register JSON keys or numeric scalar values by default.</li><li>Add regressions for nested JSON/arrays, INI sections, invalid documents, short/boolean values, base64, and both shared-censorer callers.</li><li>Apply <code>kind/bug</code>, <code>area/pod-utilities</code>, <code>area/podutils/sidecar</code>, and <code>sig/security</code>; defer <code>help wanted</code> until policy is settled.</li></ol>
+<h2>Open questions</h2><ul><li>Should the contract state that all values of a supported structured secret are sensitive, or require explicit value/path selection?</li><li>Which formats are in scope, and why should unsupported formats be excluded?</li><li>Should existing <code>IniFilenames</code> remain as compatibility configuration if extraction becomes centrally configurable?</li></ul>
+</body></html>

@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Review: kubernetes-sigs/prow#949</title>
+<style>
+  body { background: #f6f8fa; color: #24292f; font: 16px/1.55 system-ui, sans-serif; margin: 0; }
+  main { background: #fff; box-shadow: 0 1px 3px #0002; margin: 2rem auto; max-width: 900px; padding: 2rem 3rem; }
+  h1, h2 { line-height: 1.25; } h2 { border-bottom: 1px solid #d0d7de; margin-top: 2rem; padding-bottom: .35rem; }
+  code { background: #f6f8fa; border-radius: 4px; font-family: ui-monospace, monospace; padding: .12em .3em; }
+  .meta { color: #57606a; } .approve { color: #1a7f37; font-weight: 700; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Review: <a href="https://github.com/kubernetes-sigs/prow/pull/949">kubernetes-sigs/prow#949</a></h1>
+    <p class="meta">chore(deps): bump cloud.google.com/go/storage from 1.66.0 to 1.67.1<br>
+      Head: <code>8332d2a2b2af19cb14eed2f20e67dd4dbe67e255</code> · Base: <code>main</code> · Reviewed: 2026-09-21T22:55:57Z</p>
+  </header>
+  <section>
+    <h2>Verdict</h2>
+    <p><span class="approve">APPROVE</span> — dependency-only update with no findings. The tagged release is 13 days old; its two storage changes are unused by Prow. <code>go test ./pkg/io</code> passes.</p>
+  </section>
+  <section>
+    <h2>What this PR does</h2>
+    <ul>
+      <li>Updates the direct Go module <code>cloud.google.com/go/storage</code> from <code>v1.66.0</code> to <code>v1.67.1</code>.</li>
+      <li>Updates the corresponding two checksums in <code>go.sum</code>.</li>
+      <li>Includes storage v1.67.0, which promotes gRPC bidi-read and appendable-upload options from experimental.</li>
+      <li>Includes storage v1.67.1, which prevents a nil-callback panic in <code>MultiRangeDownloader</code>.</li>
+    </ul>
+  </section>
+  <section>
+    <h2>Findings</h2>
+    <p>No findings.</p>
+  </section>
+  <section>
+    <h2>Things I checked and were fine</h2>
+    <ul>
+      <li>Only <code>go.mod</code> and <code>go.sum</code> change; no project source, tests, or generated code change.</li>
+      <li>Seven importing Go files; production use is confined to <code>pkg/io/option.go</code>, <code>pkg/io/opener.go</code>, and <code>pkg/io/iterator.go</code>.</li>
+      <li>Prow does not use <code>WithGRPCBidiReads</code>, <code>WithGRPCAppendableUploads</code>, or <code>MultiRangeDownloader</code>.</li>
+      <li><code>v1.67.1</code> is a normal tag from 2026-09-08, 13 days before review; no published repository security advisory or listed CVE applies to this range.</li>
+      <li><code>git diff --check</code> and <code>go test ./pkg/io</code> pass.</li>
+    </ul>
+  </section>
+  <section>
+    <h2>Open questions for the author</h2>
+    <p>None.</p>
+  </section>
+</main>
+</body>
+</html>

@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Review: kubernetes-sigs/prow#952</title>
+<style>
+body{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;line-height:1.55;color:#17212b;margin:0;background:#f7f9fb}main{max-width:900px;margin:2.5rem auto;padding:0 1.5rem 3rem}section,header{background:#fff;border:1px solid #d8dee4;border-radius:8px;padding:1.4rem 1.6rem;margin:1rem 0}h1{margin:.1rem 0 .4rem;font-size:1.8rem}h2{margin-top:0;font-size:1.25rem}h3{font-size:1.05rem;margin-bottom:.4rem}code,pre{font-family:ui-monospace,SFMono-Regular,Consolas,monospace}code{background:#eef2f6;padding:.1rem .25rem;border-radius:3px}pre{background:#f3f6f8;padding:1rem;overflow:auto;border-radius:5px}.meta{color:#52606d}.verdict{border-left:5px solid #b54708}.blocking{border-left:5px solid #b42318}.question{border-left:5px solid #b7791f}a{color:#0969da}ul{padding-left:1.25rem}
+</style>
+</head>
+<body><main>
+<header>
+<h1>Review: <a href="https://github.com/kubernetes-sigs/prow/pull/952">kubernetes-sigs/prow#952</a></h1>
+<p class="meta"><strong>Title:</strong> fix(site): make the docs link checker check links<br>
+<strong>Base:</strong> main &middot; <strong>Head:</strong> <code>eff2b2dd20c14a7a31c0e477074e992ed8fa337d</code><br>
+<strong>Reviewed:</strong> 2026-09-21T22:36:23Z</p>
+</header>
+<section class="verdict"><h2>Verdict: request changes</h2><p>The full-tree htmltest repair and dependency pin are sound, but the new routine verifier calls the networked external-link scan rather than the deterministic internal-only target it introduces. Make that small wiring correction before merging. CI integration is explicitly deferred and should remain a follow-up.</p></section>
+<section><h2>What this PR does</h2><ul>
+<li>Builds the documentation site, then scans the generated tree once with htmltest.</li>
+<li>Configures htmltest to resolve absolute links from <code>public</code> and removes broad internal-link ignores.</li>
+<li>Pins htmltest in <code>hack/tools</code> and adds a top-level <code>verify-links</code> target.</li>
+<li>Adds an internal-only htmltest target and excludes generated site output from unrelated repository checks.</li>
+</ul></section>
+<section><h2>Findings</h2>
+<article class="blocking"><h3>Blocking &mdash; Routine verifier runs the external-link scan</h3><p><code>hack/make-rules/verify/links.sh:51</code>; <code>site/Makefile:33-38</code></p><pre>make check-broken-links HTMLTEST="${HTMLTEST}"
+
+check-broken-links-internal:
+    $(HTMLTEST) -s -c .htmltest.yml</pre><p><code>verify-links</code> calls the full checker, not <code>check-broken-links-internal</code>. External failures are warnings, but requests still happen, leaving the normal verifier slow and network-dependent. Its success message also says only internal links were checked. Use the internal target here and keep external checks separately named for manual or periodic use.</p></article>
+<article class="question"><h3>Question &mdash; What will exercise this target before the planned CI job exists?</h3><p><code>Makefile:109-111</code>; <code>hack/make-rules/verify/all.sh:26-70</code></p><pre>verify-links:
+    hack/make-rules/verify/links.sh</pre><p>The target is not included in <code>make verify</code> or an existing workflow. The PR deliberately defers CI because the current image lacks Hugo and Node; confirm manual use is intended until a dedicated internal-link presubmit or periodic job lands.</p></article>
+<article class="question"><h3>Question &mdash; Should the local Hugo requirement match the production build?</h3><p><code>hack/make-rules/verify/links.sh:23-27</code>; <code>netlify.toml:7-9</code></p><pre>if ! command -v hugo &gt;/dev/null 2&gt;&amp;1; then
+  echo "ERROR: hugo is required to build the site before checking links."
+fi</pre><p>The verifier accepts any Hugo on PATH, while Netlify uses Hugo 0.147.8. Validating the extended edition and version, or using a pinned environment, would align local verification with the deployed build.</p></article>
+</section>
+<section><h2>Things I checked and was fine with</h2><ul>
+<li>The generated site is scanned once with <code>DirectoryPath: public</code>; the obsolete per-file wrapper is removed.</li>
+<li>The pinned htmltest module builds with <code>go build -mod=readonly github.com/wjdp/htmltest</code>.</li>
+<li>The internal-only target passes <code>-s</code> to htmltest as intended.</li>
+<li><code>git diff --check</code> is clean.</li>
+<li>Generated site output is excluded from the existing spelling and shell-permission checks.</li>
+</ul></section>
+<section><h2>Open questions for the author</h2><ul>
+<li>Is <code>make verify-links</code> intended to be deterministic and internal-only, with external URLs checked by a distinct manual or periodic target?</li>
+<li>Until a CI image with Hugo and Node is selected, who or what is expected to run <code>verify-links</code>?</li>
+<li>Should the verifier enforce the Hugo extended version used by Netlify?</li>
+</ul></section>
+</main></body></html>

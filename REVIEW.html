@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Review: kubernetes-sigs/prow#959 — Handle concurrent job triggers</title>
+  <style>
+    body { background: #f7f8fa; color: #18212f; font: 16px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; margin: 0; }
+    main { background: #fff; box-shadow: 0 1px 4px #0002; margin: 32px auto; max-width: 900px; padding: 36px 48px; }
+    h1 { margin-top: 0; } h2 { border-bottom: 1px solid #d8dee7; margin-top: 34px; padding-bottom: 6px; }
+    code, pre { background: #f1f3f5; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
+    code { border-radius: 3px; padding: 1px 4px; } pre { border-left: 3px solid #90a4b8; padding: 12px; white-space: pre-wrap; }
+    .meta { color: #52606d; } .verdict { background: #e9f7ed; border-left: 4px solid #2f855a; padding: 14px 18px; }
+    .group { border: 1px solid #d8dee7; border-radius: 6px; margin: 12px 0; padding: 4px 18px 14px; }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Review: <a href="https://github.com/kubernetes-sigs/prow/pull/959">kubernetes-sigs/prow#959</a></h1>
+    <p class="meta"><strong>Title:</strong> Handle concurrent job triggers<br>
+    <strong>Base:</strong> main &middot; <strong>Head:</strong> <code>5a7e1ad10941d98ad6c0099cad9c571119ba7dc7</code><br>
+    <strong>Reviewed:</strong> 2026-09-22T21:17:06Z &middot; <strong>Verdict:</strong> approve</p>
+  </header>
+
+  <section><h2>Verdict</h2>
+    <div class="verdict"><strong>Approve.</strong> The change prevents duplicate automatic presubmits for one revision, fails open if the ProwJob list cannot be read, and makes tied duplicate cleanup deterministic. It does not affect explicit <code>/test</code> or <code>/retest</code> requests.</div>
+  </section>
+
+  <section><h2>What this PR does</h2><ul>
+    <li>Filters automatic PR-event presubmits whose job name already has a non-complete, non-aborted ProwJob for the same PR head and base SHA.</li>
+    <li>Preserves CI availability by running the original set when the ProwJob list fails.</li>
+    <li>Orders tied duplicate ProwJobs by name after start time so concurrent aborters retain the same survivor.</li>
+    <li>Covers the trigger-side filter and all list-order permutations for equal-time duplicates.</li>
+  </ul></section>
+
+  <section><h2>Findings</h2>
+    <h3>Blocking</h3><p>None.</p>
+    <h3>Should fix</h3><p>None.</p>
+    <h3>Nits</h3><p>None.</p>
+    <h3>Questions</h3>
+    <article class="group"><h4>Consider sharing the PR-scoped ProwJob query <code>pkg/plugins/trigger/pull-request.go:469-491</code></h4>
+      <pre>selector, err := labelSelectorForPR(pr)
+jobs, err := c.ProwJobClient.List(context.TODO(), metav1.ListOptions{LabelSelector: selector.String()})</pre>
+      <p>This repeats PR selector construction and listing behavior used by <code>abortAllJobs</code>. It is not a merge blocker, but a small shared query helper could prevent future selector changes from drifting.</p>
+    </article>
+    <article class="group"><h4>Guard the automatic-versus-manual trigger policy at the entry point <code>pkg/plugins/trigger/pull-request.go:426-441</code></h4>
+      <pre>return RunRequested(c, pr, baseSHA, skipAlreadyRunning(c, pr, baseSHA, toTest), eventGUID)</pre>
+      <p>The helper test verifies filtering, and the comment documents that <code>/test</code> and <code>/retest</code> bypass it. A focused entry-point test could lock in that call-path distinction if the triggering flow is refactored later.</p>
+    </article>
+  </section>
+
+  <section><h2>Things I checked and was fine with</h2><ul>
+    <li>The filter matches org/repo/PR labels and verifies both head and base SHA before suppressing a job.</li>
+    <li>ProwJob List failures fail open, so transient API errors do not drop CI.</li>
+    <li>Completed and aborted jobs do not suppress a new run.</li>
+    <li><code>scanOrder</code> has a stable name tie-breaker, and its permutation test proves input-order independence.</li>
+    <li>There are no configuration, CRD, manifest, API-contract, or RBAC changes; rolling upgrades are safe.</li>
+  </ul></section>
+
+  <section><h2>Open questions for the author</h2><ul>
+    <li>Would a shared PR-scoped ProwJob list helper be worthwhile now, or is the current duplication preferable while the callers have different filtering needs?</li>
+    <li>Should a future integration test exercise two simultaneous webhook handlers, beyond the acknowledged best-effort race handling?</li>
+  </ul></section>
+</main>
+</body>
+</html>

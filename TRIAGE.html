@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Triage: kubernetes-sigs/prow#953</title>
+  <style>
+    body { max-width: 880px; margin: 2.5rem auto; padding: 0 1.25rem; font: 16px/1.55 system-ui, sans-serif; color: #1f2937; }
+    header { border-bottom: 1px solid #d1d5db; padding-bottom: 1rem; }
+    h1 { margin-bottom: .25rem; } h2 { margin-top: 2rem; } h3 { margin-top: 1.25rem; font-size: 1rem; }
+    dl { display: grid; grid-template-columns: max-content 1fr; gap: .25rem .75rem; } dt { font-weight: 700; }
+    code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; } pre { padding: .75rem; overflow-x: auto; background: #f3f4f6; }
+    .verdict { padding: .8rem 1rem; border-left: 4px solid #16a34a; background: #f0fdf4; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Triage: <a href="https://github.com/kubernetes-sigs/prow/issues/953">kubernetes-sigs/prow#953</a></h1>
+    <p>verify-gofmt cannot fail: it runs gofmt -w before the check</p>
+    <dl>
+      <dt>State</dt><dd>open</dd>
+      <dt>Labels</dt><dd>kind/bug</dd>
+      <dt>Triaged</dt><dd>2026-09-22T00:25:16Z</dd>
+      <dt>Main SHA</dt><dd><code>cd1c1dbd246180e7183af5eae6cc68c2053ffcdc</code></dd>
+      <dt>Verdict</dt><dd>accepted</dd>
+    </dl>
+  </header>
+  <main>
+    <h2>Verdict</h2>
+    <div class="verdict"><strong>Accepted.</strong> The checked-in verifier formats every Go file before computing its diff, so normal formatter execution always reaches the empty-diff success branch and mutates the working tree.</div>
+    <h2>What the issue reports</h2>
+    <ul><li><code>make verify-gofmt</code> passes malformed Go code after rewriting it.</li><li><code>make verify</code> includes the same mutating check.</li><li><code>update-gofmt</code> should retain write behavior; verification should only report failure.</li><li>Three tracked files are presently listed by a non-mutating formatter scan.</li></ul>
+    <h2>Analysis</h2>
+    <h3>Reproducibility / observed behavior</h3><p>A non-mutating <code>gofmt -s -l</code> scan lists <code>cmd/checkconfig/main.go</code>, <code>pkg/pjutil/filter_test.go</code>, and <code>pkg/plugins/rifle/rifle_test.go</code> at the recorded main SHA.</p>
+    <h3>Probable cause</h3><p><code>hack/make-rules/verify/gofmt.sh:26-30</code> first formats all Go files in place. Its next command computes a diff only after that write, so the empty-diff branch exits zero unless gofmt itself errors.</p>
+    <h3>Related code</h3><p><code>hack/make-rules/update/gofmt.sh:26-27</code> is the appropriate owner of writes:</p><pre><code>echo "Go version: $(go version)"
+find . -name '*.go' -type f -print0 | xargs -0 gofmt -s -w</code></pre><p><code>Makefile:91-96</code> intentionally exposes separate update and verify targets:</p><pre><code>update-gofmt:
+    hack/make-rules/update/gofmt.sh
+verify-gofmt:
+    hack/make-rules/verify/gofmt.sh</code></pre><p><code>hack/make-rules/verify/all.sh:35-39</code> invokes the faulty script through <code>make verify</code>. No active or historical PR specifically addressing this defect was found.</p>
+    <h2>What I checked</h2><ul><li>Fetched the complete open issue and its only bot comment.</li><li>Inspected the verifier, updater, Makefile targets, and aggregate path at <code>cd1c1dbd246180e7183af5eae6cc68c2053ffcdc</code>.</li><li>Confirmed the control flow and formatter listing without mutating tracked files.</li><li>Confirmed <code>kind/bug</code>, <code>sig/testing</code>, and <code>good first issue</code> exist; <code>area/prow</code> does not.</li></ul>
+    <h2>Recommended next steps</h2><ol><li>Retain <code>kind/bug</code>; optionally add <code>sig/testing</code> and <code>good first issue</code>.</li><li>Remove the write command from <code>hack/make-rules/verify/gofmt.sh</code>, preserving its diff-based failure diagnostic.</li><li>Format the three baseline files in the same PR with <code>make update-gofmt</code> or equivalent.</li><li>Demonstrate malformed temporary input fails without mutation; then run <code>make verify-gofmt</code> and <code>git diff --exit-code</code> on the clean tree.</li></ol>
+    <h2>Open questions</h2><ul><li>Should a focused regression test be added for this make-rule, or is command-level verification sufficient?</li><li>Do maintainers prefer the existing diff diagnostic or a file-list-only <code>gofmt -l</code> diagnostic?</li></ul>
+  </main>
+</body>
+</html>

@@ -3,8 +3,12 @@ pr: kubernetes-sigs/prow#955
 title: "fix(github): drop invalid event query filter"
 head_sha: 60ea22ac64543b06ffa6b8ffb6cfc3bfce6b4e4e
 base: main
-reviewed_at: 2026-09-21T22:35:14Z
+reviewed_at: 2026-09-22T12:29:55Z
 verdict: approve
+refresh_log:
+  - old_sha: 60ea22ac64543b06ffa6b8ffb6cfc3bfce6b4e4e
+    new_sha: 60ea22ac64543b06ffa6b8ffb6cfc3bfce6b4e4e
+    summary: "No code changes; Prucek approved the PR and kubernetes-prow[bot] posted its approval-status comment."
 ---
 
 ## Verdict
@@ -17,6 +21,11 @@ Approve. The unsupported multi-event API query is replaced with explicit event f
 - Filters retryable and approval-eligible events in the client.
 - Reads all workflow-run result pages.
 - Keeps `action_required` runs out of `/retest` candidates.
+
+Since previous review:
+
+- No code changes; the PR remains open at `60ea22ac64543b06ffa6b8ffb6cfc3bfce6b4e4e`.
+- Prucek submitted an approval at `2026-09-22T11:30:01Z`; `kubernetes-prow[bot]` posted the resulting approval-status comment at `2026-09-22T11:30:08Z`.
 
 ## Findings
 

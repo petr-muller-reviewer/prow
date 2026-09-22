@@ -3,9 +3,24 @@ pr: kubernetes-sigs/prow#952
 title: "fix(site): make the docs link checker check links"
 head_sha: eff2b2dd20c14a7a31c0e477074e992ed8fa337d
 base: main
-reviewed_at: 2026-09-21T22:36:23Z
+reviewed_at: 2026-09-22T13:18:51Z
 verdict: request-changes
+refresh_log:
+  - old_sha: eff2b2dd20c14a7a31c0e477074e992ed8fa337d
+    new_sha: eff2b2dd20c14a7a31c0e477074e992ed8fa337d
+    at: 2026-09-22T13:18:51Z
+    summary: "No code changes; recorded Prucek's approval and the approval-notifier update."
 ---
+
+## What this PR does
+- Builds the documentation site, then scans the generated tree once with htmltest.
+- Resolves absolute links from `public` and removes broad internal-link ignores.
+- Pins htmltest in `hack/tools` and exposes a top-level `verify-links` target.
+- Adds an internal-only htmltest target and excludes generated site output from unrelated checks.
+
+Since previous review:
+- No code changes: `eff2b2dd20c14a7a31c0e477074e992ed8fa337d` remains the PR head.
+- Prucek submitted an `APPROVED` review with `/ok-to-test` at 2026-09-22T11:26:52Z; kubernetes-prow[bot] subsequently updated the approval status at 2026-09-22T11:26:59Z.
 
 ## Findings
 

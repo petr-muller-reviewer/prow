@@ -13,7 +13,7 @@ body{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-seri
 <h1>Review: <a href="https://github.com/kubernetes-sigs/prow/pull/952">kubernetes-sigs/prow#952</a></h1>
 <p class="meta"><strong>Title:</strong> fix(site): make the docs link checker check links<br>
 <strong>Base:</strong> main &middot; <strong>Head:</strong> <code>eff2b2dd20c14a7a31c0e477074e992ed8fa337d</code><br>
-<strong>Reviewed:</strong> 2026-09-21T22:36:23Z</p>
+<strong>Reviewed:</strong> 2026-09-22T13:18:51Z</p>
 </header>
 <section class="verdict"><h2>Verdict: request changes</h2><p>The full-tree htmltest repair and dependency pin are sound, but the new routine verifier calls the networked external-link scan rather than the deterministic internal-only target it introduces. Make that small wiring correction before merging. CI integration is explicitly deferred and should remain a follow-up.</p></section>
 <section><h2>What this PR does</h2><ul>
@@ -21,6 +21,9 @@ body{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-seri
 <li>Configures htmltest to resolve absolute links from <code>public</code> and removes broad internal-link ignores.</li>
 <li>Pins htmltest in <code>hack/tools</code> and adds a top-level <code>verify-links</code> target.</li>
 <li>Adds an internal-only htmltest target and excludes generated site output from unrelated repository checks.</li>
+</ul><p><strong>Since previous review:</strong></p><ul>
+<li>No code changes: <code>eff2b2dd20c14a7a31c0e477074e992ed8fa337d</code> remains the PR head.</li>
+<li>Prucek submitted an <code>APPROVED</code> review with <code>/ok-to-test</code> at 2026-09-22T11:26:52Z; kubernetes-prow[bot] subsequently updated the approval status at 2026-09-22T11:26:59Z.</li>
 </ul></section>
 <section><h2>Findings</h2>
 <article class="blocking"><h3>Blocking &mdash; Routine verifier runs the external-link scan</h3><p><code>hack/make-rules/verify/links.sh:51</code>; <code>site/Makefile:33-38</code></p><pre>make check-broken-links HTMLTEST="${HTMLTEST}"

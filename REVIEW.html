@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Review: kubernetes-sigs/prow#946</title>
+<style>
+body { background: #f7f8fa; color: #1f2328; font: 16px/1.55 system-ui, sans-serif; margin: 0; }
+main { background: #fff; box-shadow: 0 1px 3px #0002; margin: 2rem auto; max-width: 900px; padding: 2rem 2.5rem; }
+h1, h2, h3 { line-height: 1.25; } code { background: #eef1f4; border-radius: 3px; font-family: ui-monospace, monospace; padding: .1em .25em; }
+.meta { color: #57606a; } .approve { color: #1a7f37; font-weight: 700; } .empty { color: #57606a; }
+</style>
+</head>
+<body>
+<main>
+<header>
+<h1>Review: <a href="https://github.com/kubernetes-sigs/prow/pull/946">kubernetes-sigs/prow#946</a></h1>
+<p class="meta"><strong>Title:</strong> chore(deps): bump sigs.k8s.io/controller-runtime from 0.25.0 to 0.25.1 in the kubernetes group across 1 directory<br>
+<strong>Head:</strong> <code>aebcb76d0da356a4f520cfe692738010b2a14e00</code><br>
+<strong>Base:</strong> <code>main</code><br>
+<strong>Reviewed:</strong> 2026-09-22T21:33:31Z</p>
+</header>
+
+<section>
+<h2>Verdict: <span class="approve">Approve</span></h2>
+<p>This is a direct, dependency-only patch. controller-runtime v0.25.1 is a tagged release published 8–9 days before review; its two fixes do not alter an API path Prow uses, and the remaining fix removes an upstream data race.</p>
+</section>
+
+<section>
+<h2>What this PR does</h2>
+<ul>
+<li>Updates the direct Go dependency <code>sigs.k8s.io/controller-runtime</code> from <code>v0.25.0</code> to <code>v0.25.1</code>.</li>
+<li>Refreshes the corresponding module checksums in <code>go.sum</code>.</li>
+<li>Takes an upstream fix for a priority-queue logging data race.</li>
+<li>Takes an upstream fix for cached-client subresource creation with read-your-writes consistency enabled.</li>
+</ul>
+</section>
+
+<section>
+<h2>Findings</h2>
+<h3>Blocking</h3><p class="empty">None.</p>
+<h3>Should fix</h3><p class="empty">None.</p>
+<h3>Nits</h3><p class="empty">None.</p>
+<h3>Questions</h3><p class="empty">None.</p>
+</section>
+
+<section>
+<h2>Things I checked and were fine with</h2>
+<ul>
+<li>Classification: dep-only; the diff is limited to <code>go.mod</code> and <code>go.sum</code>.</li>
+<li>Provenance and freshness: v0.25.1 is a non-prerelease tag (<code>67b72c2517be1d2b0dec612477eb20c3c959a8aa</code>), published 2026-09-14; no upstream repository security advisory was reported for this release.</li>
+<li>Upstream delta: two commits only—priority-queue logging race fix and the cached-client subresource-create resource-version parsing fix.</li>
+<li>Usage: Prow imports controller-runtime in 55 Go files (30 production files), across controller managers and Kubernetes clients. It has no <code>SubResource</code> calls and does not enable <code>EnableReadYourWritesConsistency</code>, so the changed cached-client behavior is not exercised here.</li>
+<li>Validation: <code>git diff --check</code> and <code>go mod verify</code> pass. PR CI reports successful unit, integration, image-build, lint, and nonblocking race checks.</li>
+</ul>
+</section>
+
+<section>
+<h2>Open questions for the author</h2>
+<p class="empty">None.</p>
+</section>
+</main>
+</body>
+</html>

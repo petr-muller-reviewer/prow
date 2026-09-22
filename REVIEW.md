@@ -1,10 +1,15 @@
 ---
 pr: kubernetes-sigs/prow#782
 title: "owners-label: add ignore_merge_commits config option"
-head_sha: ddde196fedea6f58c0fd75fa102433444b989d21
+head_sha: 6a29c95931c3a76f016723bca5ee84eac2377bb6
 base: main
-reviewed_at: 2026-08-11T11:19:22Z
+reviewed_at: 2026-09-22T22:23:46Z
 verdict: approve
+gate:
+  decision: hold
+  gated_at: 2026-09-22T22:25:40Z
+  gated_head_sha: 6a29c95931c3a76f016723bca5ee84eac2377bb6
+  reviewed_head_sha: 6a29c95931c3a76f016723bca5ee84eac2377bb6
 refresh_log:
   - from_sha: f864b330e8bae580e7a1e177ed6c1b69259a279a
     to_sha: f864b330e8bae580e7a1e177ed6c1b69259a279a
@@ -15,7 +20,23 @@ refresh_log:
   - from_sha: ddde196fedea6f58c0fd75fa102433444b989d21
     to_sha: ddde196fedea6f58c0fd75fa102433444b989d21
     summary: No code changes. Prucek flagged (1) generated docs are stale — plugin-config-documented.yaml doesn't reflect the new field, needs `make verify-codegen`; (2) the org/full membership-check loop is now duplicated a third time (MDYAMLRepos-style, SkipCollaborators, IgnoreMergeCommitsFor) and asked for it to be factored out.
+  - from_sha: ddde196fedea6f58c0fd75fa102433444b989d21
+    to_sha: 6a29c95931c3a76f016723bca5ee84eac2377bb6
+    summary: Rebased onto current main and incorporated prior feedback: regenerated plugin config docs, extracted the common org/repo-list lookup, and added direct coverage for all three lookup accessors.
 ---
+
+## Gate
+
+**Decision: hold.** The refreshed head is the reviewed head and prior reviewer feedback on configuration scope, generated documentation, and helper duplication is addressed. However, the remaining `should-fix` finding is unchanged: the opt-in merge-commit API call runs before the existing no-label early return, defeating that function's explicit API-token optimization for every configured PR without OWNERS labels.
+
+### Gating list
+
+- **[should-fix, REVIEW.md]** `pkg/plugins/owners-label/owners-label.go:77-101`: `ListPullRequestCommits` is invoked before `GetPullRequestChanges` computes `neededLabels`; move the merge-commit check after the `neededLabels.Len() == 0` return (or explicitly justify retaining the extra call) before merging.
+
+### Independent merge risk
+
+- `ignore_merge_commits` is an additive, opt-in `Owners` configuration field with `omitempty`; deployments not listing an org/repo retain current behavior. The only behavior change for listed repositories is intentionally suppressing label additions while a PR contains a merge commit. No exported API, flag, CRD, or default behavior changed.
+- The current branch contains no commits after the refreshed review baseline (`6a29c9593`).
 
 ## Summary
 
@@ -25,17 +46,10 @@ Since previous review:
 - `IgnoreMergeCommits` changed from a global `bool` to a `[]string` of `org` / `org/repo` entries (`pkg/plugins/config.go:256-259`), following the same shape as `SkipCollaborators`.
 - Added `Configuration.IgnoreMergeCommitsFor(org, repo)` (`pkg/plugins/config.go:305-313`), byte-for-byte the same lookup pattern as `SkipCollaborators`.
 - `handlePullRequest` now calls `pc.PluginConfig.IgnoreMergeCommitsFor(pre.Repo.Owner.Login, pre.Repo.Name)` instead of reading the bool directly (`pkg/plugins/owners-label/owners-label.go:69`).
-- No code changes since 2026-07-26T22:39:28Z. Prucek left two new comments on 2026-08-10 (see Findings): generated docs are stale, and the org/repo membership-check loop should be factored out now that it's duplicated three times.
+- The branch was force-pushed/rebased from `ddde196fe` to `6a29c9593` on 2026-09-18. Its functional patch now changes five plugin paths (+185/-11): regenerated config documentation, a shared `orgRepoListed` helper, and table-driven coverage for all three org/repo-list accessors.
+- This resolves Prucek's two 2026-08-10 comments: `plugin-config-documented.yaml` now includes `ignore_merge_commits`, and the previously triplicated membership check is shared.
 
 ## Findings
-
-### [should-fix] Generated plugin-config-documented.yaml not regenerated
-- where: `prow/cmd/generic-autobumper` docs / `pkg/plugins/plugin-config-documented.yaml` (generated)
-- concern: Flagged by Prucek on 2026-08-10: the new `ignore_merge_commits` config field is not reflected in the generated documentation. `make verify-codegen` needs to be run and its output committed before merge, or CI's codegen-verify check will fail.
-
-### [nit] Org/repo membership-check loop now duplicated a third time
-- where: `pkg/plugins/config.go:284-289` (`MDYAMLRepos`-style helper), `:294-301` (`SkipCollaborators`), `:305-313` (`IgnoreMergeCommitsFor`)
-- concern: Prucek requested (2026-08-10, inline on config.go:316) that the repeated `for _, elem := range list { if elem == org || elem == full { return true } }` pattern be factored into a shared helper now that it appears three times. The previous review's "Checked" section noted the pattern was reused but judged extraction unnecessary at two occurrences; a third occurrence changes that calculus and is worth a small helper, e.g. `func orgOrRepoInList(org, repo string, list []string) bool`.
 
 ### [should-fix] Merge commit API call runs before label-need check
 - where: `pkg/plugins/owners-label/owners-label.go:77-88`
@@ -51,10 +65,6 @@ Since previous review:
         return nil
     }
 
-### [nit] No test coverage for IgnoreMergeCommitsFor / handlePullRequest wiring
-- where: `pkg/plugins/config.go:305-313`, `pkg/plugins/owners-label/owners-label.go:69`
-- concern: `IgnoreMergeCommitsFor` (new) and `handlePullRequest` (pre-existing, now calls it) have no direct test coverage — only the lower-level `handle()` is tested via `TestHandleIgnoreMergeCommits`, which still takes the resolved `bool`. Note `SkipCollaborators`, the pattern this mirrors, is likewise untested directly, so this matches existing convention rather than introducing a new gap.
-
 ### [nit] Add comment noting relationship with mergecommitblocker
 - where: `pkg/plugins/owners-label/owners-label.go:77`
 - concern: The feature exists specifically because of how `owners-label` and `mergecommitblocker` interact. A brief comment would save future maintainers from reconstructing this from the PR description. Also worth noting why this uses GitHub API rather than git (because `owners-label` does not clone the repo, unlike `mergecommitblocker`).
@@ -64,6 +74,21 @@ Since previous review:
 - concern: Happy paths are well-covered but no test verifies that a `ListPullRequestCommits` error is propagated rather than swallowed.
 
 ## Resolved
+
+### [should-fix] Generated plugin-config-documented.yaml not regenerated — resolved in 6a29c9593
+- where: `pkg/plugins/plugin-config-documented.yaml:503-508`
+- original concern: The generated plugin configuration documentation did not include `ignore_merge_commits`, and `make verify-codegen` would fail.
+- resolution: The regenerated documentation now includes the field and its org/org-repo semantics.
+
+### [nit] Org/repo membership-check loop duplicated three times — resolved in 6a29c9593
+- where: `pkg/plugins/config.go:317-340`
+- original concern: `MDYAMLEnabled`, `SkipCollaborators`, and `IgnoreMergeCommitsFor` each implemented the same org/full-repository membership loop.
+- resolution: All three delegate to the new shared `orgRepoListed` helper.
+
+### [nit] No direct coverage for IgnoreMergeCommitsFor — resolved in 6a29c9593
+- where: `pkg/plugins/config_test.go:154-222`
+- original concern: The config accessor was only indirectly exercised through the lower-level owners-label handler.
+- resolution: `TestOwnersOrgRepoLists` exercises `MDYAMLEnabled`, `SkipCollaborators`, and `IgnoreMergeCommitsFor` against empty, org, org/repo, and non-matching lists.
 
 ### [nit] Add comment on config field noting global scope — superseded in ddde196fe
 - where: `pkg/plugins/config.go:256-259`
@@ -87,7 +112,7 @@ Since previous review:
 - `handlePullRequest` gates on PR action before reaching new code
 - No invariants lost; old behavior preserved when `ignoreMergeCommits=false`
 - Checked reuse with `mergecommitblocker` (git-based, different approach) and `dco` (same expression but different purpose: filter vs gate). Neither warrants extraction.
-- Checked reuse of the org/full membership-check loop itself across `Owners` config helpers: now duplicated three times (see Findings — Prucek requested extraction on 2026-08-10).
+- The shared `orgRepoListed` helper preserves the prior exact-match behavior for all three `Owners` config accessors.
 - Config field uses `omitempty`, defaults to `false`, existing configs parse identically
 - No new permissions required; `ListPullRequestCommits` uses same GitHub token scope
 - Upgrade and rollback both safe, no ordering dependencies

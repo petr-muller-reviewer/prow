@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Review: kubernetes-sigs/prow#948</title>
+<style>
+  body { background: #f6f8fa; color: #24292f; font: 16px/1.55 system-ui, -apple-system, sans-serif; margin: 0; }
+  main { background: #fff; box-shadow: 0 1px 3px #1f23281f; margin: 2rem auto; max-width: 850px; padding: 2.5rem 3rem; }
+  h1, h2 { line-height: 1.25; } h2 { border-bottom: 1px solid #d0d7de; margin-top: 2.1rem; padding-bottom: .35rem; }
+  code { background: #f6f8fa; border-radius: 4px; font: .9em ui-monospace, SFMono-Regular, Consolas, monospace; padding: .15em .35em; }
+  .meta { color: #57606a; } .verdict { border-left: 4px solid #1a7f37; padding-left: 1rem; }
+  a { color: #0969da; } li { margin: .35rem 0; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Review: <a href="https://github.com/kubernetes-sigs/prow/pull/948">kubernetes-sigs/prow#948</a></h1>
+    <p class="meta"><strong>Title:</strong> chore(deps): bump github.com/tektoncd/pipeline from 1.15.1 to 1.16.0<br>
+    <strong>Base:</strong> <code>main</code><br>
+    <strong>Head:</strong> <code>21567294b16610240634433186a9af2e621c8afe</code><br>
+    <strong>Reviewed:</strong> 2026-09-22T21:15:37Z</p>
+  </header>
+
+  <section>
+    <h2>Verdict</h2>
+    <p class="verdict"><strong>Approve.</strong> Dependency-only update with clean focused compilation/tests. Tekton v1.16.0 is 22 days old; its one relevant behavioral change is enabled security contexts for Tekton-injected containers, which warrants normal rollout validation but is not a defect in this PR.</p>
+  </section>
+
+  <section>
+    <h2>What this PR does</h2>
+    <ul>
+      <li>Updates direct dependency <code>github.com/tektoncd/pipeline</code> from <code>v1.15.1</code> to <code>v1.16.0</code>.</li>
+      <li>Updates its transitive dependency <code>github.com/google/cel-go</code> from <code>v0.29.2</code> to <code>v0.31.0</code>.</li>
+      <li>Refreshes the associated module checksums.</li>
+      <li>Does not alter Prow source, generated clients, configuration, or tests.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Findings</h2>
+    <h3>Blocking</h3><p>None.</p>
+    <h3>Should fix</h3><p>None.</p>
+    <h3>Nits</h3><p>None.</p>
+    <h3>Questions</h3><p>None.</p>
+  </section>
+
+  <section>
+    <h2>Things I checked and were fine with</h2>
+    <ul>
+      <li>PR scope is limited to <code>go.mod</code> and <code>go.sum</code>; the diff is whitespace-clean.</li>
+      <li><code>github.com/tektoncd/pipeline</code> is a tagged release from 2026-08-31 (22 days old), directly imported by Prow's Pipeline controller, config/API types, and generated Pipeline clients.</li>
+      <li>Tekton v1.16.0 enables <code>set-security-context</code> by default for Tekton-injected TaskRun containers and Affinity Assistants. Prow's direct usage is API/client based; user-defined task steps and sidecars are outside that default's scope.</li>
+      <li><code>github.com/google/cel-go</code> is indirect with no direct Prow imports. v0.31.0 is a tagged release from 2026-08-07 (46 days old); its release notes report no breaking changes and add regex expression-size limits.</li>
+      <li><code>go test ./cmd/pipeline ./pkg/config ./pkg/apis/prowjobs/v1 ./pkg/pipeline/...</code> passed.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Open questions for the author</h2>
+    <p>None for this dependency update. Operators should exercise representative Tekton PipelineRuns during rollout if their injected containers depend on permissive security contexts.</p>
+  </section>
+</main>
+</body>
+</html>

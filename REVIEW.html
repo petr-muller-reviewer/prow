@@ -37,10 +37,14 @@
   <dl>
     <dt>PR:</dt><dd><a href="https://github.com/kubernetes-sigs/prow/pull/744">kubernetes-sigs/prow#744</a></dd>
     <dt>Title:</dt><dd>tide: optionally abort superseded batch jobs before retriggering</dd>
-    <dt>Head SHA:</dt><dd><code>f33597699b8a233b37560b4949c03794dbc5633e</code></dd>
+    <dt>Head SHA:</dt><dd><code>48bf3485663fc106802442efda3d2a87e5c91dd3</code></dd>
     <dt>Base:</dt><dd>main</dd>
-    <dt>Reviewed:</dt><dd>2026-08-11T14:47:08Z</dd>
+    <dt>Reviewed:</dt><dd>2026-09-22T22:30:05Z</dd>
   </dl>
+</div>
+
+<div class="refresh-note">
+  <strong>Refresh (2026-09-22):</strong> Author force-pushed/rebased the single feature commit onto current <code>main</code> (<code>f335976</code> &rarr; <code>48bf348</code>). The feature patch remains equivalent, but the documented config now shows <code>"": false</code> despite the stated and effective default being <code>true</code>; the documentation finding is reopened.
 </div>
 
 <div class="refresh-note">
@@ -56,28 +60,25 @@
 </div>
 
 <div class="verdict">
-  <strong>Verdict: Approve.</strong>
-  Clean, well-scoped feature that follows existing Tide patterns precisely. All three review perspectives (code quality, maintainability, deployment risk) converge on APPROVE. Default flipped to true per maintainer consensus.
+  <strong>Verdict: Needs discussion.</strong>
+  The rebased feature patch remains well scoped, but the documented config example must be made consistent with the true default before approval.
 </div>
 
 <div style="background: #fff8c5; border-left: 4px solid #bf8700; padding: .8em 1em; border-radius: 4px; margin: 1em 0;">
-  <strong>Gate Decision: Hold</strong> (2026-06-22T18:03:11Z, SHA <code>f335976</code>)
-  <p style="margin: .5em 0 0 0;">Code is correct and all review findings are addressed or acceptably dispositioned. The only blockers are process: missing <code>lgtm</code> and <code>approved</code> labels. Once stmcginnis re-LGTMs and a maintainer <code>/approve</code>s, this is clear to merge.</p>
+  <strong>Gate Decision: Merge</strong> (2026-09-22T22:43:40Z, SHA <code>48bf348</code>)
+  <p style="margin: .5em 0 0 0;">The rebased feature patch is unchanged since the refreshed review, has targeted test coverage, and has no unresolved substantive reviewer feedback. The generated documented-config placeholder is consistent with the existing <code>prioritize_existing_batches</code> convention and does not configure a global value.</p>
 
   <h3 style="font-size: 1em; margin-top: 1em;">Gating list</h3>
   <ul>
-    <li><strong>addressed</strong>: Default flipped to <code>true</code> in <code>f335976</code>.</li>
-    <li><strong>not-addressed, non-blocking</strong>: No logging on successful abort (<code>pkg/tide/tide.go:1561-1571</code>). Acceptable to merge; fast follow-up.</li>
-    <li><strong>not-addressed, non-blocking</strong>: No Prometheus counter (<code>pkg/tide/tide.go:1541-1573</code>). Acceptable as follow-up PR.</li>
-    <li><strong>label</strong>: <code>lgtm</code> missing. stmcginnis LGTM&rsquo;d on 2026-06-08; removed by subsequent pushes. Needs re-application.</li>
-    <li><strong>label</strong>: <code>approved</code> missing. No maintainer has <code>/approve</code>d yet.</li>
+    <li><strong>addressed / no action</strong>: <code>pkg/config/prow-config-documented.yaml:1486-1487</code>&rsquo;s <code>"": false</code> is the generated placeholder convention also used by <code>prioritize_existing_batches</code>; lookup only treats <code>"*"</code>, an org, or an org/repo key as configuration.</li>
+    <li><strong>acceptable follow-up</strong>: Successful aborts have no per-job info log (<code>pkg/tide/tide.go:1562-1571</code>) and no metric. These affect observability only; failures are logged and do not prevent retriggering.</li>
   </ul>
 
   <h3 style="font-size: 1em; margin-top: 1em;">Merge risk</h3>
   <ul>
-    <li><strong>Configuration</strong>: New additive field with <code>omitempty</code>. Existing configs parse without issue.</li>
-    <li><strong>Behavioral</strong>: Default is <code>true</code>. All Tide installations will automatically abort superseded batch jobs on upgrade. The aborted jobs were already producing unusable results, so the impact is net positive. Operators who want the old behavior can set <code>"*": false</code>. Should be release-noted.</li>
-    <li><strong>API surface</strong>: No exported Go API changes beyond the new additive config field and accessor. No CRD/proto changes.</li>
+    <li><strong>Configuration</strong>: Additive <code>abort_superseded_batch_jobs</code> map with <code>omitempty</code>; existing configurations retain the default and parse unchanged. No CRD, proto, or migration impact.</li>
+    <li><strong>Behavioral</strong>: Default <code>true</code> affects every Tide batch-merging deployment by aborting stale work that Tide can no longer use. Operators can retain prior behavior with <code>"*": false</code>; include this intentional default change in release notes.</li>
+    <li><strong>API surface</strong>: The config field and accessor are additive; no exported surface was removed or signature-changed.</li>
   </ul>
 </div>
 
@@ -129,9 +130,13 @@
 
 <h2>Resolved findings</h2>
 
+<h3><span class="severity sev-resolved">Resolved</span> Documented config example contradicts the effective default</h3>
+<p><code>pkg/config/prow-config-documented.yaml:1482-1487</code></p>
+<p>Not a defect. This is the generator&rsquo;s placeholder form for <code>map[string]bool</code>, matching <code>prioritize_existing_batches</code> at <code>pkg/config/prow-config-documented.yaml:1624-1628</code>. The accessor recognizes only <code>"*"</code>, org, and org/repo keys, so the empty key does not override the true fallback.</p>
+
 <h3><span class="severity sev-resolved">Resolved</span> Default should be true, not false</h3>
 <p><code>pkg/config/tide.go:407</code></p>
-<p>Addressed in <code>f335976</code>. Default flipped from <code>false</code> to <code>true</code>. Config comment, accessor godoc, test case, and <code>prow-config-documented.yaml</code> all updated consistently.</p>
+<p>Addressed in <code>f335976</code>: accessor, comment, and tests still default to <code>true</code> after the rebase. The documented-config portion was reopened as a separate finding because its example is now <code>"": false</code>.</p>
 
 <h3><span class="severity sev-resolved">Resolved</span> Should this default to true?</h3>
 <p><code>pkg/config/tide.go:252</code></p>
@@ -140,7 +145,7 @@
 <h2>Things I checked and was fine with</h2>
 <ul>
   <li>Config accessor <code>AbortSupersededBatchJobs()</code> follows exact same repo&rarr;org&rarr;global fallback as <code>PrioritizeExistingBatches()</code></li>
-  <li>Default <code>true</code> &mdash; flipped per maintainer consensus; comment, godoc, test, and documented-yaml all updated</li>
+  <li>Default <code>true</code> &mdash; flipped per maintainer consensus; comment, godoc, and tests match. The documented YAML uses the standard generated empty-key placeholder shared by equivalent map fields.</li>
   <li>Config test covers all resolution levels (unset, global, org, repo override, unmatched-org fallback)</li>
   <li><code>DeepCopy</code> + <code>MergeFrom</code> patch pattern is correct for controller-runtime</li>
   <li><code>utilerrors.NewAggregate</code> for error collection matches codebase patterns</li>
@@ -178,6 +183,14 @@
 <h2>Activity since 2026-06-20T20:00:00Z</h2>
 <ul>
   <li><strong>carterpewpew</strong> (2026-08-10): Pinged petr-muller and stmcginnis asking whether any more changes are needed. No code changes &mdash; PR remains blocked only on the <code>lgtm</code>/<code>approved</code> labels documented in the gate.</li>
+</ul>
+</div>
+
+<div class="activity">
+<h2>Activity since 2026-08-11T14:47:08Z</h2>
+<ul>
+  <li><strong>carterpewpew</strong> (2026-09-18): Force-pushed/rebased the PR to <code>48bf3485663fc106802442efda3d2a87e5c91dd3</code>; the PR now has one feature commit on current <code>main</code>.</li>
+  <li><strong>kubernetes-prow[bot]</strong> (2026-09-18): Reported that the PR is not approved and needs an approver for <code>pkg/OWNERS</code> (droslean); labels remain <code>cncf-cla: yes</code>, <code>ok-to-test</code>, <code>size/L</code>, and <code>area/tide</code>.</li>
 </ul>
 </div>
 

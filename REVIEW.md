@@ -1,11 +1,14 @@
 ---
 pr: kubernetes-sigs/prow#744
 title: "tide: optionally abort superseded batch jobs before retriggering"
-head_sha: f33597699b8a233b37560b4949c03794dbc5633e
+head_sha: 48bf3485663fc106802442efda3d2a87e5c91dd3
 base: main
-reviewed_at: 2026-08-11T14:47:08Z
-verdict: approve
+reviewed_at: 2026-09-22T22:30:05Z
+verdict: needs-discussion
 refresh_log:
+  - prev_sha: f33597699b8a233b37560b4949c03794dbc5633e
+    new_sha: 48bf3485663fc106802442efda3d2a87e5c91dd3
+    summary: "Force-push/rebase onto current main. The feature patch remains equivalent; reopened a documentation finding because the documented config literal is false while the stated and effective default is true."
   - prev_sha: 230403b27be3fe1b9ca8c18fef9db3fe627118be
     new_sha: ce86882fae44ed61cd4058cc30f43478200ed31b
     summary: "Rebase onto main (no PR code changes). Discussion: two maintainers favor default-true; author amenable. LGTM removed by rebase."
@@ -16,28 +19,24 @@ refresh_log:
     new_sha: f33597699b8a233b37560b4949c03794dbc5633e
     summary: "No code changes. carterpewpew pinged for status (2026-08-10); still blocked only on lgtm/approved labels per gate."
 gate:
-  decision: hold
-  gated_at: 2026-06-22T18:03:11Z
-  gated_head_sha: f33597699b8a233b37560b4949c03794dbc5633e
-  reviewed_head_sha: f33597699b8a233b37560b4949c03794dbc5633e
+  decision: merge
+  gated_at: 2026-09-22T22:43:40Z
+  gated_head_sha: 48bf3485663fc106802442efda3d2a87e5c91dd3
+  reviewed_head_sha: 48bf3485663fc106802442efda3d2a87e5c91dd3
 ---
 
 ## Gate
 
-**Decision: hold** — Code is correct and all review findings are addressed or acceptably dispositioned. The only blockers are process: missing `lgtm` and `approved` labels. Once stmcginnis re-LGTMs (he LGTM'd the original, it was removed by rebase + the default-flip push) and a maintainer `/approve`s, this is clear to merge.
+**Decision: merge** — The rebased feature patch is unchanged since the refreshed review, has targeted test coverage, and has no unresolved substantive reviewer feedback. The generated documented-config placeholder is consistent with the existing `prioritize_existing_batches` convention and does not configure a global value.
 
 ### Gating list
-- **addressed**: Default flipped to true (`pkg/config/tide.go:407`). Done in `f335976`.
-- **not-addressed, non-blocking**: No logging on successful abort (`pkg/tide/tide.go:1561-1571`). Acceptable to merge as-is; can be a fast follow-up.
-- **not-addressed, non-blocking**: No Prometheus counter (`pkg/tide/tide.go:1541-1573`). Acceptable as follow-up PR.
-- **label**: `lgtm` missing. stmcginnis LGTM'd on 2026-06-08; label was removed by subsequent pushes. Needs re-application.
-- **label**: `approved` missing. No maintainer has `/approve`d yet.
+- **addressed / no action**: The `"": false` value at `pkg/config/prow-config-documented.yaml:1486-1487` is the generated placeholder convention also used by `prioritize_existing_batches`; lookup only treats `"*"`, an org, or an org/repo key as configuration.
+- **acceptable follow-up**: Successful aborts have no per-job info log (`pkg/tide/tide.go:1562-1571`) and no metric. These affect observability only; failures are logged and do not prevent retriggering.
 
 ### Merge risk (Area 2)
-- **Configuration**: New additive field `abort_superseded_batch_jobs` with `omitempty`. Existing configs parse without issue. No breaking change.
-- **Behavioral**: Default is `true`. All existing Tide installations will automatically abort superseded batch jobs on upgrade. The aborted jobs were already producing unusable results (invisible to Tide after baseSHA advance), so the impact is net positive. Operators who want the old behavior can set `"*": false`. Should be release-noted.
-- **API surface**: No exported Go API changes beyond the new config field and accessor, both additive. No CRD/proto changes.
-- **Blast radius**: Every Prow installation that uses Tide batch merging. Mitigated by the fact that the aborted work was already wasted, and by the per-org/repo opt-out mechanism.
+- **Configuration**: Additive `abort_superseded_batch_jobs` map with `omitempty`; existing configurations retain the default and parse unchanged. No CRD, proto, or migration impact.
+- **Behavioral**: Default `true` affects every Tide batch-merging deployment by aborting stale work that Tide can no longer use. Operators can retain prior behavior with `"*": false`; include this intentional default change in release notes.
+- **API surface**: The config field and accessor are additive; no exported surface was removed or signature-changed.
 
 ## Findings
 
@@ -70,9 +69,13 @@ gate:
 - concern: Both features affect batch lifecycle. `prioritize_existing_batches` reuses existing batch results; `abort_superseded_batch_jobs` cleans up when a new batch is triggered. They are complementary, but the interaction may not be obvious to operators. Worth a brief note in config documentation?
 
 ## Resolved
+### [should-fix] Documented config example contradicts the effective default
+- where: `pkg/config/prow-config-documented.yaml:1482-1487`
+- resolution: Not a defect. This is the generator's placeholder form for `map[string]bool`, matching `prioritize_existing_batches` (`pkg/config/prow-config-documented.yaml:1624-1628`). The accessor recognizes only `"*"`, org, and org/repo keys, so the empty key does not override the true fallback.
+
 ### [should-fix] Default should be true, not false
 - where: `pkg/config/tide.go:407`
-- resolution: Addressed in `f335976`. Default flipped from `false` to `true`. Config comment, accessor godoc, test case, and `prow-config-documented.yaml` all updated consistently.
+- resolution: Addressed in `f335976`. The accessor, comment, and tests still default to `true` after the rebase; the documented-config portion was reopened as a separate finding because its example is now `"": false`.
 
 ### [question] Should this default to true?
 - where: `pkg/config/tide.go:252`
@@ -80,7 +83,7 @@ gate:
 
 ## Checked
 - Config accessor `AbortSupersededBatchJobs()` follows exact same repo>org>global fallback as `PrioritizeExistingBatches()`
-- Default true — flipped per maintainer consensus; comment, godoc, test, and documented-yaml all updated
+- Default true — flipped per maintainer consensus; comment, godoc, and tests match. The documented YAML uses the standard generated empty-key placeholder shared by equivalent map fields.
 - Config test covers all resolution levels (unset, global, org, repo override, unmatched-org fallback)
 - `DeepCopy` + `MergeFrom` patch pattern is correct for controller-runtime
 - `utilerrors.NewAggregate` for error collection matches codebase patterns
@@ -109,3 +112,7 @@ gate:
 
 ## Activity since 2026-06-20T20:00:00Z
 - **carterpewpew** (2026-08-10): Pinged petr-muller and stmcginnis asking whether any more changes are needed. No code changes — PR remains blocked only on the `lgtm`/`approved` labels documented in the gate.
+
+## Activity since 2026-08-11T14:47:08Z
+- **carterpewpew** (2026-09-18): Force-pushed/rebased the PR to `48bf3485663fc106802442efda3d2a87e5c91dd3`; the PR now has one feature commit on current `main`.
+- **kubernetes-prow[bot]** (2026-09-18): Reported that the PR is not approved and needs an approver for `pkg/OWNERS` (droslean); current labels remain `cncf-cla: yes`, `ok-to-test`, `size/L`, and `area/tide`.

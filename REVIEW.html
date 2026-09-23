@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Review: kubernetes-sigs/prow#965</title>
+  <style>
+    body { font-family: system-ui, sans-serif; line-height: 1.55; margin: 2rem auto; max-width: 58rem; padding: 0 1rem; color: #1f2328; }
+    code, pre { background: #f6f8fa; border-radius: 3px; } code { padding: .1em .25em; } pre { padding: 1rem; overflow-x: auto; } .meta { color: #57606a; } .blocking { color: #b42318; }
+  </style>
+</head>
+<body>
+  <h1>Review: <a href="https://github.com/kubernetes-sigs/prow/pull/965">kubernetes-sigs/prow#965</a></h1>
+  <p class="meta">config: reject partial job config directory walks<br>head: <code>c5a30d39221c6adec51b9ba153425a01f78a457d</code> · base: <code>main</code> · reviewed: 2026-09-23T09:38:18Z</p>
+  <h2>Verdict</h2>
+  <p><strong>Request changes.</strong> Making every directory-walk callback error fatal means a transient checkout/config-map race can make a component fail its initial config load and exit. Prow binaries conventionally treat failure to start the config agent as fatal, so this breaks (or crash-loops) a deployment instead of retaining the existing availability behavior.</p>
+  <h2>What this PR does</h2>
+  <ul><li>Makes <code>ReadJobConfig</code> delegate to an injectable directory walker.</li><li>Collects walk callback errors instead of only logging and discarding them.</li><li>Returns an error rather than a partially populated configuration.</li><li>Tests a valid job file followed by a simulated disappearing checkout entry.</li></ul>
+  <h2>Findings</h2>
+  <h3 class="blocking">Blocking: Do not make a transient walk race fatal at initial startup</h3>
+  <p><code>pkg/config/config.go:1731-1736</code></p>
+  <pre>if err != nil {
+    errs = append(errs, fmt.Errorf("walking path %q: %w", path, err))
+    return nil
+}</pre>
+  <p><code>filepath.Walk</code> reports an entry disappearing during a git-sync/config-map update through this callback. The new aggregate makes <code>Agent.Start</code> return that error (<code>pkg/config/agent.go:346-348</code>); consumers such as sinker immediately call <code>Fatal</code> on it (<code>cmd/sinker/main.go:114-116</code>). A restart during the update therefore cannot start until a later restart, turning a normally transient filesystem race into deployment downtime/crash-looping. Preserve an availability-safe retry/last-known-good startup path, or restrict rejection to errors that prove the configured job config is invalid rather than temporarily inconsistent.</p>
+  <h2>Things I checked and were fine</h2>
+  <ul><li><code>pkg/config/config.go:1731-1784</code>: callback errors are now included with the walk return value in <code>utilerrors.NewAggregate</code>.</li><li><code>pkg/config/agent.go:346-348</code>: an initial load error is returned before the agent has stored configuration.</li><li><code>pkg/flagutil/config/config.go:94-95</code> and <code>cmd/sinker/main.go:114-116</code>: callers propagate that error to a fatal process exit.</li><li><code>pkg/config/config_test.go:3692-3713</code>: the test models precisely the disappearing-entry race that now prevents startup.</li><li><code>git diff --check</code>: clean.</li></ul>
+  <h2>Open questions for the author</h2>
+  <p>Is the intended operational policy really to require a pod restart after a git-sync/config-map update races its first config load? If so, it needs an explicit startup retry mechanism before this behavior can be safe.</p>
+</body>
+</html>

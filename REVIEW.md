@@ -1,14 +1,17 @@
 ---
 pr: kubernetes-sigs/prow#956
 title: "feat(trigger): approve workflow runs on push"
-head_sha: d40b843e050f907b9f06a3c6720603c25c6fc94d
+head_sha: c4a982a36717e9bd731f5ea764a7094a727d2402
 base: main
-reviewed_at: 2026-09-22T20:42:53Z
+reviewed_at: 2026-09-23T20:56:31Z
 verdict: request-changes
 refresh_log:
   - old_sha: bf3512b7239122f080a629a4ee5943e47df464fd
     new_sha: d40b843e050f907b9f06a3c6720603c25c6fc94d
     summary: "Incorporated boilerplate-header corrections in the workflow approval source and test."
+  - old_sha: d40b843e050f907b9f06a3c6720603c25c6fc94d
+    new_sha: c4a982a36717e9bd731f5ea764a7094a727d2402
+    summary: "Incorporated deferred /ok-to-test approval, trusted-opened approval, and approval-test setup refactoring."
 ---
 
 ## What this PR does
@@ -20,6 +23,7 @@ refresh_log:
 Since previous review:
 
 - Corrected only the boilerplate copyright headers in `pkg/plugins/trigger/workflow-approval.go` and `pkg/plugins/trigger/workflow-approval_test.go` (2 insertions, 2 deletions); the polling finding is unaffected.
+- Deferred `/ok-to-test` approval until its ProwJobs exist, added approval for trusted opened PRs, and refactored approval-test setup (128 insertions, 81 deletions); the polling completion condition remains unchanged.
 
 ## Findings
 

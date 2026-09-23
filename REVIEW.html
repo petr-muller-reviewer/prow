@@ -1,38 +1,119 @@
 <!doctype html>
-<meta charset="utf-8">
-<title>Review — kubernetes-sigs/prow#555</title>
-<style>
-  :root { color-scheme: light dark; --bg:#0d1117; --surface:#161b22; --border:#30363d; --text:#e6edf3; --muted:#8b949e; --red:#f85149; }
-  @media (prefers-color-scheme: light) { :root { --bg:#fff; --surface:#f6f8fa; --border:#d0d7de; --text:#1f2328; --muted:#656d76; --red:#cf222e; } }
-  body { max-width:60rem; margin:0 auto; padding:2rem 1.5rem 5rem; background:var(--bg); color:var(--text); font:16px/1.6 system-ui,sans-serif; }
-  h1 { line-height:1.25; } h2 { margin-top:2.2rem; border-bottom:1px solid var(--border); padding-bottom:.3rem; } h3 { margin-bottom:.3rem; }
-  code, pre { font-family:ui-monospace,SFMono-Regular,Consolas,monospace; } code { background:var(--surface); border:1px solid var(--border); border-radius:3px; padding:.08em .3em; } pre { padding:.8rem; overflow:auto; background:var(--surface); border:1px solid var(--border); border-radius:6px; }
-  .meta { color:var(--muted); } .verdict,.finding { background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:1rem 1.2rem; margin:1rem 0; } .verdict,.finding { border-left:4px solid var(--red); } .badge { color:var(--red); font-weight:700; text-transform:uppercase; font-size:.8rem; }
-</style>
-
-<h1>kubernetes-sigs/prow#555 — <code>peribolos</code>: add org roles feature</h1>
-<p class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/555">github.com/kubernetes-sigs/prow/pull/555</a><br>
-Head: <code>a821885197538f50646200239bfbedd93e2e2756</code> · Base: <code>main</code><br>
-Reviewed: <code>2026-09-10T12:44:42Z</code> · Author: <strong>hoxhaeris</strong> · Assignee: ivankatliarchuk<br>
-<code>size/XXL</code> <code>ok-to-test</code> <code>area/peribolos</code></p>
-
-<section class="verdict"><h2>Verdict: request changes</h2><p>The role reconciliation path can revoke organization roles from teams the operator explicitly excluded via <code>--ignore-secret-teams</code> or <code>--ignore-enterprise-teams</code>. This is a silent permission change in an opt-in path and should be fixed before merge.</p></section>
-
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#555</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1><code>peribolos</code>: add org roles feature</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/555">kubernetes-sigs/prow#555</a> · base <code>main</code> · head_sha <code>a82188519753</code> · reviewed_at <code>2026-09-23T19:22:09Z</code></div>
+<div class="badges"><span class="badge c-red">verdict: request-changes</span></div>
+<h2>Verdict</h2>
+<p>Request changes.</p>
+<p>Role reconciliation can revoke custom-role grants from teams explicitly excluded by the ignore flags. Three other paths can produce incomplete dumps, reject valid configuration, or leave earlier mutations applied after a role-name error.</p>
 <h2>What this PR does</h2>
-<ul><li>Adds a <code>roles:</code> section for declarative assignments of existing GitHub organization roles.</li><li>Adds <code>--fix-org-roles</code> and GitHub client methods to list and synchronize team and user assignments.</li><li>Normalizes role/user identifiers, validates role configuration, and skips pending invitees.</li><li>Extends <code>--dump</code> to emit role assignments while omitting unavailable role data and ignored teams.</li></ul>
-
-<h2>Findings</h2><h3>Blocking</h3>
-<section class="finding"><h3><span class="badge">blocking</span> Preserve ignored teams’ role assignments</h3><p><code>cmd/peribolos/main.go:1724-1749</code></p><pre><code>haveSet := sets.New[string]()
+<ul>
+<li>Adds organization custom-role assignments for teams and users to the peribolos configuration.
+</li>
+<li>Adds GitHub client methods to list roles and assignments and to add or remove assignments.
+</li>
+<li>Adds role assignments to configuration dumps and a <code>--fix-org-roles</code> reconciliation option.
+</li>
+<li>Adds configuration validation, tests, and peribolos documentation for the feature.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-red">blocking</span>Preserve role grants on ignored teams</h3>
+<ul>
+<li>where: <code>cmd/peribolos/main.go:1724-1749</code>
+</li>
+<li>concern: With <code>--ignore-secret-teams</code> or <code>--ignore-enterprise-teams</code>, <code>configureTeams</code> excludes those teams from the desired configuration, but role reconciliation still includes their existing grants in <code>haveSet</code> and removes everything in <code>haveSet.Difference(wantSet)</code>. Running role reconciliation can therefore revoke grants from teams the operator explicitly asked peribolos to ignore. Exclude ignored team slugs from removal and cover both flags in tests.
+</li>
+<li>excerpt:<pre><code>haveSet := sets.New[string]()
 for _, team := range currentTeams {
     haveSet.Insert(team.Slug)
 }
-...
 toRemove := haveSet.Difference(wantSet)
 for teamSlug := range toRemove {
-    if err := client.RemoveOrganizationRoleFromTeam(orgName, teamSlug, roleID); err != nil {</code></pre><p><code>configureTeams</code> omits secret/enterprise teams when the respective ignore flag is enabled, leaving them out of <code>githubTeams</code> and <code>wantSet</code>. The role API still returns their assignments, which enter <code>haveSet</code> and are deleted. A configured role held by a managed and an ignored team consequently revokes the ignored team’s assignment, contrary to the ignore flag contract. The latest commit fixes dump output only; pass ignored slugs into reconciliation and exclude them from <code>toRemove</code>.</p></section>
-<h3>Should fix</h3><p>None.</p><h3>Nits</h3><p>None.</p><h3>Questions</h3><p>None.</p>
-
-<h2>Things I checked and was fine with</h2>
-<ul><li>Configured roles are now reconciled independently; absent roles remain untouched.</li><li>Role existence is checked before role mutations; role/user comparisons are case-normalized and indirect user assignments are preserved.</li><li>Dumping logs and omits unavailable role data instead of failing the entire dump, and excludes ignored teams from emitted assignments.</li><li>Read the focused Peribolos/config tests and role client call sites. There are no HTTP-level tests for the new client API and no reconciliation test for an ignored team already assigned to a configured role.</li></ul>
-
-<h2>Open questions for the author</h2><ul><li>Could ignored team slugs be threaded into <code>configureRoleTeamAssignments</code> so role reconciliation shares team reconciliation’s ignore contract?</li></ul>
+    if err := client.RemoveOrganizationRoleFromTeam(orgName, teamSlug, roleID); err != nil {</code></pre>
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>Fail when a dump cannot read role assignments</h3>
+<ul>
+<li>where: <code>cmd/peribolos/main.go:420-440</code>
+</li>
+<li>concern: Failures listing roles or their team/user assignments are logged as warnings while the dump succeeds with roles omitted. A pipeline can capture this incomplete YAML as a backup without detecting the lost assignments. Return an error, or provide an explicit machine-detectable incomplete result.
+</li>
+<li>excerpt:<pre><code>roles, err := client.ListOrganizationRoles(orgName)
+if err != nil {
+    logrus.WithError(err).Warn(&quot;Failed to list organization roles; omitting roles from dump&quot;)
+    roles = nil
+}</code></pre>
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>Validate role users according to <code>--fix-org-members</code></h3>
+<ul>
+<li>where: <code>pkg/config/org/org.go:186-200</code>
+</li>
+<li>concern: Any nonempty admins or members list makes validation treat that list as the complete organization membership set. When membership management is disabled, a valid role user managed elsewhere is rejected merely because the configuration lists some other members. Apply this check only when org membership is being managed, or validate against actual membership.
+</li>
+<li>excerpt:<pre><code>validateUsers := len(c.Members) &gt; 0 || len(c.Admins) &gt; 0
+if !validateUsers {
+    continue
+}
+for _, user := range role.Users {
+    if !availableUsers[github.NormLogin(user)] {
+        errors = append(errors, fmt.Sprintf(&quot;role %q references user %q who is not an org member&quot;, roleName, user))
+    }
+}</code></pre>
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>Validate configured role names before earlier mutations</h3>
+<ul>
+<li>where: <code>cmd/peribolos/main.go:1660-1664</code>
+</li>
+<li>concern: The remote role-existence check occurs in <code>configureOrgRoles</code>, after organization, repository, and team reconciliation. A misspelled role can therefore cause an error only after those earlier changes have been applied. Move the check into pre-mutation validation.
+</li>
+<li>excerpt:<pre><code>// Validate all configured roles exist in GitHub BEFORE any mutations
+for roleName := range orgConfig.Roles {
+    if _, ok := githubRolesByName[strings.ToLower(roleName)]; !ok {
+        return fmt.Errorf(&quot;role %q does not exist in organization %s - create the role in GitHub before assigning it&quot;, roleName, orgName)
+    }
+}</code></pre>
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>Reviewed the full PR diff at <code>a821885197538f50646200239bfbedd93e2e2756</code>, including configuration, dump, reconciliation, client methods, tests, and documentation.
+</li>
+<li>Compared the new REST endpoint shapes with GitHub's official API documentation.
+</li>
+<li>Ran <code>go test ./cmd/peribolos ./pkg/config/org ./pkg/github</code> successfully.
+</li>
+<li>Existing tests do not cover ignored teams with configured roles or HTTP responses for the new client methods.
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>Is the expansion of the exported <code>github.Client</code> interface intended to require downstream fake and wrapper implementations to add these methods?
+</li></ul>
+</main></body></html>

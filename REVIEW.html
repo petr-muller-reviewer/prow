@@ -1,9 +1,79 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Review: kubernetes-sigs/prow#961</title><style>body{font:16px/1.55 system-ui,sans-serif;color:#172033;background:#f6f8fa;margin:0}main{max-width:900px;margin:2rem auto;padding:2rem;background:#fff;border:1px solid #d0d7de;border-radius:8px}h2{margin-top:2rem;border-bottom:1px solid #d8dee4}code{font-family:ui-monospace,monospace;background:#f1f3f5;padding:.1rem .25rem;border-radius:3px}.meta{color:#57606a}.verdict{border-left:4px solid #1a7f37;padding-left:1rem}</style></head><body><main>
-<header><h1>Review: <a href="https://github.com/kubernetes-sigs/prow/pull/961">kubernetes-sigs/prow#961</a></h1><p class="meta">Title: <code>`peribolos`: use REST for direct collaborators to avoid GraphQL resource limits</code><br>Head: <code>49e12d33e5523f175b2955490d52ceac0d12171e</code><br>Base: <code>main</code><br>Reviewed: <code>2026-09-22T16:27:06Z</code><br>Verdict: <code>approve</code></p></header>
-<section><h2>Verdict</h2><div class="verdict"><p><strong>Approve.</strong> The change avoids the GraphQL resource limit while preserving direct filtering, pagination, permission conversion, and fail-closed handling of pagination errors.</p></div></section>
-<section><h2>What this PR does</h2><ul><li>Replaces the GraphQL direct-collaborator query with the REST collaborators endpoint.</li><li>Requests <code>affiliation=direct</code> and paginates at 100 entries per page.</li><li>Reuses <code>LevelFromPermissions</code> for REST permission flags.</li><li>Removes obsolete GraphQL code and adds focused REST tests.</li></ul></section>
-<section><h2>Findings</h2><h3>Blocking</h3><p>None.</p><h3>Should fix</h3><p>None.</p><h3>Nits</h3><p>None.</p><h3>Questions</h3><p>None.</p></section>
-<section><h2>Things I checked and was fine with</h2><ul><li><code>pkg/github/client.go:4371-4391</code> uses the existing pagination helper, filters by <code>affiliation=direct</code>, and returns no partial result on an error.</li><li><code>pkg/github/client.go:4383-4385</code> uses <code>LevelFromPermissions</code>.</li><li><code>pkg/github/client_test.go:2410-2490</code> covers parameters, pagination, all standard permission levels, and a later-page error.</li><li><code>pkg/github/client.go:4352-4362</code> documents the REST/GraphQL semantic assumption and GraphQL resource-limit motivation.</li><li>Moving these reads to GitHub's REST/core rate-limit budget is an acceptable trade-off for the addressed GraphQL failure.</li></ul></section>
-<section><h2>Open questions for the author</h2><ul><li>No author response is needed. Monitor REST/core rate-limit use for representative large-org <code>--fix-collaborators</code> runs; add pacing or telemetry only if it proves material.</li><li><code>affiliation=direct</code> is an external GitHub API contract. The empirical validation recorded at <code>pkg/github/client.go:4352-4357</code> is sufficient here; an integration check could strengthen it later.</li></ul></section>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#961</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1><code>peribolos</code>: use REST for direct collaborators to avoid GraphQL resource limits</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/961">kubernetes-sigs/prow#961</a> · base <code>main</code> · head_sha <code>49e12d33e552</code> · reviewed_at <code>2026-09-23T14:57:38Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span></div>
+<h2>Verdict</h2>
+<p><strong>Approve with suggestions.</strong> The REST implementation reuses the client's pagination, authentication, and permission mapping, and returns no partial collaborator set after a later-page error. No incompatible API or configuration change was found. The <code>affiliation=direct</code> contract is consequential for removals, but the reported live comparison with GraphQL found parity; preserving a repeatable validation and monitoring REST quota are non-blocking suggestions.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Replaces the GraphQL <code>DIRECT</code> collaborator query with the REST collaborators endpoint using <code>affiliation=direct</code>.
+</li>
+<li>Requests 100 collaborators per page through the existing REST pagination helper.
+</li>
+<li>Converts REST permission flags with <code>LevelFromPermissions</code> and removes the separate GraphQL mapper.
+</li>
+<li>Keeps the peribolos collaborator reconciliation interface and configuration unchanged.
+</li>
+<li>Adds tests for request parameters, multiple pages, all five standard permission levels, and a later-page error.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-blue">question</span>Preserve validation of direct filtering</h3>
+<ul>
+<li>where: <code>pkg/github/client.go:4353-4357</code>
+</li>
+<li>concern: Peribolos removes users returned by this method when they are absent from config (<code>cmd/peribolos/main.go:1305-1311</code>). GitHub's REST reference does not precisely establish that <code>affiliation=direct</code> excludes every inherited grant. The reported comparison with GraphQL on one 280-collaborator repository supports this change; could that validation be linked or made repeatable for team-only, organization-base-only, overlapping, and owner access? This is non-blocking without evidence of a mismatch.
+</li>
+<li>excerpt:<pre><code>// meaning users with an explicit repository-level grant rather than access inherited through org or
+// team membership. The REST reference for affiliation=direct is loose (it cannot distinguish an
+// org-level grant from a repository-level one in the response), so this direct-only behaviour was
+// confirmed empirically: affiliation=direct returned the same set as the GraphQL
+// collaborators(affiliation: DIRECT) connection on a repository with 280 collaborators.</code></pre>
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li><code>pkg/github/client.go:4371-4391</code> sends <code>affiliation=direct</code>, sets <code>per_page=100</code>, uses the existing REST pagination path, and returns <code>nil, err</code> after a failed page.
+</li>
+<li><code>pkg/github/client.go:4383-4385</code> uses <code>LevelFromPermissions</code>; <code>pkg/github/client_test.go:2410-2490</code> exercises all five standard levels with literal REST JSON, pagination, request parameters, and later-page failure.
+</li>
+<li><code>cmd/peribolos/main.go:983-991</code> performs one collaborator read per configured repository when <code>--fix-collaborators</code> is enabled. The REST/core rate-limit budget and run duration should be watched during a representative large-org rollout.
+</li>
+<li>No exported method signature, peribolos flag, or configuration schema changes were found.
+</li>
+<li>The focused <code>pkg/github</code> test passed during this review. The <code>cmd/peribolos</code> package was still compiling when its test run was stopped; no result is claimed for it.
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>Could the author link the REST–GraphQL comparison described at <code>pkg/github/client.go:4355-4357</code>, or document a repeatable check covering inherited and overlapping access? This is a suggestion, not a merge condition.
+</li></ul>
 </main></body></html>

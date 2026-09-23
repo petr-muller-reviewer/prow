@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PR #661 Review: Add support for git cherry-pick -x style commit messages</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface2: #1c2129;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text-muted: #8b949e;
+    --accent: #58a6ff;
+    --red: #f85149;
+    --orange: #d29922;
+    --green: #3fb950;
+    --purple: #bc8cff;
+    --cyan: #39d2c0;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    padding: 2rem;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  h1 { font-size: 1.5rem; border-bottom: 1px solid var(--border); padding-bottom: 0.75rem; margin-bottom: 0.5rem; }
+  h2 { font-size: 1.15rem; margin-top: 2rem; margin-bottom: 0.75rem; color: var(--accent); border-bottom: 1px solid var(--border); padding-bottom: 0.3rem; }
+  .meta { color: var(--text-muted); font-size: 0.875rem; margin-bottom: 1.75rem; line-height: 1.9; }
+  code {
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    background: rgba(110,118,129,0.15);
+    padding: 0.15em 0.4em;
+    border-radius: 3px;
+    font-size: 0.875em;
+  }
+  pre {
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.85rem 1rem;
+    font-size: 0.82em;
+    line-height: 1.6;
+    overflow-x: auto;
+    margin: 0.6rem 0 0.4rem;
+    white-space: pre;
+  }
+  .loc { color: var(--cyan); font-family: 'SFMono-Regular', Consolas, monospace; font-size: 0.82em; }
+  .verdict-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--red);
+    border-radius: 0 6px 6px 0;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.5rem;
+  }
+  .verdict-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    background: var(--red);
+    color: #fff;
+    padding: 0.2em 0.6em;
+    border-radius: 3px;
+    margin-right: 0.5rem;
+  }
+  .verdict-line { font-weight: 600; margin-bottom: 0.5rem; }
+  .verdict-rationale { color: var(--text-muted); font-size: 0.92em; }
+  .section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1rem;
+  }
+  .finding {
+    border-left: 3px solid var(--border);
+    border-radius: 0 6px 6px 0;
+    background: var(--surface);
+    padding: 0.9rem 1.1rem;
+    margin-bottom: 0.85rem;
+  }
+  .finding.blocking { border-left-color: var(--red); }
+  .finding.should-fix { border-left-color: var(--orange); }
+  .finding.nit { border-left-color: var(--text-muted); }
+  .finding.question { border-left-color: var(--purple); }
+  .badge {
+    display: inline-block;
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0.15em 0.55em;
+    border-radius: 3px;
+    margin-right: 0.4rem;
+    vertical-align: middle;
+  }
+  .badge-blocking { background: var(--red); color: #fff; }
+  .badge-should-fix { background: var(--orange); color: #000; }
+  .badge-nit { background: var(--border); color: var(--text); }
+  .badge-question { background: var(--purple); color: #000; }
+  .finding-title { font-weight: 600; margin-bottom: 0.3rem; }
+  .finding p { margin-top: 0.4rem; font-size: 0.93em; color: var(--text-muted); }
+  .finding p strong { color: var(--text); }
+  .hl { background: rgba(248,81,73,0.22); border-radius: 2px; }
+  ul, ol { padding-left: 1.5rem; }
+  li { margin-bottom: 0.3rem; font-size: 0.93em; }
+  .checked li { color: var(--text-muted); }
+  .checked li::marker { color: var(--green); }
+</style>
+</head>
+<body>
+
+<h1>PR <a href="https://github.com/kubernetes-sigs/prow/pull/661">#661</a>: Add support for git cherry-pick -x style commit messages</h1>
+<div class="meta">
+  <strong>Author:</strong> <a href="https://github.com/AaruniAggarwal">@AaruniAggarwal</a>
+  &nbsp;&middot;&nbsp;
+  <strong>Repo:</strong> <a href="https://github.com/kubernetes-sigs/prow">kubernetes-sigs/prow</a>
+  &nbsp;&middot;&nbsp;
+  <strong>Base:</strong> <code>main</code>
+  &nbsp;&middot;&nbsp;
+  <strong>Branch:</strong> <code>cherrypick-pr500</code>
+  <br>
+  <strong>Head SHA:</strong> <code>9eb853108e6622d085265d7ac44a077633701d4e</code>
+  &nbsp;&middot;&nbsp;
+  <strong>Reviewed:</strong> 2026-08-08T22:50:25Z
+  &nbsp;&middot;&nbsp;
+  <strong>Commits:</strong> 8
+  &nbsp;&middot;&nbsp;
+  <strong>Changes:</strong> +370 / &minus;12 across <code>main.go</code>, <code>server.go</code>, <code>server_test.go</code>
+  <br>
+  <strong>Resolves:</strong> <a href="https://github.com/kubernetes-sigs/prow/issues/500">#500</a>
+  &nbsp;&middot;&nbsp;
+  <strong>Prior reviewer:</strong> <a href="https://github.com/stmcginnis">@stmcginnis</a> (gave <code>/lgtm</code> Jun 5 — "overall looks good to me"; one nit on regex)
+</div>
+
+<!-- ─── Verdict ─── -->
+
+<div class="verdict-box">
+  <div class="verdict-line"><span class="verdict-label">Request Changes</span> Two blocking issues must be addressed before merge.</div>
+  <div class="verdict-rationale">
+    The feature itself is correct and well-motivated. The implementation has evolved through multiple review rounds and most minor issues are resolved. What remains are two structural problems: raw <code>os/exec</code> git calls bypassing the codebase's own git abstraction layer, and a shell script that executes unquoted commit message content. Both are fixable either by adopting the patch-modification approach (which eliminates both at once) or by targeted fixes to the current rebase approach. The flag defaulting to <code>true</code> is also a quiet breaking change for existing deployments.
+  </div>
+</div>
+
+<!-- ─── Gate ─── -->
+
+<div class="verdict-box" id="gate">
+  <div class="verdict-line"><span class="verdict-label">Gate: Do Not Merge</span> Gated 2026-08-08 against <code>9eb853108e</code> — unchanged since the review.</div>
+  <div class="verdict-rationale">
+    <p style="margin-bottom:0.6rem;">
+      No code has landed since the review. <strong style="color:var(--text);">The feature can fail for ordinary reasons and reports success anyway</strong> &mdash; that is the gate. When the annotation step fails, <code>handle</code> logs a <code>Warn</code> and proceeds to force-push the un-amended commits, producing a cherry-pick PR indistinguishable from a successful one. There is at least one config-independent trigger for that path (the 64&nbsp;KiB scanner cap), so this is not hypothetical. The default-<code>true</code> flag is <em>not</em> the problem &mdash; it only decides how many deployments meet the problem &mdash; and flipping it to <code>false</code> on its own would fix nothing.
+    </p>
+
+    <p style="margin-bottom:0.35rem;"><strong style="color:var(--text);">Gating list</strong></p>
+    <ol style="margin-bottom:0.7rem;">
+      <li><strong style="color:var(--text);">Silent failure: the feature no-ops and publishes as if it worked</strong> &mdash; <span class="loc">server.go:646</span>. <code>appendCherryPickMessages</code> (and <code>extractOriginalSHAs</code> before it) failures log <code>Warn</code> and fall through to <code>p.Push</code> at <span class="loc">:656</span>. A failed <code>--exec</code> step leaves <code>git rebase -i</code> stopped mid-flight with HEAD detached and the branch ref still at the pre-rebase tip; <code>Push</code> &rarr; <code>PushToNamedFork(fork, newBranch, force=true)</code> (<span class="loc">server.go:128-129</span>) pushes by branch name, so the <strong style="color:var(--text);">un-amended</strong> commits are force-pushed and the requester sees a normal PR. Nothing but a log line records that the feature did nothing. <strong style="color:var(--text);">Blocks:</strong> surface the failure (PR comment, or return the error) instead of proceeding.</li>
+      <li><strong style="color:var(--text);">64&nbsp;KiB scanner cap &mdash; a config-independent trigger for (1)</strong> &mdash; <span class="loc">server.go:810</span>. <code>extractOriginalSHAs</code> uses <code>bufio.NewScanner</code> with no <code>Buffer()</code>, so <code>ErrTooLong</code> on any patch line over 64&nbsp;KiB &mdash; routine for PRs touching lockfiles, minified assets, or base64 fixtures. The trailer is then silently absent. <strong style="color:var(--text);">Blocks:</strong> <code>scanner.Buffer(...)</code>, or match the <code>From </code> prefix without full-line buffering.</li>
+    </ol>
+
+    <p style="margin-bottom:0.35rem;"><strong style="color:var(--text);">Not independently blocking, but in scope</strong></p>
+    <ul style="margin-bottom:0.7rem;">
+      <li><span class="loc">server.go:25,838-878</span> (REVIEW.md <em>blocking</em>) &mdash; raw <code>exec.Command</code> bypasses the <code>pkg/git/v2</code> <code>Interactor</code>. Unaddressed. This is an architectural objection, and it is the root of the hardening items below; the patch-modification approach in the original review's open question removes the whole class at once. On its own a maintainer could reasonably wave it through.</li>
+      <li><span class="loc">main.go:76</span> (REVIEW.md <em>should-fix</em>) &mdash; <code>--add-original-commit-id</code> defaults <code>true</code>. This is an <strong style="color:var(--text);">exposure multiplier, not a defect</strong>: it decides whether (1) and (2) land on operators who opted in or on everyone who upgrades. Fix (1) and (2) and default-<code>true</code> is defensible with a release note; leave them and <code>false</code> merely limits the blast radius. The convention argument is weaker than the original review implied &mdash; <code>--allow-all</code> and <code>--create-issue-on-conflict</code> default <code>false</code>, but <code>--use-prow-assignments</code> (<span class="loc">main.go:73</span>) defaults <code>true</code>.</li>
+    </ul>
+
+    <p style="margin-bottom:0.35rem;"><strong style="color:var(--text);">Retracted from the original review</strong></p>
+    <ul style="margin-bottom:0.7rem;">
+      <li><span class="badge badge-blocking">Blocking</span> <strong style="color:var(--text);">shell injection via unquoted variables</strong> &mdash; <strong style="color:var(--text);">not reproducible at this head.</strong> The generated script at <span class="loc">server.go:851-855</span> does quote <code>"$ORIGINAL_SHA"</code> and <code>"$CURRENT_MSG"</code>. The only unquoted expansion left is <code>-f$COMMIT_NUM</code>, fed from <code>git rev-list --count</code> (always a bare integer), and <code>baseSHA</code> is <code>git rev-parse</code> output (hex). This finding was wrong when written &mdash; it does not gate merge, and should not be raised on the PR.</li>
+    </ul>
+
+    <p style="margin-bottom:0.35rem;"><strong style="color:var(--text);">Independent merge risk</strong></p>
+    <p style="margin-bottom:0.4rem;">Diff is confined to <code>cmd/external-plugins/cherrypicker/</code> (<code>main.go</code> +23, <code>server.go</code> +110, <code>server_test.go</code> +236). No repo skill applies &mdash; the two overlaid skills are review/triage workflows, not compatibility checkers.</p>
+    <ul style="margin-bottom:0.7rem;">
+      <li><strong style="color:var(--text);">API:</strong> none. <code>package main</code>; no exported surface, no CRD, no proto, no config-file schema change.</li>
+      <li><strong style="color:var(--text);">Configuration:</strong> one new flag, <code>--add-original-commit-id</code>, defaulting <code>true</code>. Every cherrypicker instance starts annotating cherry-pick commit messages on upgrade with no opt-in. Not release-noted (no release-note block in the PR body, no <code>release-note*</code> label, and no docs in-tree mention cherrypicker flags at all).</li>
+      <li><strong style="color:var(--text);">Behavioral:</strong> cherry-pick commit bodies gain the trailer for all users; additionally <code>--amend -m</code> applies <code>cleanup=whitespace</code>, so bodies are reflowed (trailing whitespace stripped, consecutive blank lines collapsed) &mdash; real <code>git cherry-pick -x</code> preserves them byte-for-byte (<span class="loc">server.go:853</span>). Minor, but always happens.</li>
+      <li><strong style="color:var(--text);">Hardening, config-dependent</strong> &mdash; flagged because <code>GIT_CONFIG_NOSYSTEM=1</code> was clearly meant to isolate the rebase and does not finish the job, not because these are expected failures. A standard containerized cherrypicker has no <code>$HOME/.gitconfig</code>, so these need an unusual deployment: <code>GIT_CONFIG_NOSYSTEM=1</code> suppresses only <code>/etc/gitconfig</code>, leaving <code>commit.gpgsign=true</code> (breaks the in-script amend) and <code>rebase.autoSquash=true</code> (reorders/squashes <code>fixup!</code>/<code>squash!</code> commits, so the cherry-pick PR carries fewer commits than the source &mdash; also needs such commits in the source PR) live. <code>GIT_CONFIG_GLOBAL=/dev/null</code> closes both. Same category: no <code>context</code> timeout on the rebase subprocess (<span class="loc">server.go:878</span>), which leaks the goroutine and holds the request's <code>sync.Mutex</code> &mdash; scoped to one <code>cherryPickRequest{org, repo, num, targetBranch}</code> (<span class="loc">server.go:117,533</span>), not the repo's queue; and the 0755 temp script failing on a <code>noexec</code> <code>TMPDIR</code> with <code>--exec</code> shell-parsing its path (<span class="loc">server.go:872</span>).</li>
+      <li><strong style="color:var(--text);">Not a risk (checked):</strong> the rebase does not run in shared state. <code>ClientFor</code> &rarr; <code>ClientForWithRepoOpts(org, repo, RepoOpts{})</code> (<span class="loc">pkg/git/v2/client_factory.go:425</span>) refreshes the persistent primary mirror under <code>cacheDir</code>, then makes a <strong style="color:var(--text);">fresh per-call secondary clone</strong> in <code>os.MkdirTemp(*defaultTempDir(), "gitrepo")</code> (<span class="loc">:450-472</span>); <code>r.Directory()</code> is that temp clone, and <code>defer r.Clean()</code> (<span class="loc">server.go:562</span>) deletes it. <code>ShareObjectsWithPrimaryClone</code> is false under <code>RepoOpts{}</code>, so there are no shared alternates either. A left-behind <code>.git/rebase-merge</code> is discarded with the directory &mdash; no cache poisoning, no cross-request contamination.</li>
+    </ul>
+
+    <p style="margin-bottom:0;"><strong style="color:var(--text);">Reviewer state:</strong> @stmcginnis gave <code>/lgtm</code> twice (Apr 23, Jun 5) and dispositioned his own regex nit as "fine to leave it" (Jun 9), explicitly deferring to @petr-muller: "we'll see what others think as well." No <code>CHANGES_REQUESTED</code> on the PR. The gate is therefore driven entirely by the local review plus this pass, not by unresolved reviewer feedback.</p>
+  </div>
+</div>
+
+<!-- ─── What this PR does ─── -->
+
+<h2>What this PR does</h2>
+<div class="section">
+  <ul>
+    <li>Adds <code>--add-original-commit-id</code> flag (default <code>true</code>) wired through <code>main.go</code> to a new <code>Server.addOriginalCommitID</code> field.</li>
+    <li>After <code>git am</code> applies the mbox patch, calls <code>extractOriginalSHAs()</code> to parse the patch file for <code>From &lt;40-char-sha&gt;</code> headers using a validated regex, then calls <code>appendCherryPickMessages()</code> to annotate each commit.</li>
+    <li><code>appendCherryPickMessages()</code> resolves the pre-am base SHA via <code>git rev-parse HEAD~N</code>, generates a temporary shell script, and runs <code>git rebase -i --exec</code> with <code>GIT_SEQUENCE_EDITOR=true</code> to amend each commit message with <code>(cherry picked from commit &lt;sha&gt;)</code>.</li>
+    <li>Adds five test functions: table-driven <code>TestExtractOriginalSHAs</code> (4 cases) and four <code>TestAppendCherryPickMessages_*</code> variants covering empty input, no-repo error, single commit, and multi-commit with ordering verification.</li>
+    <li>Replaces the original <code>git filter-branch --msg-filter</code> approach (deprecated, flagged by @stmcginnis in round 1) with <code>git rebase -i --exec</code>.</li>
+  </ul>
+  <p style="margin-top:0.75rem; font-size:0.9em; color:var(--text-muted);">
+    <strong style="color:var(--text);">Since previous review (Jun 5):</strong>
+    @stmcginnis gave <code>/lgtm</code> — "Thanks, overall looks good to me" — without flagging the two blocking findings (os/exec bypass, shell injection) or the default-true behavior change. His one substantive comment was that <code>regexp.MustCompile(...)</code> inside <code>extractOriginalSHAs</code> recompiles each call and could be a package-level var; he immediately added it's "relatively minor overhead." Author asked whether to fix it before merge; @stmcginnis said fine to leave it (Jun 9). No code changes since last review.
+  </p>
+</div>
+
+<!-- ─── Findings ─── -->
+
+<h2>Findings</h2>
+
+<div class="finding blocking">
+  <div class="finding-title"><span class="badge badge-blocking">Blocking</span> Annotation failure is swallowed and the un-amended commits are published anyway</div>
+  <span class="loc">server.go:638&ndash;656</span>
+  <p>Both <code>extractOriginalSHAs</code> and <code>appendCherryPickMessages</code> failures log <code>Warn</code> and fall through to <code>p.Push(r, newBranch, true)</code> at <span class="loc">:656</span>. A failed <code>--exec</code> step leaves <code>git rebase -i</code> stopped mid-flight with HEAD detached and the branch ref still at the pre-rebase tip, so <code>Push</code> &rarr; <code>PushToNamedFork(fork, newBranch, force=true)</code> (<span class="loc">:128-129</span>) force-pushes the <strong>un-amended</strong> commits. The requester gets a cherry-pick PR indistinguishable from a successful one; only a log line records that the feature did nothing. This is what converts every other defect below from visible breakage into quiet wrong output.</p>
+  <p><strong>Precedent:</strong> the package being bypassed already handles this correctly for the same operation — <code>mergeRebase</code> (<span class="loc">pkg/git/v2/interactor.go:368-396</span>) runs <code>rebase --abort</code>, restores the pre-rebase HEAD via <code>Checkout(headRev)</code>, and propagates the outcome; <code>Am</code> (<span class="loc">:428-435</span>) does the same with <code>am --abort</code>.</p>
+  <p><strong>Fix:</strong> abort the rebase and surface the failure (PR comment, or return the error) instead of proceeding to push. Supersedes the earlier <em>nit</em> of the same substance below.</p>
+<pre>if err := appendCherryPickMessages(r.Directory(), originalSHAs); err != nil {
+    logger.WithError(err).Warn("Failed to append cherry-pick messages")
+} else {
+...
+if err := p.Push(r, newBranch, true); err != nil {</pre>
+</div>
+
+<div class="finding blocking">
+  <div class="finding-title"><span class="badge badge-blocking">Blocking</span> 64&nbsp;KiB line cap silently disables the feature</div>
+  <span class="loc">server.go:810</span>
+  <p><code>bufio.NewScanner</code> with no <code>Buffer()</code> call fails with <code>bufio.ErrTooLong</code> on any line over 64&nbsp;KiB. GitHub <code>.patch</code> bodies routinely contain such lines — single-line JSON/lockfiles, minified assets, base64 fixtures, embedded SVG. <code>scanner.Err()</code> then returns non-nil, <code>extractOriginalSHAs</code> returns an error, and the caller only warns — so cherry-picks of any PR touching a long-line file lose the trailer with no user-visible signal. This is a config-independent trigger for the finding above; no unusual deployment required.</p>
+  <p><strong>Fix:</strong> <code>scanner.Buffer(make([]byte, 0, 64*1024), maxPatchLine)</code>, or match the <code>From </code> prefix without full-line buffering.</p>
+<pre>scanner := bufio.NewScanner(file)</pre>
+</div>
+
+<div class="finding should-fix">
+  <div class="finding-title"><span class="badge badge-should-fix">Should Fix</span> Rebase inherits ambient git configuration</div>
+  <span class="loc">server.go:879</span>
+  <p><code>GIT_CONFIG_NOSYSTEM=1</code> suppresses only <code>/etc/gitconfig</code>; <code>$HOME/.gitconfig</code> and <code>$XDG_CONFIG_HOME/git/config</code> still apply. Two concrete misbehaviors: <code>commit.gpgsign=true</code> makes the in-script <code>git commit --amend</code> fail with no signing key in the pod, breaking the trailer on every cherry-pick (&rarr; blocking finding above); <code>rebase.autoSquash=true</code> makes <code>git rebase -i</code> reorder and squash any commit whose subject starts with <code>fixup!</code>/<code>squash!</code>, so the cherry-pick PR silently carries fewer commits than the source PR.</p>
+  <p><em>Hardening, not an expected failure</em> — a standard containerized cherrypicker has no <code>$HOME/.gitconfig</code>, and the autosquash case additionally needs such commits in the source PR. Flagged because <code>GIT_CONFIG_NOSYSTEM</code> was clearly meant to isolate the rebase and does not finish the job.</p>
+  <p><strong>Fix:</strong> <code>GIT_CONFIG_GLOBAL=/dev/null</code>, or explicit <code>-c commit.gpgsign=false --no-autosquash --no-autostash --no-rebase-merges</code>.</p>
+<pre>cmd.Env = append(os.Environ(), origEnv, "GIT_SEQUENCE_EDITOR=true", "GIT_CONFIG_NOSYSTEM=1")</pre>
+</div>
+
+<div class="finding should-fix">
+  <div class="finding-title"><span class="badge badge-should-fix">Should Fix</span> Unbounded subprocess, no context timeout</div>
+  <span class="loc">server.go:878</span>
+  <p><code>exec.Command</code> with no <code>context.WithTimeout</code>. A wedged <code>git</code> (index.lock contention, a hung hook, an editor invocation with no tty) leaks the goroutine and holds the request's <code>sync.Mutex</code> forever, blocking re-requests of that cherry-pick. Scope is one <code>cherryPickRequest{org, repo, num, targetBranch}</code> (<span class="loc">:117,533</span>), not the repo's whole queue.</p>
+  <p><strong>Fix:</strong> <code>exec.CommandContext</code> with a bounded deadline.</p>
+</div>
+
+<div class="finding nit">
+  <div class="finding-title"><span class="badge badge-nit">Nit</span> Temp script needs an executable filesystem and its path is shell-parsed</div>
+  <span class="loc">server.go:859&ndash;878</span>
+  <p><code>git rebase --exec &lt;cmd&gt;</code> runs <code>&lt;cmd&gt;</code> through <code>sh -c</code>. The 0755 script in <code>os.CreateTemp("")</code> therefore fails to run if <code>TMPDIR</code> is mounted <code>noexec</code> (a common hardening for pod <code>emptyDir</code> scratch), and any whitespace or shell metacharacter in <code>TMPDIR</code> breaks the command line. Passing the logic as an inline <code>sh -c</code> string with the interpreter explicit avoids both.</p>
+</div>
+
+<div class="finding nit">
+  <div class="finding-title"><span class="badge badge-nit">Nit</span> <code>--amend -m</code> normalizes the original commit message</div>
+  <span class="loc">server.go:853</span>
+  <p><code>-m</code> applies <code>cleanup=whitespace</code>, which strips trailing whitespace and collapses consecutive blank lines. The cherry-picked commit body therefore differs from the source commit beyond the added trailer — a message with deliberate double blank lines between paragraphs gets reflowed. Real <code>git cherry-pick -x</code> preserves the body byte-for-byte. Minor, but it happens on every cherry-pick.</p>
+  <p><strong>Fix:</strong> <code>--amend --file=- --cleanup=verbatim</code>, or <code>--no-edit</code> plus a trailer append.</p>
+</div>
+
+<div class="finding nit">
+  <div class="finding-title"><span class="badge badge-nit">Nit</span> New git tests are not hermetic</div>
+  <span class="loc">server_test.go:1563, 1616</span>
+  <p>The <code>run</code> helper builds <code>cmd.Env</code> from bare <code>os.Environ()</code> with no <code>GIT_CONFIG_GLOBAL</code>/<code>GIT_CONFIG_NOSYSTEM</code>, and <code>appendCherryPickMessages</code> under test sets only <code>GIT_CONFIG_NOSYSTEM</code>. On a developer machine with <code>commit.gpgsign=true</code>, <code>core.hooksPath</code>, or <code>rebase.autoSquash</code> in <code>~/.gitconfig</code>, <code>TestAppendCherryPickMessages_SingleCommit</code> and <code>_MultiCommit</code> fail for reasons unrelated to the code.</p>
+<pre>cmd.Env = append(os.Environ(),
+    "GIT_SEQUENCE_EDITOR=true",
+    "GIT_EDITOR=true",
+)</pre>
+</div>
+
+<div class="finding blocking">
+  <div class="finding-title"><span class="badge badge-blocking">Blocking</span> os/exec bypasses pkg/git/v2 abstraction layer</div>
+  <span class="loc">server.go:25, 839, 878</span>
+  <p>Two raw <code>exec.Command("git", ...)</code> calls are added — one for <code>git rev-parse HEAD~N</code> (<span class="loc">:839</span>) and one for <code>git rebase -i --exec</code> (<span class="loc">:878</span>). At the PR's base (<code>f65e1b3c3</code>) there is no <code>exec.Command</code> anywhere under <code>cmd/external-plugins/cherrypicker/</code>, tests included: every git operation goes through the <code>Interactor</code> (<code>r.Am()</code>, <code>r.CheckoutNewBranch()</code>, <code>r.Config()</code>, <code>PushToNamedFork</code>) backed by <code>pkg/git/v2/executor.go</code>, which handles logging, credential censoring, and consistent error handling. The plugin already holds a <code>RepoClient</code> for this exact repo (<code>r</code>, from <code>s.gc.ClientFor</code> at <span class="loc">:557</span>) and then reaches around it with <code>exec.Command("git", "-C", r.Directory(), ...)</code>.</p>
+  <p><strong>Scope:</strong> Prow does shell out to git elsewhere (<span class="loc">cmd/generic-autobumper/bumper/bumper.go:354,468</span>, <span class="loc">pkg/clonerefs/run.go:204</span>, <span class="loc">pkg/pod-utils/clone/clone.go:423</span>), but those run where no client factory is available — a standalone CLI, or inside a test pod. This is the opposite case. The claim is "this plugin has a client in hand and bypasses it," not "Prow never shells out to git."</p>
+  <p><strong>How much is actually bespoke:</strong> <code>rev-parse</code> is a drop-in — <code>Interactor.RevParse(commitlike)</code> (<span class="loc">pkg/git/v2/interactor.go:45,218</span>) takes an arbitrary commitlike, so <code>r.RevParse(fmt.Sprintf("HEAD~%d", numCommits))</code> works today (it returns output untrimmed, so keep the existing <code>TrimSpace</code>). <code>rebase -i --exec</code> genuinely is not covered: there is no exported generic <code>Run</code> — <code>executor.Run(args...)</code> (<span class="loc">pkg/git/v2/executor.go:29-31</span>) is unexported and held as a private field — and the closest existing helper, <code>mergeRebase</code> (<span class="loc">:368</span>), is unexported and semantically a merge strategy. Adding a <code>Rebase(...)</code> method to a shared interface for one external plugin is a real design ask, which is the strongest argument for the current shape.</p>
+  <p><em>@stmcginnis gave <code>/lgtm</code> (Jun 5) without flagging this finding. Never discussed anywhere in PR #661 — zero mentions of the interactor, the abstraction, or <code>os/exec</code> across all inline comments, issue comments, and reviews.</em></p>
+<pre>baseCmd := exec.Command("git", "-C", repoPath, "rev-parse", fmt.Sprintf("HEAD~%d", numCommits))
+baseSHABytes, err := baseCmd.Output()
+...
+cmd := exec.Command("git", "-C", repoPath, "rebase", "-i", baseSHA, "--exec", tmpPath)
+cmd.Env = append(os.Environ(), origEnv, "GIT_SEQUENCE_EDITOR=true", "GIT_CONFIG_NOSYSTEM=1")</pre>
+</div>
+
+<div class="finding nit" style="opacity:0.65;">
+  <div class="finding should-fix">
+  <div class="finding-title"><span class="badge badge-should-fix">Should Fix</span> Flag defaults to true — silent behavior change for existing deployments</div>
+  <span class="loc">main.go:76</span>
+  <p>Every existing cherrypicker deployment begins rewriting cherry-pick commit messages on upgrade without opt-in. All other new-feature flags in this file (<code>--allow-all</code>, <code>--create-issue-on-conflict</code>) default to <code>false</code>. Should default to <code>false</code>.</p>
+<pre>fs.BoolVar(&amp;o.addOriginalCommitID, "add-original-commit-id", <span class="hl">true</span>, "Add original commit ID...")</pre>
+</div>
+
+<div class="finding nit">
+  <div class="finding-title"><span class="badge badge-nit">Nit</span> fromPattern regex compiled per call — could be package-level var</div>
+  <span class="loc">server.go:811</span>
+  <p><code>regexp.MustCompile(`^From ([0-9a-f]{40}) `)</code> inside <code>extractOriginalSHAs</code> recompiles on every call. Since the pattern never changes, it could be a package-level <code>var</code>. @stmcginnis flagged this (Jun 5) and immediately noted "relatively minor overhead though, so I'm not too concerned about it." Author and @stmcginnis agreed it can be deferred to a follow-up if any further changes are needed.</p>
+<pre>fromPattern := regexp.MustCompile(`^From ([0-9a-f]{40}) `)</pre>
+</div>
+
+<div class="finding nit" style="opacity:0.65;">
+  <div class="finding nit">
+  <div class="finding-title"><span class="badge badge-nit">Nit</span> Tests use os/exec instead of localgit helpers</div>
+  <span class="loc">server_test.go:1540&ndash;1695</span>
+  <p>The two integration-style test functions set up git repos via direct <code>exec.Command("git", ...)</code> calls rather than <code>localgit.Clients</code> used by the rest of the test file. Not wrong, but diverges from project convention and reinforces the os/exec dependency rather than isolating it.</p>
+</div>
+
+<div class="finding question">
+  <div class="finding-title"><span class="badge badge-question">Question</span> Would a pre-am patch modification approach be acceptable?</div>
+  <span class="loc">server.go:618 (r.Am() call site)</span>
+  <p>The mbox patch already contains <code>From &lt;sha&gt; Mon Sep 17 00:00:00 2001</code> headers before <code>r.Am()</code> is called. Inserting <code>(cherry picked from commit &lt;sha&gt;)</code> just above each block's <code>---</code> separator — pure Go string manipulation on a file already on disk — removes both <code>exec.Command</code> calls, the temp script, the ambient-config sensitivity, the missing timeout, the <code>HEAD~N</code> coupling, and the <code>cleanup=whitespace</code> reflow at once, and makes the tests pure string fixtures. It also fixes the top blocking finding structurally: the failure happens <em>before</em> anything is applied or pushed, so degrading is a genuine no-op rather than a half-finished rebase whose commits get published.</p>
+  <p><strong>Provenance:</strong> this is @dhiller's second option from <a href="https://github.com/kubernetes-sigs/prow/issues/500">#500</a> ("modify the patch before application so that each part contains the original commit id"). It has never been discussed in PR #661 — zero mentions of the patch, mbox, <code>format-patch</code>, or <code>git am</code> across the whole conversation. The @petr-muller guidance of 2026-02-23 that scoped the work pointed at the other option (extract SHAs from the patch, amend the applied commits), which is what the author built. Raise as a follow-up, not as a precondition for merge — the two blocking findings are both fixable inside the current rebase design.</p>
+  <p><em>Known edges if pursued:</em> a bare <code>---</code> inside a commit body would be taken as the separator (<code>git am</code> shares this ambiguity); base64/quoted-printable transfer-encoded bodies are not line-editable and need a guard or a decode step (the rebase approach is immune here).</p>
+</div>
+
+
+<!-- ─── Resolved ─── -->
+
+<h2>Resolved</h2>
+<p style="color:var(--text-muted); font-size:0.9em; margin-bottom:0.9rem;">Entries no longer active. Kept as history; do not raise on the PR.</p>
+
+<div class="finding-title"><span class="badge badge-nit">Retracted</span> <s>Shell injection via unquoted variables in generated exec script</s></div>
+  <span class="loc">server.go:846&ndash;857</span>
+  <p><strong>RETRACTED 2026-08-08 — not reproducible at this head.</strong> The generated script quotes both <code>"$ORIGINAL_SHA"</code> and <code>"$CURRENT_MSG"</code>. The only unquoted expansion is <code>-f$COMMIT_NUM</code>, fed from <code>git rev-list --count</code> (always a bare integer); <code>baseSHA</code> is <code>git rev-parse</code> output (hex). This finding was wrong when written — do not raise it on the PR. Original text kept below as history.</p>
+  <p><strong>(1)</strong> <code>$ORIGINAL_SHA</code> unquoted in <code>if [ -n $ORIGINAL_SHA ]</code> — word-splits on whitespace. <strong>(2)</strong> <code>$CURRENT_MSG</code> unquoted in <code>git commit --amend -m</code> — a commit message containing backticks, <code>$()</code>, or double quotes executes as shell code under <code>set -e</code>. <strong>(3)</strong> <code>baseSHA</code> (from <code>git rev-parse</code> output) interpolated directly into the script body via <code>fmt.Sprintf</code> without validation — this is a different value from the <code>ORIGINAL_SHAS</code> env var that the SHA regex guards. Quoting <code>"$ORIGINAL_SHA"</code> and <code>"$CURRENT_MSG"</code> throughout would close most of this surface if staying with the rebase approach.</p>
+  <p><em>@stmcginnis gave <code>/lgtm</code> (Jun 5) without flagging this finding.</em></p>
+<pre>ORIGINAL_SHA=$(echo "$ORIGINAL_SHAS" | cut -d',' -f$COMMIT_NUM)
+if [ -n <span class="hl">$ORIGINAL_SHA</span> ]; then
+    CURRENT_MSG=$(git log -1 --pretty=%%B)
+    git commit --amend -m "<span class="hl">$CURRENT_MSG</span>
+
+(cherry picked from commit $ORIGINAL_SHA)"
+fi</pre>
+</div>
+
+<div class="finding-title"><span class="badge badge-nit">Superseded</span> <s>Feature failures silently swallowed</s></div>
+  <span class="loc">server.go:638&ndash;653</span>
+  <p><strong>SUPERSEDED 2026-08-08</strong> by the blocking finding of the same substance at the top — this was under-rated. It is not just missing visibility: the un-amended commits are force-pushed and the PR opens looking successful.</p>
+  <p>Both SHA extraction failure and rebase failure log <code>Warn</code> and continue. The cherry-pick PR is created without the expected commit IDs and the requester has no indication anything went wrong. A PR comment on failure would provide visibility.</p>
+<pre>logger.WithError(err).Warn("Failed to extract original SHAs from patch")
+logger.WithError(err).Warn("Failed to append cherry-pick messages")</pre>
+</div>
+
+<!-- ─── Checked ─── -->
+
+<h2>Checked and fine with</h2>
+<div class="section checked">
+  <ul>
+    <li><code>extractOriginalSHAs</code> regex <code>^From ([0-9a-f]{40}) </code> correctly validates 40-char hex SHAs and avoids false positives from email-style <code>From </code> headers in commit message bodies.</li>
+    <li>Temp script file properly closed on both happy path and error path before passing path to <code>git rebase</code>; <code>defer os.Remove(tmpPath)</code> cleans it up after.</li>
+    <li><code>GIT_SEQUENCE_EDITOR=true</code> correctly suppresses the interactive editor; <code>GIT_CONFIG_NOSYSTEM=1</code> prevents interference from system git config.</li>
+    <li>Flag name and struct field follow existing naming conventions; wired correctly from <code>gatherOptions()</code> through <code>main()</code> to <code>Server</code> struct initialization.</li>
+    <li><code>TestExtractOriginalSHAs</code> covers single commit, multi-commit, invalid <code>From</code> lines filtered by regex, and empty patch returning an error.</li>
+    <li><code>TestAppendCherryPickMessages_MultiCommit</code> verifies correct SHA ordering — commit 1 gets SHA 1, commit 2 gets SHA 2.</li>
+    <li>Previously resolved: <code>filter-branch</code> &rarr; <code>rebase -i --exec</code>; SHA validation regex; temp file handle leak; dead-code tautology; space/tab indentation in new functions.</li>
+  </ul>
+</div>
+
+<!-- ─── Open questions ─── -->
+
+<h2>Open questions for the author</h2>
+<div class="section">
+  <ol>
+    <li>If the pre-am patch modification approach is acceptable, it resolves both blocking findings without additional complexity &mdash; worth a quick discussion before another revision round.</li>
+    <li>If staying with the rebase approach: quoting <code>"$ORIGINAL_SHA"</code> and <code>"$CURRENT_MSG"</code> throughout the shell script would close most of the injection surface. Would that targeted fix be acceptable?</li>
+    <li>Why does <code>extractOriginalSHAs</code> return an error on zero SHAs rather than an empty slice? An empty slice would naturally produce a no-op in the caller; returning an error forces a <code>Warn</code> log for what may be a normal condition. Is the assumption that every GitHub <code>.patch</code> response always contains at least one <code>From</code> line?</li>
+  </ol>
+</div>
+
+</body>
+</html>

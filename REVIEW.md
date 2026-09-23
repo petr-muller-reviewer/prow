@@ -3,13 +3,16 @@ pr: kubernetes-sigs/prow#783
 title: "repoowners: add advisory_approvers OWNERS field"
 head_sha: 682e7cd91945551b4f5b64a7bbb73b1f1b1ecc57
 base: main
-reviewed_at: 2026-09-21T22:37:17Z
+reviewed_at: 2026-09-23T12:19:16Z
 verdict: request-changes
 ---
 
 ## What this PR does
 
-- Adds `advisory_approvers` to OWNERS configuration, preserving /approve authority while excluding advisory users from auto-assignment.
+- Adds `advisory_approvers` to simple and filtered OWNERS configuration.
+- Merges advisory users into `approvers` so they retain `/approve` authority and other approver privileges.
+- Subtracts advisory users from `LeafApprovers`, removing them from approval-notifier suggestions.
+- Extends verify-owners membership validation to advisory users.
 
 ## Findings
 
@@ -27,6 +30,14 @@ verdict: request-changes
 - excerpt: |
     if filepath.Dir(c.Filename) == "." && len(approvers) == 0 {
 
+### [blocking] Advisory approvers remain eligible for blunderbuss fallback
+- where: `pkg/plugins/blunderbuss/blunderbuss.go:118-120,421-426`
+- concern: The fallback adapter exposes regular `Approvers()` as `Reviewers()`. After consuming leaf candidates, `getReviewers` fills the requested-reviewer count from that unfiltered set. Advisory approvers therefore can receive a review request whenever the regular leaf candidates are insufficient, contrary to the PR's stated purpose of not auto-assigning them. Filter advisory users from the full fallback path (and add coverage), or explicitly define the field as a priority hint rather than an exclusion.
+- excerpt: |
+    func (foc fallbackReviewersClient) Reviewers(path string) layeredsets.String {
+        return foc.ownersClient.Approvers(path)
+    }
+
 ### [should-fix] Dual-storage invariant is under-documented
 - where: `pkg/repoowners/repoowners.go:270` and `:756-769`
 - concern: Advisory approvers live in both `o.advisoryApprovers` and `o.approvers`. Only documented by comment in LeafApprovers. Future methods reading `o.approvers` must know advisory users are mixed in. Add doc comment on the `advisoryApprovers` struct field. Flagged by code quality and maintainability reviewers independently.
@@ -43,9 +54,13 @@ verdict: request-changes
 - where: `pkg/repoowners/repoowners_test.go` TestAdvisoryApproverAlsoReviewer
 - concern: Test asserts advisory approver who is also a reviewer still appears in LeafReviewers (can be auto-assigned as reviewer, not as approver). Confirm intentional.
 
+### [question] Is a distinct advisory_approvers field justified and documented?
+- where: `pkg/repoowners/repoowners.go:898-907` and PR discussion on 2026-09-23
+- concern: The distinct intended behavior is exclusion from `LeafApprovers` and thus approval-notifier suggestions while retaining approval authority; it does not currently exclude blunderbuss fallback. Confirm whether the former justifies a field, then document its intended assignment semantics for OWNERS authors.
+
 ## Checked
 - RepoOwner no longer exposes AdvisoryApprovers; the six fake-only method implementations were removed
-- LeafApprovers callers use it for assignment (excluding advisory is correct)
+- Approval-notifier candidate selection uses LeafApprovers (excluding advisory is correct)
 - Approvers callers use it for authorization (including advisory is correct)
 - filterCollaborators preserves superset invariant (intersection preserves subsets)
 - AllApprovers/AllOwners/TopLevelApprovers include advisory via merged o.approvers
@@ -57,3 +72,4 @@ verdict: request-changes
 ## Open questions
 - Is advisory-only OWNERS (no regular approvers) a valid use case? Both blocking findings hinge on this.
 - Should advisory approvers also listed as reviewers appear in LeafReviewers? TestAdvisoryApproverAlsoReviewer asserts yes.
+- Does exclusion from approval-notifier suggestions, while retaining approval authority, justify a separate field? If so, where should OWNERS authors find that documented?

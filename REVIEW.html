@@ -34,20 +34,20 @@ a { color: #0969da; }
 <p><strong>Author:</strong> smg247</p>
 <p><strong>Base:</strong> main</p>
 <p><strong>Head SHA:</strong> <code>682e7cd91945551b4f5b64a7bbb73b1f1b1ecc57</code></p>
-<p><strong>Reviewed:</strong> 2026-09-21T22:37:17Z</p>
+<p><strong>Reviewed:</strong> 2026-09-23T12:19:16Z</p>
 </div>
 
 <h2>Verdict</h2>
 <div class="verdict verdict-request-changes">
 <strong>Request changes.</strong>
-<p>The core design (merge advisory approvers into the approvers map, subtract in LeafApprovers) is sound for the common case and all three maintainer perspectives (code quality, maintainability, deployment risk) are positive. However, two confirmed correctness bugs in the advisory-only-directory edge case need fixing: LeafApprovers returns an empty set when a directory has only advisory approvers, and verify-owners rejects a valid advisory-only root OWNERS file.</p>
+<p>The core design can preserve approval authority while suppressing approval-notifier suggestions. However, three correctness bugs need fixing: advisory-only directories lose inherited leaf approvers, root advisory-only OWNERS files are rejected, and advisory approvers remain eligible for blunderbuss fallback review requests.</p>
 </div>
 
 <h2>What this PR does</h2>
 <ul>
 <li>Adds an <code>advisory_approvers</code> field to the OWNERS file <code>Config</code> struct, supporting both <code>SimpleConfig</code> and <code>FullConfig</code> (filters) formats.</li>
 <li>At load time (<code>applyConfigToPath</code>), merges advisory approvers into the <code>approvers</code> map so they are recognized by <code>Approvers()</code> for <code>/approve</code> authority.</li>
-<li>Modifies <code>LeafApprovers</code> to subtract advisory approvers, preventing them from being auto-assigned as reviewers.</li>
+<li>Modifies <code>LeafApprovers</code> to subtract advisory approvers, removing them from approval-notifier suggestions.</li>
 <li>Adds <code>AdvisoryApprovers(path string)</code> to the <code>RepoOwner</code> interface with stub implementations in all test fakes.</li>
 <li>Updates <code>verify-owners</code> to collect advisory approvers and include them in org membership validation.</li>
 </ul>
@@ -79,6 +79,15 @@ a { color: #0969da; }
 <p>The <code>approvers</code> and <code>advisoryApprovers</code> slices are collected separately. The root-level <code>len(approvers) == 0</code> check on line 459 fires before <code>advisoryApprovers</code> are appended to <code>owners</code> on line 466. A root OWNERS with <code>advisory_approvers: [alice]</code> but no <code>approvers:</code> is rejected as "No approvers defined" even though <code>alice</code> would have <code>/approve</code> power at runtime.</p>
 </div>
 
+<div class="finding">
+<h3>Advisory approvers remain eligible for blunderbuss fallback</h3>
+<p><code>pkg/plugins/blunderbuss/blunderbuss.go:118-120,421-426</code></p>
+<pre>func (foc fallbackReviewersClient) Reviewers(path string) layeredsets.String {
+	return foc.ownersClient.Approvers(path)
+}</pre>
+<p>The fallback adapter exposes regular <code>Approvers()</code> as <code>Reviewers()</code>. After consuming leaf candidates, <code>getReviewers</code> fills the requested-reviewer count from that unfiltered set. Advisory approvers therefore can receive a review request whenever the regular leaf candidates are insufficient, contrary to the PR's stated purpose of not auto-assigning them. Filter advisory users from the full fallback path and add coverage, or explicitly define the field as a priority hint rather than an exclusion.</p>
+</div>
+
 <h3><span class="severity-should-fix">Should fix</span></h3>
 
 <div class="finding">
@@ -105,10 +114,16 @@ a { color: #0969da; }
 <p><code>TestAdvisoryApproverAlsoReviewer</code> asserts that a user who is both an advisory approver and a reviewer still appears in <code>LeafReviewers</code>. This means they can still be auto-assigned as reviewers, just not as approvers. Is this the intended behavior?</p>
 </div>
 
+<div class="finding">
+<h3>Is a distinct advisory_approvers field justified and documented?</h3>
+<p><code>pkg/repoowners/repoowners.go:898-907</code>; PR discussion on 2026-09-23</p>
+<p>The distinct intended behavior is exclusion from <code>LeafApprovers</code> and thus approval-notifier suggestions while retaining approval authority; it does not currently exclude blunderbuss fallback. Confirm whether the former justifies a field, then document its intended assignment semantics for OWNERS authors.</p>
+</div>
+
 <h2>Things I checked and was fine with</h2>
 <ul>
 <li><code>RepoOwner</code> no longer exposes <code>AdvisoryApprovers</code>; the six fake-only method implementations were removed.</li>
-<li>Callers of <code>LeafApprovers</code> (GetLeafApprovers, GetAllPotentialApprovers, GetCCs, blunderbuss fallback) all use it for auto-assignment where excluding advisory approvers is correct.</li>
+<li>Approval-notifier candidate selection uses <code>LeafApprovers</code>, where excluding advisory approvers is correct.</li>
 <li>Callers of <code>Approvers</code> (UnapprovedFiles, GetFilesApprovers, GetCCs reverse map, lgtm, override) all use it for authorization where including advisory approvers is correct.</li>
 <li><code>filterCollaborators</code> preserves the superset invariant (<code>approvers &supseteq; advisoryApprovers</code>) because set intersection preserves subset relationships.</li>
 <li><code>AllApprovers</code> / <code>AllOwners</code> / <code>TopLevelApprovers</code> correctly include advisory approvers via the merged <code>o.approvers</code> map.</li>
@@ -122,6 +137,7 @@ a { color: #0969da; }
 <ul>
 <li>Is an OWNERS file with only <code>advisory_approvers</code> (no regular <code>approvers</code>) a valid use case? If yes, both blocking findings need fixing. If no, should there be validation that rejects it explicitly with a clear message?</li>
 <li>Should advisory approvers who are also listed as <code>reviewers:</code> still appear in <code>LeafReviewers</code>? The test <code>TestAdvisoryApproverAlsoReviewer</code> asserts yes, but it's worth confirming this is intentional &mdash; it means they can still be auto-assigned as reviewers (just not as approvers).</li>
+<li>Does exclusion from approval-notifier suggestions, while retaining approval authority, justify a separate field? If so, where should OWNERS authors find that documented?</li>
 </ul>
 
 </body>

@@ -1,0 +1,38 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Review — kubernetes-sigs/prow#555</title>
+<style>
+  :root { color-scheme: light dark; --bg:#0d1117; --surface:#161b22; --border:#30363d; --text:#e6edf3; --muted:#8b949e; --red:#f85149; }
+  @media (prefers-color-scheme: light) { :root { --bg:#fff; --surface:#f6f8fa; --border:#d0d7de; --text:#1f2328; --muted:#656d76; --red:#cf222e; } }
+  body { max-width:60rem; margin:0 auto; padding:2rem 1.5rem 5rem; background:var(--bg); color:var(--text); font:16px/1.6 system-ui,sans-serif; }
+  h1 { line-height:1.25; } h2 { margin-top:2.2rem; border-bottom:1px solid var(--border); padding-bottom:.3rem; } h3 { margin-bottom:.3rem; }
+  code, pre { font-family:ui-monospace,SFMono-Regular,Consolas,monospace; } code { background:var(--surface); border:1px solid var(--border); border-radius:3px; padding:.08em .3em; } pre { padding:.8rem; overflow:auto; background:var(--surface); border:1px solid var(--border); border-radius:6px; }
+  .meta { color:var(--muted); } .verdict,.finding { background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:1rem 1.2rem; margin:1rem 0; } .verdict,.finding { border-left:4px solid var(--red); } .badge { color:var(--red); font-weight:700; text-transform:uppercase; font-size:.8rem; }
+</style>
+
+<h1>kubernetes-sigs/prow#555 — <code>peribolos</code>: add org roles feature</h1>
+<p class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/555">github.com/kubernetes-sigs/prow/pull/555</a><br>
+Head: <code>a821885197538f50646200239bfbedd93e2e2756</code> · Base: <code>main</code><br>
+Reviewed: <code>2026-09-10T12:44:42Z</code> · Author: <strong>hoxhaeris</strong> · Assignee: ivankatliarchuk<br>
+<code>size/XXL</code> <code>ok-to-test</code> <code>area/peribolos</code></p>
+
+<section class="verdict"><h2>Verdict: request changes</h2><p>The role reconciliation path can revoke organization roles from teams the operator explicitly excluded via <code>--ignore-secret-teams</code> or <code>--ignore-enterprise-teams</code>. This is a silent permission change in an opt-in path and should be fixed before merge.</p></section>
+
+<h2>What this PR does</h2>
+<ul><li>Adds a <code>roles:</code> section for declarative assignments of existing GitHub organization roles.</li><li>Adds <code>--fix-org-roles</code> and GitHub client methods to list and synchronize team and user assignments.</li><li>Normalizes role/user identifiers, validates role configuration, and skips pending invitees.</li><li>Extends <code>--dump</code> to emit role assignments while omitting unavailable role data and ignored teams.</li></ul>
+
+<h2>Findings</h2><h3>Blocking</h3>
+<section class="finding"><h3><span class="badge">blocking</span> Preserve ignored teams’ role assignments</h3><p><code>cmd/peribolos/main.go:1724-1749</code></p><pre><code>haveSet := sets.New[string]()
+for _, team := range currentTeams {
+    haveSet.Insert(team.Slug)
+}
+...
+toRemove := haveSet.Difference(wantSet)
+for teamSlug := range toRemove {
+    if err := client.RemoveOrganizationRoleFromTeam(orgName, teamSlug, roleID); err != nil {</code></pre><p><code>configureTeams</code> omits secret/enterprise teams when the respective ignore flag is enabled, leaving them out of <code>githubTeams</code> and <code>wantSet</code>. The role API still returns their assignments, which enter <code>haveSet</code> and are deleted. A configured role held by a managed and an ignored team consequently revokes the ignored team’s assignment, contrary to the ignore flag contract. The latest commit fixes dump output only; pass ignored slugs into reconciliation and exclude them from <code>toRemove</code>.</p></section>
+<h3>Should fix</h3><p>None.</p><h3>Nits</h3><p>None.</p><h3>Questions</h3><p>None.</p>
+
+<h2>Things I checked and was fine with</h2>
+<ul><li>Configured roles are now reconciled independently; absent roles remain untouched.</li><li>Role existence is checked before role mutations; role/user comparisons are case-normalized and indirect user assignments are preserved.</li><li>Dumping logs and omits unavailable role data instead of failing the entire dump, and excludes ignored teams from emitted assignments.</li><li>Read the focused Peribolos/config tests and role client call sites. There are no HTTP-level tests for the new client API and no reconciliation test for an ignored team already assigned to a configured role.</li></ul>
+
+<h2>Open questions for the author</h2><ul><li>Could ignored team slugs be threaded into <code>configureRoleTeamAssignments</code> so role reconciliation shares team reconciliation’s ignore contract?</li></ul>

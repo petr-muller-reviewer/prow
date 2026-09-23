@@ -3,9 +3,24 @@ pr: kubernetes-sigs/prow#964
 title: "deck: fix job bar state proportions"
 head_sha: 7f6976fe8e75fc87a3fdbc52ffb5144fc7ba9c2c
 base: main
-reviewed_at: 2026-09-23T11:44:18Z
+reviewed_at: 2026-09-23T21:11:45Z
 verdict: request-changes
+refresh_log:
+  - old_sha: 7f6976fe8e75fc87a3fdbc52ffb5144fc7ba9c2c
+    new_sha: 7f6976fe8e75fc87a3fdbc52ffb5144fc7ba9c2c
+    at: 2026-09-23T21:11:45Z
+    summary: "No code changes; incorporated the author's dashboard screenshot comment."
 ---
+
+## What this PR does
+
+- Normalizes missing and unrecognized states into the job bar's `unknown` segment.
+- Gives supported job states, including `scheduling`, fixed job-bar segments.
+- Replaces the previous order-dependent final `auto` width with per-state widths.
+
+Since previous review:
+
+- Prucek added a dashboard screenshot showing the missing scheduling segment and distorted unknown proportions; no commit, inline review comment, or submitted review followed.
 
 ## Findings
 

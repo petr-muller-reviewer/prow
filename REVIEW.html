@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Review: kubernetes-sigs/prow#954</title>
+  <style>
+    body { color: #1f2328; font: 16px/1.55 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 0; background: #f6f8fa; }
+    main { max-width: 920px; margin: 36px auto; padding: 32px 40px; background: #fff; border: 1px solid #d0d7de; border-radius: 8px; }
+    h1 { margin-top: 0; } h2 { margin-top: 2em; border-bottom: 1px solid #d8dee4; padding-bottom: .3em; }
+    code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; } code { background: #f6f8fa; padding: .12em .28em; border-radius: 3px; }
+    pre { background: #f6f8fa; padding: 16px; overflow-x: auto; border-radius: 6px; }
+    .meta { color: #57606a; } .verdict { border-left: 5px solid #cf222e; padding: 12px 16px; background: #ffebe9; }
+    .finding { border: 1px solid #d0d7de; border-radius: 6px; padding: 16px; } .severity { color: #cf222e; font-weight: 700; }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Review: <a href="https://github.com/kubernetes-sigs/prow/pull/954">kubernetes-sigs/prow#954</a></h1>
+    <p class="meta"><strong>Title:</strong> docs: repair the dead links in the site content<br>
+    <strong>Base:</strong> main &middot; <strong>Head:</strong> <code>83f680a7c1e75d9188225654e55c0101fb0c974a</code><br>
+    <strong>Reviewed:</strong> 2026-09-22T13:47:43Z<br>
+    <strong>Refresh log:</strong> 2026-09-22T13:47:43Z &middot; no code changes; Prucek independently reported the existing dead RBAC-manifest link.</p>
+  </header>
+
+  <section>
+    <h2>Verdict</h2>
+    <div class="verdict"><strong>Request changes.</strong> The changed targets are sound, but the controller-manager page still contains a dead RBAC-manifest link, leaving an operator-facing dead end in a PR intended to repair site links.</div>
+  </section>
+
+  <section>
+    <h2>What this PR does</h2>
+    <ul>
+      <li>Replaces obsolete live links with current canonical sources.</li>
+      <li>Pins historical <code>test-infra</code> references to immutable pre-removal commits.</li>
+      <li>Updates generic-autobumper examples to the current jobs file without line anchors.</li>
+      <li>Changes discontinued adopter subpaths to their project roots.</li>
+    </ul>
+    <p>Since previous review:</p>
+    <ul>
+      <li>No commits or diff changes were added; the PR remains open at <code>83f680a7c1e75d9188225654e55c0101fb0c974a</code>.</li>
+      <li>Prucek left an inline comment on <code>site/content/en/docs/components/core/prow-controller-manager.md:34</code> reporting the same dead RBAC-manifest link, and submitted a COMMENTED review.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Findings</h2>
+    <h3>Should fix</h3>
+    <article class="finding">
+      <h4><span class="severity">Controller-manager RBAC link is still dead</span> <code>site/content/en/docs/components/core/prow-controller-manager.md:34</code></h4>
+      <pre>* [Deployment manifest](https://github.com/kubernetes/k8s.io/blob/main/kubernetes/gke-prow/prow/prow-controller-manager.yaml)
+* [RBAC manifest](https://github.com/kubernetes/test-infra/blob/master/config/prow/cluster/prow_controller_manager_rbac.yaml)</pre>
+      <p>The adjacent deployment link was updated, but this RBAC link still targets <code>kubernetes/test-infra</code> <code>master</code>, where the referenced file no longer exists. Readers following the deployment guidance cannot retrieve the separately linked RBAC manifest. Replace it with a valid canonical resource or remove it if the RBAC resources embedded in the new deployment manifest are the intended replacement.</p>
+    </article>
+    <h3>Blocking</h3><p>None.</p>
+    <h3>Nits</h3><p>None.</p>
+    <h3>Questions</h3><p>None.</p>
+  </section>
+
+  <section>
+    <h2>Things I checked and was fine with</h2>
+    <ul>
+      <li>Historical announcement and secrets links use immutable <code>test-infra</code> commit SHAs appropriate to their time-specific context.</li>
+      <li>Current ghproxy and controller-manager deployment links point to <code>kubernetes/k8s.io</code> manifests.</li>
+      <li>Generic-autobumper examples point to the current jobs file and no longer rely on fragile line anchors.</li>
+      <li>This is Markdown-only: no Prow configuration, runtime behavior, or upgrade compatibility changes.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Open questions for the author</h2>
+    <p>Which canonical RBAC resource should replace the standalone controller-manager RBAC link, or should the page direct readers to the RBAC embedded in <code>prow-controller-manager.yaml</code>?</p>
+  </section>
+</main>
+</body>
+</html>

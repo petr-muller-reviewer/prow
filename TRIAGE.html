@@ -69,7 +69,7 @@
   <tr><td class="k">Title</td><td>Feature Request: PR Dependencies</td></tr>
   <tr><td class="k">State</td><td>closed</td></tr>
   <tr><td class="k">Labels</td><td>kind/feature</td></tr>
-  <tr><td class="k">Triaged at</td><td>2026-07-27T00:19:19Z</td></tr>
+  <tr><td class="k">Triaged at</td><td>2026-09-23T14:18:55Z</td></tr>
   <tr><td class="k">Main SHA</td><td><code>e601a1ffafd7d8d3a781238a4c5f4233d6248f68</code></td></tr>
 </table>
 
@@ -82,8 +82,10 @@
     <strong>Prucek</strong> wrote up a complete design and concluded the reliability cost — new
     cross-PR reconciliation machinery needed to survive missed merge webhooks — outweighs the benefit
     over the existing manual <code>/hold</code> + comment workaround, and author <strong>tallclair</strong>
-    agreed to close in favor of waiting on GitHub-native stacked PRs. Independent code research
-    confirms this rationale holds.
+    agreed to close in favor of waiting on GitHub-native stacked PRs. A September 2026 comment
+    notes that GitHub's current stacked-PR feature does not cover fork-plus-PR workflows, but it
+    does not change the Prow implementation or reconciliation trade-off. Independent code research
+    confirms the <code>wontfix</code> rationale still holds.
   </p>
 </div>
 
@@ -94,6 +96,7 @@
   <li>Motivated by a common Kubernetes workflow: opening PR B that builds on PR A, currently handled manually via <code>/hold</code> plus a comment noting the dependency.</li>
   <li>Maintainer <strong>Prucek</strong> proposed a concrete design in comments: new label-based plugin, <code>do-not-merge/has-unmerged-dependency</code> label, a merge-event handler to release dependents — but flagged reliability/complexity concerns as reasons not to build it.</li>
   <li>Author <strong>tallclair</strong> agreed to close, pointing to <a href="https://github.github.com/gh-stack/">GitHub-native stacked PRs</a> as a likely-sufficient alternative.</li>
+  <li>Since the previous triage, <strong>VannTen</strong> noted on 2026-09-17 that GitHub stacked PRs require all stack branches, including the base, to be in one repository; they therefore do not cover fork-plus-PR workflows.</li>
 </ul>
 
 <h2>Analysis</h2>
@@ -158,14 +161,14 @@ missed merge webhooks — exactly the concern <strong>Prucek</strong> raised in 
 
 <h2>Recommended next steps</h2>
 <ul>
-  <li>No maintainer action required — issue is already closed with a sound, community-agreed rationale.</li>
+  <li>No change to the <code>wontfix</code> verdict is warranted by the fork-workflow clarification alone; the issue remains closed.</li>
   <li>Optional: apply the <code>wontfix</code> label for tracker hygiene (issue currently only carries <code>kind/feature</code>).</li>
-  <li>If GitHub-native stacked PRs later prove insufficient, point any future requester toward filing a new, narrowly-scoped issue rather than reopening #797.</li>
+  <li>If fork-based stacked PRs need Prow support, point any future requester toward a new, narrowly-scoped design issue that specifies persistence, dependency topology, and reconciliation requirements rather than reopening #797.</li>
 </ul>
 
 <h2>Open questions</h2>
 <ul>
-  <li>None — the original author and a maintainer reached explicit agreement in-thread; nothing outstanding to ask.</li>
+  <li>None for #797; a renewed proposal should answer the scoped design questions above.</li>
 </ul>
 
 </body>

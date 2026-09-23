@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Review: kubernetes-sigs/prow#964</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; line-height: 1.55; margin: 2rem auto; max-width: 58rem; padding: 0 1rem; }
+  header, section { margin: 0 0 2rem; }
+  h1 { margin-bottom: .2rem; }
+  h2 { border-bottom: 1px solid #9996; padding-bottom: .25rem; }
+  code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  code { background: #8882; border-radius: .2rem; padding: .1rem .25rem; }
+  pre { background: #8882; border-left: .25rem solid #8888; overflow-x: auto; padding: .85rem 1rem; white-space: pre-wrap; }
+  .meta { color: #666; }
+  .verdict { border-left: .3rem solid #c62828; padding-left: 1rem; }
+  .finding { border: 1px solid #9996; border-radius: .4rem; margin: 1rem 0; padding: 0 1rem; }
+  .severity { color: #b71c1c; font-weight: 700; text-transform: uppercase; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Review: <a href="https://github.com/kubernetes-sigs/prow/pull/964">kubernetes-sigs/prow#964</a></h1>
+  <p class="meta">Title: deck: fix job bar state proportions<br>
+  Head: <code>7f6976fe8e75fc87a3fdbc52ffb5144fc7ba9c2c</code><br>
+  Base: <code>main</code><br>
+  Reviewed: 2026-09-23T11:44:18Z</p>
+</header>
+
+<section class="verdict">
+  <h2>Verdict: request changes</h2>
+  <p>The normalization and fixed state ordering improve the job bar, but the 1%-minimum width clamp makes sparse states inaccurate and can make the bar exceed 100% total width. This contradicts the PR's stated goal of rendering actual count percentages.</p>
+</section>
+
+<section>
+  <h2>What this PR does</h2>
+  <ul>
+    <li>Normalizes missing and unrecognized ProwJob states into an <code>unknown</code> job-bar segment.</li>
+    <li>Renders supported states in a fixed order rather than sizing one final state with <code>auto</code>.</li>
+    <li>Adds <code>scheduling</code> to the Deck ProwJob state type and job bar.</li>
+    <li>Adds markup and color styling for the scheduling segment.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Findings</h2>
+  <h3>Blocking</h3>
+  <article class="finding">
+    <p><span class="severity">Blocking</span> — <strong>Sparse job-bar segments are not proportional</strong><br><code>cmd/deck/static/prow/prow.ts:827-830</code></p>
+    <pre>el.textContent = count.toString();
+tt.textContent = \`${count} ${stateToAdj(state)} jobs\`;
+el.style.width = \`${Math.max((count / total * 100), 1)  }%\`;</pre>
+    <p><code>Math.max(count / total * 100, 1)</code> makes every nonzero state smaller than 1% occupy 1% of the bar. Multiple sparse states can therefore exceed 100% total width, contradicting the actual-count-percentage goal. Remove the clamp, or use a separate affordance for tiny counts that does not alter bar widths.</p>
+  </article>
+
+  <h3>Should fix</h3>
+  <article class="finding">
+    <p><span class="severity">Should fix</span> — <strong>Cover job-bar state normalization and sizing</strong><br><code>cmd/deck/static/prow/prow.ts:800-832</code></p>
+    <pre>const jobBarStates: ProwJobState[] = ["success", "pending", "scheduling", "triggered", "error", "failure", "aborted", "unknown"];
+
+function normalizeJobBarState(state: string): ProwJobState {
+  switch (state) {
+    case "scheduling":
+    case "success":
+    // ...
+    default:
+      return "unknown";
+  }
+}</pre>
+    <p>Add focused coverage for scheduling, empty or future states aggregating into unknown, sub-1% counts, and redraws. That will protect the normalization and sizing behavior from regressions.</p>
+  </article>
+
+  <h3>Nits</h3>
+  <p>None.</p>
+  <h3>Questions</h3>
+  <p>See open questions below.</p>
+</section>
+
+<section>
+  <h2>Things I checked and was fine with</h2>
+  <ul>
+    <li>Known states, including <code>scheduling</code>, remain distinct while missing and future values map to <code>unknown</code>.</li>
+    <li>The fixed state list removes the previous map-order-dependent final <code>auto</code> segment and clears absent segments.</li>
+    <li>This is a static Deck-only change with no configuration, API, RBAC, or storage migration impact.</li>
+    <li><code>scheduling</code> matches the existing backend state; no producer rollout is required.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Open questions for the author</h2>
+  <ul>
+    <li>Is the 1% minimum intended as a discoverability affordance? If so, can we keep that cue without claiming proportionality or consuming extra bar width?</li>
+    <li>Should this change add <code>scheduling</code> to the shared table-state icon and color handling in <code>cmd/deck/static/common/common.ts</code> and <code>cmd/deck/static/style.css</code>? It has a bar color but no table icon.</li>
+  </ul>
+</section>
+</body>
+</html>

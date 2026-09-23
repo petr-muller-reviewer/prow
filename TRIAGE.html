@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#944</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>deck: consolidate static <code>.DarkMode</code> template setting with dynamic client-side dark mode</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/issues/944">kubernetes-sigs/prow#944</a> · main_sha <code>695a33027101</code> · state <code>open</code> · triaged_at <code>2026-09-23T12:55:26Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: accepted</span></div>
+<details><summary>Full metadata</summary><pre><code>issue: kubernetes-sigs/prow#944
+title: &quot;deck: consolidate static `.DarkMode` template setting with dynamic client-side dark mode&quot;
+state: open
+labels: 
+main_sha: 695a33027101f624c2bbd80f6943b47abb46d09e
+triaged_at: 2026-09-23T12:55:26Z
+verdict: accepted
+legitimacy: LEGITIMATE
+effort: 2
+recommended_labels: [kind/feature, area/deck, help-wanted]</code></pre></details>
+<h2>Verdict</h2>
+<p>Accepted. This is a well-scoped Deck presentation cleanup: legacy server-side logo selection now overlaps with the index dashboard’s browser-side dark-mode preference introduced by PR #942. It is actionable after one product decision: whether Spyglass remains permanently dark or participates in a future dynamic theme.</p>
+<h2>What the issue reports</h2>
+<ul>
+<li>Deck retains a static <code>.DarkMode</code> setting while the index dashboard now tracks theme in <code>localStorage</code> and <code>prefers-color-scheme</code>.
+</li>
+<li>The shared base template chooses a logo on the server, while index JavaScript can choose the same logo again in the browser.
+</li>
+<li>Spyglass alone passes the static dark setting and is styled dark independently.
+</li>
+<li>The requested direction is one theming model, removal of obsolete template state, and non-branching logo presentation.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-blue">reproducibility</span>Index theme selection has two sources of truth</h3>
+<ul>
+<li>detail: The server renders the index with the light default logo, then the browser may select dark based on a persisted preference or system setting and swaps that logo.
+</li>
+<li>evidence: <code>cmd/deck/template/index.html:90</code>; <code>cmd/deck/template/base.html:34-44,100-183</code>.
+</li></ul>
+<h3><span class="tag c-amber">cause</span><code>DarkMode</code> is legacy logo-selection state</h3>
+<ul>
+<li>detail: The field was introduced for the 2019 logo change and is not a general Deck theme system. It is the sole server-side input to the base template’s default-logo choice.
+</li>
+<li>evidence: <code>cmd/deck/templates.go:30-38,64-75</code>; <code>cmd/deck/template/base.html:46-49</code>.
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>Only Spyglass uses the static dark argument</h3>
+<ul>
+<li>where: <code>cmd/deck/template/spyglass.html:53</code>
+</li>
+<li>excerpt:<pre><code>{{template &quot;page&quot; (settings mobileUnfriendly darkMode &quot;spyglass&quot; .)}}</code></pre>
+</li>
+<li>relevance: The other ten <code>settings</code> callers pass <code>lightMode</code>, so removing the boolean is mechanically contained but needs a deliberate Spyglass initial-logo decision.
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>Dynamic theme support is intentionally index-only</h3>
+<ul>
+<li>where: <code>cmd/deck/static/style.css:1150-1417</code>
+</li>
+<li>excerpt:<pre><code>html.dark-mode body#index,
+body#index.dark-mode {
+    background: #121212 !important;
+}</code></pre>
+</li>
+<li>relevance: Non-index Deck pages share the base template but do not have corresponding dark-mode styles or a toggle.
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>Spyglass has an independent hard-coded dark palette</h3>
+<ul>
+<li>where: <code>cmd/deck/static/spyglass/spyglass.css:24-30</code>
+</li>
+<li>relevance: Dynamic-theme removal must not inadvertently make the existing Spyglass presentation visually inconsistent.
+</li></ul>
+<h3><span class="tag c-blue">related-pr</span>Dynamic index dark mode</h3>
+<ul>
+<li>ref: kubernetes-sigs/prow#942
+</li>
+<li>relevance: Merged 2026-09-17 as <code>d37116e6b</code>; it changed only <code>cmd/deck/template/base.html</code> and <code>cmd/deck/static/style.css</code> and created the overlapping client-side mechanism.
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>Issue #944 is open, has no labels or comments, and concerns Prow-owned Deck code.
+</li>
+<li><code>baseTemplateSettings.DarkMode</code> is consumed only by <code>base.html</code>; <code>darkMode</code> and <code>lightMode</code> are registered only to supply that argument.
+</li>
+<li>Eleven templates call <code>settings</code>; Spyglass is the sole <code>darkMode</code> caller.
+</li>
+<li>Searched Deck tests and documentation: no test covers template rendering, logo selection, stored/system theme preference, or toggle behavior; no user-facing dark-mode documentation/configuration exists.
+</li>
+<li>The maintainer completed the mandatory seven-slide briefing: validity, cause, technical scope, recommendation, and effort assessment were confirmed.
+</li></ul>
+<h2>Next steps</h2>
+<ul>
+<li>Apply <code>kind/feature</code>, <code>area/deck</code>, and <code>help-wanted</code> manually if the issue is to be advertised to contributors.
+</li>
+<li>Clarify whether Spyglass is an intentional fixed-dark page or should participate in a dynamic theme.
+</li>
+<li>For the narrow change, remove <code>DarkMode</code>, the two boolean template functions, and the boolean <code>settings</code> argument from all callers; preserve custom <code>branding.Logo</code> behavior.
+</li>
+<li>Add focused rendered-template coverage for default and custom logos, plus browser/DOM coverage for index persisted and system-preference paths.
+</li>
+<li>Keep full dark-mode support for non-index pages as separately scoped work unless maintainers explicitly choose it now.
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>“Should Spyglass remain intentionally dark, with a fixed logo presentation, or should it join a future user-selectable Deck theme?”
+</li></ul>
+</main></body></html>

@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#941</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>deck: merge job history from additional storage buckets</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/941">kubernetes-sigs/prow#941</a> · base <code>main</code> · head_sha <code>76e01c4b1bd1</code> · reviewed_at <code>2026-09-23T20:39:17Z</code></div>
+<div class="badges"><span class="badge c-red">verdict: request-changes</span></div>
+<h2>Verdict</h2>
+<p>Request changes.</p>
+<p>The merged-history implementation preserves primary-bucket precedence and degrades gracefully when an additional bucket cannot be listed. However, the advertised credential-backed configuration is not deployable with the provided Deck RBAC, and invalid credential configurations are accepted or can panic in local mode. Those paths need validation, RBAC/documentation, and tests before merge.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Adds <code>deck.spyglass.additional_history_buckets</code> for extra GCS or S3 locations to scan on each job-history request.
+</li>
+<li>Merges and deduplicates build IDs, retaining the bucket selected by the URL if an ID appears in multiple locations.
+</li>
+<li>Uses the source bucket for build metadata and Spyglass links.
+</li>
+<li>Supports per-additional-bucket credentials from Kubernetes Secrets and permits configured buckets through storage-path validation.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-red">blocking</span>Credential-backed buckets need Deck Secret RBAC</h3>
+<ul>
+<li>where: <code>cmd/deck/main.go:696-710</code>
+</li>
+<li>concern: Selecting either credentials field reads a Secret during Deck startup and treats an authorization error as fatal. None of the starter Deck Roles grants access to core <code>secrets</code>, so the documented credential-backed configuration cannot start in a standard installation. Add the necessary narrowly scoped RBAC (and document the rollout/permission change) in the supported deployment manifests.
+</li>
+<li>excerpt:<pre><code>case entry.GCSCredentialsSecret != nil:
+    secret := &amp;coreapi.Secret{}
+    if err := k8sClient.Get(ctx, ctrlruntimeclient.ObjectKey{Namespace: cfg().ProwJobNamespace, Name: entry.GCSCredentialsSecret.Name}, secret); err != nil {
+        return nil, fmt.Errorf(&quot;reading GCS credentials secret %q for bucket %q: %w&quot;, entry.GCSCredentialsSecret.Name, entry.Bucket, err)
+    }</code></pre>
+</li></ul>
+<h3><span class="tag c-red">blocking</span>Validate the credential-selector contract</h3>
+<ul>
+<li>where: <code>cmd/deck/main.go:695-710</code>
+</li>
+<li>concern: The configuration documents the two selectors as mutually exclusive, but the <code>switch</code> silently chooses GCS when both are set. It also accepts provider/selector mismatches and missing Secret keys, which become late failures or an opener with empty credentials. Validate URI/provider, zero-or-one selector, matching credential type, and selected key data before accepting the configuration; add tests for these cases.
+</li>
+<li>excerpt:<pre><code>switch {
+case entry.GCSCredentialsSecret != nil:
+    secret := &amp;coreapi.Secret{}
+    if err := k8sClient.Get(ctx, ctrlruntimeclient.ObjectKey{Namespace: cfg().ProwJobNamespace, Name: entry.GCSCredentialsSecret.Name}, secret); err != nil {
+        return nil, fmt.Errorf(&quot;reading GCS credentials secret %q for bucket %q: %w&quot;, entry.GCSCredentialsSecret.Name, entry.Bucket, err)
+    }
+    bucketOpener, err = io.NewOpenerFromCredentialBytes(ctx, secret.Data[entry.GCSCredentialsSecret.Key], nil)
+case entry.S3CredentialsSecret != nil:
+    secret := &amp;coreapi.Secret{}</code></pre>
+</li></ul>
+<h3><span class="tag c-red">blocking</span>Do not dereference a nil client in local mode</h3>
+<ul>
+<li>where: <code>cmd/deck/main.go:463-464</code>
+</li>
+<li>concern: In pregenerated-data mode, <code>k8sClient</code> is never initialized, yet Spyglass initialization still builds all configured additional buckets. Any credentials selector then calls <code>k8sClient.Get</code> and panics. Reject secret-backed buckets with a clear error in local mode, or inject a usable client.
+</li>
+<li>excerpt:<pre><code>if o.spyglass {
+    initSpyglass(cfg, o, mux, ja, githubClient, gitClient, k8sClient)
+}</code></pre>
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>Bound the effect of unhealthy extra buckets</h3>
+<ul>
+<li>where: <code>cmd/deck/job_history.go:462-479</code>
+</li>
+<li>concern: Each job-history request lists every configured extra bucket sequentially under the same ten-second deadline. A persistently slow bucket can consume the request budget for later buckets and emit warning logs on every request. Consider per-bucket limits or concurrency plus metrics/rate-limited logging.
+</li>
+<li>excerpt:<pre><code>buildIDListCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+defer cancel()
+for _, ab := range additionalBuckets {
+    ids, err := ab.listBuildIDs(buildIDListCtx, root)
+    if err != nil {
+        logrus.WithError(err).WithField(&quot;bucket&quot;, ab.getName()).Warning(&quot;Failed to list build IDs from additional bucket&quot;)
+        continue
+    }
+}</code></pre>
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>Empty <code>additional_history_buckets</code> returns without changing existing Deck initialization.
+</li>
+<li>Duplicate build IDs retain the URL-selected primary bucket, and later build-data and Spyglass-link reads use the recorded source bucket.
+</li>
+<li>Additional-list failures do not fail the entire history page.
+</li>
+<li><code>git diff --check</code> passes.
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>Which deployment manifests are the supported source for Deck RBAC, and can the Secret permissions be constrained to the configured credential Secret names?
+</li>
+<li>Is it acceptable that Secret rotation and configuration reloads require a Deck restart, or should credential-backed bucket clients participate in reload handling?
+</li></ul>
+</main></body></html>

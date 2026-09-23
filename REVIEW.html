@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Review: kubernetes-sigs/prow#963</title>
+  <style>
+    body { color: #1f2328; font: 16px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 0; background: #fff; }
+    main { max-width: 900px; margin: 40px auto; padding: 0 24px 48px; }
+    h1 { line-height: 1.2; margin-bottom: 8px; }
+    h2 { border-bottom: 1px solid #d0d7de; margin-top: 32px; padding-bottom: 6px; }
+    .meta { color: #57606a; }
+    .verdict { border-left: 4px solid #1a7f37; background: #dafbe1; padding: 16px; }
+    code { background: #f6f8fa; border-radius: 4px; font: 0.9em ui-monospace, SFMono-Regular, Consolas, monospace; padding: 0.15em 0.3em; }
+    a { color: #0969da; }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Review: kubernetes-sigs/prow#963</h1>
+      <p><a href="https://github.com/kubernetes-sigs/prow/pull/963">chore(deps): bump google.golang.org/grpc from 1.83.1 to 1.83.2 in /hack/tools</a></p>
+      <p class="meta">Base: <code>main</code> · Head: <code>02dea49858aba338a3008af775b697b1a7dd34a9</code> · Reviewed: 2026-09-23T12:19:40Z</p>
+    </header>
+
+    <section>
+      <h2>Verdict: approve</h2>
+      <div class="verdict">This is a scoped, 29-day-old indirect dependency update for the developer-tools module. grpc-go v1.83.2 hardens server handling of malformed HTTP/2 authority headers; Prow's <code>hack/tools</code> reaches grpc through controller-gen and does not directly import or run a gRPC server.</div>
+    </section>
+
+    <section>
+      <h2>What this PR does</h2>
+      <ul>
+        <li>Updates <code>google.golang.org/grpc</code> in the standalone <code>hack/tools</code> Go module.</li>
+        <li>Moves the selected version from <code>v1.83.1</code> to <code>v1.83.2</code>.</li>
+        <li>Updates only the corresponding module checksums.</li>
+        <li>Does not alter Prow production code, tests, configuration, or the root Go module.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Findings</h2>
+      <h3>Blocking</h3><p>None.</p>
+      <h3>Should fix</h3><p>None.</p>
+      <h3>Nits</h3><p>None.</p>
+      <h3>Questions</h3><p>None.</p>
+    </section>
+
+    <section>
+      <h2>Things I checked and were fine with</h2>
+      <ul>
+        <li><code>hack/tools/go.mod:351</code> marks the bump indirect; <code>go mod why</code> resolves it through controller-gen, Kubernetes API-extension validation, and apiserver egress-selector code.</li>
+        <li><code>hack/tools</code> has no direct Go import of <code>google.golang.org/grpc</code>; the PR changes only <code>hack/tools/go.mod</code> and <code>hack/tools/go.sum</code>.</li>
+        <li>grpc-go v1.83.2 was released 2026-08-25 (29 days before review), is a tagged release, and its relevant change rejects server requests missing both <code>:authority</code> and <code>Host</code> headers.</li>
+        <li>The remaining release change adjusts grpc-go's own OpenTelemetry tests for Go 1.27 gzip output; no applicable API or behavior change was found for the tools path.</li>
+        <li><code>cd hack/tools &amp;&amp; go mod verify</code> passed: <code>all modules verified</code>.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Open questions for the author</h2>
+      <p>None.</p>
+    </section>
+  </main>
+</body>
+</html>

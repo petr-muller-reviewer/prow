@@ -3,8 +3,13 @@ pr: kubernetes-sigs/prow#803
 title: "append the release note if there is no release note block"
 head_sha: 94c6c56b65a3e5e0d9db39c77c2e8d6baebfb52a
 base: main
-reviewed_at: 2026-08-09T14:05:55Z
+reviewed_at: 2026-09-27T15:38:26Z
 verdict: approve
+gate:
+  decision: hold
+  gated_at: 2026-09-27T15:38:36Z
+  gated_head_sha: 94c6c56b65a3e5e0d9db39c77c2e8d6baebfb52a
+  reviewed_head_sha: 94c6c56b65a3e5e0d9db39c77c2e8d6baebfb52a
 refresh_log:
   - from_sha: 94c6c56b65a3e5e0d9db39c77c2e8d6baebfb52a
     to_sha: 94c6c56b65a3e5e0d9db39c77c2e8d6baebfb52a
@@ -14,23 +19,57 @@ refresh_log:
     summary: no code changes; @cblecker left two inline review comments (COMMENTED review) — a new correctness finding on the pre-existing splice path hardcoding `\r\n`, and a test-coverage suggestion overlapping the existing narrow-coverage finding.
 ---
 
-## Summary
+# Review
 
-`/release-note-edit` in `pkg/plugins/releasenote/releasenote.go` now appends a
-new release-note block to the PR body when none exists, instead of failing
-with "must be used with a single release note block". Also relocates the
-"single block" validation from `ic.Issue.Body` to `ic.Comment.Body`, which
-fixes a latent bug (see Checked).
+## Gate
 
-Reviewed both via direct code review and a 3-perspective maintainer review
-(code quality, maintainability, deployment risk) plus advisor synthesis. All
-four assessments converge: low risk, no config/API surface change, approve
-with non-blocking suggestions.
+**Decision: hold.** The PR head is unchanged since the saved review, and the
+append path still adds an extra blank line to bodies with mixed line endings.
+The new CRLF branch also has no test. Resolve the separator behavior and add
+coverage for CRLF bodies, or explicitly accept those two points before merge.
 
-Since previous review: no code changes. @cblecker left two inline review
-comments independently surfacing a related line-ending inconsistency in the
-pre-existing splice path and a matching test-coverage gap; both are now
-tracked as findings below.
+Gating items:
+
+- `REVIEW.md`, `pkg/plugins/releasenote/releasenote.go:511-523`: the append
+  path detects CRLF anywhere in the body but checks only CRLF suffixes. A
+  body with CRLF earlier and LF at the end gets an extra blank line and
+  mixed line endings. **Not addressed; hold for a fix or explicit acceptance.**
+- `REVIEW.md` and @cblecker, `pkg/plugins/releasenote/releasenote_test.go:767-800`:
+  both new tests use LF-only bodies; the CRLF append branch remains untested.
+  **Not addressed; add a CRLF case or explicitly accept the gap.**
+- @cblecker, `pkg/plugins/releasenote/releasenote.go:528`: the existing-block
+  splice still inserts CRLF into LF bodies. The code is unchanged, and this
+  behavior predates the PR. **Not addressed; confirm whether to handle it in
+  this PR or defer it.**
+
+Merge risk: no exported API, configuration, schema, or deployment changes.
+The functional change is limited to an org member invoking
+`/release-note-edit` on a PR body with no release-note block: the command now
+appends a block instead of returning an error. Existing deployments need no
+migration. The command also rejects comments containing multiple recognized
+release-note blocks; confirm that stricter input rule is intended.
+
+## Verdict
+
+Approve with non-blocking findings. The change is confined to the release
+note command handler and its tests. The latest review confirmed that the
+append path can add an extra blank line when a PR body mixes line endings;
+the earlier findings remain recorded below.
+
+## What this PR does
+
+- `/release-note-edit` appends a release-note block when the PR body has none.
+- The append path attempts to preserve the body's line endings and leave a
+  blank line before the new block.
+- The command now checks that its comment contains exactly one release-note
+  block, rather than checking the PR body for one.
+- Two tests cover appending to a non-empty body and to an empty body.
+
+Since previous review:
+
+- No code changes; the reviewed PR head remains `94c6c56b6`.
+- A fresh read-only review corroborated the mixed line-ending finding in the
+  append path. The earlier inline comments and findings remain below.
 
 ## Findings
 
@@ -118,6 +157,8 @@ tracked as findings below.
 - concern: the new `FindAllStringSubmatchIndex(ic.Comment.Body, -1) != 1` check is stricter than the prior implicit behavior of `getReleaseNote` (which just took the first regex match via `FindStringSubmatch`). If any existing user relied on `/release-note-edit` comments containing more than one code block (only the first being treated as the release note), those would now be rejected. Worth confirming this is intentional and calling it out as a minor behavior tightening if so. Raised by the deployment-risk reviewer.
 
 ## Checked
+- `go test ./pkg/plugins/releasenote -run '^Test_editReleaseNote$' -count=1`
+  passed on 2026-09-27. The new tests do not cover mixed line endings.
 - Confirmed the old "single release note block" check (`len(i) != 4` on `FindStringSubmatchIndex(ic.Issue.Body)`) could never actually detect multiple blocks — `FindStringSubmatchIndex` returns a fixed-length slice or nil, so the check was equivalent to "no match in issue body." The pre-existing "multiple release note blocks" test only passed incidentally because its fixture left `Issue.Body` empty. The new `FindAllStringSubmatchIndex(ic.Comment.Body, -1) != 1` check is a genuine correctness fix, independently confirmed by all three specialist reviewers.
 - Hand-traced both new test cases ("append to body without release note block", "append to empty body") against the separator logic — both produce the expected output.
 - `newNote` is already validated non-empty before the append branch runs (early return above for an empty note).

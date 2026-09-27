@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#976</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>fix(hack): make verify-gofmt read-only and fail on unformatted code</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/976">kubernetes-sigs/prow#976</a> · base <code>main</code> · head_sha <code>b48dea0bea69</code> · reviewed_at <code>2026-09-27T12:01:00Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span></div>
+<h2>Verdict</h2>
+<p>Approve.</p>
+<p>The change implements the behavior requested in issue #953. The verification target now reports unformatted Go files without rewriting them, and the three pre-existing formatting violations are fixed. I found no actionable standards or spec issues.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Replaces the verifier's write-and-diff sequence with <code>gofmt -s -l</code>.
+</li>
+<li>Returns failure and points contributors to <code>make update-gofmt</code> when files need formatting.
+</li>
+<li>Applies formatting-only changes to the three files named in issue #953.
+</li></ul>
+<h2>Findings</h2>
+<p>None.</p>
+<h2>Resolved</h2>
+<p>None.</p>
+<h2>Checked</h2>
+<ul>
+<li>Compared the patch with <a href="https://github.com/kubernetes-sigs/prow/issues/953">issue #953</a> and the PR description; all requested changes are present.
+</li>
+<li><code>git diff --check upstream/main...HEAD</code> passed.
+</li>
+<li><code>make verify-gofmt</code> passed on the clean tree.
+</li>
+<li>With a temporary unformatted Go file, <code>make verify-gofmt</code> failed, printed the file path and <code>make update-gofmt</code>, and left the file byte-for-byte unchanged. The temporary file was removed.
+</li>
+<li>The <code>make update-gofmt</code> target and its script remain unchanged.
+</li></ul>
+<h2>Open questions</h2>
+<p>None.</p>
+<h2>Followups</h2>
+<h3>Make <code>verify-codegen</code> read-only</h3>
+<ul>
+<li>Category: cleanup
+</li>
+<li>Where: <code>hack/make-rules/verify/codegen.sh:29-52</code> and <code>hack/make-rules/update/codegen.sh</code>
+</li>
+<li>Necessity: should
+</li>
+<li>Why followup: PR #976 makes the gofmt verifier read-only, but <code>verify-codegen</code> still runs the update script in the checkout and restores only some generated paths afterward. This is a separate verifier change and does not block PR #976.
+<pre><code>In kubernetes-sigs/prow, after PR #976 (&quot;fix(hack): make verify-gofmt read-only and fail on unformatted code&quot;) merges, make hack/make-rules/verify/codegen.sh read-only with respect to tracked source files. It currently runs hack/make-rules/update/codegen.sh in the checkout, then attempts to restore selected paths; the restore omits pkg/gangway and does not run if generation fails. Run generation in an isolated copy instead, compare every output produced by update/codegen.sh against the checkout, and report stale generated files with the existing make update-codegen remedy.
+
+Acceptance criteria: a clean checkout passes; a deliberately stale generated output makes verification fail with a useful diagnostic; tracked files in the original checkout are byte-for-byte unchanged after successful verification, stale-output failure, and a generator error. Cover all generated output locations used by update/codegen.sh, and clean up temporary files on every exit path. Keep the change scoped to codegen verification and any focused tests or helpers it needs; do not alter gofmt verification or unrelated generator behavior.</code></pre>
+</li></ul>
+</main></body></html>

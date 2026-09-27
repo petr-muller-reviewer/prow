@@ -40,3 +40,7 @@ None.
 ## Open questions
 
 None.
+
+## Dependency followups
+
+No improvement opportunities identified. Examined `github.com/bombsimon/logrusr/v4` `v4.1.0` → `v4.2.0`; the PR changes no other selected Go module version. The release fixes formatting of structured `error` fields but adds no replacement or deprecated API for Prow's sole `logrusr.New` call at `pkg/logrusutil/logrusutil.go:56`. Upstream's dependency version increases are already satisfied by Prow's selected versions.

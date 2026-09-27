@@ -65,3 +65,7 @@ The implementation matches the PR's stated behavior and has no blocking correctn
 ## Open questions
 
 None.
+
+## Followups
+
+No followups accepted (2 candidates skipped).

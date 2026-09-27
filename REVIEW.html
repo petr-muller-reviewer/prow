@@ -31,19 +31,40 @@ ul, ol { padding-left:1.5rem; }
 details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
 </style></head><body><main>
 <h1>deck: fix job bar state proportions</h1>
-<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/964">kubernetes-sigs/prow#964</a> · base <code>main</code> · head_sha <code>7f6976fe8e75</code> · reviewed_at <code>2026-09-23T21:11:45Z</code></div>
-<div class="badges"><span class="badge c-red">verdict: request-changes</span></div>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/964">kubernetes-sigs/prow#964</a> · base <code>main</code> · head_sha <code>7f6976fe8e75</code> · reviewed_at <code>2026-09-27T15:32:03Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span><span class="badge c-green">gate: merge</span></div>
 <details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#964
 title: &quot;deck: fix job bar state proportions&quot;
 head_sha: 7f6976fe8e75fc87a3fdbc52ffb5144fc7ba9c2c
 base: main
-reviewed_at: 2026-09-23T21:11:45Z
-verdict: request-changes
+reviewed_at: 2026-09-27T15:32:03Z
+verdict: approve
+gate:
+  decision: merge
+  gated_at: 2026-09-27T15:32:03Z
+  gated_head_sha: 7f6976fe8e75fc87a3fdbc52ffb5144fc7ba9c2c
+  reviewed_head_sha: 7f6976fe8e75fc87a3fdbc52ffb5144fc7ba9c2c
 refresh_log:
   - old_sha: 7f6976fe8e75fc87a3fdbc52ffb5144fc7ba9c2c
     new_sha: 7f6976fe8e75fc87a3fdbc52ffb5144fc7ba9c2c
     at: 2026-09-23T21:11:45Z
-    summary: &quot;No code changes; incorporated the author&#x27;s dashboard screenshot comment.&quot;</code></pre></details>
+    summary: &quot;No code changes; incorporated the author&#x27;s dashboard screenshot comment.&quot;
+  - old_sha: 7f6976fe8e75fc87a3fdbc52ffb5144fc7ba9c2c
+    new_sha: 7f6976fe8e75fc87a3fdbc52ffb5144fc7ba9c2c
+    at: 2026-09-27T15:32:03Z
+    summary: &quot;No code changes; accepted minor width distortion from the 1% minimum and downgraded the coverage gap.&quot;</code></pre></details>
+<h2>Gate</h2>
+<p><strong>Decision: merge.</strong> The PR is still at the reviewed head. The 1% floor can slightly distort sparse-state widths, but this is acceptable under the stated goal of avoiding a badly distorted job bar. The change fixes the missing scheduling segment and aggregates unknown states into a dedicated segment. The coverage gap does not establish a functional regression.</p>
+<p>Gating findings:</p>
+<ul>
+<li>None under the accepted tolerance for small proportional differences. The previous 1% floor concern is an accepted display tradeoff, and focused test coverage remains a non-gating improvement.
+</li></ul>
+<p>Independent merge risk:</p>
+<ul>
+<li>The four-file PR diff changes Deck's default job-bar display for every existing Deck deployment: unknown and future states are aggregated into <code>unknown</code>, scheduling gets its own segment, and all segments receive explicit percentage widths (<code>cmd/deck/static/prow/prow.ts:577-581,800-831</code>; <code>cmd/deck/template/index.html:42-43</code>). The 1% floor may slightly overstate sparse states; this is accepted and does not create an unacceptable merge risk.
+</li>
+<li>No backend or Kubernetes API, configuration, wire format, or migration change appears in the diff. <code>cmd/deck/static/api/prow.ts:2</code> only widens the frontend TypeScript state union to include the existing <code>scheduling</code> value.
+</li></ul>
 <h2>What this PR does</h2>
 <ul>
 <li>Normalizes missing and unrecognized states into the job bar's <code>unknown</code> segment.
@@ -55,36 +76,11 @@ refresh_log:
 <p>Since previous review:</p>
 <ul>
 <li>Prucek added a dashboard screenshot showing the missing scheduling segment and distorted unknown proportions; no commit, inline review comment, or submitted review followed.
+</li>
+<li>The 1% minimum was accepted as a display tradeoff; no code changes followed.
 </li></ul>
 <h2>Findings</h2>
-<h3><span class="tag c-red">blocking</span>Sparse job-bar segments are not proportional</h3>
-<ul>
-<li>where: <code>cmd/deck/static/prow/prow.ts:827-830</code>
-</li>
-<li>concern: <code>Math.max(count / total * 100, 1)</code> makes every nonzero state smaller than 1% occupy 1% of the bar. With multiple sparse states, segment widths can exceed 100%, contradicting the PR's actual-count-percentage goal and making the dashboard distribution inaccurate. Remove the clamp, or use a separate affordance for tiny counts that does not alter bar widths.
-</li>
-<li>excerpt:<pre><code>el.textContent = count.toString();
-tt.textContent = \`${count} ${stateToAdj(state)} jobs\`;
-el.style.width = \`${Math.max((count / total * 100), 1)  }%\`;</code></pre>
-</li></ul>
-<h3><span class="tag c-amber">should-fix</span>Cover job-bar state normalization and sizing</h3>
-<ul>
-<li>where: <code>cmd/deck/static/prow/prow.ts:800-832</code>
-</li>
-<li>concern: The changed behavior has no focused test for scheduling, empty or future states aggregating into unknown, sub-1% counts, and redraws. Add coverage so a future state-list or width change cannot silently reintroduce misleading bars.
-</li>
-<li>excerpt:<pre><code>const jobBarStates: ProwJobState[] = [&quot;success&quot;, &quot;pending&quot;, &quot;scheduling&quot;, &quot;triggered&quot;, &quot;error&quot;, &quot;failure&quot;, &quot;aborted&quot;, &quot;unknown&quot;];
-
-function normalizeJobBarState(state: string): ProwJobState {
-  switch (state) {
-    case &quot;scheduling&quot;:
-    case &quot;success&quot;:
-    // ...
-    default:
-      return &quot;unknown&quot;;
-  }
-}</code></pre>
-</li></ul>
+<p>No actionable findings under the accepted display tolerance.</p>
 <h2>Checked</h2>
 <ul>
 <li>State normalization retains known states, including <code>scheduling</code>, and aggregates missing or unrecognized values under <code>unknown</code>.
@@ -94,11 +90,18 @@ function normalizeJobBarState(state: string): ProwJobState {
 <li>The change is static Deck TypeScript/HTML/CSS only: no ProwJob API, configuration, RBAC, or storage migration changes.
 </li>
 <li><code>scheduling</code> matches the existing backend state, so no producer-side rollout is needed.
+</li>
+<li>The 1% minimum can make sparse segments wider than their exact share, but there are at most eight state segments. This is an accepted display tradeoff rather than a merge blocker.
+</li>
+<li>There is no focused job-bar test for normalization, sizing, or redraws; adding one would protect the behavior against future regressions.
 </li></ul>
 <h2>Open questions</h2>
 <ul>
-<li>Is the 1% minimum intended as a discoverability affordance? If so, can we retain that cue without claiming it is proportional or consuming additional bar width?
-</li>
 <li>Should this change also add <code>scheduling</code> to the shared table-state icon and color handling in <code>cmd/deck/static/common/common.ts</code> and <code>cmd/deck/static/style.css</code>? It currently receives bar treatment but no table icon.
 </li></ul>
+<h2>Followups</h2>
+<h3>[tests; should] Cover Deck job-bar states and widths</h3>
+<pre><code>In kubernetes-sigs/prow, following PR #964 &quot;deck: fix job bar state proportions&quot;, add focused automated coverage for Deck&#x27;s job-bar state normalization and segment sizing in cmd/deck/static/prow/prow.ts. Verify that scheduling remains distinct, empty and unrecognized states aggregate under unknown, absent states reset to zero width on redraw, and nonzero segments follow the accepted 1% minimum. Use the existing Deck frontend test setup (see cmd/deck/static/prow/histogram_test.ts); extract only the smallest helper needed for a focused test. Acceptance criteria: the new tests exercise those cases and the relevant Deck frontend test command passes. Keep the current job-bar appearance and API unchanged; do not alter the accepted width floor or expand into a broader UI rewrite.</code></pre>
+<h3>[UI consistency; could] Show scheduling in Deck job rows</h3>
+<pre><code>In kubernetes-sigs/prow, following PR #964 &quot;deck: fix job bar state proportions&quot;, update the shared Deck state-cell presentation in cmd/deck/static/common/common.ts (cell.state, around lines 52-89) and cmd/deck/static/style.css (state colors, around lines 159-181) so a scheduling ProwJob has a visible icon and appropriate state color, consistent with the new scheduling job-bar segment. Acceptance criteria: a scheduling job row shows a recognizable icon and readable color in light and dark modes, while existing state rows keep their current presentation. Add a focused test if the existing frontend test setup supports the state cell. Do not change job-bar sizing or filtering, backend state definitions, or unrelated UI components.</code></pre>
 </main></body></html>

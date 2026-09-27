@@ -1,23 +1,39 @@
 ---
 issue: kubernetes-sigs/prow#953
 title: "verify-gofmt cannot fail: it runs gofmt -w before the check"
-state: open
+state: closed
 labels: kind/bug
 main_sha: cd1c1dbd246180e7183af5eae6cc68c2053ffcdc
-triaged_at: 2026-09-22T00:25:16Z
-verdict: accepted
+triaged_at: 2026-09-27T13:09:11Z
+verdict: resolved
+refresh_log:
+  - since: 2026-09-22T00:25:16Z
+    summary: "PR #976 merged and closed the issue; the read-only verifier addresses the triaged cause."
 ---
 
 ## Verdict
 
-Accepted. The checked-in verifier formats every Go file before computing its diff, so normal formatter execution always reaches the empty-diff success branch and mutates the working tree.
+Resolved by PR #976. The merged verifier lists unformatted files without writing them and fails when the list is nonempty.
+
+## Resolution
+
+PR #976 merged at `2026-09-27T12:22:37Z`; GitHub closed the issue as `COMPLETED` at `2026-09-27T12:22:38Z`. Classification: **sufficient**.
+
+- `hack/make-rules/verify/gofmt.sh` replaces `gofmt -s -w` followed by `gofmt -s -d` with `gofmt -s -l`, then exits 1 when files are listed. This addresses the identified cause and leaves `update-gofmt` as the write path.
+- The PR formats the same three baseline files found during triage, so the new check can pass on the merged tree.
+- The PR reports a failing malformed-file check and a passing clean-tree check with no writes. No comments after the merge report a remaining failure. This matches the previously recommended fix and command-level verification.
 
 ## What the issue reports
 
 - `make verify-gofmt` passes malformed Go code after rewriting it.
 - `make verify` includes the same mutating check.
 - `update-gofmt` should retain write behavior; verification should only report failure.
-- Three tracked files are presently listed by a non-mutating formatter scan.
+- Three tracked files were listed by a non-mutating formatter scan at the recorded main SHA.
+
+Since previous triage:
+
+- PR #976 was cross-referenced on `2026-09-25T09:22:40Z`, merged on `2026-09-27`, and closed the issue.
+- The merged change makes verification read-only and formats the three previously identified files.
 
 ## Findings
 
@@ -54,8 +70,12 @@ Accepted. The checked-in verifier formats every Go file before computing its dif
     fi
 - relevance: The defect affects `make verify`, not only the standalone target.
 
-### [related-pr] No existing fix found
-- relevance: Repository PR search found no active or historical PR specifically addressing this verifier defect.
+### [related-pr] No existing fix at initial triage
+- relevance: At the initial triage, repository PR search found no active or historical PR specifically addressing this verifier defect.
+
+### [related-pr] Merged verifier fix
+- ref: kubernetes-sigs/prow#976
+- relevance: Replaces the mutating check with a read-only file listing and formats the three baseline files.
 
 ## Checked
 
@@ -63,15 +83,12 @@ Accepted. The checked-in verifier formats every Go file before computing its dif
 - Inspected the verifier, updater, Makefile targets, and aggregate verification path at `cd1c1dbd246180e7183af5eae6cc68c2053ffcdc`.
 - Confirmed the control flow and formatter listing without mutating tracked files.
 - Confirmed `kind/bug`, `sig/testing`, and `good first issue` exist; `area/prow` does not.
+- Reviewed PR #976's description, changed files, and diff against the recorded cause and reproducibility finding; checked current issue state, comments, and timeline through `2026-09-27T13:09:11Z`.
 
 ## Next steps
 
-- Retain `kind/bug`; optionally add `sig/testing` and `good first issue`.
-- Remove the write command from `hack/make-rules/verify/gofmt.sh`, preserving its diff-based failure diagnostic.
-- Format the three baseline files in the same PR with `make update-gofmt` or equivalent.
-- Demonstrate malformed temporary input fails without mutation; then run `make verify-gofmt` and `git diff --exit-code` on the clean tree.
+- No further issue triage action. Optional post-merge verification: run `make verify-gofmt` on the merged main branch and confirm the tree stays clean.
 
 ## Open questions
 
-- Should a focused regression test be added for this make-rule, or is command-level verification sufficient?
-- Do maintainers prefer the existing diff diagnostic or a file-list-only `gofmt -l` diagnostic?
+- None for this resolved issue.

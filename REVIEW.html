@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#978</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>chore(deps): bump github.com/aws/aws-sdk-go-v2/service/s3 from 1.113.1 to 1.113.2 in the aws group across 1 directory</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/978">kubernetes-sigs/prow#978</a> · base <code>main</code> · head_sha <code>0db15779de33</code> · reviewed_at <code>2026-09-27T11:26:38Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span></div>
+<h2>Verdict</h2>
+<p>Approve.</p>
+<p>This is a direct, dep-only S3 client update from v1.113.1 to v1.113.2. The tagged release is about six days old, so it has passed the five-day minimum soak threshold but remains within the two-week caution window. It has no OSV advisories at either version and corrects handling of S3 error payloads returned with HTTP 200. That behavior reaches Prow's S3 artifact-storage provider through gocloud, but it turns masked failures into errors rather than changing a successful-path API.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Updates the direct S3 SDK requirement in <code>go.mod</code> from v1.113.1 to v1.113.2.
+</li>
+<li>Refreshes the two matching module checksums in <code>go.sum</code>.
+</li>
+<li>Takes the SDK's final rollout of HTTP-200 embedded-error handling for applicable S3 operations.
+</li></ul>
+<h2>Findings</h2>
+<p>None.</p>
+<h2>Resolved</h2>
+<p>None.</p>
+<h2>Checked</h2>
+<ul>
+<li>Classified the change as dep-only: <code>go.mod</code> and <code>go.sum</code> are the only changed files.
+</li>
+<li>Confirmed <code>github.com/aws/aws-sdk-go-v2/service/s3</code> is direct and imported only by <code>pkg/io/providers/aws.go:29</code>.
+</li>
+<li>Confirmed v1.113.2 is a tagged 2026-09-21 release; OSV returns no advisories for v1.113.1 or v1.113.2.
+</li>
+<li>Reviewed the upstream v1.113.2 changelog and commit range: the substantive change expands detection of embedded error responses with HTTP 200, including operations gocloud uses for Prow's S3 provider.
+</li>
+<li>Ran <code>go test ./pkg/io/providers</code> and <code>git diff --check</code> successfully. <code>govulncheck</code> is not installed.
+</li></ul>
+<h2>Open questions</h2>
+<p>None.</p>
+<h2>Dependency followups</h2>
+<p>No opportunities identified for <code>github.com/aws/aws-sdk-go-v2/service/s3</code> v1.113.1 → v1.113.2. The only substantive release change expands HTTP-200 embedded-error detection; it adds no API, deprecation, replacement, or configurable default that Prow's sole S3-client construction site in <code>pkg/io/providers/aws.go</code> can adopt.</p>
+</main></body></html>

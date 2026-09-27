@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#975</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>chore(deps): bump go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp from 1.44.0 to 1.45.0</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/975">kubernetes-sigs/prow#975</a> · base <code>main</code> · head_sha <code>e1c61e181176</code> · reviewed_at <code>2026-09-27T12:59:24Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span></div>
+<h2>Verdict</h2>
+<p>Approve. This is a sufficiently soaked, tagged dependency-only update that removes the known endpoint-logging disclosure advisory in the selected old version. The updated HTTP OTLP trace exporter is compiled through the Tekton tracing path, but Prow does not import it directly and the behavior changes do not alter Tekton's <code>WithEndpoint</code>/<code>WithURLPath</code> configuration.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Updates the indirect HTTP OTLP trace exporter from <code>v1.44.0</code> to <code>v1.45.0</code>.
+</li>
+<li>Refreshes the corresponding module checksums only; it makes no Prow source changes.
+</li>
+<li>Takes the fix for <code>GHSA-8wmf-6v46-5gfg</code> / <code>CVE-2026-81870</code>, which prevents exporter configuration logging from exposing endpoint URLs.
+</li>
+<li>Brings corrected <code>Retry-After</code> handling for OTLP/HTTP exporter retries.
+</li></ul>
+<h2>Findings</h2>
+<p>No findings.</p>
+<h2>Resolved</h2>
+<p>None.</p>
+<h2>Checked</h2>
+<ul>
+<li>Classified the change as dependency-only: <code>go.mod</code> and <code>go.sum</code> are the only modified files.
+</li>
+<li>Confirmed the release is a tagged upstream <code>v1.45.0</code> release from 2026-08-03, 55 days before review.
+</li>
+<li>Queried OSV for both versions: the old version has <code>GHSA-8wmf-6v46-5gfg</code> / <code>CVE-2026-81870</code>; the new version has no reported advisory.
+</li>
+<li>Confirmed Prow has zero direct imports. The exporter is compiled through <code>cmd/pipeline</code> → Tekton → Knative tracing, and Tekton uses <code>WithEndpoint</code> plus <code>WithURLPath</code>, not the changed <code>WithEndpointURL</code> behavior.
+</li>
+<li>Ran <code>govulncheck -format json ./cmd/pipeline/... ./pkg/pipeline/...</code>; it found no reachable instance of the advisory fixed by this bump.
+</li>
+<li>Ran <code>git diff --check 01f306768904fcf3a371f83a4db040d502c9bf61..HEAD</code> successfully.
+</li></ul>
+<h2>Open questions</h2>
+<p>None.</p>
+<h2>Dependency followups</h2>
+<p>No actionable opportunities identified.</p>
+<ul>
+<li>Examined <code>go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp</code> <code>v1.44.0</code> → <code>v1.45.0</code> (indirect), the only module version change in this PR.
+</li>
+<li>The <a href="https://github.com/open-telemetry/opentelemetry-go/releases/tag/v1.45.0">v1.45.0 release notes</a> describe changed <code>WithEndpointURL</code> path handling and fixes to HTTP <code>Retry-After</code> handling and endpoint logging. Prow does not import this exporter or call its APIs in source; the exporter is reached through Tekton. There is no Prow-owned call site to migrate or simplify.
+</li></ul>
+</main></body></html>

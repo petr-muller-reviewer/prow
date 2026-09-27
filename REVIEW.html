@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#973</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>chore(deps): bump go.opentelemetry.io/otel/exporters/otlp/otlptrace from 1.44.0 to 1.45.0</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/973">kubernetes-sigs/prow#973</a> · base <code>main</code> · head_sha <code>25dca66b6ceb</code> · reviewed_at <code>2026-09-27T14:00:05Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span></div>
+<h2>Verdict</h2>
+<p>Approve. This is a dependency-only change with adequately aged tagged releases, no Prow import surface for either updated module, and a security fix in <code>otlptrace</code> that removes exporter endpoint configuration from verbose internal OpenTelemetry logs. No new or reachable vulnerability findings were introduced.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Updates indirect <code>go.opentelemetry.io/otel/exporters/otlp/otlptrace</code> from <code>v1.44.0</code> to <code>v1.45.0</code>.
+</li>
+<li>Updates its selected indirect OTLP protobuf dependency, <code>go.opentelemetry.io/proto/otlp</code>, from <code>v1.10.0</code> to <code>v1.11.0</code>.
+</li>
+<li>Refreshes the corresponding checksums in <code>go.sum</code>.
+</li></ul>
+<h2>Findings</h2>
+<p>None.</p>
+<h2>Resolved</h2>
+<p>None.</p>
+<h2>Checked</h2>
+<ul>
+<li>Classified the diff against the PR commit parent: only <code>go.mod</code> and <code>go.sum</code> change.
+</li>
+<li>Confirmed both changed modules are indirect and Prow has no Go imports of <code>go.opentelemetry.io</code> packages; their shortest dependency paths pass through Tekton/Knative observability.
+</li>
+<li>Verified release provenance and age: <code>otlptrace v1.45.0</code> was tagged 2026-08-03 (54 days old), and <code>proto/otlp v1.11.0</code> on 2026-07-22 (66 days old).
+</li>
+<li>Queried OSV: <code>GHSA-8wmf-6v46-5gfg</code> / <code>CVE-2026-81870</code> affects <code>otlptrace v1.44.0</code> and is fixed in <code>v1.45.0</code>; neither new version has an OSV advisory.
+</li>
+<li>Ran <code>govulncheck -format json ./...</code> on both the parent and PR head. Both completed with the same unrelated findings; neither reports this OpenTelemetry advisory as reachable.
+</li>
+<li>Reviewed the upstream module delta: it prevents recursive logging of OTLP exporter client configuration and adds OTLP MAP attribute serialization. Prow does not directly exercise either surface.
+</li>
+<li>Ran <code>git diff --check</code> successfully.
+</li></ul>
+<h2>Open questions</h2>
+<p>None.</p>
+<h2>Dependency followups</h2>
+<p>No opportunities identified; Prow imports neither changed module.</p>
+<ul>
+<li>Examined indirect <code>go.opentelemetry.io/otel/exporters/otlp/otlptrace</code> <code>v1.44.0</code> → <code>v1.45.0</code>: <a href="https://github.com/open-telemetry/opentelemetry-go/releases/tag/v1.45.0">the release</a> adds MAP attribute serialization and removes endpoint configuration from internal logs, but Prow has no call sites to change. Its <code>WithEndpointURL</code> behavior change is in the separately versioned <code>otlptracehttp</code> module, which this PR leaves at <code>v1.44.0</code>.
+</li>
+<li>Examined indirect <code>go.opentelemetry.io/proto/otlp</code> <code>v1.10.0</code> → <code>v1.11.0</code>: <a href="https://github.com/open-telemetry/opentelemetry-proto-go/releases/tag/v1.11.0">the release</a> updates generated OTLP protocol types, which Prow does not import.
+</li></ul>
+</main></body></html>

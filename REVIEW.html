@@ -1,157 +1,191 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>Review: kubernetes-sigs/prow#679</title>
-<style>
-  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; line-height: 1.55; color: #1c1c1c; max-width: 900px; margin: 2rem auto; padding: 0 1.5rem; background: #fdfdfd; }
-  code, pre { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; }
-  pre { background: #f4f4f4; border: 1px solid #e0e0e0; border-radius: 6px; padding: 0.75rem 1rem; overflow-x: auto; font-size: 0.85rem; }
-  code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-size: 0.9em; }
-  h1 { font-size: 1.5rem; }
-  h2 { font-size: 1.2rem; border-bottom: 1px solid #ddd; padding-bottom: 0.3rem; margin-top: 2.2rem; }
-  h3 { font-size: 1.02rem; margin-bottom: 0.3rem; }
-  .meta { background: #f4f4f4; border-radius: 8px; padding: 1rem 1.25rem; font-size: 0.92rem; }
-  .meta div { margin: 0.15rem 0; }
-  .verdict { border-radius: 8px; padding: 1rem 1.25rem; font-weight: 600; }
-  .verdict.request-changes { background: #fff3e0; border: 1px solid #ffcc80; color: #7a4a00; }
-  .finding { border: 1px solid #e0e0e0; border-radius: 8px; padding: 1rem 1.25rem; margin: 1rem 0; }
-  .sev { display: inline-block; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; padding: 0.15rem 0.5rem; border-radius: 4px; margin-right: 0.5rem; }
-  .sev.blocking { background: #ffdddd; color: #a30000; }
-  .sev.should-fix { background: #fff0cc; color: #8a5a00; }
-  .sev.nit { background: #e0e8ff; color: #2a3d99; }
-  .sev.question { background: #e8f5e9; color: #1b5e20; }
-  .loc { color: #555; font-size: 0.85rem; }
-  ul { padding-left: 1.3rem; }
-  a { color: #0b57d0; }
-  .convergence { color: #7a4a00; font-size: 0.85rem; font-style: italic; }
-</style>
-</head>
-<body>
-
-<h1>Review: Add Tekton preset support for PipelineRun jobs</h1>
-<div class="meta">
-  <div><strong>PR:</strong> <a href="https://github.com/kubernetes-sigs/prow/pull/679">kubernetes-sigs/prow#679</a></div>
-  <div><strong>Head SHA:</strong> <code>0c8fa0386c71b5b4bec7de564f648c99bc1e7589</code></div>
-  <div><strong>Base:</strong> main</div>
-  <div><strong>Reviewed at:</strong> 2026-07-26T23:44:21Z</div>
-</div>
-
-<h2>Verdict</h2>
-<div class="verdict request-changes">Request changes</div>
-<p>The Tekton preset-merging design itself is sound and mirrors the existing pod-preset mechanism, but two blocking issues need to be fixed first: a unit-test file that Go silently never runs (confirmed by three independent review passes — code quality, maintainability, and deployment risk all converged on this), and a stale/unrebased branch dragging in ~52k unrelated lines (a controller-gen CRD regeneration) plus scattered unrelated refactors. A handful of smaller correctness and API-clarity nits round out the review.</p>
-
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#679</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>Add Tekton preset support for PipelineRun jobs</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/679">kubernetes-sigs/prow#679</a> · base <code>main</code> · head_sha <code>1883b499c3eb</code> · reviewed_at <code>2026-09-27T13:50:16Z</code></div>
+<div class="badges"><span class="badge c-red">verdict: request-changes</span><span class="badge c-red">gate: do-not-merge</span></div>
+<details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#679
+title: &quot;Add Tekton preset support for PipelineRun jobs&quot;
+head_sha: 1883b499c3ebe9b7a12b68694473e2a35f546ae4
+base: main
+reviewed_at: 2026-09-27T13:50:16Z
+verdict: request-changes
+gate:
+  decision: do-not-merge
+  gated_at: 2026-09-27T13:51:16Z
+  gated_head_sha: 1883b499c3ebe9b7a12b68694473e2a35f546ae4
+  reviewed_head_sha: 1883b499c3ebe9b7a12b68694473e2a35f546ae4
+refresh_log:
+  - old_sha: 0c8fa0386c71b5b4bec7de564f648c99bc1e7589
+    new_sha: 1883b499c3ebe9b7a12b68694473e2a35f546ae4
+    summary: &quot;Force-push rebased the same Tekton preset patch onto newer main; only an unrelated entrypoint test hunk was dropped.&quot;</code></pre></details>
+<h2>Gate</h2>
+<p><strong>Decision: do-not-merge.</strong> The reviewed head is still the current PR head, and both blocking findings remain in the single feature commit. The Tekton preset unit tests still compile as ordinary production Go code and are never discovered as tests. The feature commit also retains a large, unrelated regeneration of the integration ProwJob CRD. No GitHub reviewer submitted substantive feedback that changes these dispositions.</p>
+<p>Gating findings:</p>
+<ul>
+<li><strong>Not addressed; blocks merge — <code>REVIEW.md</code>, “Unit test file is misnamed and never runs”:</strong> <code>pkg/config/jobs_test_tekton_presets.go:17-27</code> still imports <code>testing</code> and declares <code>TestResolveTektonPresets</code> in a file that does not end in <code>_test.go</code>; <code>TestMergeTektonPreset</code> is in the same file. Rename the file to <code>jobs_tekton_presets_test.go</code> and confirm the tests are discovered.
+</li>
+<li><strong>Not addressed; blocks merge — <code>REVIEW.md</code>, “PR diff is dominated by unrelated churn”:</strong> <code>test/integration/config/prow/cluster/50_crd.yaml:8</code> still replaces the generator version and changes 9,303 lines while deleting 52,053. Remove the unrelated CRD regeneration and remaining unrelated edits from this feature commit.
+</li>
+<li><strong>Not addressed; resolve before merge — <code>REVIEW.md</code>, “Timeout conflict check misses explicit zero-duration timeouts”:</strong> <code>pkg/config/jobs.go:151-158</code> still accepts an existing non-nil zero timeout and overwrites it with the preset. Treat any non-nil <code>Timeouts.Pipeline</code> as explicitly set, or document and test a different intended rule.
+</li>
+<li><strong>Not addressed; resolve before merge — <code>REVIEW.md</code>, “Discarded error from GetPipelineRunSpec(), triplicated call site”:</strong> <code>pkg/config/config.go:2113-2115</code>, <code>2138-2140</code>, and <code>2160-2162</code> still discard the error. Handle it at all three call sites or centralize the resolution path.
+</li></ul>
+<p>Independent merge risk:</p>
+<ul>
+<li><strong>Configuration and behavior:</strong> <code>pkg/config/jobs.go:55-60</code> adds optional preset fields; existing configs without these fields retain their prior behavior. Where operators opt into Tekton presets, <code>pkg/config/jobs.go:120-166</code> can reject jobs on duplicate params, workspaces, or templates, and the zero-timeout case can silently replace an explicit no-timeout setting. The blast radius is Tekton jobs matching those preset labels. Correct the timeout handling before release.
+</li>
+<li><strong>API and CRD:</strong> The exported <code>Preset</code> fields and <code>ResolveTektonPresets</code> function are additive. The large CRD change is confined to <code>test/integration/config/prow/cluster/50_crd.yaml</code>; the deployed CRD under <code>config/prow/cluster/prowjob-crd/</code> is untouched, so this PR does not directly change existing cluster schemas.
+</li></ul>
 <h2>What this PR does</h2>
 <ul>
-  <li>Extends the existing <code>Preset</code> mechanism (currently PodSpec-only) with Tekton <code>PipelineRunSpec</code> fields: <code>tekton_params</code>, <code>tekton_workspaces</code>, <code>tekton_service_account</code>, <code>tekton_timeout</code>, <code>tekton_task_run_template</code>.</li>
-  <li>Adds <code>mergeTektonPreset</code>/<code>ResolveTektonPresets</code> mirroring the existing PodSpec preset logic, with label matching and duplicate-field conflict detection.</li>
-  <li>Wires resolution into <code>defaultPresubmits</code>/<code>defaultPostsubmits</code>/<code>DefaultPeriodic</code> for jobs with a <code>PipelineRunSpec</code>.</li>
-  <li>Adds deepcopy support for the new <code>Preset</code> fields.</li>
-  <li>Adds unit tests and an integration test verifying end-to-end propagation into created <code>PipelineRun</code>s.</li>
-</ul>
-
+<li>Extends the existing <code>Preset</code> mechanism (currently PodSpec-only) with Tekton <code>PipelineRunSpec</code> fields: <code>tekton_params</code>, <code>tekton_workspaces</code>, <code>tekton_service_account</code>, <code>tekton_timeout</code>, <code>tekton_task_run_template</code>.
+</li>
+<li>Adds <code>mergeTektonPreset</code>/<code>ResolveTektonPresets</code> (<code>pkg/config/jobs.go</code>, <code>pkg/config/config.go</code>) mirroring the existing <code>mergePreset</code>/<code>resolvePresets</code> PodSpec logic, with label matching and duplicate-field conflict detection.
+</li>
+<li>Wires resolution into <code>defaultPresubmits</code>/<code>defaultPostsubmits</code>/<code>DefaultPeriodic</code> for jobs that <code>HasPipelineRunSpec()</code>.
+</li>
+<li>Adds deepcopy support for the new <code>Preset</code> fields (<code>zz_generated.deepcopy.go</code>).
+</li>
+<li>Adds unit tests (<code>config_test.go</code>, <code>jobs_test_tekton_presets.go</code>) and an integration test (<code>pipeline_preset_test.go</code>) verifying end-to-end propagation into created <code>PipelineRun</code>s.
+</li></ul>
+<p>Since previous review:</p>
+<ul>
+<li>The author force-pushed the single Tekton preset commit onto newer <code>main</code> on 2026-09-25. Comparing the two feature commits with <code>git range-diff</code> shows no Tekton preset code changes; it only drops an unrelated two-line shell-snippet edit from <code>pkg/entrypoint/run_test.go</code>.
+</li>
+<li>The new base accounts for a large old-to-new tree diff (306 files, +20,256/-5,143 lines). The feature commit still contains the misnamed test file and the unrelated CRD regeneration.
+</li>
+<li>There were no new inline comments or submitted reviews. The triage bot applied <code>lifecycle/rotten</code>, and the author commented <code>/remove-lifecycle stale</code>; the PR remains open.
+</li></ul>
 <h2>Findings</h2>
-
-<h3 style="border:none;margin-top:1.5rem;">Blocking</h3>
-
-<div class="finding">
-  <h3><span class="sev blocking">Blocking</span>Unit test file is misnamed and never runs</h3>
-  <div class="loc"><code>pkg/config/jobs_test_tekton_presets.go</code></div>
-  <p class="convergence">Confirmed independently by all three reviewer perspectives (code quality, maintainability, deployment risk).</p>
-  <p>File declares <code>package config</code>, imports <code>"testing"</code>, and defines <code>TestResolveTektonPresets</code>/<code>TestMergeTektonPreset</code> (287 lines, 15 test cases) — but the filename ends in <code>_presets.go</code>, not <code>_test.go</code>. Go's toolchain only excludes files ending exactly in <code>_test.go</code> from normal builds, so this file compiles into every production binary that imports <code>pkg/config</code> (hook, deck, sinker, prow-controller-manager, etc.), permanently pulling <code>testing</code> into production, and <code>go test ./pkg/config/...</code> never discovers or runs these tests. CI reports green while this unit-test coverage silently never executes.</p>
-  <pre>// pkg/config/jobs_test_tekton_presets.go — WRONG suffix, should be *_test.go
+<h3><span class="tag c-red">blocking</span>Unit test file is misnamed and never runs</h3>
+<ul>
+<li>where: <code>pkg/config/jobs_test_tekton_presets.go</code>
+</li>
+<li>concern: File declares <code>package config</code>, imports <code>&quot;testing&quot;</code>, and defines <code>TestResolveTektonPresets</code>/<code>TestMergeTektonPreset</code> (287 lines, 15 test cases), but the filename ends in <code>_presets.go</code>, not <code>_test.go</code>. Go's toolchain only excludes files ending exactly in <code>_test.go</code> from normal builds, so this file compiles into every production binary that imports <code>pkg/config</code> (hook, deck, sinker, prow-controller-manager, etc.), permanently pulling <code>testing</code> into production, AND <code>go test ./pkg/config/...</code> never discovers or runs these tests. CI reports green while this dedicated unit-test coverage for the merge logic silently never executes — confirmed independently by three separate review passes. Fix: rename to <code>jobs_tekton_presets_test.go</code> (or fold into <code>jobs_test.go</code>).
+</li>
+<li>excerpt:<pre><code>// pkg/config/jobs_test_tekton_presets.go — WRONG suffix, should be *_test.go
 package config
 
 import (
-    "testing"
-    pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+    &quot;testing&quot;
+    pipelinev1 &quot;github.com/tektoncd/pipeline/pkg/apis/pipeline/v1&quot;
     ...
 )
 
 func TestResolveTektonPresets(t *testing.T) { ... }
-func TestMergeTektonPreset(t *testing.T) { ... }</pre>
-  <p><strong>Fix:</strong> rename to <code>jobs_tekton_presets_test.go</code> (or fold into <code>jobs_test.go</code>) and confirm <code>go test ./pkg/config/...</code> picks it up.</p>
-</div>
-
-<div class="finding">
-  <h3><span class="sev blocking">Blocking</span>PR diff is dominated by unrelated/stale churn</h3>
-  <div class="loc"><code>test/integration/config/prow/cluster/50_crd.yaml</code> (+9303/-52053), plus <code>pkg/config/jobs.go</code>, <code>pkg/config/config.go</code>, <code>test/integration/test/deck_test.go</code>, <code>test/integration/test/sinker_test.go</code>, <code>pkg/entrypoint/run_test.go</code></div>
-  <p>The CRD file diff is purely a <code>controller-gen</code> version bump (<span>v0.6.3-0.20210827222652-7b3a8699fa04</span> → <span>v0.17.3</span>), unrelated to Tekton presets. Additional unrelated changes: <code>slices.Contains</code>/<code>slices.ContainsFunc</code>/<code>maps.Copy</code> modernizations, <code>Job</code>/<code>Type</code> field additions to unrelated <code>ProwJobSpec</code> fixtures, dropped <code>tt := tt</code> idioms, and an unrelated shell-snippet change in <code>run_test.go</code>. Indicates the branch is stale relative to <code>main</code> and needs a rebase — likely to merge-conflict on the generated CRD file as-is.</p>
-  <pre>-    controller-gen.kubebuilder.io/version: v0.6.3-0.20210827222652-7b3a8699fa04
+func TestMergeTektonPreset(t *testing.T) { ... }</code></pre>
+</li></ul>
+<h3><span class="tag c-red">blocking</span>PR diff is dominated by unrelated churn</h3>
+<ul>
+<li>where: <code>test/integration/config/prow/cluster/50_crd.yaml</code> (+9303/-52053 in the current feature commit), plus scattered unrelated diffs in <code>pkg/config/jobs.go</code>, <code>pkg/config/config.go</code>, <code>test/integration/test/deck_test.go</code>, <code>test/integration/test/sinker_test.go</code>
+</li>
+<li>concern: The CRD file diff is purely a <code>controller-gen</code> version bump (<code>v0.6.3-0.20210827222652-7b3a8699fa04</code> → <code>v0.17.3</code>), unrelated to Tekton presets. Additional unrelated changes appear: <code>slices.Contains</code>/<code>slices.ContainsFunc</code>/<code>maps.Copy</code> modernizations, <code>Job</code>/<code>Type</code> field additions to unrelated <code>ProwJobSpec</code> fixtures, and dropped <code>tt := tt</code> idioms. The 2026-09-25 rebase removed the unrelated <code>pkg/entrypoint/run_test.go</code> shell-snippet change but left the CRD regeneration and other unrelated changes in the feature commit, making the actual feature diff hard to review and bisect independently.
+</li>
+<li>excerpt:<pre><code>-    controller-gen.kubebuilder.io/version: v0.6.3-0.20210827222652-7b3a8699fa04
 -  creationTimestamp: null
-+    controller-gen.kubebuilder.io/version: v0.17.3</pre>
-</div>
-
-<h3 style="border:none;margin-top:1.5rem;">Should fix</h3>
-
-<div class="finding">
-  <h3><span class="sev should-fix">Should fix</span>Timeout conflict check misses explicit zero-duration timeouts</h3>
-  <div class="loc"><code>pkg/config/jobs.go:151-159</code> (<code>mergeTektonPreset</code>)</div>
-  <p>Conflict is only flagged when <code>Timeouts.Pipeline != nil &amp;&amp; Duration != 0</code>. A job that explicitly sets <code>Duration: 0</code> (meaning "no timeout") would have a preset's timeout silently applied instead of erroring, unlike every other field in this function.</p>
-  <pre>if pipelineRunSpec.Timeouts.Pipeline != nil && pipelineRunSpec.Timeouts.Pipeline.Duration != 0 {
-    return fmt.Errorf("timeout conflict: both preset and spec define timeout")
++    controller-gen.kubebuilder.io/version: v0.17.3</code></pre>
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>Timeout conflict check misses explicit zero-duration timeouts</h3>
+<ul>
+<li>where: <code>pkg/config/jobs.go:151-159</code> (<code>mergeTektonPreset</code>)
+</li>
+<li>concern: Conflict is only flagged when <code>Timeouts.Pipeline != nil &amp;&amp; Duration != 0</code>. A job that explicitly sets <code>Duration: 0</code> (meaning "no timeout") would have a preset's timeout silently applied instead of erroring, unlike every other field in this function (e.g. service account, which correctly distinguishes "unset" via empty string vs. any explicit value).
+</li>
+<li>excerpt:<pre><code>if pipelineRunSpec.Timeouts.Pipeline != nil &amp;&amp; pipelineRunSpec.Timeouts.Pipeline.Duration != 0 {
+    return fmt.Errorf(&quot;timeout conflict: both preset and spec define timeout&quot;)
 }
-pipelineRunSpec.Timeouts.Pipeline = preset.TektonTimeout.DeepCopy()</pre>
-</div>
-
-<div class="finding">
-  <h3><span class="sev should-fix">Should fix</span>Discarded error from GetPipelineRunSpec(), triplicated call site</h3>
-  <div class="loc"><code>pkg/config/config.go:2108-2114, 2133-2139, 2153-2160</code></div>
-  <p class="convergence">Also flagged by all three reviewer perspectives.</p>
-  <p><code>pipelineRunSpec, _ := presubmits[idx].GetPipelineRunSpec()</code> discards the error at three near-identical call sites. Currently safe due to the preceding <code>HasPipelineRunSpec()</code> guard, but the invariant is implicit — if the two methods diverge this becomes a silent no-op. The triplication also means a fix here needs three coordinated edits; a shared helper would remove both problems.</p>
-  <pre>if presubmits[idx].HasPipelineRunSpec() {
+pipelineRunSpec.Timeouts.Pipeline = preset.TektonTimeout.DeepCopy()</code></pre>
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>Discarded error from GetPipelineRunSpec(), triplicated call site</h3>
+<ul>
+<li>where: <code>pkg/config/config.go:2108-2114, 2133-2139, 2153-2160</code>
+</li>
+<li>concern: <code>pipelineRunSpec, _ := presubmits[idx].GetPipelineRunSpec()</code> discards the error at three near-identical call sites (presubmits, postsubmits, periodics). Currently safe because each is gated by a preceding <code>HasPipelineRunSpec()</code> check with matching logic, but the invariant is implicit — if the two methods ever diverge, this becomes a silent no-op (nil spec passed through) rather than a surfaced bug. The triplication also means any future fix here needs three coordinated edits; a shared helper (e.g. <code>resolveTektonPresetsForJob(jb JobBase, ...)</code>) would remove both problems at once.
+</li>
+<li>excerpt:<pre><code>if presubmits[idx].HasPipelineRunSpec() {
     pipelineRunSpec, _ := presubmits[idx].GetPipelineRunSpec()
-    if err := ResolveTektonPresets(ps.Name, ps.Labels, pipelineRunSpec, append(c.Presets, additionalPresets...)); err != nil {</pre>
-</div>
-
-<h3 style="border:none;margin-top:1.5rem;">Nits</h3>
-
-<div class="finding">
-  <h3><span class="sev nit">Nit</span>mergeTektonPreset conflict semantics undocumented and asymmetric</h3>
-  <div class="loc"><code>pkg/config/jobs.go:112-170</code></div>
-  <p>Service-account/timeout/pod-template use "skip if already equal, error only if different" semantics, while params/workspaces always hard-error on any duplicate. Nothing comments on why this split exists — a future contributor adding a new Tekton field has no documented rule to follow.</p>
-</div>
-
-<div class="finding">
-  <h3><span class="sev nit">Nit</span>ResolveTektonPresets exported without an accurate reason given</h3>
-  <div class="loc"><code>pkg/config/config.go:2980-2982</code></div>
-  <p>Doc comment says it's "exported to allow testing," but in-package tests could call <code>mergeTektonPreset</code> directly. The real reason is that <code>test/integration/test/pipeline_preset_test.go</code> calls <code>config.ResolveTektonPresets</code> from a different package — the comment should say that.</p>
-  <pre>// ResolveTektonPresets resolves and applies Tekton presets to a PipelineRunSpec based on label matching.
+    if err := ResolveTektonPresets(ps.Name, ps.Labels, pipelineRunSpec, append(c.Presets, additionalPresets...)); err != nil {</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">nit</span>mergeTektonPreset conflict semantics undocumented and asymmetric</h3>
+<ul>
+<li>where: <code>pkg/config/jobs.go:112-170</code> (<code>mergeTektonPreset</code>)
+</li>
+<li>concern: Service-account/timeout/pod-template use "skip if already equal, error only if different" merge semantics, while params/workspaces always hard-error on any duplicate (even identical values) — mirroring <code>mergePreset</code>'s pod-spec behavior for slices but diverging for scalars. Nothing comments on why this split exists, so a future contributor adding a new Tekton preset field has no documented rule to follow.
+</li></ul>
+<h3><span class="tag c-gray">nit</span>ResolveTektonPresets exported without an accurate reason given</h3>
+<ul>
+<li>where: <code>pkg/config/config.go:2980-2982</code>
+</li>
+<li>concern: Doc comment says it's "exported to allow testing," but the in-package tests could call <code>mergeTektonPreset</code> directly (as <code>TestMergeTektonPreset</code> already does). The actual reason for exporting is that <code>test/integration/test/pipeline_preset_test.go</code> calls <code>config.ResolveTektonPresets</code> from a different package — the comment should say that instead.
+</li>
+<li>excerpt:<pre><code>// ResolveTektonPresets resolves and applies Tekton presets to a PipelineRunSpec based on label matching.
 // This function is exported to allow testing of preset application logic.
-func ResolveTektonPresets(name string, labels map[string]string, pipelineRunSpec *pipelinev1.PipelineRunSpec, presets []Preset) error {</pre>
-</div>
-
-<div class="finding">
-  <h3><span class="sev nit">Nit</span>append(c.Presets, additionalPresets...) computed twice per job</h3>
-  <div class="loc"><code>pkg/config/config.go:2105-2111, 2130-2136</code></div>
-  <p>Evaluated once for <code>resolvePresets</code> and again for <code>ResolveTektonPresets</code>, each allocating a new backing slice with identical contents. Compute once per iteration and reuse.</p>
-</div>
-
-<h3 style="border:none;margin-top:1.5rem;">Questions</h3>
-
-<div class="finding">
-  <h3><span class="sev question">Question</span>TektonTaskRunTemplate.PodTemplate merge path untested</h3>
-  <div class="loc"><code>pkg/config/jobs.go:162-167</code></div>
-  <p>Neither test suite exercises the <code>PodTemplate</code> merge/conflict branch — only service account, params, workspaces, and timeout are covered. Intentional gap, or worth adding?</p>
-</div>
-
-<h2>Things I checked and was fine with</h2>
+func ResolveTektonPresets(name string, labels map[string]string, pipelineRunSpec *pipelinev1.PipelineRunSpec, presets []Preset) error {</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">nit</span>append(c.Presets, additionalPresets...) computed twice per job</h3>
 <ul>
-  <li><code>mergeTektonPreset</code> label-matching, duplicate-param/workspace/service-account conflict detection — correct, mirrors <code>mergePreset</code>.</li>
-  <li>Deepcopy additions for new <code>Preset</code> fields — correctly generated.</li>
-  <li>Unit test <em>design</em> (label match/mismatch, duplicate detection, multi-preset, default label-less preset) is good in principle — undermined by the file-naming bug above.</li>
-  <li>Integration test (correctly named <code>*_test.go</code>) verifies preset fields propagate into created <code>PipelineRun</code> objects, including merging preset params with job-specific params.</li>
-  <li>Config compatibility: all new <code>Preset</code> fields are <code>omitempty</code>; existing presets.yaml files parse and behave unchanged; new merge path only fires for jobs that already opt into <code>PipelineRunSpec</code>.</li>
-  <li>No security concerns — merges already-trusted Prow config data, same trust boundary as existing PodSpec presets.</li>
-</ul>
-
-<h2>Open questions for the author</h2>
+<li>where: <code>pkg/config/config.go:2105-2111, 2130-2136</code>
+</li>
+<li>concern: In the presubmit/postsubmit defaulting loops, <code>append(c.Presets, additionalPresets...)</code> is now evaluated once for <code>resolvePresets</code> and again for <code>ResolveTektonPresets</code>, each allocating a new backing slice with identical contents. Compute once per iteration and reuse.
+</li></ul>
+<h3><span class="tag c-blue">question</span>TektonTaskRunTemplate.PodTemplate merge path untested</h3>
 <ul>
-  <li>Can the misnamed test file be renamed to <code>jobs_tekton_presets_test.go</code> and confirmed to run under <code>go test ./pkg/config/...</code> before merge?</li>
-  <li>Can this branch be rebased onto current <code>main</code> to drop the unrelated CRD regen and modernization/test-fixture changes?</li>
-  <li>Is the zero-duration timeout case (explicit "no timeout") intentionally excluded from conflict detection, or an oversight?</li>
-  <li>Is the scalar-vs-slice conflict-semantics split in <code>mergeTektonPreset</code> intentional? Worth a comment either way.</li>
-</ul>
-
-</body>
-</html>
+<li>where: <code>pkg/config/jobs.go:162-167</code>
+</li>
+<li>concern: Neither <code>config_test.go</code>'s <code>TestTektonPresetIntegration</code> nor <code>jobs_test_tekton_presets.go</code>'s table tests exercise the <code>PodTemplate</code> merge/conflict branch — only service account, params, workspaces, and timeout are covered.
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li><code>mergeTektonPreset</code> label-matching, duplicate-param/workspace/service-account conflict detection — correct and mirrors <code>mergePreset</code> pattern.
+</li>
+<li>Deepcopy additions for new <code>Preset</code> fields — correctly generated, covers <code>TektonParams</code>, <code>TektonWorkspaces</code>, <code>TektonTimeout</code>, <code>TektonTaskRunTemplate</code>.
+</li>
+<li>Unit test coverage design (label match/mismatch, duplicate detection, multi-preset application, default label-less preset) is good in principle — undermined by the file-naming bug above.
+</li>
+<li>Integration test (<code>pipeline_preset_test.go</code>, correctly named <code>*_test.go</code>): verifies preset fields propagate into created <code>PipelineRun</code> objects, including merging preset params with job-specific params.
+</li>
+<li>Config compatibility: all new <code>Preset</code> fields are <code>omitempty</code> additions; existing presets.yaml files parse and behave unchanged; new merge path only fires for jobs that already opt into <code>PipelineRunSpec</code>.
+</li>
+<li>No security concerns — merges already-trusted Prow config data into pipeline specs, same trust boundary as existing PodSpec presets.
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>Can the misnamed test file be renamed to <code>jobs_tekton_presets_test.go</code> and confirmed to run under <code>go test ./pkg/config/...</code> before merge?
+</li>
+<li>Can the remaining unrelated CRD regeneration and modernization/test-fixture changes be removed from the feature commit?
+</li>
+<li>Is the zero-duration timeout case (explicit "no timeout") intentionally excluded from conflict detection, or an oversight?
+</li>
+<li>Is the scalar-vs-slice conflict-semantics split in <code>mergeTektonPreset</code> intentional? Worth a comment either way.
+</li></ul>
+</main></body></html>

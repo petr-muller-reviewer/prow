@@ -1,11 +1,34 @@
 ---
 pr: kubernetes-sigs/prow#679
 title: "Add Tekton preset support for PipelineRun jobs"
-head_sha: 0c8fa0386c71b5b4bec7de564f648c99bc1e7589
+head_sha: 1883b499c3ebe9b7a12b68694473e2a35f546ae4
 base: main
-reviewed_at: 2026-07-26T23:44:21Z
+reviewed_at: 2026-09-27T13:50:16Z
 verdict: request-changes
+gate:
+  decision: do-not-merge
+  gated_at: 2026-09-27T13:51:16Z
+  gated_head_sha: 1883b499c3ebe9b7a12b68694473e2a35f546ae4
+  reviewed_head_sha: 1883b499c3ebe9b7a12b68694473e2a35f546ae4
+refresh_log:
+  - old_sha: 0c8fa0386c71b5b4bec7de564f648c99bc1e7589
+    new_sha: 1883b499c3ebe9b7a12b68694473e2a35f546ae4
+    summary: "Force-push rebased the same Tekton preset patch onto newer main; only an unrelated entrypoint test hunk was dropped."
 ---
+
+## Gate
+
+**Decision: do-not-merge.** The reviewed head is still the current PR head, and both blocking findings remain in the single feature commit. The Tekton preset unit tests still compile as ordinary production Go code and are never discovered as tests. The feature commit also retains a large, unrelated regeneration of the integration ProwJob CRD. No GitHub reviewer submitted substantive feedback that changes these dispositions.
+
+Gating findings:
+- **Not addressed; blocks merge — `REVIEW.md`, “Unit test file is misnamed and never runs”:** `pkg/config/jobs_test_tekton_presets.go:17-27` still imports `testing` and declares `TestResolveTektonPresets` in a file that does not end in `_test.go`; `TestMergeTektonPreset` is in the same file. Rename the file to `jobs_tekton_presets_test.go` and confirm the tests are discovered.
+- **Not addressed; blocks merge — `REVIEW.md`, “PR diff is dominated by unrelated churn”:** `test/integration/config/prow/cluster/50_crd.yaml:8` still replaces the generator version and changes 9,303 lines while deleting 52,053. Remove the unrelated CRD regeneration and remaining unrelated edits from this feature commit.
+- **Not addressed; resolve before merge — `REVIEW.md`, “Timeout conflict check misses explicit zero-duration timeouts”:** `pkg/config/jobs.go:151-158` still accepts an existing non-nil zero timeout and overwrites it with the preset. Treat any non-nil `Timeouts.Pipeline` as explicitly set, or document and test a different intended rule.
+- **Not addressed; resolve before merge — `REVIEW.md`, “Discarded error from GetPipelineRunSpec(), triplicated call site”:** `pkg/config/config.go:2113-2115`, `2138-2140`, and `2160-2162` still discard the error. Handle it at all three call sites or centralize the resolution path.
+
+Independent merge risk:
+- **Configuration and behavior:** `pkg/config/jobs.go:55-60` adds optional preset fields; existing configs without these fields retain their prior behavior. Where operators opt into Tekton presets, `pkg/config/jobs.go:120-166` can reject jobs on duplicate params, workspaces, or templates, and the zero-timeout case can silently replace an explicit no-timeout setting. The blast radius is Tekton jobs matching those preset labels. Correct the timeout handling before release.
+- **API and CRD:** The exported `Preset` fields and `ResolveTektonPresets` function are additive. The large CRD change is confined to `test/integration/config/prow/cluster/50_crd.yaml`; the deployed CRD under `config/prow/cluster/prowjob-crd/` is untouched, so this PR does not directly change existing cluster schemas.
 
 ## What this PR does
 
@@ -14,6 +37,11 @@ verdict: request-changes
 - Wires resolution into `defaultPresubmits`/`defaultPostsubmits`/`DefaultPeriodic` for jobs that `HasPipelineRunSpec()`.
 - Adds deepcopy support for the new `Preset` fields (`zz_generated.deepcopy.go`).
 - Adds unit tests (`config_test.go`, `jobs_test_tekton_presets.go`) and an integration test (`pipeline_preset_test.go`) verifying end-to-end propagation into created `PipelineRun`s.
+
+Since previous review:
+- The author force-pushed the single Tekton preset commit onto newer `main` on 2026-09-25. Comparing the two feature commits with `git range-diff` shows no Tekton preset code changes; it only drops an unrelated two-line shell-snippet edit from `pkg/entrypoint/run_test.go`.
+- The new base accounts for a large old-to-new tree diff (306 files, +20,256/-5,143 lines). The feature commit still contains the misnamed test file and the unrelated CRD regeneration.
+- There were no new inline comments or submitted reviews. The triage bot applied `lifecycle/rotten`, and the author commented `/remove-lifecycle stale`; the PR remains open.
 
 ## Findings
 
@@ -33,9 +61,9 @@ verdict: request-changes
     func TestResolveTektonPresets(t *testing.T) { ... }
     func TestMergeTektonPreset(t *testing.T) { ... }
 
-### [blocking] PR diff is dominated by unrelated/stale churn
-- where: `test/integration/config/prow/cluster/50_crd.yaml` (+9303/-52053), plus scattered unrelated diffs in `pkg/config/jobs.go`, `pkg/config/config.go`, `test/integration/test/deck_test.go`, `test/integration/test/sinker_test.go`, `pkg/entrypoint/run_test.go`
-- concern: The CRD file diff is purely a `controller-gen` version bump (`v0.6.3-0.20210827222652-7b3a8699fa04` → `v0.17.3`), unrelated to Tekton presets. Additional unrelated changes appear: `slices.Contains`/`slices.ContainsFunc`/`maps.Copy` modernizations, `Job`/`Type` field additions to unrelated `ProwJobSpec` fixtures, dropped `tt := tt` idioms, and an unrelated shell-snippet change in `run_test.go`. Indicates the branch is stale relative to `main` and needs a rebase — likely to merge-conflict on the generated CRD file as-is, and makes the actual feature diff hard to review/bisect independently.
+### [blocking] PR diff is dominated by unrelated churn
+- where: `test/integration/config/prow/cluster/50_crd.yaml` (+9303/-52053 in the current feature commit), plus scattered unrelated diffs in `pkg/config/jobs.go`, `pkg/config/config.go`, `test/integration/test/deck_test.go`, `test/integration/test/sinker_test.go`
+- concern: The CRD file diff is purely a `controller-gen` version bump (`v0.6.3-0.20210827222652-7b3a8699fa04` → `v0.17.3`), unrelated to Tekton presets. Additional unrelated changes appear: `slices.Contains`/`slices.ContainsFunc`/`maps.Copy` modernizations, `Job`/`Type` field additions to unrelated `ProwJobSpec` fixtures, and dropped `tt := tt` idioms. The 2026-09-25 rebase removed the unrelated `pkg/entrypoint/run_test.go` shell-snippet change but left the CRD regeneration and other unrelated changes in the feature commit, making the actual feature diff hard to review and bisect independently.
 - excerpt: |
     -    controller-gen.kubebuilder.io/version: v0.6.3-0.20210827222652-7b3a8699fa04
     -  creationTimestamp: null
@@ -88,6 +116,6 @@ verdict: request-changes
 
 ## Open questions
 - Can the misnamed test file be renamed to `jobs_tekton_presets_test.go` and confirmed to run under `go test ./pkg/config/...` before merge?
-- Can this branch be rebased onto current `main` to drop the unrelated CRD regen and modernization/test-fixture changes?
+- Can the remaining unrelated CRD regeneration and modernization/test-fixture changes be removed from the feature commit?
 - Is the zero-duration timeout case (explicit "no timeout") intentionally excluded from conflict detection, or an oversight?
 - Is the scalar-vs-slice conflict-semantics split in `mergeTektonPreset` intentional? Worth a comment either way.

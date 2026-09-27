@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#972</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>fix(approve): respect lgtm_acts_as_approve in review bodies</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/972">kubernetes-sigs/prow#972</a> · base <code>main</code> · head_sha <code>f8ded8df3c2b</code> · reviewed_at <code>2026-09-27T14:25:29Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span><span class="badge c-green">gate: merge</span></div>
+<details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#972
+title: &quot;fix(approve): respect lgtm_acts_as_approve in review bodies&quot;
+head_sha: f8ded8df3c2be3e651fba2a667ae971c5858b1ae
+base: main
+reviewed_at: 2026-09-27T14:25:29Z
+verdict: approve
+gate:
+  decision: merge
+  gated_at: 2026-09-27T14:26:04Z
+  gated_head_sha: f8ded8df3c2be3e651fba2a667ae971c5858b1ae
+  reviewed_head_sha: f8ded8df3c2be3e651fba2a667ae971c5858b1ae</code></pre></details>
+<h2>Gate</h2>
+<p><strong>Decision: merge.</strong> The PR head is unchanged since the saved review. There are no blocking or should-fix findings in <code>REVIEW.md</code>, and no substantive human review feedback on the PR. The two saved nits remain suggestions; neither affects the safety of this approval fix.</p>
+<p><strong>Gating list:</strong> None.</p>
+<p><strong>Merge risk:</strong> The change affects approval accounting for existing PRs with <code>/lgtm</code> in a review body. With <code>lgtm_acts_as_approve: false</code> (including its default), such a command no longer grants approval, so a PR approved only through that path may lose its <code>approved</code> label on reconciliation. With the option enabled, a considered changes requested review now takes precedence over <code>/lgtm</code> in the same body. Both changes are the documented intent of the PR. There is no exported API or configuration schema change, no migration, and no new operational dependency. Consider noting the possible label correction in release notes.</p>
+<h2>Verdict</h2>
+<p>Approve with suggestions.</p>
+<p>The implementation matches the PR's stated behavior and has no blocking correctness or deployment finding. The focused tests and <code>go vet</code> pass. Existing PRs whose only approval came from a review-body <code>/lgtm</code> may lose their <code>approved</code> label on reconciliation; a release note would help operators explain the corrected status.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Passes <code>lgtm_acts_as_approve</code> into the code that applies approval commands from comments and reviews.
+</li>
+<li>Skips <code>/lgtm</code> commands, including cancellations, when the option is disabled.
+</li>
+<li>Prevents <code>/lgtm</code> from reversing a changes requested review when review state is considered.
+</li>
+<li>Adds cases covering the reproduced false approval, approval credit, and the review-state configuration boundary.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-gray">nit</span>Qualify the comment about changes requested reviews</h3>
+<ul>
+<li>where: <code>pkg/plugins/approve/approve.go:597-598</code>
+</li>
+<li>excerpt:<pre><code>// considered a cancel. The /lgtm command is only considered if lgtmActsAsApprove is set,
+// and never overrides a requested changes review.</code></pre>
+</li>
+<li>concern: The new guard applies only when <code>reviewActsAsApprove</code> is true. When review state is ignored, the new test expects <code>/lgtm</code> in a changes requested review to approve. Qualify the comment to describe that configuration boundary.
+</li></ul>
+<h3><span class="tag c-gray">nit</span>Cover disabled <code>/lgtm cancel</code> in a review body</h3>
+<ul>
+<li>where: <code>pkg/plugins/approve/approve_test.go:1123-1130</code>
+</li>
+<li>excerpt:<pre><code>name:                &quot;lgtm command does not supersede simultaneous changes requested review when lgtm does not act as approve&quot;,
+reviews:             []github.Review{newTestReview(&quot;Alice&quot;, &quot;otherwise lgtm.\n/lgtm\n/ok-to-test\n/triage accepted&quot;, github.ReviewStateChangesRequested)},
+lgtmActsAsApprove:   false,</code></pre>
+</li>
+<li>concern: Code Quality and Maintainability both suggested an explicit <code>/lgtm cancel</code> case. The new guard skips it, but the added tests exercise only <code>/lgtm</code>; a cancellation case would protect the less obvious half of the stated behavior.
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>The PR behavior and added test cases match the stated reproduction and expected outcomes.
+</li>
+<li>An explicit <code>/approve</code> still overrides a simultaneous changes requested review; the existing test covers this.
+</li>
+<li>Existing configuration remains valid; the change adds no API calls, dependencies, permissions, or migration requirement.
+</li>
+<li><code>go test ./pkg/plugins/approve/...</code> passed.
+</li>
+<li><code>go vet ./pkg/plugins/approve/...</code> passed.
+</li></ul>
+<h2>Open questions</h2>
+<p>None.</p>
+</main></body></html>

@@ -54,3 +54,21 @@ Since previous review:
 ## Open questions
 
 - Could the author link the REST–GraphQL comparison described at `pkg/github/client.go:4355-4357`, or document a repeatable check covering inherited and overlapping access? This is a suggestion, not a merge condition.
+
+## Followups
+
+### Fail an org dump when direct collaborators cannot be listed
+
+- category: safety
+- necessity: should — a partial dump can become a collaborator-removal plan if applied later.
+- where: `cmd/peribolos/main.go:391-397`, `cmd/peribolos/main_test.go` (`fakeDumpClient` and dump tests).
+- why followup: The dump already warned and continued on a collaborator-list error before this PR. PR #961 moved that read to REST, making it a useful time to close the existing failure path; it did not block the merge.
+- prompt:
+
+```text
+In kubernetes-sigs/prow, following PR #961, "`peribolos`: use REST for direct collaborators to avoid GraphQL resource limits" (merged as a2505570f35fbde3ee46832d2253aa59fe803e1e), make peribolos fail an org dump when it cannot list a repository's direct collaborators.
+
+In cmd/peribolos/main.go, dumpOrgConfig currently logs a warning for ListDirectCollaboratorsWithPermissions errors and still returns a config with that repository's collaborators omitted. A later --fix-collaborators run using the dumped config can remove those direct collaborators. Return a contextual error naming the organization and repository instead, so --dump and --dump-full do not print incomplete YAML. In cmd/peribolos/main_test.go, extend the dump fake to inject a collaborator-list failure and add a focused test that checks the error and absence of a partial config. Keep successful dumps, empty collaborator sets, and configureCollaborators behavior unchanged.
+
+Acceptance criteria: a collaborator-list failure causes dumpOrgConfig to return an error with the affected org/repo and no config; both dump modes exit before emitting YAML through their existing error path; a successful empty collaborator list remains valid; the focused peribolos tests pass. Scope guard: do not change the REST client, collaborator reconciliation, or unrelated dump error handling.
+```

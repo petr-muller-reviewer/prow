@@ -5,9 +5,27 @@ head_sha: 4dc604d56097e0566f9138475e12abd463284586
 base: main
 reviewed_at: 2026-09-27T14:19:33Z
 verdict: request-changes
+gate:
+  decision: do-not-merge
+  gated_at: 2026-09-27T14:25:56Z
+  gated_head_sha: 4dc604d56097e0566f9138475e12abd463284586
+  reviewed_head_sha: 4dc604d56097e0566f9138475e12abd463284586
 ---
 
 # Review
+
+## Gate
+
+**Decision: do-not-merge.** The PR head is unchanged since this review, and its blocking finding remains. The custom-endpoint `PutObject` still carries `aws-chunked`, so the change does not resolve the reported `501 NotImplemented` failure.
+
+### Gating items
+
+- **Not addressed — blocking (`REVIEW.md`, `pkg/io/providers/aws.go:79-80`):** The client is set to `when_required`, but `getS3Bucket` still opens Go CDK with nil options at `pkg/io/providers/aws.go:49`. The pinned transfer manager selects CRC32 for uploads, and the new tests at `pkg/io/providers/aws_test.go:123-169` do not send a request. **Disposition:** blocks merge until an actual upload omits the optional checksum trailer and a request-level test covers it.
+
+### Independent merge risk
+
+- No exported API or Prow configuration schema changes are present.
+- For every deployment using a custom S3 endpoint without `AWS_REQUEST_CHECKSUM_CALCULATION`, the client checksum default changes silently to `when_required`. This also overrides an explicit `when_supported` value from an AWS shared config profile. The intended upload behavior remains unchanged because the pinned transfer manager selects CRC32; the diff includes no release note for the broader client-setting change.
 
 ## Verdict
 

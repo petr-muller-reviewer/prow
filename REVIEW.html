@@ -32,7 +32,30 @@ details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-si
 </style></head><body><main>
 <h1>Avoid aws-chunked 501 error on S3-compatible stores</h1>
 <div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/971">kubernetes-sigs/prow#971</a> · base <code>main</code> · head_sha <code>4dc604d56097</code> · reviewed_at <code>2026-09-27T14:19:33Z</code></div>
-<div class="badges"><span class="badge c-red">verdict: request-changes</span></div>
+<div class="badges"><span class="badge c-red">verdict: request-changes</span><span class="badge c-red">gate: do-not-merge</span></div>
+<details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#971
+title: &quot;Avoid aws-chunked 501 error on S3-compatible stores&quot;
+head_sha: 4dc604d56097e0566f9138475e12abd463284586
+base: main
+reviewed_at: 2026-09-27T14:19:33Z
+verdict: request-changes
+gate:
+  decision: do-not-merge
+  gated_at: 2026-09-27T14:25:56Z
+  gated_head_sha: 4dc604d56097e0566f9138475e12abd463284586
+  reviewed_head_sha: 4dc604d56097e0566f9138475e12abd463284586</code></pre></details>
+<h2>Gate</h2>
+<p><strong>Decision: do-not-merge.</strong> The PR head is unchanged since this review, and its blocking finding remains. The custom-endpoint <code>PutObject</code> still carries <code>aws-chunked</code>, so the change does not resolve the reported <code>501 NotImplemented</code> failure.</p>
+<h3>Gating items</h3>
+<ul>
+<li><strong>Not addressed — blocking (<code>REVIEW.md</code>, <code>pkg/io/providers/aws.go:79-80</code>):</strong> The client is set to <code>when_required</code>, but <code>getS3Bucket</code> still opens Go CDK with nil options at <code>pkg/io/providers/aws.go:49</code>. The pinned transfer manager selects CRC32 for uploads, and the new tests at <code>pkg/io/providers/aws_test.go:123-169</code> do not send a request. <strong>Disposition:</strong> blocks merge until an actual upload omits the optional checksum trailer and a request-level test covers it.
+</li></ul>
+<h3>Independent merge risk</h3>
+<ul>
+<li>No exported API or Prow configuration schema changes are present.
+</li>
+<li>For every deployment using a custom S3 endpoint without <code>AWS_REQUEST_CHECKSUM_CALCULATION</code>, the client checksum default changes silently to <code>when_required</code>. This also overrides an explicit <code>when_supported</code> value from an AWS shared config profile. The intended upload behavior remains unchanged because the pinned transfer manager selects CRC32; the diff includes no release note for the broader client-setting change.
+</li></ul>
 <h2>Verdict</h2>
 <p>Request changes: the upload still sends <code>aws-chunked</code> to custom S3 endpoints.</p>
 <p>The new setting is present on the S3 client, but the Go CDK upload path uses a transfer manager that explicitly selects CRC32. A request-level reproduction through <code>providers.GetBucket</code> still produced the checksum trailer and the reported <code>501 NotImplemented</code>. The new unit tests inspect client options and therefore cannot catch this failure.</p>

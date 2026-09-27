@@ -3,13 +3,33 @@ pr: kubernetes-sigs/prow#801
 title: "Add nil guard to publisher.Commit and set GitUser in GithubOptions.GitClientFactory"
 head_sha: b8efacee1b5d98e1647b21dd97608647b8c6d301
 base: main
-reviewed_at: 2026-07-30T12:55:12Z
+reviewed_at: 2026-09-27T14:44:58Z
 verdict: request-changes
+gate:
+  decision: do-not-merge
+  gated_at: 2026-09-27T14:45:16Z
+  gated_head_sha: b8efacee1b5d98e1647b21dd97608647b8c6d301
+  reviewed_head_sha: b8efacee1b5d98e1647b21dd97608647b8c6d301
 refresh_log:
   - from: b8efacee1b5d98e1647b21dd97608647b8c6d301
     to: b8efacee1b5d98e1647b21dd97608647b8c6d301
     summary: "No code changes. Maintainer ylink-lfs submitted CHANGES_REQUESTED review 2026-07-29T16:03:39Z with inline comment on publisher.go:56 re: error message lacking remediation guidance."
+  - from: b8efacee1b5d98e1647b21dd97608647b8c6d301
+    to: b8efacee1b5d98e1647b21dd97608647b8c6d301
+    summary: "No code changes. petr-muller commented /ok-to-test; kubernetes-prow[bot] added ok-to-test and removed needs-ok-to-test. No new reviews or inline comments."
 ---
+
+## Gate
+
+**Verdict: do-not-merge.** The head is unchanged since the saved review. The maintainer's requested change to the nil-guard error remains unaddressed, and neither new behavior has a focused test. The maintainer also raised commit-identity and validation concerns that the current code does not resolve.
+
+Gating items:
+- **Unaddressed, blocks merge — `@ylink-lfs` CHANGES_REQUESTED and `REVIEW.md`:** `pkg/git/v2/publisher.go:56` still returns `GitUser is not set` without telling callers to configure `WithGitUser` or `ClientFactoryOpts.GitUser`. Revise the error to explain the remedy, then get the reviewer's concern resolved.
+- **Unaddressed, should fix — `REVIEW.md` and `@ylink-lfs`:** `pkg/git/v2/publisher_test.go:28-133` has no nil-`info` case, so the new no-panic behavior is untested. Add a case asserting an error and no git calls.
+- **Unaddressed, should fix — `REVIEW.md`:** `pkg/flagutil/github.go:359` sets `GitUser`, but `pkg/flagutil/github_test.go` does not verify the resulting name/email for token or app authentication. Add focused coverage for the factory path.
+- **Unresolved reviewer concern — `@ylink-lfs` issue comment:** `pkg/flagutil/github.go:359` uses the authentication login as commit author and an empty email. The reviewer noted that authentication and commit identity are separate and pointed to the paired name/email validation and noreply fallback in `cmd/generic-autobumper/bumper/bumper.go:327-341`. Supply a separately configured identity or agree with the reviewer on a valid fallback before merging.
+
+Independent merge risk: the four inserted lines do not remove or change exported APIs, flags, config schemas, or defaults. The behavioral change affects callers that make commits through `GitHubOptions.GitClientFactory` with token or app authentication: commits now use `<authentication login> <>` as the author, implicitly and without a release note in this PR. That may affect author attribution or downstream checks requiring a nonempty email; its scope is commit-producing callers, not every user of the factory. The nil guard changes a panic into a returned error for callers without `GitUser`, including Gerrit paths; that is a safe failure-mode change. No repo-specific compatibility skill applies to these two Go edits.
 
 ## What this PR does
 - Fixes #800: `publisher.Commit` dereferenced `p.info` unconditionally, panicking with nil pointer when `GitUser` was unset.
@@ -17,6 +37,7 @@ refresh_log:
 - `pkg/flagutil/github.go`: `GitClientFactory` now sets `opts.GitUser` (using the same `user` login as `opts.Username`, empty email) in the token/app-auth branch, root-causing the panic for the real-world construction path.
 - No test changes included.
 - Since previous review: no code changes (head SHA unchanged). A maintainer (`ylink-lfs`, MEMBER) submitted a CHANGES_REQUESTED review with one inline comment, escalating the tone on the error-message finding below from a style nit to a blocking ask.
+- Since previous review (2026-09-27): no code changes. `petr-muller` commented `/ok-to-test`; `kubernetes-prow[bot]` added `ok-to-test` and removed `needs-ok-to-test`. No new reviews or inline comments.
 
 ## Findings
 

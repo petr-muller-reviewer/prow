@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#974</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>chore(deps): bump go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc from 1.44.0 to 1.45.0</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/974">kubernetes-sigs/prow#974</a> · base <code>main</code> · head_sha <code>164b488451f2</code> · reviewed_at <code>2026-09-27T11:53:24Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span></div>
+<h2>Verdict</h2>
+<p>Approve. This is a sufficiently-soaked, tagged, indirect dependency bump that removes a known endpoint-information disclosure in the OTLP gRPC trace exporter. The module is present only through the pipeline controller's Tekton/Knative tracing stack; Prow does not import it directly, and no project code changes accompany the update.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Updates the indirect OTLP gRPC trace exporter requirement from <code>v1.44.0</code> to <code>v1.45.0</code> in <code>go.mod</code>.
+</li>
+<li>Regenerates the corresponding module checksums in <code>go.sum</code>.
+</li>
+<li>Takes the upstream fix that stops the exporter from including its configured endpoint in internal log output.
+</li>
+<li>Does not modify Prow source, tests, configuration, or generated project artifacts.
+</li></ul>
+<h2>Findings</h2>
+<p>No findings.</p>
+<h2>Resolved</h2>
+<p>None.</p>
+<h2>Checked</h2>
+<ul>
+<li><code>go.mod:229</code> marks the bumped module as indirect; the PR changes only <code>go.mod</code> and <code>go.sum</code>.
+</li>
+<li><code>go mod why -m go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc</code> reaches it through <code>cmd/pipeline</code>, Tekton, and Knative observability tracing; repository source has no direct importer.
+</li>
+<li>The tagged <code>v1.45.0</code> release was cut on 2026-08-03, 55 days before review.
+</li>
+<li>OSV reports <code>GHSA-8wmf-6v46-5gfg</code> / <code>CVE-2026-81870</code> for <code>v1.44.0</code> and none for <code>v1.45.0</code>; <code>govulncheck</code> was unavailable in this environment.
+</li>
+<li>Upstream's relevant gRPC exporter change removes the endpoint field from <code>MarshalLog</code>, addressing the advisory without changing Prow-owned code.
+</li></ul>
+<h2>Open questions</h2>
+<p>None.</p>
+<h2>Dependency followups</h2>
+<p>No opportunities identified for <code>go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc</code> <code>v1.44.0 → v1.45.0</code>; no other module versions changed. Prow has no direct OpenTelemetry imports or calls to the affected APIs, and the exporter changes are internal fixes and generated-code updates rather than features requiring Prow changes.</p>
+</main></body></html>

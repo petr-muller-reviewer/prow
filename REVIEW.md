@@ -3,12 +3,15 @@ pr: kubernetes-sigs/prow#715
 title: "buildlog: fail gracefully on large build logs"
 head_sha: a67ffd4f8766b65bf045f825a04d8351efc42463
 base: main
-reviewed_at: 2026-05-14T11:02:10Z
+reviewed_at: 2026-09-28T20:53:50Z
 verdict: approve
 refresh_log:
   - old_sha: dccb2344479f601c873df34072271f538d24ff90
     new_sha: a67ffd4f8766b65bf045f825a04d8351efc42463
     summary: "Author addressed Size() error handling, added CSS for .log-error and .log-warning, added UI warning banner, added TestBodySizeErrorDisablesHighlight"
+  - old_sha: a67ffd4f8766b65bf045f825a04d8351efc42463
+    new_sha: a67ffd4f8766b65bf045f825a04d8351efc42463
+    summary: "No code changes; elmiko gave /lgtm, petr-muller approved, and PR merged on 2026-06-01"
 gate:
   decision: hold
   gated_at: 2026-06-01T16:36:31Z
@@ -18,11 +21,13 @@ gate:
 
 ## Gate
 
-**Verdict: hold**
+**Current PR state: merged on 2026-06-01 at 17:10:52 UTC.** The gate below records the earlier 2026-06-01 16:36:31 UTC assessment; its approval blocker was subsequently cleared.
 
-The code is correct, low-risk, and all reviewer-blocking concerns from @elmiko are addressed (he gave `/lgtm`). Two items prevent merge: (1) the PR lacks `/approve` from a `pkg/spyglass` approver — the bot says NOT APPROVED and is waiting for smg247 or michelle192837; (2) one open [should-fix] finding (error message stutter) is worth a one-line fix before approval. The stutter is cosmetic and doesn't affect correctness, so it doesn't block a maintainer who disagrees; but it's an easy win.
+**Verdict at gate time: hold**
 
-**Gating list:**
+At gate time, the code was assessed as correct and low-risk, and all reviewer-blocking concerns from @elmiko had been addressed. The PR still lacked `/approve` from a `pkg/spyglass` approver, and the cosmetic error message stutter remained open. @petr-muller approved at 16:39:03 UTC, clearing the process blocker; the code was then merged without another commit.
+
+**Gating list at 16:36:31 UTC:**
 - **Process**: Missing `/approve` from smg247 or michelle192837 (`pkg/spyglass/OWNERS`). `mergeStateStatus: UNSTABLE` — likely CI; check before approving.
 - **[should-fix] Error message stutter** (`lens.go:230`, from `REVIEW.md`): `av.Error = fmt.Sprintf("Failed to read log: %v", err)` wraps `logLinesAll`'s `"failed to read log %q: %w"` — user sees "Failed to read log: failed to read log 'build-log.txt': ...". One-line fix: change outer message to `"Error: %v"`. Not blocking on its own but was flagged should-fix and unaddressed.
 
@@ -31,6 +36,19 @@ The code is correct, low-risk, and all reviewer-blocking concerns from @elmiko a
 - Size() error now disables highlighting (previously allowed it silently). Strictly safer: trades a potential hang for a visible warning. Only affects backends where `Size()` can error.
 - ReadAll() failures now surface in UI. Previously silent. Additive.
 - No flags, config schema, or CRD changes.
+
+## What this PR does
+
+- Shows a visible error when a build log cannot be read.
+- Skips regex highlighting for logs above 10 MiB or when their size cannot be determined, while still rendering the log and showing a warning.
+- Styles the error and warning banners and tests the large-log and size-error paths.
+
+Earlier refresh: the author force-pushed changes that addressed the `Size()` error and missing CSS findings, added warning banners, and extended tests.
+
+Since previous review:
+
+- No code changes: `a67ffd4f8766b65bf045f825a04d8351efc42463` remains the PR head.
+- @elmiko submitted `/lgtm` on 2026-05-14 at 18:26:42 UTC; @petr-muller approved on 2026-06-01 at 16:39:03 UTC. The approval bot confirmed approval at 16:39:10 UTC, `approved` was labeled at 16:39:11 UTC, and the PR merged at 17:10:52 UTC.
 
 ## Findings
 
@@ -77,14 +95,6 @@ The code is correct, low-risk, and all reviewer-blocking concerns from @elmiko a
 ## Open questions
 - Is the Callback path omission intentional for this PR scope?
 - The warning message hardcodes "10 MiB" — would it be better to derive from the constant?
-
-## Since previous review
-
-- Author force-pushed addressing review feedback from @elmiko and this review.
-- Size() error path now disables highlighting conservatively and logs a warning (resolves main [should-fix]).
-- Added `.log-error` and `.log-warning` CSS rules in `buildlog.css` (resolves missing CSS finding).
-- Added a `Warning` field to `LogArtifactView` and renders a yellow warning banner in the UI when highlighting is skipped, with two messages: "log exceeds 10 MiB" or "unable to determine log size".
-- New test `TestBodySizeErrorDisablesHighlight` and extended assertions in `TestBodyLargeLogSkipsHighlight`.
 
 ## Followups
 
@@ -171,4 +181,21 @@ Fix: Add the following assertion to TestBodyLargeLogSkipsHighlight, after the ex
 Work on the main branch. Only touch lens_test.go. Run `go test ./pkg/spyglass/lenses/buildlog/...` to confirm.
 
 Out of scope: changes to lens.go, changes to other tests.
+```
+
+### cleanup: Hide Show all when no hidden log lines are available
+- category: cleanup
+- necessity: could
+- where: `pkg/spyglass/lenses/buildlog/template.html:10`, `pkg/spyglass/lenses/buildlog/lens.go:278-283`
+
+```
+In kubernetes-sigs/prow, following merged PR #715 "buildlog: fail gracefully on large build logs" (merge commit 359f19ead69fc9b51d105d5faa3aee6c97f0b16f), show the buildlog lens's "Show all hidden lines" button only when a successfully loaded artifact has hidden lines.
+
+The PR added a visible error when ReadAll() fails, but template.html still renders the button for that artifact. Clicking it retries the failed read through Callback/loadLines and puts an error string into the empty log area. The button also appears for successfully loaded logs with no hidden groups. Body() already has a ViewAll field on LogArtifactView, but template.html does not use it.
+
+In pkg/spyglass/lenses/buildlog/lens.go, set ViewAll after groupLines() according to whether any resulting LineGroup is skipped. In pkg/spyglass/lenses/buildlog/template.html, render the show-all-button only when ViewAll is true. Extend TestBodyReadAllError in lens_test.go to assert that the button is absent, and add or update a focused Body test covering a log with and without hidden groups. Update existing ViewAll expectations if needed.
+
+Acceptance criteria: an unreadable artifact still shows its error and no Show all button; a readable log with hidden lines shows the button; a readable log without hidden lines does not. Run go test ./pkg/spyglass/lenses/buildlog/...
+
+Work on the merged default branch. Out of scope: changes to ReadAll error handling, Callback behavior, and the separate highlighting-size followup.
 ```

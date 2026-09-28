@@ -1,216 +1,255 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<title>Review: kubernetes-sigs/prow#715</title>
-<style>
-  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; line-height: 1.6; max-width: 860px; margin: 2em auto; padding: 0 1em; color: #24292f; }
-  h1 { font-size: 1.4em; border-bottom: 1px solid #d0d7de; padding-bottom: 0.3em; }
-  h2 { font-size: 1.15em; margin-top: 1.8em; border-bottom: 1px solid #d0d7de; padding-bottom: 0.2em; }
-  h3 { font-size: 1em; margin-top: 1.2em; }
-  code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; font-size: 0.9em; background: #f6f8fa; padding: 0.15em 0.35em; border-radius: 3px; }
-  pre { background: #f6f8fa; padding: 1em; overflow-x: auto; border-radius: 6px; font-size: 0.85em; line-height: 1.45; }
-  .header-block { background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 6px; padding: 0.8em 1.2em; margin-bottom: 1.5em; }
-  .header-block p { margin: 0.2em 0; }
-  .verdict { font-size: 1.1em; font-weight: 600; }
-  .severity-blocking { color: #cf222e; font-weight: 600; }
-  .severity-should-fix { color: #bf8700; font-weight: 600; }
-  .severity-nit { color: #57606a; font-weight: 600; }
-  .severity-question { color: #0969da; font-weight: 600; }
-  .severity-resolved { color: #1a7f37; font-weight: 600; text-decoration: line-through; }
-  ul { padding-left: 1.5em; }
-  a { color: #0969da; text-decoration: none; }
-  a:hover { text-decoration: underline; }
-  .resolved { opacity: 0.65; }
-  .refresh-note { background: #ddf4ff; border: 1px solid #54aeff; border-radius: 6px; padding: 0.8em 1.2em; margin: 1.5em 0; }
-</style>
-</head>
-<body>
-
-<h1>Review: kubernetes-sigs/prow#715</h1>
-
-<div class="header-block">
-  <p><strong>PR:</strong> <a href="https://github.com/kubernetes-sigs/prow/pull/715">kubernetes-sigs/prow#715</a></p>
-  <p><strong>Title:</strong> buildlog: fail gracefully on large build logs</p>
-  <p><strong>Head SHA:</strong> <code>a67ffd4f8766b65bf045f825a04d8351efc42463</code></p>
-  <p><strong>Base:</strong> main</p>
-  <p><strong>Reviewed:</strong> 2026-05-14T11:02:10Z</p>
-</div>
-
-<h2>Verdict</h2>
-
-<p class="verdict">Approve with suggestions</p>
-
-<p>A clean, well-scoped fix for a real user-facing hang. All three review perspectives (code quality, maintainability, deployment risk) converge on low risk and correct implementation. Two converging concerns (Callback path inconsistency, missing CSS) are worth addressing but not blocking. The error-surfacing improvement is a net positive for both users and operators.</p>
-
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#715</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>buildlog: fail gracefully on large build logs</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/715">kubernetes-sigs/prow#715</a> · base <code>main</code> · head_sha <code>a67ffd4f8766</code> · reviewed_at <code>2026-09-28T20:53:50Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span><span class="badge c-amber">gate: hold</span></div>
+<details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#715
+title: &quot;buildlog: fail gracefully on large build logs&quot;
+head_sha: a67ffd4f8766b65bf045f825a04d8351efc42463
+base: main
+reviewed_at: 2026-09-28T20:53:50Z
+verdict: approve
+refresh_log:
+  - old_sha: dccb2344479f601c873df34072271f538d24ff90
+    new_sha: a67ffd4f8766b65bf045f825a04d8351efc42463
+    summary: &quot;Author addressed Size() error handling, added CSS for .log-error and .log-warning, added UI warning banner, added TestBodySizeErrorDisablesHighlight&quot;
+  - old_sha: a67ffd4f8766b65bf045f825a04d8351efc42463
+    new_sha: a67ffd4f8766b65bf045f825a04d8351efc42463
+    summary: &quot;No code changes; elmiko gave /lgtm, petr-muller approved, and PR merged on 2026-06-01&quot;
+gate:
+  decision: hold
+  gated_at: 2026-06-01T16:36:31Z
+  gated_head_sha: a67ffd4f8766b65bf045f825a04d8351efc42463
+  reviewed_head_sha: a67ffd4f8766b65bf045f825a04d8351efc42463</code></pre></details>
 <h2>Gate</h2>
-
-<div style="background:#fff8c5;border:1px solid #d4a72c;border-radius:6px;padding:0.8em 1.2em;margin-bottom:1.5em;">
-  <p><strong>Gate decision: hold</strong> &mdash; 2026-06-01T16:36:31Z &mdash; head <code>a67ffd4f</code></p>
-  <p>The code is correct, low-risk, and all reviewer-blocking concerns from @elmiko are addressed (he gave <code>/lgtm</code>). Two items prevent merge: (1) the PR lacks <code>/approve</code> from a <code>pkg/spyglass</code> approver — the bot says NOT APPROVED and is waiting for smg247 or michelle192837; (2) one open [should-fix] (error message stutter) is worth a one-line fix before approval.</p>
-  <p><strong>Gating list:</strong></p>
-  <ul>
-    <li><strong>Process:</strong> Missing <code>/approve</code> from smg247 or michelle192837 (<code>pkg/spyglass/OWNERS</code>). <code>mergeStateStatus: UNSTABLE</code> — check CI before approving.</li>
-    <li><strong>[should-fix] Error message stutter</strong> (<code>lens.go:230</code>): <code>av.Error = fmt.Sprintf("Failed to read log: %v", err)</code> wraps <code>logLinesAll</code>'s <code>"failed to read log %q: %w"</code> — user sees "Failed to read log: failed to read log 'build-log.txt': ...". One-line fix: change outer message to <code>"Error: %v"</code>.</li>
-  </ul>
-  <p><strong>Merge risk (Area 2): none notable.</strong> <code>LogArtifactView.Warning</code> is internal template data, not exported. Size() error behavior change is strictly safer (warning instead of potential hang). No flags, config schema, or API changes.</p>
-</div>
-
-<div class="refresh-note">
-  <p><strong>Refresh (2026-05-14):</strong> Author force-pushed addressing review feedback. Two [should-fix] findings resolved (Size() error handling, missing CSS). Added a UI warning banner when highlighting is skipped. One [should-fix] (error message stutter) and three [nit]s remain open.</p>
-</div>
-
+<p><strong>Current PR state: merged on 2026-06-01 at 17:10:52 UTC.</strong> The gate below records the earlier 2026-06-01 16:36:31 UTC assessment; its approval blocker was subsequently cleared.</p>
+<p><strong>Verdict at gate time: hold</strong></p>
+<p>At gate time, the code was assessed as correct and low-risk, and all reviewer-blocking concerns from @elmiko had been addressed. The PR still lacked <code>/approve</code> from a <code>pkg/spyglass</code> approver, and the cosmetic error message stutter remained open. @petr-muller approved at 16:39:03 UTC, clearing the process blocker; the code was then merged without another commit.</p>
+<p><strong>Gating list at 16:36:31 UTC:</strong></p>
+<ul>
+<li><strong>Process</strong>: Missing <code>/approve</code> from smg247 or michelle192837 (<code>pkg/spyglass/OWNERS</code>). <code>mergeStateStatus: UNSTABLE</code> — likely CI; check before approving.
+</li>
+<li><strong>[should-fix] Error message stutter</strong> (<code>lens.go:230</code>, from <code>REVIEW.md</code>): <code>av.Error = fmt.Sprintf(&quot;Failed to read log: %v&quot;, err)</code> wraps <code>logLinesAll</code>'s <code>&quot;failed to read log %q: %w&quot;</code> — user sees "Failed to read log: failed to read log 'build-log.txt': ...". One-line fix: change outer message to <code>&quot;Error: %v&quot;</code>. Not blocking on its own but was flagged should-fix and unaddressed.
+</li></ul>
+<p><strong>Merge risk (Area 2): none notable.</strong></p>
+<ul>
+<li><code>LogArtifactView.Warning</code> is a new struct field but the struct is internal template data, not serialized or exported. No API surface change.
+</li>
+<li>Size() error now disables highlighting (previously allowed it silently). Strictly safer: trades a potential hang for a visible warning. Only affects backends where <code>Size()</code> can error.
+</li>
+<li>ReadAll() failures now surface in UI. Previously silent. Additive.
+</li>
+<li>No flags, config schema, or CRD changes.
+</li></ul>
 <h2>What this PR does</h2>
-
 <ul>
-  <li>Adds a 10 MiB size threshold: artifacts larger than this skip regex-based syntax highlighting in <code>Body()</code>, preventing the browser from hanging on pathological regex matching. Lines still render, just without colored highlights.</li>
-  <li>Surfaces <code>ReadAll()</code> failures in the UI: previously, a failed artifact was silently dropped via <code>continue</code>; now it appends a <code>LogArtifactView</code> with an error message so the user sees what went wrong and which artifact failed.</li>
-  <li>Adds a nil-regex guard in <code>highlightLines()</code> to prevent a nil-pointer dereference when <code>highlightRegex</code> is nil, making the function safe for any caller.</li>
-  <li>Adds two new tests covering both behaviors (<code>TestBodyReadAllError</code>, <code>TestBodyLargeLogSkipsHighlight</code>) with an idiomatic <code>errArtifact</code> test helper.</li>
-</ul>
-
-<p><strong>Since previous review:</strong></p>
+<li>Shows a visible error when a build log cannot be read.
+</li>
+<li>Skips regex highlighting for logs above 10 MiB or when their size cannot be determined, while still rendering the log and showing a warning.
+</li>
+<li>Styles the error and warning banners and tests the large-log and size-error paths.
+</li></ul>
+<p>Earlier refresh: the author force-pushed changes that addressed the <code>Size()</code> error and missing CSS findings, added warning banners, and extended tests.</p>
+<p>Since previous review:</p>
 <ul>
-  <li>Size() error path now disables highlighting conservatively and logs a <code>logrus.Warn</code>.</li>
-  <li>Added <code>.log-error</code> and <code>.log-warning</code> CSS rules in <code>buildlog.css</code>.</li>
-  <li>Added a <code>Warning</code> field to <code>LogArtifactView</code> and renders a yellow warning banner when highlighting is skipped ("log exceeds 10 MiB" or "unable to determine log size").</li>
-  <li>New test <code>TestBodySizeErrorDisablesHighlight</code> and extended assertions in <code>TestBodyLargeLogSkipsHighlight</code>.</li>
-</ul>
-
+<li>No code changes: <code>a67ffd4f8766b65bf045f825a04d8351efc42463</code> remains the PR head.
+</li>
+<li>@elmiko submitted <code>/lgtm</code> on 2026-05-14 at 18:26:42 UTC; @petr-muller approved on 2026-06-01 at 16:39:03 UTC. The approval bot confirmed approval at 16:39:10 UTC, <code>approved</code> was labeled at 16:39:11 UTC, and the PR merged at 17:10:52 UTC.
+</li></ul>
 <h2>Findings</h2>
-
 <h3>Resolved</h3>
-
-<div class="resolved">
-<h3><span class="severity-resolved">[Should fix] Size() error silently allows highlighting</span></h3>
-<p><code>lens.go:240-243</code></p>
-<p>Size() error now logs a <code>logrus.Warn</code> and disables highlighting conservatively. New test <code>TestBodySizeErrorDisablesHighlight</code> covers this path.</p>
-
-<h3><span class="severity-resolved">[Should fix] Missing CSS for .log-error</span></h3>
-<p><code>buildlog.css:139-147</code></p>
-<p>Added <code>.log-error</code> (red) and <code>.log-warning</code> (yellow) CSS rules.</p>
-</div>
-
+<h4>~~[should-fix] Size() error silently allows highlighting~~</h4>
+<ul>
+<li>where: <code>pkg/spyglass/lenses/buildlog/lens.go:240-243</code>
+</li>
+<li>resolution: Size() error now logs a <code>logrus.Warn</code> and disables highlighting conservatively. New test <code>TestBodySizeErrorDisablesHighlight</code> covers this path.
+</li></ul>
+<h4>~~[should-fix] Missing CSS for .log-error~~</h4>
+<ul>
+<li>where: <code>pkg/spyglass/lenses/buildlog/buildlog.css:139-147</code>
+</li>
+<li>resolution: Added <code>.log-error</code> (red) and <code>.log-warning</code> (yellow) CSS rules.
+</li></ul>
 <h3>Open</h3>
-
-<h3><span class="severity-should-fix">[Should fix]</span> Error message stutter</h3>
-<p><code>lens.go:230</code> combined with <code>lens.go:493</code></p>
-<pre>// lens.go:230
-av.Error = fmt.Sprintf("Failed to read log: %v", err)
-
-// lens.go:493 (logLinesAll)
-return nil, fmt.Errorf("failed to read log %q: %w", artifact.JobPath(), err)</pre>
-<p>The user sees <code>"Failed to read log: failed to read log "build-log.txt": file size over specified limit"</code> &mdash; "failed to read log" appears twice. Either change the outer message to just <code>"Error: %v"</code>, or unwrap the inner message.</p>
-
-<h3><span class="severity-nit">[Nit]</span> Callback path does not apply size guard</h3>
-<p><code>lens.go:452, 469</code></p>
-<pre>logLines := highlightLines(skipLines, skipRequest.StartLine, &amp;request.Artifact, conf.highlightRegex, conf.highlightLengthMax)
-// ...
-logLines := highlightLines(lines, request.StartLine, &amp;request.Artifact, conf.highlightRegex, conf.highlightLengthMax)</pre>
-<p>The <code>loadLines</code> function (Callback path for expanding collapsed line groups) always passes <code>conf.highlightRegex</code> directly. For a large artifact, expanding hidden lines would still trigger regex matching. Practical risk is lower since callbacks operate on chunks, but it creates an inconsistency: initial render has no highlights, but expanding a section does. Fine as a follow-up.</p>
-
-<h3><span class="severity-nit">[Nit]</span> Test could directly verify highlighting is skipped</h3>
-<p><code>lens_test.go:1186</code></p>
-<p>The test now asserts warning presence (good), but still doesn't check that <code>"match-highlighted"</code> is absent from the output. Asserting no highlighted spans would directly test the intended behavior.</p>
-
-<h3><span class="severity-nit">[Nit]</span> No log line when size threshold triggers</h3>
-<p><code>lens.go:244-246</code></p>
-<p>The Size() error path now logs a warning (resolved), but the normal <code>sz &gt; highlightSizeThreshold</code> path still has no server-side log. A <code>logrus.Info</code> with artifact name and size would help operators.</p>
-
-<h2>Things I checked and was fine with</h2>
-
+<h3><span class="tag c-amber">should-fix</span>Error message stutter</h3>
 <ul>
-  <li><strong>XSS safety:</strong> <code>html/template</code> is used, so <code>{{.Error}}</code> and <code>{{.Warning}}</code> are auto-escaped. No injection risk.</li>
-  <li><strong>Zero-value backwards compatibility:</strong> <code>Error</code> and <code>Warning</code> default to <code>""</code>, so <code>{{if .Error}}</code> / <code>{{if .Warning}}</code> are naturally false for all existing successful artifacts.</li>
-  <li><strong>No config/API/deployment impact:</strong> <code>LogArtifactView</code> is an internal template struct, not serialized or user-facing config. No schema changes.</li>
-  <li><strong>Test coverage:</strong> All new code paths tested. <code>errArtifact</code> helper extended with <code>sizeErr</code> field.</li>
-  <li><strong>Constant placement:</strong> <code>highlightSizeThreshold</code> is grouped with the other lens constants, well-named, and commented with its unit.</li>
-  <li><strong>Existing tests pass:</strong> All tests in the package pass, including the existing <code>TestBody</code> table-driven tests.</li>
-</ul>
-
-<h2>Open questions for the author</h2>
-
+<li>where: <code>pkg/spyglass/lenses/buildlog/lens.go:230</code>
+</li>
+<li>concern: Outer <code>fmt.Sprintf(&quot;Failed to read log: %v&quot;, err)</code> wraps inner <code>fmt.Errorf(&quot;failed to read log %q: %w&quot;, ...)</code> from <code>logLinesAll</code> (line 493). User sees "failed to read log" twice.
+</li>
+<li>excerpt:<pre><code>av.Error = fmt.Sprintf(&quot;Failed to read log: %v&quot;, err)</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">nit</span>Callback path does not apply size guard</h3>
 <ul>
-  <li>The Callback path (<code>loadLines</code>) still uses <code>conf.highlightRegex</code> directly &mdash; is that intentional for this PR, with a follow-up planned?</li>
-  <li>The warning message hardcodes "10 MiB" &mdash; would it be better to derive from the constant?</li>
-</ul>
-
-
+<li>where: <code>pkg/spyglass/lenses/buildlog/lens.go:452,469</code>
+</li>
+<li>concern: <code>loadLines</code> always passes <code>conf.highlightRegex</code> directly. Expanding collapsed sections in a large log still triggers regex matching. Lower practical risk (chunks, not full log) but inconsistent with <code>Body()</code> behavior.
+</li>
+<li>excerpt:<pre><code>logLines := highlightLines(skipLines, skipRequest.StartLine, &amp;request.Artifact, conf.highlightRegex, conf.highlightLengthMax)</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">nit</span>Test does not directly verify highlighting is skipped</h3>
+<ul>
+<li>where: <code>pkg/spyglass/lenses/buildlog/lens_test.go:1186</code>
+</li>
+<li>concern: Asserts <code>&quot;log-error&quot;</code> is absent and warning is present, but does not check <code>&quot;match-highlighted&quot;</code> is absent. Does not directly test the intended behavior.
+</li></ul>
+<h3><span class="tag c-gray">nit</span>No log line when size threshold triggers</h3>
+<ul>
+<li>where: <code>pkg/spyglass/lenses/buildlog/lens.go:244-246</code>
+</li>
+<li>concern: The Size() error path now logs (resolved), but the normal <code>sz &gt; highlightSizeThreshold</code> path at line 244 still has no server-side log. A <code>logrus.Info</code> with artifact name and size would help operators.
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>XSS safety: html/template auto-escapes {{.Error}} and {{.Warning}}
+</li>
+<li>Zero-value backwards compat: Error and Warning default to "", template {{if .Error}}/{{if .Warning}} skip for successful artifacts
+</li>
+<li>No config/API/deployment impact: LogArtifactView is internal template struct
+</li>
+<li>Test coverage: all new paths tested, errArtifact helper extended with sizeErr field
+</li>
+<li>Constant placement and naming: highlightSizeThreshold is clear
+</li>
+<li>Existing tests pass
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>Is the Callback path omission intentional for this PR scope?
+</li>
+<li>The warning message hardcodes "10 MiB" — would it be better to derive from the constant?
+</li></ul>
 <h2>Followups</h2>
-
-<h3><span class="severity-should-fix">[should]</span> cleanup: Error message stutter &mdash; <code>lens.go:230</code></h3>
-<p>The UI error string reads "Failed to read log: failed to read log 'build-log.txt': …" — the phrase appears twice. Change <code>av.Error = fmt.Sprintf("Failed to read log: %v", err)</code> to <code>fmt.Sprintf("Error reading log: %v", err)</code>. One-line fix; verify with existing <code>TestBodyReadAllError</code>.</p>
-<pre>In kubernetes-sigs/prow, as a followup to PR #715 "buildlog: fail gracefully on large build logs"
-(head a67ffd4f8766b65bf045f825a04d8351efc42463), fix the doubled error phrase in the buildlog lens.
+<h3>cleanup: Error message stutter</h3>
+<ul>
+<li>category: cleanup
+</li>
+<li>necessity: should
+</li>
+<li>where: <code>pkg/spyglass/lenses/buildlog/lens.go:230</code>
+<pre><code>In kubernetes-sigs/prow, as a followup to PR #715 &quot;buildlog: fail gracefully on large build logs&quot; (head a67ffd4f8766b65bf045f825a04d8351efc42463), fix the doubled error phrase in the buildlog lens.
 
 The problem: `lens.go` around line 230 has:
-  av.Error = fmt.Sprintf("Failed to read log: %v", err)
+  av.Error = fmt.Sprintf(&quot;Failed to read log: %v&quot;, err)
 where `err` comes from `logLinesAll`, which itself returns:
-  fmt.Errorf("failed to read log %q: %w", artifact.JobPath(), err)
-The user sees: "Failed to read log: failed to read log 'build-log.txt': ..."
+  fmt.Errorf(&quot;failed to read log %q: %w&quot;, artifact.JobPath(), err)
+The user sees: &quot;Failed to read log: failed to read log &#x27;build-log.txt&#x27;: ...&quot;
 
-Fix: change the outer format string so the phrase isn't doubled. For example:
-  av.Error = fmt.Sprintf("Error reading log: %v", err)
+Fix: change the outer format string so the phrase isn&#x27;t doubled. For example:
+  av.Error = fmt.Sprintf(&quot;Error reading log: %v&quot;, err)
 or simply:
   av.Error = err.Error()
 
-Work on the main branch (not the PR branch). Only touch lens.go. No new tests needed —
-the existing TestBodyReadAllError already covers this path; verify the rendered string no longer
-contains the doubled phrase. Run `go test ./pkg/spyglass/lenses/buildlog/...` to confirm.
+Work on the main branch (not the PR branch). Only touch lens.go. No new tests needed — the existing TestBodyReadAllError already covers this path; verify the rendered string no longer contains the doubled phrase. Run `go test ./pkg/spyglass/lenses/buildlog/...` to confirm.
 
-Out of scope: changes to logLinesAll, changes to other error paths, CSS changes.</pre>
+Out of scope: changes to logLinesAll, changes to other error paths, CSS changes.</code></pre>
+</li></ul>
+<h3>tech-debt: Callback path doesn't apply size guard</h3>
+<ul>
+<li>category: tech-debt
+</li>
+<li>necessity: could
+</li>
+<li>where: <code>pkg/spyglass/lenses/buildlog/lens.go:459,480</code>
+<pre><code>In kubernetes-sigs/prow, as a followup to PR #715 &quot;buildlog: fail gracefully on large build logs&quot; (head a67ffd4f8766b65bf045f825a04d8351efc42463), extend the highlight size guard to the Callback (loadLines) path.
 
-<h3><span class="severity-nit">[could]</span> tech-debt: Callback path doesn't apply size guard &mdash; <code>lens.go:459,480</code></h3>
-<p><code>loadLines()</code> passes <code>conf.highlightRegex</code> directly to <code>highlightLines()</code> without a size check. Expanding a hidden section of a large log re-triggers regex matching, inconsistent with <code>Body()</code>.</p>
-<pre>In kubernetes-sigs/prow, as a followup to PR #715 "buildlog: fail gracefully on large build logs"
-(head a67ffd4f8766b65bf045f825a04d8351efc42463), extend the highlight size guard to the Callback
-(loadLines) path.
+Context: PR #715 added a size check in Body() that disables syntax highlighting for artifacts larger than highlightSizeThreshold (10 MiB). However, loadLines() — the Callback handler for expanding collapsed line groups — still passes conf.highlightRegex directly to highlightLines() without any size check. A user viewing a large log will see no highlights on initial load (correct), but clicking to expand a hidden section will trigger regex matching again (inconsistent).
 
-Context: PR #715 added a size check in Body() that disables syntax highlighting for artifacts larger
-than highlightSizeThreshold (10 MiB). However, loadLines() — the Callback handler for expanding
-collapsed line groups — still passes conf.highlightRegex directly to highlightLines() without any
-size check.
+Task: In loadLines() in pkg/spyglass/lenses/buildlog/lens.go, apply the same size guard used in Body(): call a.Size() on request.Artifact, and if Size() errors or the size exceeds highlightSizeThreshold, pass nil as the highlightRegex argument to highlightLines() calls. Use the same error handling pattern as Body() (log a warning on Size() error, silently skip highlighting when threshold exceeded).
 
-Task: In loadLines() in pkg/spyglass/lenses/buildlog/lens.go, apply the same size guard used in
-Body(): call a.Size() on request.Artifact, and if Size() errors or the size exceeds
-highlightSizeThreshold, pass nil as the highlightRegex argument to highlightLines() calls. Use the
-same error handling pattern as Body() (log a warning on Size() error, silently skip highlighting
-when threshold exceeded).
+Add a test that calls loadLines() (or exercises it via the Callback path) with a large artifact and asserts that no &quot;match-highlighted&quot; spans appear in the output.
 
-Add a test that exercises the Callback path with a large artifact and asserts that no
-"match-highlighted" spans appear in the output.
+Work on the main branch. Run `go test ./pkg/spyglass/lenses/buildlog/...` to confirm. Out of scope: UI changes, changes to the warning banner, changes to Body().</code></pre>
+</li></ul>
+<h3>cleanup: Warning message hardcodes "10 MiB"</h3>
+<ul>
+<li>category: cleanup
+</li>
+<li>necessity: could
+</li>
+<li>where: <code>pkg/spyglass/lenses/buildlog/lens.go:246</code>
+<pre><code>In kubernetes-sigs/prow, as a followup to PR #715 &quot;buildlog: fail gracefully on large build logs&quot; (head a67ffd4f8766b65bf045f825a04d8351efc42463), derive the warning message&#x27;s size display from the highlightSizeThreshold constant rather than hardcoding &quot;10 MiB&quot;.
 
-Work on the main branch. Run `go test ./pkg/spyglass/lenses/buildlog/...` to confirm.
-Out of scope: UI changes, changes to the warning banner, changes to Body().</pre>
+The problem: lens.go line 246 has:
+  av.Warning = &quot;Syntax highlighting disabled (log exceeds 10 MiB)&quot;
+The threshold is defined as:
+  highlightSizeThreshold = 10 * 1024 * 1024 // 10 MiB
+If highlightSizeThreshold is ever changed, the message won&#x27;t update.
 
-<h3><span class="severity-nit">[could]</span> cleanup: Warning message hardcodes "10 MiB" &mdash; <code>lens.go:246</code></h3>
-<p>The warning string hardcodes "10 MiB" instead of deriving from <code>highlightSizeThreshold</code>. If the constant changes, the message won't update.</p>
-<pre>In kubernetes-sigs/prow, as a followup to PR #715 "buildlog: fail gracefully on large build logs"
-(head a67ffd4f8766b65bf045f825a04d8351efc42463), derive the warning message's size display from
-the highlightSizeThreshold constant.
+Fix: Replace the hardcoded string with a derived one, e.g.:
+  av.Warning = fmt.Sprintf(&quot;Syntax highlighting disabled (log exceeds %d MiB)&quot;, highlightSizeThreshold/1024/1024)
 
-Fix: Replace lens.go line 246's hardcoded string with:
-  av.Warning = fmt.Sprintf("Syntax highlighting disabled (log exceeds %d MiB)",
-      highlightSizeThreshold/1024/1024)
+Update the corresponding test assertion in TestBodyLargeLogSkipsHighlight to match (it currently checks strings.Contains(got, &quot;Syntax highlighting disabled&quot;), so no change needed there — but verify the test still passes).
 
-Update any test assertion that checks the exact string if needed. Run
-`go test ./pkg/spyglass/lenses/buildlog/...` to confirm.
+Work on the main branch. Only touch lens.go and, if needed, lens_test.go. Run `go test ./pkg/spyglass/lenses/buildlog/...` to confirm.
 
-Out of scope: changes to threshold value, CSS changes, changes to the Size() error path warning.</pre>
+Out of scope: changes to threshold value, CSS changes, changes to the Size() error path warning.</code></pre>
+</li></ul>
+<h3>tests: Large-log test doesn't verify highlighting is actually skipped</h3>
+<ul>
+<li>category: tests
+</li>
+<li>necessity: could
+</li>
+<li>where: <code>pkg/spyglass/lenses/buildlog/lens_test.go:1193</code>
+<pre><code>In kubernetes-sigs/prow, as a followup to PR #715 &quot;buildlog: fail gracefully on large build logs&quot; (head a67ffd4f8766b65bf045f825a04d8351efc42463), strengthen TestBodyLargeLogSkipsHighlight to directly assert that highlighting was suppressed.
 
-<h3><span class="severity-nit">[could]</span> tests: Large-log test doesn't verify highlighting skipped &mdash; <code>lens_test.go:1193</code></h3>
-<p><code>TestBodyLargeLogSkipsHighlight</code> proves the warning banner rendered but not that highlighted spans are absent. A one-line assertion closes the gap.</p>
-<pre>In kubernetes-sigs/prow, as a followup to PR #715 "buildlog: fail gracefully on large build logs"
-(head a67ffd4f8766b65bf045f825a04d8351efc42463), strengthen TestBodyLargeLogSkipsHighlight.
+The current test (lens_test.go, TestBodyLargeLogSkipsHighlight) checks that a warning banner is present (&quot;log-warning&quot;, &quot;Syntax highlighting disabled&quot;) but does not assert that highlighted spans are absent. If the size guard were accidentally removed, the warning check would fail but there&#x27;s no assertion catching that &quot;match-highlighted&quot; spans appear.
 
-Add the following assertion after the existing ones in TestBodyLargeLogSkipsHighlight:
-  if strings.Contains(got, "match-highlighted") {
-      t.Error("Body() should not render highlighted spans for large logs")
+Fix: Add the following assertion to TestBodyLargeLogSkipsHighlight, after the existing assertions:
+  if strings.Contains(got, &quot;match-highlighted&quot;) {
+      t.Error(&quot;Body() should not render highlighted spans for large logs&quot;)
   }
 
-Work on the main branch. Only touch lens_test.go.
-Run `go test ./pkg/spyglass/lenses/buildlog/...` to confirm.
-Out of scope: changes to lens.go, changes to other tests.</pre>
+Work on the main branch. Only touch lens_test.go. Run `go test ./pkg/spyglass/lenses/buildlog/...` to confirm.
 
-</body>
-</html>
+Out of scope: changes to lens.go, changes to other tests.</code></pre>
+</li></ul>
+<h3>cleanup: Hide Show all when no hidden log lines are available</h3>
+<ul>
+<li>category: cleanup
+</li>
+<li>necessity: could
+</li>
+<li>where: <code>pkg/spyglass/lenses/buildlog/template.html:10</code>, <code>pkg/spyglass/lenses/buildlog/lens.go:278-283</code>
+<pre><code>In kubernetes-sigs/prow, following merged PR #715 &quot;buildlog: fail gracefully on large build logs&quot; (merge commit 359f19ead69fc9b51d105d5faa3aee6c97f0b16f), show the buildlog lens&#x27;s &quot;Show all hidden lines&quot; button only when a successfully loaded artifact has hidden lines.
+
+The PR added a visible error when ReadAll() fails, but template.html still renders the button for that artifact. Clicking it retries the failed read through Callback/loadLines and puts an error string into the empty log area. The button also appears for successfully loaded logs with no hidden groups. Body() already has a ViewAll field on LogArtifactView, but template.html does not use it.
+
+In pkg/spyglass/lenses/buildlog/lens.go, set ViewAll after groupLines() according to whether any resulting LineGroup is skipped. In pkg/spyglass/lenses/buildlog/template.html, render the show-all-button only when ViewAll is true. Extend TestBodyReadAllError in lens_test.go to assert that the button is absent, and add or update a focused Body test covering a log with and without hidden groups. Update existing ViewAll expectations if needed.
+
+Acceptance criteria: an unreadable artifact still shows its error and no Show all button; a readable log with hidden lines shows the button; a readable log without hidden lines does not. Run go test ./pkg/spyglass/lenses/buildlog/...
+
+Work on the merged default branch. Out of scope: changes to ReadAll error handling, Callback behavior, and the separate highlighting-size followup.</code></pre>
+</li></ul>
+</main></body></html>

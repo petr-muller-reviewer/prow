@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#977</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1><code>peribolos</code>: exclude enterprise-team members from <code>--dump</code>; fail-loud on enterprise listing errors</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/977">kubernetes-sigs/prow#977</a> · base <code>main</code> · head_sha <code>5800d630501b</code> · reviewed_at <code>2026-09-27T11:50:17Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span></div>
+<details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#977
+title: &quot;`peribolos`: exclude enterprise-team members from `--dump`; fail-loud on enterprise listing errors&quot;
+head_sha: 5800d630501be653dd629903bd3ed65fffbd0f65
+base: main
+reviewed_at: 2026-09-27T11:50:17Z
+verdict: approve
+refresh_log:
+  - old_sha: dc32fb065cb63956e0f62b0e75adae4cebfd202d
+    new_sha: 5800d630501be653dd629903bd3ed65fffbd0f65
+    summary: &quot;Reviewed CLI help, helper comment, and error-message wording; hold was lifted.&quot;</code></pre></details>
+<h2>Verdict</h2>
+<p>Approve with a non-blocking documentation suggestion.</p>
+<p>The filtering predicate, safety checks, and client representation match the stated behavior. Both dump and apply stop before using an incomplete enterprise-member set, avoiding silent drift or removals; the dump path additionally refuses an unreported <code>direct_membership</code> value rather than guessing. The intentional fail-loud behavior creates an operational prerequisite worth documenting for installations that enable this flag.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Adds a client method and nullable representation for GitHub's <code>direct_membership</code> field.
+</li>
+<li>Builds one normalized set of enterprise-team members and treats errors while building it as fatal.
+</li>
+<li>Makes <code>--dump --ignore-enterprise-teams</code> omit only indirect-only enterprise members that are not emitted in a regular team.
+</li>
+<li>Retains the unfiltered admin list for validating the dump token and avoids serializing the read-only field on membership updates.
+</li>
+<li>Adds coverage for indirect/direct membership, missing fields and errors, case normalization, the regular-team round trip, and client decoding.
+</li></ul>
+<p>Since previous review:</p>
+<ul>
+<li>Clarifies the <code>--ignore-enterprise-teams</code> help text and the shared helper's description of apply and dump behavior.
+</li>
+<li>Removes an inaccurate enterprise-team permission hint from the org-membership lookup error.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-amber">should-fix</span>Document the fail-loud operational prerequisites</h3>
+<ul>
+<li>where: <code>cmd/peribolos/main.go:568-580</code>
+</li>
+<li>concern: Existing <code>--ignore-enterprise-teams</code> users now stop the complete per-org reconciliation when any enterprise team's members cannot be listed. The release note and CLI help describe the behavior, but operator-facing documentation should state the required token access and that a failure skips subsequent work for that org; dump users on GHES also need an API version that supplies <code>direct_membership</code>.
+</li>
+<li>excerpt:<pre><code>enterpriseMembers, err := enterpriseTeamMembers(client, orgName, allTeams)
+if err != nil {
+    return fmt.Errorf(&quot;failed to list %s enterprise team members (does the token have org admin/read access to enterprise team membership?): %w&quot;, orgName, err)
+}</code></pre>
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li><code>enterpriseTeamMembers</code> aggregates listing failures and both callers stop before using a partial result.
+</li>
+<li>The regular-team guard records maintainers and members before the org-level filtering, preserving the config invariant for emitted teams.
+</li>
+<li><code>DirectMembership</code> is a pointer with <code>omitempty</code>, while <code>UpdateOrgMembership</code> constructs a fresh request body.
+</li>
+<li>The new API calls and failure modes apply only when <code>--ignore-enterprise-teams</code> is enabled.
+</li>
+<li>Reviewed the wording-only follow-up commit <code>5800d630501be653dd629903bd3ed65fffbd0f65</code> against the prior review point.
+</li>
+<li><code>git diff --check f21dfc59dd24d5f364a427f5d1a9d13ce4d3e598...HEAD</code>.
+</li>
+<li><code>go test ./cmd/peribolos ./pkg/github</code>.
+</li></ul>
+<h2>Open questions</h2>
+<p>None.</p>
+</main></body></html>

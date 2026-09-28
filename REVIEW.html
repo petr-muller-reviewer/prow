@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#713</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>Bump Kubernetes dependencies to v0.33.11</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/713">kubernetes-sigs/prow#713</a> · base <code>main</code> · head_sha <code>370e42dc157d</code> · reviewed_at <code>2026-09-28T17:39:56Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span></div>
+<h2>Verdict</h2>
+<p>Approve — no defect found in the dependency bump or accompanying code changes.</p>
+<p>The Kubernetes releases had about 25–27 days of soak time when this PR merged on May 11, 2026. The direct dependency changes affect core Kubernetes clients and controllers, but the API adaptations match the new interfaces, OSV reports no advisory for either endpoint version of the bumped modules, and the scoped vulnerability scan found no new advisory IDs. This is a retrospective verdict: Kubernetes 1.33 reached end of life on June 28, 2026, so v0.33.11 is no longer a suitable current upgrade target.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Updates <code>k8s.io/api</code> v0.32.8 → v0.33.11, <code>k8s.io/apimachinery</code> v0.32.9 → v0.33.11, and <code>k8s.io/client-go</code> v0.32.8 → v0.33.11.
+</li>
+<li>Updates <code>sigs.k8s.io/controller-runtime</code> v0.20.1 → v0.21.0 and <code>github.com/prometheus/client_golang</code> v1.20.5 → v1.22.0, plus four indirect modules and corresponding sums.
+</li>
+<li>Passes the report context to client-go's <code>SearchWithContext</code> in <code>pkg/crier/reporters/gcs/kubernetes/reporter.go:105</code> and adapts the test fake.
+</li>
+<li>Handles <code>AddEventHandlerWithOptions</code> in the Plank test at <code>pkg/plank/reconciler_test.go:284</code> and regenerates the ProwJob CRD and plugin config example.
+</li></ul>
+<h2>Findings</h2>
+<p>None.</p>
+<h2>Checked</h2>
+<ul>
+<li>Classified the PR as dependency + code; reviewed the reporter, test, CRD, and generated config changes against the PR's stated API and test fixes. No standards or behavior finding.
+</li>
+<li>Kubernetes v0.33.11 modules were published April 14–16, 2026; they are about 165–167 days old as of this review. The other direct releases are older. Source: <a href="https://github.com/kubernetes/kubernetes/blob/master/CHANGELOG/CHANGELOG-1.33.md">Kubernetes v1.33 changelog</a>.
+</li>
+<li>Import surface in production Go files: <code>k8s.io/api</code> 162 files/113 packages; <code>k8s.io/apimachinery</code> 157/109; <code>k8s.io/client-go</code> 59/35; <code>sigs.k8s.io/controller-runtime</code> 30/27; <code>github.com/prometheus/client_golang</code> 35/28. Kubernetes APIs, serialization, network clients, and Plank reconciliation are core and sensitive paths; metrics exposure is broad but less sensitive.
+</li>
+<li>The indirect changes are <code>k8s.io/apiextensions-apiserver</code> v0.32.8 → v0.33.11, <code>k8s.io/kube-openapi</code> v0.0.0-20241212222426-2c72e554b1e7 → v0.0.0-20250318190949-c8a335a9a2ff, <code>sigs.k8s.io/structured-merge-diff/v4</code> v4.5.0 → v4.6.0, and <code>github.com/gorilla/websocket</code> v1.5.3 → v1.5.4-0.20250319132907-e064f32e3674. None is imported directly in Prow Go files. The kube-openapi and websocket targets are untagged pseudo-versions; both were over a year old at review time.
+</li>
+<li><a href="https://github.com/kubernetes-sigs/controller-runtime/releases/tag/v0.21.0">Controller-runtime v0.21.0</a> changes default client rate limiting and informer registration. The registration change reaches Plank's test wrapper; the new method mirrors the existing signal handling.
+</li>
+<li><a href="https://github.com/prometheus/client_golang/releases/tag/v1.22.0">Prometheus client v1.22.0</a> makes experimental zstd scrape support opt-in. Prow uses <code>promhttp.HandlerFor</code> in <code>pkg/metrics/metrics.go:61</code> without a zstd import; scrapes requesting zstd may receive an uncompressed response.
+</li>
+<li>OSV queries for old and new versions of all nine bumped modules returned no advisories. Scoped <code>govulncheck</code> runs over <code>./pkg/plank/... ./pkg/crier/... ./cmd/...</code> at the PR base and head found no findings in the bumped modules and no newly introduced advisory IDs. An imported-only finding for removed indirect dependency <code>github.com/klauspost/compress</code> (GO-2026-5841) disappeared; unrelated pre-existing findings remained.
+</li>
+<li><a href="https://kubernetes.io/releases/">Kubernetes release lifecycle</a> lists 1.33 as end of life on June 28, 2026. This affects any present-day upgrade decision, not the historical merge verdict.
+</li></ul>
+<h2>Open questions</h2>
+<p>None.</p>
+<h2>Dependency followups</h2>
+<p>No outstanding improvement opportunities identified. Examined the direct bumps <code>k8s.io/api</code> v0.32.8 → v0.33.11, <code>k8s.io/apimachinery</code> v0.32.9 → v0.33.11, <code>k8s.io/client-go</code> v0.32.8 → v0.33.11, <code>sigs.k8s.io/controller-runtime</code> v0.20.1 → v0.21.0, and <code>github.com/prometheus/client_golang</code> v1.20.5 → v1.22.0 against Prow's call sites; also checked the indirect changes to <code>k8s.io/apiextensions-apiserver</code> v0.32.8 → v0.33.11, <code>k8s.io/kube-openapi</code> v0.0.0-20241212222426-2c72e554b1e7 → v0.0.0-20250318190949-c8a335a9a2ff, <code>sigs.k8s.io/structured-merge-diff/v4</code> v4.5.0 → v4.6.0, and <code>github.com/gorilla/websocket</code> v1.5.3 → v1.5.4-0.20250319132907-e064f32e3674. The indirect modules have no direct Prow imports; the other new APIs and deprecations do not match an actionable current call site.</p>
+<p>The client-go 0.33 <code>ListWithContextFunc</code> and <code>WatchFuncWithContext</code> APIs were relevant to Prow's generated ProwJob and Pipeline informers, which used <code>context.TODO()</code> at this PR head. The current <code>upstream/main</code> already uses both context-aware functions in those informers and has updated <code>k8s.io/code-generator</code>, so this potential followup is complete and needs no handoff. <code>Result.Requeue</code> and the deprecated Kubernetes Endpoints and <code>resource.k8s.io/v1beta1</code> APIs have no Prow call sites. Prometheus's new <code>CollectorFunc</code> does not fit the exporter's custom collector, whose descriptors have dynamic label sets.</p>
+</main></body></html>

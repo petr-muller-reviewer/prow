@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Review: kubernetes-sigs/prow#734</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; line-height: 1.6; max-width: 860px; margin: 2rem auto; padding: 0 1rem; color: #24292f; }
+  h1 { font-size: 1.4rem; border-bottom: 1px solid #d0d7de; padding-bottom: 0.4rem; }
+  h2 { font-size: 1.15rem; margin-top: 2rem; border-bottom: 1px solid #d0d7de; padding-bottom: 0.3rem; }
+  h3 { font-size: 1rem; margin-top: 1.2rem; }
+  code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; font-size: 0.9em; background: #f6f8fa; padding: 0.15em 0.35em; border-radius: 4px; }
+  pre { background: #f6f8fa; padding: 1rem; border-radius: 6px; overflow-x: auto; font-size: 0.85rem; line-height: 1.5; }
+  .meta { background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 6px; padding: 0.8rem 1rem; margin-bottom: 1.5rem; font-size: 0.9rem; }
+  .meta dt { font-weight: 600; display: inline; }
+  .meta dd { display: inline; margin: 0 1.2rem 0 0; }
+  .verdict { border-radius: 6px; padding: 0.8rem 1rem; margin-bottom: 1.5rem; }
+  .verdict.request-changes { background: #fff8c5; border: 1px solid #d4a72c; }
+  .severity { display: inline-block; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; padding: 0.15em 0.5em; border-radius: 3px; margin-right: 0.4rem; vertical-align: middle; }
+  .severity.blocking { background: #ffebe9; color: #cf222e; }
+  .severity.should-fix { background: #fff8c5; color: #9a6700; }
+  .severity.nit { background: #ddf4ff; color: #0969da; }
+  .severity.question { background: #f0e6ff; color: #8250df; }
+  ul { padding-left: 1.4rem; }
+  li { margin-bottom: 0.3rem; }
+  a { color: #0969da; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+
+<h1>Review: kubernetes-sigs/prow#734</h1>
+
+<div class="meta">
+  <dl>
+    <dt>PR:</dt><dd><a href="https://github.com/kubernetes-sigs/prow/pull/734">kubernetes-sigs/prow#734</a></dd>
+    <dt>Title:</dt><dd>chore: upgrade golangci-lint to v2.12.2 and fix new lint issues</dd>
+    <dt>Head SHA:</dt><dd><code>d50fe2b97211aeb543d61aa9eb18549ac658edb1</code></dd>
+    <dt>Base:</dt><dd><code>main</code></dd>
+    <dt>Reviewed:</dt><dd>2026-05-28T23:35:55Z</dd>
+  </dl>
+</div>
+
+<h2>Verdict</h2>
+<div class="verdict request-changes">
+  <strong>Request changes.</strong>
+  <p>The linter upgrade and <code>reflect.Pointer</code> migrations are clean and correct. The <code>slices.Backward</code> conversion in <code>lgtm.go</code> is also correct. However, the <code>slices.Backward</code> conversion in <code>tide_test.go:DeleteComment</code> mutates a slice during iteration without breaking, which is less safe than the original manual backward loop it replaced. This should be fixed before merge.</p>
+</div>
+
+<h2>What this PR does</h2>
+<ul>
+  <li>Upgrades <code>golangci-lint/v2</code> from v2.11.3 to v2.12.2 in <code>hack/tools</code>, pulling in updated indirect dependencies.</li>
+  <li>Replaces six uses of the deprecated <code>reflect.Ptr</code> constant with <code>reflect.Pointer</code> across <code>pkg/genyaml/</code>.</li>
+  <li>Converts two manual reverse <code>for</code> loops to <code>slices.Backward()</code> in <code>pkg/plugins/lgtm/lgtm.go</code> and <code>pkg/tide/tide_test.go</code>.</li>
+  <li>Net effect: tooling stays current, deprecated API usage is cleaned up, code becomes slightly more idiomatic.</li>
+</ul>
+
+<h2>Findings</h2>
+
+<h3><span class="severity should-fix">Should fix</span> slices.Backward with in-place slice mutation in DeleteComment</h3>
+<p><code>pkg/tide/tide_test.go:923-927</code></p>
+<pre>for j, v := range slices.Backward(ics) {
+    if v.ID == id {
+        f.issueComments[issue] = append(ics[:j], ics[j+1:]...)
+    }
+}</pre>
+<p>The original manual backward loop (<code>for j := len(ics) - 1; j >= 0; j--</code>) was specifically safe for in-place deletion: removing element <code>j</code> while decrementing doesn't shift any unvisited (lower-index) elements. With <code>slices.Backward()</code>, the iterator is constructed from the original slice; mutating the backing array via <code>append(ics[:j], ics[j+1:]...)</code> during iteration can cause skipped or duplicated elements. The missing <code>break</code> after mutation (unlike the <code>lgtm.go</code> version) compounds the issue.</p>
+<p>Options: revert to the manual loop, use <code>slices.DeleteFunc</code>, or at minimum add a <code>break</code> after the mutation.</p>
+
+<h3><span class="severity nit">Nit</span> Redundant intermediate variable in lgtm.go</h3>
+<p><code>pkg/plugins/lgtm/lgtm.go:458-459</code></p>
+<pre>for _, v := range slices.Backward(comments) {
+    comment := v</pre>
+<p>The intermediate <code>comment := v</code> assignment is unnecessary. The range variable can be named <code>comment</code> directly: <code>for _, comment := range slices.Backward(comments)</code>.</p>
+
+<h2>Things I checked and was fine with</h2>
+<ul>
+  <li>All six <code>reflect.Ptr</code> &rarr; <code>reflect.Pointer</code> replacements in <code>pkg/genyaml/genyaml.go</code> and <code>pkg/genyaml/populate_struct.go</code> &mdash; correct alias swaps, same constant value since Go 1.18, no behavior change.</li>
+  <li><code>slices.Backward</code> in <code>pkg/plugins/lgtm/lgtm.go:458</code> &mdash; correct, loop breaks on first match, no mutation during iteration.</li>
+  <li><code>hack/tools/go.mod</code> version bump v2.11.3 to v2.12.2 and indirect dependency churn &mdash; mechanical, expected, isolated to <code>hack/tools/</code> module (own <code>go.mod</code>, not compiled into shipped binaries).</li>
+  <li><code>hack/tools/go.sum</code> &mdash; consistent with go.mod changes.</li>
+  <li>No configuration, API, CLI flag, or behavioral changes &mdash; zero deployment risk for operators.</li>
+  <li>Go version requirement: <code>slices.Backward</code> needs Go 1.23+, module already declares <code>go 1.25.5</code>.</li>
+</ul>
+
+<h2>Open questions for the author</h2>
+<ul>
+  <li>In <code>tide_test.go:DeleteComment</code>, was there a reason not to add a <code>break</code> after the slice mutation? The <code>lgtm.go</code> version breaks on first match, which avoids the iteration-over-mutated-slice issue entirely.</li>
+  <li>In <code>lgtm.go:458-459</code>, was there a reason to keep the intermediate <code>comment := v</code> assignment rather than naming the range variable <code>comment</code> directly?</li>
+</ul>
+
+</body>
+</html>

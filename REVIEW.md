@@ -194,3 +194,31 @@ Addressed in commit `3f1a6cb9f`. Author confirmed: "filtering will also use extr
 - [ ] Test case added for repo-only filter
 - [ ] Stray blank line removed
 - [ ] CI passes after changes
+
+---
+
+## Followups
+
+### Keep combined org and repo filters on one ExtraRef
+
+- category: correctness
+- necessity: should — combined filters can return a job that references neither requested repository.
+- where: `cmd/deck/main.go:813-829`, `cmd/deck/main_test.go:433-660`
+
+```text
+In kubernetes-sigs/prow, following merged PR #549, "Allow filtering jobs by owner, repo and org" (merge commit 9b693893bd3b8507630f030c157fb23a1a9a8c5f), fix the /prowjobs.js org and repo filters in cmd/deck/main.go so both supplied values must match the same Refs entry. The current independent refsMatch calls can match org from one Spec.ExtraRefs entry and repo from another: a periodic job with ExtraRefs alpha/one and beta/two incorrectly matches ?org=alpha&repo=two.
+
+Add a regression case to TestHandleProwJobsWithFilter in cmd/deck/main_test.go with at least two ExtraRefs that rejects that cross-entry combination and accepts a real org/repo pair. Preserve the existing primary Spec.Refs behavior, single-filter matches, owner filtering, and unfiltered responses. The task is complete when the new negative and positive cases pass with go test ./cmd/deck -run TestHandleProwJobsWithFilter -count=1 and the combined filter cannot assemble a match from different refs. Keep the change scoped to matching semantics and the relevant tests.
+```
+
+### Make filter test cases fail reliably
+
+- category: tests
+- necessity: should — the test closes the response body before reading it and continues after errors that invalidate a case.
+- where: `cmd/deck/main_test.go:606-660`
+
+```text
+In kubernetes-sigs/prow, following merged PR #549, "Allow filtering jobs by owner, repo and org" (merge commit 9b693893bd3b8507630f030c157fb23a1a9a8c5f), clean up TestHandleProwJobsWithFilter in cmd/deck/main_test.go. Run each table case under t.Run(tc.Name, ...), read resp.Body before closing it, and close the body within that case. Use t.Fatalf for request creation, unexpected HTTP status, body read, and JSON decode failures so a broken case stops before comparing zero-value results; keep t.Errorf for a valid but incorrect job list.
+
+The task is complete when each case reports its own name, no response body is read after Close, fatal setup/decode errors cannot fall through to the comparison, and go test ./cmd/deck -run TestHandleProwJobsWithFilter -count=1 passes. Keep this followup limited to test structure and error handling; do not change production filtering behavior.
+```

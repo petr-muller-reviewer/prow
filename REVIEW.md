@@ -297,3 +297,39 @@ Out of scope:
 - Changing the default policy.
 - Any config schema changes.
 ```
+
+### 2. Document the GitHub merge blocks policy for Tide operators
+
+**Category:** docs | **Necessity:** should | **Where:** `site/content/en/docs/components/core/tide/config.md`, `site/content/en/docs/components/core/tide/maintainers.md`
+
+```
+In kubernetes-sigs/prow, following merged PR #579 ("tide: add configurable
+GitHub merge blocks enforcement", merge commit
+24f6b2904e9231919e1c8bb4b9258c648c82991d), document the
+github_merge_blocks_policy option for Tide operators. The PR added the option
+to pkg/config/prow-config-documented.yaml, but the Tide configuration and
+maintainer guides do not yet explain how to use or troubleshoot it.
+
+Task:
+1. In site/content/en/docs/components/core/tide/config.md, describe the
+   ignore, permit, and block values; the default permit behavior; and the
+   precedence of org/repo, org, and * keys. Include a short valid YAML example.
+2. In site/content/en/docs/components/core/tide/maintainers.md, explain how
+   operators should interpret "In merge pool (despite BLOCKED).", where to
+   look for the warning log, and when they may choose block or ignore. Explain
+   that ignore and permit can still allow merge attempts GitHub will reject.
+3. Align the documented config comment in
+   pkg/config/prow-config-documented.yaml with the guide, especially the risk
+   of ignore, if it needs a concise clarification.
+
+Acceptance criteria:
+- The guides let an operator configure a global policy with a repository
+  override and diagnose a BLOCKED PR under the default policy.
+- The policy descriptions match the behavior in pkg/config/tide.go,
+  pkg/tide/github.go, and pkg/tide/status.go.
+- Existing documentation build or link checks pass if the repo provides them.
+
+Out of scope:
+- Changing Tide behavior, the default policy, or the config schema.
+- Adding telemetry or changing status descriptions.
+```

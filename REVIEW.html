@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#683</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>Fix expanding skipped lines when using S3</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/683">kubernetes-sigs/prow#683</a> · base <code>main</code> · head_sha <code>61a57d1fb4cd</code> · reviewed_at <code>2026-09-28T20:45:18Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span></div>
+<h2>Verdict</h2>
+<p>Approve with suggestions. The change fixes S3 range reads that return bytes and <code>io.EOF</code> together, and the focused test passes. Code quality and maintainability reviewers recommend approval; deployment risk is low. The suggestions below are non-blocking.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Accepts <code>io.EOF</code> from a range reader once <code>ReadAt</code> has filled the requested buffer, including ranges inside an artifact.
+</li>
+<li>Reports <code>io.ErrUnexpectedEOF</code> when the range reader stops before filling the buffer.
+</li>
+<li>Simulates S3's final-read behavior in the test helper and adds a test for an interior range.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-gray">nit</span>Keep the test helper's reader type explicit</h3>
+<ul>
+<li>where: <code>pkg/spyglass/storageartifact_test.go:55-56</code>
+</li>
+<li>concern: The new type assertion assumes the embedded <code>io.Reader</code> is a <code>*bytes.Reader</code>. Every current construction satisfies that assumption, but extending the helper with another reader would panic when <code>returnEOF</code> is set. A concrete reader field or explicit remaining-byte tracking would make the test helper's requirement clear.
+</li>
+<li>excerpt:<pre><code>if rc.returnEOF &amp;&amp; read &gt; 0 &amp;&amp; rc.Reader.(*bytes.Reader).Len() == 0 {
+    return read, io.EOF
+}</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">nit</span>Cover EOF before the requested range is full</h3>
+<ul>
+<li>where: <code>pkg/spyglass/storageartifact_test.go:321-328</code>
+</li>
+<li>concern: The added case covers EOF after a complete interior range. A case where the range reader returns EOF after fewer bytes would preserve the new <code>io.ErrUnexpectedEOF</code> behavior against future changes.
+</li>
+<li>excerpt:<pre><code>name:      &quot;ReadAt S3-style EOF (EOF when range finished but not at end of file)&quot;,
+n:         4,
+offset:    6,
+returnEOF: true,</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">nit</span>Explain the range reader EOF condition</h3>
+<ul>
+<li>where: <code>pkg/spyglass/storageartifact.go:169-173</code>
+</li>
+<li>concern: A short comment would make it clear why EOF can be accepted when the requested range ends before the artifact does. This behavior is surprising without the PR description.
+</li>
+<li>excerpt:<pre><code>if err == io.EOF {
+    if offset == len(p) {
+        break
+    }
+    err = io.ErrUnexpectedEOF
+}</code></pre>
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>Spec: The PR description's start and middle skipped-line failure is addressed by accepting EOF after the requested range is full, independent of the range's position. The test covers a middle range; the same branch handles a range starting at offset zero.
+</li>
+<li>Spec: <code>ReadAt</code> still returns <code>io.EOF</code> for a range ending at the overall artifact end, and an early EOF now signals an incomplete read.
+</li>
+<li>Standards: <code>CONTRIBUTING.md</code> has no coding rule specific to this change; no documented-standard violation was found.
+</li>
+<li>Code quality: No correctness, safety, or performance issue was found in the changed code.
+</li>
+<li>Deployment risk: No configuration, API, permission, dependency, rollout, or migration change is required; the behavioral change is limited to Spyglass range reads.
+</li>
+<li>Maintainer review: No concern was raised by multiple reviewers, and none of the suggestions is required before merge.
+</li>
+<li><code>go test ./pkg/spyglass -run &#x27;^TestReadAt$&#x27; -count=1</code> passed.
+</li></ul>
+<h2>Open questions</h2>
+<p>None.</p>
+<h2>Followups</h2>
+<p>No followups accepted. Two candidates were skipped: a premature-EOF regression test and returning the byte count on a partial read error.</p>
+</main></body></html>

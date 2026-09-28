@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#653</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>Add "ok-to-test cancel" command</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/653">kubernetes-sigs/prow#653</a> · base <code>main</code> · head_sha <code>d853da769b99</code> · reviewed_at <code>2026-09-28T17:01:58Z</code></div>
+<div class="badges"><span class="badge c-red">verdict: request-changes</span></div>
+<h2>Verdict</h2>
+<p>Request changes. Cancellation can leave approval active, lose the review-needed label, or put that label on a PR that remains trusted through its author. The new trust transition also has no regression tests. PR #653 is already merged; these are follow-up fixes. No configuration migration or new permission is needed, but cancellation does not stop jobs or approved workflows already running.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Recognizes <code>/ok-to-test cancel</code> in trigger comments.
+</li>
+<li>Restricts revocation to trusted users.
+</li>
+<li>Removes <code>ok-to-test</code> and adds <code>needs-ok-to-test</code> when canceling.
+</li>
+<li>Documents the command in trigger help.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-red">blocking</span>A combined approval and cancellation leaves the PR approved</h3>
+<ul>
+<li>where: <code>pkg/plugins/trigger/generic-comment.go:106-129</code>
+</li>
+<li>concern: A trusted comment containing both <code>/ok-to-test</code> and <code>/ok-to-test cancel</code> first adds <code>ok-to-test</code>. The cancel branch checks the label snapshot fetched before that addition, so it does not remove the newly added label. The handler returns while the PR remains trusted and later commits can trigger CI, defeating the explicit cancellation. Handle the cancel directive before approval or make the commands mutually exclusive and settle on one final state; add a regression case.
+</li>
+<li>excerpt:<pre><code>if isOkToTest &amp;&amp; !github.HasLabel(labels.OkToTest, l) {
+    if err := c.GitHubClient.AddLabel(org, repo, number, labels.OkToTest); err != nil {
+        return err
+    }
+}
+// ...
+if isOkToTestCancel {
+    // ...
+    if github.HasLabel(labels.OkToTest, l) {
+        if err := c.GitHubClient.RemoveLabel(org, repo, number, labels.OkToTest); err != nil {
+            return err
+        }
+    }</code></pre>
+</li></ul>
+<h3><span class="tag c-red">blocking</span>Cancellation can remove both trust labels</h3>
+<ul>
+<li>where: <code>pkg/plugins/trigger/generic-comment.go:112-130</code>
+</li>
+<li>concern: If a PR already has both <code>ok-to-test</code> and <code>needs-ok-to-test</code> (a state covered by <code>pull-request_test.go</code>), a trusted <code>/ok-to-test cancel</code> removes <code>needs-ok-to-test</code> in the ordinary label cleanup, then removes <code>ok-to-test</code>. The final check still sees <code>needs-ok-to-test</code> in the old label snapshot and skips restoring it. The PR becomes untrusted, but no longer displays the promised review-needed label. Handle cancellation before ordinary label cleanup or track the updated label state; test this existing state.
+</li>
+<li>excerpt:<pre><code>if (isOkToTest || github.HasLabel(labels.OkToTest, l)) &amp;&amp; github.HasLabel(labels.NeedsOkToTest, l) {
+    if err := c.GitHubClient.RemoveLabel(org, repo, number, labels.NeedsOkToTest); err != nil {
+        return err
+    }
+}
+// ...
+if !github.HasLabel(labels.NeedsOkToTest, l) {
+    if err := c.GitHubClient.AddLabel(org, repo, number, labels.NeedsOkToTest); err != nil {
+        return err
+    }
+}</code></pre>
+</li></ul>
+<h3><span class="tag c-red">blocking</span>Cancellation can mark an inherently trusted PR as needing approval</h3>
+<ul>
+<li>where: <code>pkg/plugins/trigger/generic-comment.go:124-132</code>
+</li>
+<li>concern: The cancel branch adds <code>needs-ok-to-test</code> even when the PR never had an <code>ok-to-test</code> grant to revoke. If the author is a trusted org member or collaborator, <code>TrustedPullRequest</code> continues to trust the author and run automatic jobs on updates, while the new label can exclude the PR from Tide's documented merge query. Only add the review-needed label when the PR actually loses label-based trust; cover a trusted-author PR in tests.
+</li>
+<li>excerpt:<pre><code>if github.HasLabel(labels.OkToTest, l) {
+    if err := c.GitHubClient.RemoveLabel(org, repo, number, labels.OkToTest); err != nil {
+        return err
+    }
+}
+if !github.HasLabel(labels.NeedsOkToTest, l) {
+    if err := c.GitHubClient.AddLabel(org, repo, number, labels.NeedsOkToTest); err != nil {
+        return err
+    }
+}</code></pre>
+</li></ul>
+<h3><span class="tag c-red">blocking</span>The cancellation transition has no regression tests</h3>
+<ul>
+<li>where: <code>pkg/plugins/trigger/generic-comment.go:118-135</code>
+</li>
+<li>concern: The PR adds no cases to the existing table-driven comment-handler tests for this new trust-changing branch. The two label-state failures above would have been exposed by cases for mixed commands and both labels. Add cases for trusted and untrusted commenters, approval present or absent, trusted authors, <code>IgnoreOkToTest</code>, and repeated delivery.
+</li>
+<li>excerpt:<pre><code>isOkToTestCancel := HonorOkToTest(trigger) &amp;&amp; pjutil.OkToTestCancelRe.MatchString(textToCheck)
+if isOkToTestCancel {
+    if !trustedResponse.IsTrusted {
+        resp := &quot;Only trusted users can revoke `/ok-to-test`.&quot;
+        return c.GitHubClient.CreateComment(org, repo, number, plugins.FormatResponseRaw(gc.Body, gc.HTMLURL, gc.User.Login, resp))
+    }</code></pre>
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>Compared the PR commit against its parent and checked issue #652 and the PR description.
+</li>
+<li>Reviewed the label-based trust check on subsequent PR updates and the existing comment-handler tests.
+</li>
+<li><code>go test ./pkg/plugins/trigger ./pkg/pjutil</code> passes.
+</li>
+<li>Found no applicable documented Go coding-standard violation or persuasive code smell in the diff.
+</li>
+<li>No configuration, default, permission, or webhook subscription migration is required.
+</li>
+<li>Two reviewer perspectives independently found the mixed-command failure; two independently found the trusted-author label mismatch.
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>Is cancellation intended to affect only future trust checks? The help text should say that it does not stop jobs already running or undo approved GitHub Actions workflows.
+</li></ul>
+<h2>Followups</h2>
+<p>No followups accepted (4 skipped).</p>
+</main></body></html>

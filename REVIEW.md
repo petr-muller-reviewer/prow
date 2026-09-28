@@ -42,3 +42,17 @@ approved and merged.
 
 ## Open questions
 (none)
+
+## Followups
+
+### Avoid unchanged-tree pushes in App auth mode
+- category: cleanup
+- necessity: could — avoids unnecessary CI runs and review churn when a repeated bump produces the same file tree.
+- where: `cmd/generic-autobumper/bumper/bumper.go:390-393`; compare with `MinimalGitPush` in the same file.
+- why followup: PR #743 fixed the App auth push refspec; aligning its unchanged-tree behavior with the fork path is separate work.
+
+```text
+In kubernetes-sigs/prow, following merged PR #743, "fix(autobumper): use HEAD refspec when pushing in App auth mode" (merge commit 539ecaca1ce9f8aeeefbfd016be10d5c02876f6c), update the App auth push path in cmd/generic-autobumper/bumper/bumper.go. Before force-pushing HEAD:<HeadBranchName> to the central repository, compare the proposed commit's tree with the existing remote branch's tree and skip the push when they match. Use the existing MinimalGitPush behavior in that file as a guide, while keeping the App auth path's explicit HEAD refspec.
+
+Add focused tests for a remote branch that does not yet exist, an existing branch with the same tree, and an existing branch with a changed tree. The new branch and changed-tree cases must push HEAD:<HeadBranchName>; the same-tree case must avoid a push. Preserve PR creation or update behavior and leave the fork and Gerrit flows unchanged. Limit refactoring to what is needed to share or test the tree comparison.
+```

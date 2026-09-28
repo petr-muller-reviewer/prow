@@ -1,133 +1,72 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>Review: kubernetes-sigs/prow#743</title>
-<style>
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-    line-height: 1.6;
-    color: #1a1a1a;
-    max-width: 820px;
-    margin: 2rem auto;
-    padding: 0 1.5rem;
-    background: #fbfbfb;
-  }
-  code, pre {
-    font-family: "SF Mono", Consolas, Monaco, "Courier New", monospace;
-    font-size: 0.9em;
-  }
-  pre {
-    background: #f0f0f0;
-    padding: 0.75rem 1rem;
-    border-radius: 6px;
-    overflow-x: auto;
-    border-left: 3px solid #888;
-  }
-  header {
-    border-bottom: 2px solid #ddd;
-    padding-bottom: 1rem;
-    margin-bottom: 1.5rem;
-  }
-  header table { border-collapse: collapse; }
-  header td { padding: 0.15rem 0.6rem 0.15rem 0; vertical-align: top; }
-  header td:first-child { color: #666; font-weight: 600; white-space: nowrap; }
-  h1 { font-size: 1.4rem; margin-bottom: 0.3rem; }
-  h2 { font-size: 1.15rem; margin-top: 2rem; border-bottom: 1px solid #eee; padding-bottom: 0.3rem; }
-  h3 { font-size: 1rem; margin-bottom: 0.3rem; }
-  .verdict {
-    display: inline-block;
-    padding: 0.25rem 0.75rem;
-    border-radius: 4px;
-    font-weight: 700;
-    background: #dff5df;
-    color: #16651a;
-  }
-  .finding {
-    border: 1px solid #e2e2e2;
-    border-radius: 6px;
-    padding: 0.9rem 1.1rem;
-    margin-bottom: 1rem;
-    background: #fff;
-  }
-  .finding .tag {
-    display: inline-block;
-    font-size: 0.75rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-    padding: 0.1rem 0.5rem;
-    border-radius: 3px;
-    margin-bottom: 0.5rem;
-  }
-  .tag.should-fix { background: #fff3cd; color: #7a5c00; }
-  .tag.blocking { background: #f8d7da; color: #842029; }
-  .tag.nit { background: #e2e3e5; color: #41464b; }
-  .tag.question { background: #d1ecf1; color: #0c5460; }
-  .loc { color: #555; }
-  ul { padding-left: 1.4rem; }
-  a { color: #0a5eb5; }
-</style>
-</head>
-<body>
-
-<header>
-  <h1>fix(autobumper): use HEAD refspec when pushing in App auth mode</h1>
-  <table>
-    <tr><td>PR</td><td><a href="https://github.com/kubernetes-sigs/prow/pull/743">kubernetes-sigs/prow#743</a></td></tr>
-    <tr><td>Head SHA</td><td><code>34f6aa69e8fb92f6adc471257d21b822f1c8ce24</code></td></tr>
-    <tr><td>Base</td><td><code>main</code></td></tr>
-    <tr><td>Reviewed at</td><td>2026-07-26T23:50:09Z</td></tr>
-  </table>
-</header>
-
-<h2>Verdict</h2>
-<p><span class="verdict">Approve</span></p>
-<p>Correct, minimal, well-targeted one-line fix for a real regression (introduced in #716), confirmed
-against the <code>PushToCentral</code> implementation and matching the explicit-refspec approach
-requested in review comments. Only gap is the lack of a regression test for this call site, which
-is not blocking given the change's small size and that it is already reviewed and merged.</p>
-
-<h2>What this PR does</h2>
-<ul>
-  <li><code>processGitHubAppAuth</code> commits changes on whatever branch is checked out (usually
-  <code>main</code>) but then pushed by passing <code>o.HeadBranchName</code> (default
-  <code>autobump</code>) straight to <code>PushToCentral</code> as if it were a local branch name.</li>
-  <li>No local branch called <code>autobump</code> is ever created, so git failed with
-  <code>error: src refspec autobump does not match any</code>.</li>
-  <li>Fix changes the call to <code>PushToCentral("HEAD:"+o.HeadBranchName, true)</code>, producing
-  <code>git push &lt;remote&gt; HEAD:autobump</code> — pushes the current commit under the current
-  <code>HEAD</code>, independent of the local branch's actual name.</li>
-  <li>Scope is exactly one line changed in <code>cmd/generic-autobumper/bumper/bumper.go</code>.</li>
-</ul>
-
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#743</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>fix(autobumper): use HEAD refspec when pushing in App auth mode</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/743">kubernetes-sigs/prow#743</a> · base <code>main</code> · head_sha <code>34f6aa69e8fb</code> · reviewed_at <code>2026-07-26T23:50:09Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span></div>
+<h2>Summary</h2>
+<p>One-line fix in <code>cmd/generic-autobumper/bumper/bumper.go</code>. <code>processGitHubAppAuth</code> called <code>repoClient.PushToCentral(o.HeadBranchName, true)</code>, but <code>PushToCentral(branch string, ...)</code> (<code>pkg/git/v2/publisher.go:96</code>) passes <code>branch</code> straight through as the ref argument to <code>git push &lt;remote&gt; &lt;branch&gt;</code>. Since no local branch named <code>autobump</code> (default <code>o.HeadBranchName</code>) is ever created — commits land on the checked-out branch, usually <code>main</code> — git fails with <code>src refspec autobump does not match any</code>. Fix changes the call to <code>PushToCentral(&quot;HEAD:&quot;+o.HeadBranchName, true)</code>, i.e. <code>git push &lt;remote&gt; HEAD:autobump</code>, which pushes the current commit regardless of local branch naming. Regression was introduced in #716. Matches the explicit-refspec approach requested in review comments on this PR, which was then approved and merged.</p>
 <h2>Findings</h2>
-
-<div class="finding">
-  <span class="tag should-fix">should-fix</span>
-  <h3>No regression test for processGitHubAppAuth's push refspec</h3>
-  <p class="loc"><code>cmd/generic-autobumper/bumper/bumper.go:390-393</code></p>
-  <pre>logrus.WithField("branch", o.HeadBranchName).Info("Pushing branch directly to upstream repo")
-if err := repoClient.PushToCentral("HEAD:"+o.HeadBranchName, true); err != nil {</pre>
-  <p>No test exercises <code>processGitHubAppAuth</code>'s call into <code>PushToCentral</code>, so
-  nothing would have caught the original #716 regression, nor would catch a future reintroduction.
-  The existing <code>pkg/git/v2/publisher_test.go</code> coverage for <code>PushToCentral</code>
-  treats <code>branch</code> as an opaque string and doesn't touch this call site.</p>
-</div>
-
-<h2>Things I checked and was fine with</h2>
+<h3><span class="tag c-amber">should-fix</span>no regression test for processGitHubAppAuth's push refspec</h3>
 <ul>
-  <li><code>PushToCentral</code>'s implementation (<code>pkg/git/v2/publisher.go:96</code>) appends
-  its <code>branch</code> argument verbatim to <code>git push &lt;remote&gt; &lt;branch&gt;</code>,
-  so <code>"HEAD:"+o.HeadBranchName</code> is a valid, standard git refspec — the fix is correct.</li>
-  <li>Other uses of <code>o.HeadBranchName</code>, e.g. the <code>MinimalGitPush</code> call at
-  <code>bumper.go:297</code> (fork-based push path), are unaffected — that path checks out/creates
-  the branch locally before pushing.</li>
-  <li>No security implications: only the push refspec target changed, no credential handling touched.</li>
-</ul>
+<li>where: <code>cmd/generic-autobumper/bumper/bumper.go:390-393</code>
+</li>
+<li>concern: No test exercises <code>processGitHubAppAuth</code>'s call into <code>PushToCentral</code>, so nothing would have caught the original #716 regression or would catch a future reintroduction. Existing <code>pkg/git/v2/publisher_test.go</code> only covers <code>PushToCentral</code> genericially (it treats <code>branch</code> as an opaque string), not this call site.
+</li>
+<li>excerpt:<pre><code>logrus.WithField(&quot;branch&quot;, o.HeadBranchName).Info(&quot;Pushing branch directly to upstream repo&quot;)
+if err := repoClient.PushToCentral(&quot;HEAD:&quot;+o.HeadBranchName, true); err != nil {</code></pre>
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li><code>PushToCentral</code> implementation (<code>pkg/git/v2/publisher.go:96</code>) confirms <code>branch</code> arg is appended verbatim to <code>git push &lt;remote&gt; &lt;branch&gt;</code> args, so <code>&quot;HEAD:&quot;+o.HeadBranchName</code> is a valid, standard refspec — fix is correct.
+</li>
+<li>Other <code>o.HeadBranchName</code> usage, e.g. <code>MinimalGitPush</code> call at <code>bumper.go:297</code> (fork-based push path), is unaffected — that path checks out/creates the branch locally first.
+</li>
+<li>No security implications; only the push refspec target changed, no credential handling touched.
+</li></ul>
+<h2>Open questions</h2>
+<p>(none)</p>
+<h2>Followups</h2>
+<h3>Avoid unchanged-tree pushes in App auth mode</h3>
+<ul>
+<li>category: cleanup
+</li>
+<li>necessity: could — avoids unnecessary CI runs and review churn when a repeated bump produces the same file tree.
+</li>
+<li>where: <code>cmd/generic-autobumper/bumper/bumper.go:390-393</code>; compare with <code>MinimalGitPush</code> in the same file.
+</li>
+<li>why followup: PR #743 fixed the App auth push refspec; aligning its unchanged-tree behavior with the fork path is separate work.
+<pre><code>In kubernetes-sigs/prow, following merged PR #743, &quot;fix(autobumper): use HEAD refspec when pushing in App auth mode&quot; (merge commit 539ecaca1ce9f8aeeefbfd016be10d5c02876f6c), update the App auth push path in cmd/generic-autobumper/bumper/bumper.go. Before force-pushing HEAD:&lt;HeadBranchName&gt; to the central repository, compare the proposed commit&#x27;s tree with the existing remote branch&#x27;s tree and skip the push when they match. Use the existing MinimalGitPush behavior in that file as a guide, while keeping the App auth path&#x27;s explicit HEAD refspec.
 
-<h2>Open questions for the author</h2>
-<p><em>None — change is small, correct, and already approved/merged.</em></p>
-
-</body>
-</html>
+Add focused tests for a remote branch that does not yet exist, an existing branch with the same tree, and an existing branch with a changed tree. The new branch and changed-tree cases must push HEAD:&lt;HeadBranchName&gt;; the same-tree case must avoid a push. Preserve PR creation or update behavior and leave the fork and Gerrit flows unchanged. Limit refactoring to what is needed to share or test the tree comparison.</code></pre>
+</li></ul>
+</main></body></html>

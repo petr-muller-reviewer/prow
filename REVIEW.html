@@ -31,18 +31,21 @@ ul, ol { padding-left:1.5rem; }
 details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
 </style></head><body><main>
 <h1><code>peribolos</code>: exclude enterprise-team members from <code>--dump</code>; fail-loud on enterprise listing errors</h1>
-<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/977">kubernetes-sigs/prow#977</a> · base <code>main</code> · head_sha <code>5800d630501b</code> · reviewed_at <code>2026-09-27T11:50:17Z</code></div>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/977">kubernetes-sigs/prow#977</a> · base <code>main</code> · head_sha <code>5800d630501b</code> · reviewed_at <code>2026-09-28T15:08:53Z</code></div>
 <div class="badges"><span class="badge c-green">verdict: approve</span></div>
 <details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#977
 title: &quot;`peribolos`: exclude enterprise-team members from `--dump`; fail-loud on enterprise listing errors&quot;
 head_sha: 5800d630501be653dd629903bd3ed65fffbd0f65
 base: main
-reviewed_at: 2026-09-27T11:50:17Z
+reviewed_at: 2026-09-28T15:08:53Z
 verdict: approve
 refresh_log:
   - old_sha: dc32fb065cb63956e0f62b0e75adae4cebfd202d
     new_sha: 5800d630501be653dd629903bd3ed65fffbd0f65
-    summary: &quot;Reviewed CLI help, helper comment, and error-message wording; hold was lifted.&quot;</code></pre></details>
+    summary: &quot;Reviewed CLI help, helper comment, and error-message wording; hold was lifted.&quot;
+  - old_sha: 5800d630501be653dd629903bd3ed65fffbd0f65
+    new_sha: 5800d630501be653dd629903bd3ed65fffbd0f65
+    summary: &quot;No code changes; cblecker approved and the PR merged on 2026-09-27.&quot;</code></pre></details>
 <h2>Verdict</h2>
 <p>Approve with a non-blocking documentation suggestion.</p>
 <p>The filtering predicate, safety checks, and client representation match the stated behavior. Both dump and apply stop before using an incomplete enterprise-member set, avoiding silent drift or removals; the dump path additionally refuses an unreported <code>direct_membership</code> value rather than guessing. The intentional fail-loud behavior creates an operational prerequisite worth documenting for installations that enable this flag.</p>
@@ -63,13 +66,15 @@ refresh_log:
 <li>Clarifies the <code>--ignore-enterprise-teams</code> help text and the shared helper's description of apply and dump behavior.
 </li>
 <li>Removes an inaccurate enterprise-team permission hint from the org-membership lookup error.
+</li>
+<li>No code changes since <code>5800d6305</code>. <code>cblecker</code> approved at 2026-09-27T20:38:31Z; the approval and LGTM labels were added, and the PR merged at 2026-09-27T20:58:30Z.
 </li></ul>
 <h2>Findings</h2>
 <h3><span class="tag c-amber">should-fix</span>Document the fail-loud operational prerequisites</h3>
 <ul>
 <li>where: <code>cmd/peribolos/main.go:568-580</code>
 </li>
-<li>concern: Existing <code>--ignore-enterprise-teams</code> users now stop the complete per-org reconciliation when any enterprise team's members cannot be listed. The release note and CLI help describe the behavior, but operator-facing documentation should state the required token access and that a failure skips subsequent work for that org; dump users on GHES also need an API version that supplies <code>direct_membership</code>.
+<li>concern: Existing <code>--ignore-enterprise-teams</code> users now stop the complete per-org reconciliation when any enterprise team's members cannot be listed. The release note and CLI help describe the behavior, but operator-facing documentation should state the required token access and that a failure skips subsequent work for that org; dump users on GHES also need an API version that supplies <code>direct_membership</code>. This suggestion remained unaddressed when the PR merged.
 </li>
 <li>excerpt:<pre><code>enterpriseMembers, err := enterpriseTeamMembers(client, orgName, allTeams)
 if err != nil {
@@ -94,4 +99,6 @@ if err != nil {
 </li></ul>
 <h2>Open questions</h2>
 <p>None.</p>
+<h2>Followups</h2>
+<p>No followups accepted (2 skipped: operator documentation and apply-side membership PUT churn).</p>
 </main></body></html>

@@ -3,12 +3,15 @@ pr: kubernetes-sigs/prow#977
 title: "`peribolos`: exclude enterprise-team members from `--dump`; fail-loud on enterprise listing errors"
 head_sha: 5800d630501be653dd629903bd3ed65fffbd0f65
 base: main
-reviewed_at: 2026-09-27T11:50:17Z
+reviewed_at: 2026-09-28T15:08:53Z
 verdict: approve
 refresh_log:
   - old_sha: dc32fb065cb63956e0f62b0e75adae4cebfd202d
     new_sha: 5800d630501be653dd629903bd3ed65fffbd0f65
     summary: "Reviewed CLI help, helper comment, and error-message wording; hold was lifted."
+  - old_sha: 5800d630501be653dd629903bd3ed65fffbd0f65
+    new_sha: 5800d630501be653dd629903bd3ed65fffbd0f65
+    summary: "No code changes; cblecker approved and the PR merged on 2026-09-27."
 ---
 
 # Review
@@ -31,12 +34,13 @@ Since previous review:
 
 - Clarifies the `--ignore-enterprise-teams` help text and the shared helper's description of apply and dump behavior.
 - Removes an inaccurate enterprise-team permission hint from the org-membership lookup error.
+- No code changes since `5800d6305`. `cblecker` approved at 2026-09-27T20:38:31Z; the approval and LGTM labels were added, and the PR merged at 2026-09-27T20:58:30Z.
 
 ## Findings
 
 ### [should-fix] Document the fail-loud operational prerequisites
 - where: `cmd/peribolos/main.go:568-580`
-- concern: Existing `--ignore-enterprise-teams` users now stop the complete per-org reconciliation when any enterprise team's members cannot be listed. The release note and CLI help describe the behavior, but operator-facing documentation should state the required token access and that a failure skips subsequent work for that org; dump users on GHES also need an API version that supplies `direct_membership`.
+- concern: Existing `--ignore-enterprise-teams` users now stop the complete per-org reconciliation when any enterprise team's members cannot be listed. The release note and CLI help describe the behavior, but operator-facing documentation should state the required token access and that a failure skips subsequent work for that org; dump users on GHES also need an API version that supplies `direct_membership`. This suggestion remained unaddressed when the PR merged.
 - excerpt: |
     enterpriseMembers, err := enterpriseTeamMembers(client, orgName, allTeams)
     if err != nil {
@@ -56,3 +60,7 @@ Since previous review:
 ## Open questions
 
 None.
+
+## Followups
+
+No followups accepted (2 skipped: operator documentation and apply-side membership PUT churn).

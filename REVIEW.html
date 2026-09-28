@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#682</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>Migrate webhook validation from HMAC-SHA1 to HMAC-SHA256</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/682">kubernetes-sigs/prow#682</a> · base <code>main</code> · head_sha <code>63a2a247cb5f</code> · reviewed_at <code>2026-09-28T17:49:21Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span></div>
+<h2>Verdict</h2>
+<p>Approve with suggestions — no blocking findings.</p>
+<p>The validator and request header use the SHA-256 format documented by GitHub, and the focused package tests passed. Direct GitHub deliveries with a configured secret remain compatible. Custom senders and relays that provide only the SHA-1 header will receive HTTP 403; operators should account for that when upgrading. The PR is already merged.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Computes and validates webhook HMACs with SHA-256 instead of SHA-1.
+</li>
+<li>Reads <code>X-Hub-Signature-256</code> when validating incoming requests.
+</li>
+<li>Updates the phony sender and webhook test fixtures to use the new header and digest.
+</li>
+<li>Adds GitHub's published SHA-256 test vector for signature generation.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-amber">should-fix</span>Document the header requirement for custom webhook senders</h3>
+<ul>
+<li>where: <code>pkg/github/webhooks.go:49-52</code>
+</li>
+<li>concern: Requests from custom senders or relays that supply only <code>X-Hub-Signature</code> now receive HTTP 403. Document the <code>X-Hub-Signature-256</code> requirement for operators using those integrations; direct GitHub deliveries with a configured secret already include the new header.
+</li>
+<li>excerpt:<pre><code>sig := r.Header.Get(&quot;X-Hub-Signature-256&quot;)
+if sig == &quot;&quot; {
+    responseHTTPError(w, http.StatusForbidden, &quot;403 Forbidden: Missing X-Hub-Signature-256&quot;)
+    return &quot;&quot;, &quot;&quot;, nil, false, http.StatusForbidden
+}</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">nit</span>Lock in rejection of the legacy header with a test</h3>
+<ul>
+<li>where: <code>pkg/github/hmac_test.go:46-101</code>
+</li>
+<li>concern: Add an explicit case for a valid <code>sha1=</code> signature, and ideally a webhook request carrying only <code>X-Hub-Signature</code>. This would record the intentional compatibility boundary in the tests.
+</li>
+<li>excerpt:<pre><code>func TestValidatePayload(t *testing.T) {
+    var testcases = []struct {
+        name           string
+        payload        string
+        sig            string
+        tokenGenerator func() []byte
+        valid          bool
+    }{</code></pre>
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>Compared the changed header, <code>sha256=</code> prefix, and test vector with <a href="https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries">GitHub's webhook validation documentation</a>.
+</li>
+<li>Confirmed <code>pkg/hook/server.go</code> passes the original request headers through to external plugins.
+</li>
+<li>Searched the checkout for remaining Go references to <code>X-Hub-Signature</code>, <code>sha1=</code>, <code>PayloadSignature</code>, and <code>ValidatePayload</code>; found no missed webhook signing or validation call sites.
+</li>
+<li>Confirmed no configuration, HMAC secret format, dependency, or RBAC change. New phony sends only SHA-256 and therefore cannot target an older Hook binary.
+</li>
+<li>Ran <code>go test ./pkg/github ./pkg/hook ./pkg/githubeventserver ./pkg/phony</code>; all four packages passed or compiled. Standalone external plugin tests were not run.
+</li></ul>
+<h2>Open questions</h2>
+<p>None.</p>
+<h2>Followups</h2>
+<p>None accepted.</p>
+</main></body></html>

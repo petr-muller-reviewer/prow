@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Review: kubernetes-sigs/prow#769</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; line-height: 1.6; max-width: 800px; margin: 2rem auto; padding: 0 1rem; color: #24292f; }
+  code, pre { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; font-size: 0.9em; }
+  code { background: #f6f8fa; padding: 0.15em 0.35em; border-radius: 3px; }
+  pre { background: #f6f8fa; padding: 1rem; border-radius: 6px; overflow-x: auto; line-height: 1.4; }
+  h1 { font-size: 1.5rem; border-bottom: 1px solid #d0d7de; padding-bottom: 0.5rem; }
+  h2 { font-size: 1.25rem; margin-top: 2rem; border-bottom: 1px solid #d0d7de; padding-bottom: 0.3rem; }
+  h3 { font-size: 1.1rem; margin-top: 1.5rem; }
+  .meta { background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 6px; padding: 0.75rem 1rem; margin-bottom: 1.5rem; font-size: 0.9em; }
+  .meta dt { font-weight: 600; display: inline; }
+  .meta dd { display: inline; margin: 0 1.5rem 0 0; }
+  .verdict { background: #dafbe1; border: 1px solid #82e596; border-radius: 6px; padding: 0.75rem 1rem; margin-bottom: 1.5rem; }
+  .verdict strong { color: #116329; }
+  .finding { background: #fff; border: 1px solid #d0d7de; border-radius: 6px; padding: 0.75rem 1rem; margin-bottom: 1rem; }
+  .finding-title { font-weight: 600; margin-bottom: 0.3rem; }
+  .severity-should-fix { border-left: 4px solid #d4a72c; }
+  .severity-nit { border-left: 4px solid #8b949e; }
+  .severity-label { font-size: 0.8em; font-weight: 600; text-transform: uppercase; padding: 0.1em 0.4em; border-radius: 3px; margin-right: 0.5em; }
+  .label-should-fix { background: #fef3cd; color: #856404; }
+  .label-nit { background: #e9ecef; color: #495057; }
+  ul { padding-left: 1.5rem; }
+  li { margin-bottom: 0.3rem; }
+  a { color: #0969da; }
+</style>
+</head>
+<body>
+
+<h1>Review: kubernetes-sigs/prow#769</h1>
+
+<div class="meta">
+  <dl>
+    <dt>PR:</dt><dd><a href="https://github.com/kubernetes-sigs/prow/pull/769">kubernetes-sigs/prow#769</a></dd>
+    <dt>Title:</dt><dd>Add Git ref mutation methods to GitHub client</dd>
+    <dt>Author:</dt><dd>jmguzik</dd>
+    <dt>Base:</dt><dd><code>main</code></dd>
+    <dt>Head SHA:</dt><dd><code>b733a7e10132a3567fb5e930312bb6287ff9831a</code></dd>
+    <dt>Reviewed:</dt><dd>2026-06-24T11:35:20Z</dd>
+  </dl>
+</div>
+
+<h2>Verdict</h2>
+<div class="verdict">
+  <strong>Approve.</strong>
+  <p>Clean, well-structured addition that follows existing codebase patterns closely. No correctness issues found. All three review perspectives (code quality, maintainability, deployment risk) converge on approve. The strongest suggestion &mdash; documenting the ref format convention &mdash; was raised independently by two reviewers but is not blocking.</p>
+</div>
+
+<h2>What this PR does</h2>
+<ul>
+  <li>Adds <code>CreateRef</code>/<code>CreateRefWithContext</code> and <code>UpdateRef</code>/<code>UpdateRefWithContext</code> to the GitHub client for creating and updating Git references via the API.</li>
+  <li>Refactors the existing <code>GetRef</code> to delegate to a new <code>GetRefWithContext</code>, enabling context-aware ref reads.</li>
+  <li>Introduces <code>IsUnprocessableEntity</code> for classifying 422 errors (e.g. non-fast-forward ref updates) and <code>NewUnprocessableEntity</code> for test construction.</li>
+  <li>Extends <code>FakeClient</code> with <code>RefsCreated</code>/<code>RefsUpdated</code> tracking slices so downstream tests can assert on ref mutations.</li>
+  <li>Adds unit tests verifying HTTP methods, paths, request body payloads, and error classification.</li>
+</ul>
+
+<h2>Findings</h2>
+
+<h3>Should fix</h3>
+
+<div class="finding severity-should-fix">
+  <div class="finding-title"><span class="severity-label label-should-fix">Should fix</span> Ref format convention undocumented on UpdateRef</div>
+  <p><code>pkg/github/client.go:3476-3497</code></p>
+  <pre>// UpdateRef updates a ref to the given SHA.
+func (c *client) UpdateRef(org, repo, ref, sha string, force bool) error {
+
+// UpdateRefWithContext updates a ref to the given SHA.
+func (c *client) UpdateRefWithContext(ctx context.Context, org, repo, ref, sha string, force bool) error {</pre>
+  <p><code>CreateRef</code> requires a fully-qualified ref (<code>refs/heads/my-branch</code>) while <code>UpdateRef</code>/<code>GetRef</code> take an unqualified ref (<code>heads/my-feature</code>). The difference is encoded in the URL path construction (<code>/repos/.../git/refs</code> for POST vs <code>/repos/.../git/refs/%s</code> for PATCH) but not in the doc comments. Two independent reviewers flagged this as an easy source of caller mistakes. Adding a note like <code>// ref does not include the "refs/" prefix, e.g. "heads/my-feature"</code> would prevent misuse.</p>
+</div>
+
+<h3>Nits</h3>
+
+<div class="finding severity-nit">
+  <div class="finding-title"><span class="severity-label label-nit">Nit</span> Displaced comment in fakegithub.go</div>
+  <p><code>pkg/github/fakegithub/fakegithub.go:106-113</code></p>
+  <pre>// A list of refs that got deleted via DeleteRef
+RefsCreated []struct{ Org, Repo, Ref, SHA string }
+RefsUpdated []struct {
+    Org, Repo, Ref, SHA string
+    Force               bool
+}
+RefsDeleted []struct{ Org, Repo, Ref string }</pre>
+  <p>The comment <code>// A list of refs that got deleted via DeleteRef</code> now reads as if it documents <code>RefsCreated</code> because the new fields were inserted between the comment and <code>RefsDeleted</code>. Each field should get its own comment.</p>
+</div>
+
+<div class="finding severity-nit">
+  <div class="finding-title"><span class="severity-label label-nit">Nit</span> TestUpdateRef only tests force: false</div>
+  <p><code>pkg/github/client_test.go:678-698</code></p>
+  <p>The test only exercises the <code>force: false</code> path. A table-driven case with <code>force: true</code> would verify the boolean serializes correctly rather than always being the zero value.</p>
+</div>
+
+<div class="finding severity-nit">
+  <div class="finding-title"><span class="severity-label label-nit">Nit</span> CreateRefWithContext doc omits namespace requirement</div>
+  <p><code>pkg/github/client.go:3458</code></p>
+  <pre>// CreateRefWithContext creates a ref at the given SHA.</pre>
+  <p><code>CreateRef</code>&rsquo;s doc says the ref must include its namespace (<code>refs/heads/my-branch</code>), but the <code>WithContext</code> variant omits this. Since <code>WithContext</code> is where the implementation lives, it should carry the full contract.</p>
+</div>
+
+<h2>Things I checked and was fine with</h2>
+<ul>
+  <li><code>GetRef</code> refactor to delegate to <code>GetRefWithContext</code> is semantically equivalent &mdash; <code>c.request()</code> already calls <code>requestWithContext(context.Background(), ...)</code> internally.</li>
+  <li>Adding methods to the <code>CommitClient</code> interface does not break other implementors: downstream code uses narrow per-plugin interfaces (e.g. <code>override.githubClient</code>, <code>tide.githubClient</code>), not <code>CommitClient</code> directly.</li>
+  <li><code>map[string]string</code> in <code>CreateRef</code> vs <code>map[string]interface{}</code> in <code>UpdateRef</code> is correct: the <code>force</code> field must serialize as a JSON boolean, not a string.</li>
+  <li><code>IsUnprocessableEntity</code> follows the same <code>errors.As</code> + status-code check pattern as the existing <code>IsNotFound</code>. Intentionally lacks the <code>ErrorMessages()</code> fallback (that fallback is legacy).</li>
+  <li><code>FakeClient</code> implementations properly acquire the mutex before appending to the tracking slices.</li>
+  <li>Tests verify HTTP method, URL path, request body contents (via <code>cmp.Diff</code>), and error classification (wrapped 422 recognized, 400 rejected).</li>
+  <li>New mutating methods are dry-run safe (POST/PATCH short-circuited by <code>requestRawWithContext</code>).</li>
+  <li>No new API token scopes required.</li>
+  <li><code>DeleteRef</code> lacking a <code>WithContext</code> variant is a pre-existing asymmetry, not a blocker for this PR.</li>
+</ul>
+
+<h2>Open questions for the author</h2>
+<p>None.</p>
+
+</body>
+</html>

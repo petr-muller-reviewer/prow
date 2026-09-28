@@ -117,3 +117,7 @@ No show-stoppers found. The implementation is clean, well-tested, follows existi
 ## Verdict
 
 APPROVE WITH SUGGESTIONS. Well-structured, well-tested, low-risk change that solves a real operational problem. All suggestions are minor polish items, not blockers.
+
+## Followups
+
+No followups accepted. Three candidates were considered and skipped: invitation API client tests, operator documentation for failed invitations, and dry-run cleanup log wording.

@@ -51,3 +51,15 @@ verdict: approve
 
 ## Open questions
 - None
+
+## Followups
+
+### Document Git ref formats in the GitHub client
+- category: docs
+- where: `pkg/github/client.go:3415-3482`
+- necessity: should — callers can pass a valid ref in the wrong form and get a failed request.
+- prompt:
+
+  ```text
+  In kubernetes-sigs/prow, following merged PR #769, "Add Git ref mutation methods to GitHub client" (merge commit 1e6ed72765e2d88f3bb1e06af85720e88b5db3af), clarify the ref argument contracts in pkg/github/client.go. CreateRef and CreateRefWithContext send the ref in the request body and require a fully qualified value such as "refs/heads/my-branch". GetRef, GetRefWithContext, UpdateRef, and UpdateRefWithContext append the ref to the /git/refs/ URL path and take a value such as "heads/my-branch". Update the Go doc comments for these methods so both context and non-context variants state the appropriate form and give an example. Acceptance: a reader can determine the required ref format from each method's own comment; the comments agree with the existing request construction. Scope: documentation only; do not change API behavior or ref normalization.
+  ```

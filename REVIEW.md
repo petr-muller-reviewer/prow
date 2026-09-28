@@ -3,8 +3,13 @@ pr: kubernetes-sigs/prow#732
 title: "docs: add hook component documentation"
 head_sha: ab2db2738583a88b0796c82dfb127cf06da798ca
 base: main
-reviewed_at: 2026-05-27T12:47:51Z
+reviewed_at: 2026-09-28T17:58:20Z
 verdict: request-changes
+refresh_log:
+  - at: 2026-09-28T17:58:20Z
+    old_sha: ab2db2738583a88b0796c82dfb127cf06da798ca
+    new_sha: ab2db2738583a88b0796c82dfb127cf06da798ca
+    summary: "No code changes; recorded maintainer approval, bot confirmation, and merge."
 gate:
   decision: hold
   gated_at: 2026-06-01T18:16:02Z
@@ -13,6 +18,8 @@ gate:
 ---
 
 ## Gate
+
+**Refresh (2026-09-28):** The PR was merged by k8s-ci-robot on 2026-06-01 at 18:32:51 UTC without a new commit. The earlier HOLD decision below remains the historical gate assessment. The required OWNERS approval was obtained from @petr-muller, but the health endpoint finding remains in the merged documentation.
 
 **Decision: HOLD**
 
@@ -29,6 +36,12 @@ The blocking finding from the local review ("Health endpoint is misdocumented") 
 ## What this PR does
 
 Replaces the hook component placeholder page (`site/content/en/docs/components/core/hook.md`) with full documentation covering: how hook processes webhooks step-by-step, all seven supported event types, GitHub webhook and HMAC secret configuration, `plugins.yaml` structure with org/repo scoping and `excluded_repos`, external plugin config, CLI flags with defaults, HTTP endpoints, and a troubleshooting section.
+
+Since previous review:
+
+- No code changed: the reviewed and merged head is `ab2db2738583a88b0796c82dfb127cf06da798ca`.
+- On 2026-06-01 at 18:21:06 UTC, @petr-muller submitted an approving review ("Beautiful"); at 18:21:14 UTC, k8s-ci-robot confirmed the PR was approved. There were no new inline review comments.
+- k8s-ci-robot merged the PR at 18:32:51 UTC. The health endpoint finding was not addressed before merge.
 
 ## Findings
 
@@ -245,6 +258,26 @@ The note should be 2-4 sentences or a short bullet list. The existing --slack-to
 Acceptance criteria: The pattern is documented. --slack-token-file has enough context to understand when it applies. The page builds without errors.
 
 Out of scope: Documenting the specific flags for every plugin, changes to any plugin documentation pages.
+```
+
+### [7] docs: Correct Hook health and readiness endpoint documentation
+- category: docs
+- necessity: must
+- where: `site/content/en/docs/components/core/hook.md:147-151`
+
+```
+In kubernetes-sigs/prow, following merged PR #732 ("docs: add hook component documentation", merge commit 874c0256d8f4706e417d2deb337688634d63259f), correct the Hook endpoint documentation in site/content/en/docs/components/core/hook.md on the merged default branch.
+
+Context: PR #732 describes `/` as the health check endpoint. In cmd/hook/main.go, `/` is a legacy stub marked for removal, while pjutil.NewHealthOnPort serves liveness at `/healthz` and readiness at `/healthz/ready`. pkg/flagutil/instrumentation.go sets the default health port to 8081 and exposes `--health-port` to override it. The inaccurate page could lead operators to configure probes against the legacy endpoint on Hook's webhook port.
+
+Task:
+1. Update the Endpoints section to identify `/healthz` as liveness and `/healthz/ready` as readiness, served on the health port (default 8081, configurable with `--health-port`).
+2. Remove `/` from the endpoint list, or clearly label it as a legacy compatibility stub that should not be used for probes.
+3. Check the current merged default branch before editing and keep endpoint names and flag defaults consistent with the implementation.
+
+Acceptance criteria: The page no longer recommends `/` for health checks; it gives operators the correct liveness and readiness paths and port; the docs site builds without errors.
+
+Out of scope: Changing Hook's HTTP handlers, removing the legacy `/` endpoint, or changing Kubernetes deployment probes.
 ```
 
 ## Open questions

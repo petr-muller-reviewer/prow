@@ -1,248 +1,161 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Review: kubernetes-sigs/prow#530</title>
-<style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
-    font-size: 15px;
-    line-height: 1.6;
-    color: #1a1a1a;
-    background: #f5f5f5;
-    padding: 24px;
-  }
-  .page {
-    max-width: 860px;
-    margin: 0 auto;
-    background: white;
-    border-radius: 6px;
-    border: 1px solid #d0d7de;
-    overflow: hidden;
-  }
-  .header {
-    background: #0969da;
-    color: white;
-    padding: 24px 32px;
-  }
-  .header h1 { font-size: 20px; font-weight: 600; margin-bottom: 8px; }
-  .header a { color: #b6d4fe; text-decoration: none; }
-  .header a:hover { text-decoration: underline; }
-  .meta { font-size: 13px; opacity: 0.85; margin-top: 12px; display: flex; flex-wrap: wrap; gap: 16px; }
-  .meta span { white-space: nowrap; }
-  .body { padding: 32px; }
-  h2 {
-    font-size: 16px;
-    font-weight: 600;
-    color: #1a1a1a;
-    border-bottom: 1px solid #d0d7de;
-    padding-bottom: 8px;
-    margin: 32px 0 16px;
-  }
-  h2:first-child { margin-top: 0; }
-  h3 { font-size: 14px; font-weight: 600; margin: 16px 0 6px; }
-  p { margin: 8px 0; }
-  ul { margin: 8px 0 8px 20px; }
-  li { margin: 4px 0; }
-  code {
-    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
-    font-size: 12px;
-    background: #f6f8fa;
-    border: 1px solid #d0d7de;
-    border-radius: 3px;
-    padding: 1px 5px;
-    color: #1a1a1a;
-  }
-  pre {
-    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
-    font-size: 12px;
-    background: #f6f8fa;
-    border: 1px solid #d0d7de;
-    border-radius: 6px;
-    padding: 14px;
-    overflow-x: auto;
-    margin: 8px 0;
-    line-height: 1.5;
-    color: #1a1a1a;
-  }
-  .verdict {
-    display: flex;
-    align-items: flex-start;
-    gap: 16px;
-    background: #dafbe1;
-    border: 1px solid #82e296;
-    border-radius: 6px;
-    padding: 16px 20px;
-    margin-bottom: 8px;
-  }
-  .verdict-label {
-    font-size: 13px;
-    font-weight: 700;
-    color: #116329;
-    white-space: nowrap;
-    padding-top: 2px;
-  }
-  .verdict-text { font-size: 14px; color: #1a1a1a; }
-  .finding {
-    border: 1px solid #d0d7de;
-    border-radius: 6px;
-    margin: 12px 0;
-    overflow: hidden;
-  }
-  .finding-header {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 14px;
-    border-bottom: 1px solid #d0d7de;
-    background: #f6f8fa;
-  }
-  .badge {
-    font-size: 11px;
-    font-weight: 700;
-    padding: 2px 8px;
-    border-radius: 10px;
-    white-space: nowrap;
-  }
-  .badge.blocking   { background: #ffebe9; color: #cf222e; border: 1px solid #f5c6cb; }
-  .badge.should-fix { background: #fff8c5; color: #7d4e00; border: 1px solid #f0c443; }
-  .badge.nit        { background: #f6f8fa; color: #57606a; border: 1px solid #d0d7de; }
-  .badge.question   { background: #ddf4ff; color: #0550ae; border: 1px solid #9cd3f5; }
-  .finding-title { font-size: 14px; font-weight: 600; }
-  .finding-body { padding: 12px 14px; }
-  .finding-where { font-size: 12px; color: #57606a; margin-bottom: 6px; }
-  .finding-concern { font-size: 14px; }
-  .question-list li { font-style: italic; }
-</style>
-</head>
-<body>
-<div class="page">
-  <div class="header">
-    <h1>Review: <a href="https://github.com/kubernetes-sigs/prow/pull/530">kubernetes-sigs/prow#530</a></h1>
-    <div style="font-size:14px; margin-top:6px; opacity:0.9;">github: enable dry-run mode when using apps auth</div>
-    <div class="meta">
-      <span>Head: <code style="background:rgba(255,255,255,0.15); border:none; color:white;">37d005f2</code></span>
-      <span>Base: <code style="background:rgba(255,255,255,0.15); border:none; color:white;">main</code></span>
-      <span>Reviewed: 2026-06-15T12:16:44Z</span>
-      <span style="opacity:0.7;">(refreshed; no code changes)</span>
-    </div>
-  </div>
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#530</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>github: enable dry-run mode when using apps auth</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/530">kubernetes-sigs/prow#530</a> · base <code>main</code> · head_sha <code>37d005f25399</code> · reviewed_at <code>2026-09-28T21:23:22Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span></div>
+<details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#530
+title: &quot;github: enable dry-run mode when using apps auth&quot;
+head_sha: 37d005f253997a71541cce48faaf7dbe8272601c
+base: main
+reviewed_at: 2026-09-28T21:23:22Z
+verdict: approve
+refresh_log:
+  - from_sha: 37d005f253997a71541cce48faaf7dbe8272601c
+    to_sha: 37d005f253997a71541cce48faaf7dbe8272601c
+    summary: &quot;No code changes. Title updated to reflect pkg/github scope. Approved by kaovilai (2026-05-27) and petr-muller (2026-06-15).&quot;
+  - from_sha: 37d005f253997a71541cce48faaf7dbe8272601c
+    to_sha: 37d005f253997a71541cce48faaf7dbe8272601c
+    summary: &quot;No code changes. PR merged on 2026-06-15; two reviewer replies and two comment-only reviews recorded.&quot;</code></pre></details>
+<h2>What this PR does</h2>
+<ul>
+<li>Introduces <code>allowInDryRun bool</code> field on the internal request struct in <code>pkg/github/client.go</code>
+</li>
+<li>Sets <code>allowInDryRun: true</code> on the single GitHub Apps token acquisition request (<code>POST /app/installations/{id}/access_tokens</code>)
+</li>
+<li>Enforces a hardcoded allowlist check: logs a security error and skips <code>allowInDryRun</code> if the URL does not match the expected Apps token endpoint
+</li>
+<li>Previously, GitHub Apps auth failed entirely in dry-run mode because all POSTs were blocked; this carve-out allows token acquisition while mutations remain blocked
+</li>
+<li>Adds 409 test lines including <code>TestAllowInDryRunEnforcesAllowlist</code> covering the security boundary
+</li></ul>
+<p>Since previous review:</p>
+<ul>
+<li>No new commits or diff; the PR was merged at <code>37d005f253997a71541cce48faaf7dbe8272601c</code> on 2026-06-15.
+</li>
+<li>Reviewer discussion closed the panic suggestion as low value, and recorded <a href="https://github.com/kubernetes-sigs/prow/pull/756">#756</a> as a follow-up for the dry-run condition. The follow-up was merged separately on 2026-06-16.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-green">resolved</span>Title and description misstate scope of change</h3>
+<ul>
+<li>where: <code>pkg/github/client.go</code> (shared infrastructure, not Peribolos code)
+</li>
+<li>concern: The change lives in the shared GitHub client used by every Prow component. Any component running <code>--dry-run</code> with GitHub Apps auth is affected, not just Peribolos. The PR title and description do not disclose this. Reviewers and future readers will underestimate the blast radius.
+</li>
+<li>resolution: PR title updated from "<code>Peribolos</code>: enable dry-run mode for GitHub Apps" to "github: enable dry-run mode when using apps auth" reflecting the pkg/github scope.
+</li></ul>
+<h3><span class="tag c-blue">question</span>Behavioral change for non-Peribolos components in dry-run + GH Apps</h3>
+<ul>
+<li>where: <code>pkg/github/client.go:932-950</code> (request execution path)
+</li>
+<li>concern: Before this PR, any Prow component using dry-run + GH Apps would fail immediately at token acquisition. After, they acquire a token and proceed until the first blocked mutation. The code path between successful auth and the first mutation call is untested for components other than Peribolos. Are there observable side effects (API reads, state, metrics, logging) in that window for other components?
+</li></ul>
+<h3><span class="tag c-gray">nit</span>Allowlist violation does not fail loudly in test/dev builds</h3>
+<ul>
+<li>where: <code>pkg/github/client.go:950</code>
+</li>
+<li>concern: Misuse of <code>allowInDryRun: true</code> on a non-allowed endpoint logs an error and silently falls back. In production this is safe; in development or test builds a panic would surface mistakes earlier.
+</li>
+<li>follow-up discussion: petr-muller replied on 2026-06-15 that a panic would make the logic hard to test and its value is not significant; no change was requested.
+</li></ul>
+<h3><span class="tag c-gray">nit</span>URL pattern matching is fragile and untested for boundary cases</h3>
+<ul>
+<li>where: <code>pkg/github/client.go</code> (allowlist check using <code>strings.Contains</code> / <code>strings.HasSuffix</code>)
+</li>
+<li>concern: Pattern is not a package-level constant. No test verifies that a near-miss URL (e.g. <code>/apps/installations/{id}/tokens</code>) is correctly blocked. If GitHub changes the endpoint path, the allowlist silently stops working.
+</li></ul>
+<h3><span class="tag c-gray">nit</span>Dry-run condition readability</h3>
+<ul>
+<li>where: <code>pkg/github/client.go:932-934</code>
+</li>
+<li>concern: The compound boolean involving <code>allowInDryRun</code> and <code>c.dry</code> lacks explicit parentheses; intent requires careful reading.
+</li>
+<li>follow-up: petr-muller filed <a href="https://github.com/kubernetes-sigs/prow/pull/756">#756</a> to centralize the dry-run bypass logic; it was merged separately on 2026-06-16.
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>Defense in depth: both <code>allowInDryRun</code> flag and hardcoded allowlist check must pass for the carve-out to apply
+</li>
+<li><code>TestAllowInDryRunEnforcesAllowlist</code> correctly exercises the security boundary
+</li>
+<li>Backward compatibility: PAT users see no behavioral change; all mutation endpoints remain blocked in dry-run
+</li>
+<li>Only one call site sets <code>allowInDryRun: true</code>; the 96 other request creation sites are unaffected
+</li>
+<li>No API, configuration schema, or CLI flag changes
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>Does the PR description need to state explicitly that this affects all Prow components, not just Peribolos? Other maintainers own those components and may want to know. <em>(Title now updated to reflect pkg/github scope; description update less critical.)</em>
+</li>
+<li>Have components other than Peribolos been tested or considered when running <code>--dry-run</code> with GH Apps auth? What happens between successful token acquisition and the first blocked mutation in e.g. Tide, Sinker, or Crier?
+</li></ul>
+<h2>Activity since first review</h2>
+<ul>
+<li>2026-05-27: kaovilai reviewed and commented "Works for me."
+</li>
+<li>2026-06-15: petr-muller approved
+</li>
+<li>2026-06-15: PR title updated from "<code>Peribolos</code>: enable dry-run mode for GitHub Apps" to "github: enable dry-run mode when using apps auth" (addresses scope concern)
+</li>
+<li>2026-06-15: petr-muller comment "Let's move forward with this one"
+</li>
+<li>2026-06-15 12:59 UTC: PR merged at <code>37d005f253997a71541cce48faaf7dbe8272601c</code>.
+</li>
+<li>2026-06-15 13:52 UTC: petr-muller submitted two comment-only reviews. In inline replies, he declined the panic suggestion as hard to test and low value, and linked follow-up PR #756 for the dry-run condition.
+</li>
+<li>2026-06-16 19:21 UTC: follow-up PR #756 merged separately.
+</li></ul>
+<h2>Followups</h2>
+<h3>Block GraphQL mutations in dry-run mode</h3>
+<ul>
+<li>category: safety
+</li>
+<li>necessity: must — dry-run clients can currently send a GraphQL mutation after Apps authentication obtains an installation token.
+</li>
+<li>where: <code>pkg/github/client.go</code> (<code>MutateWithGitHubAppsSupport</code> and the GraphQL Apps transport); <code>pkg/plugins/transfer-issue/transfer-issue.go</code> is a concrete caller.
+<pre><code>In kubernetes-sigs/prow, following PR #530, &quot;github: enable dry-run mode when using apps auth&quot; (merged as da30d8b3fec2bdb5c5e923f85df17faa04520d6f), prevent Client.MutateWithGitHubAppsSupport from sending GraphQL mutations when the GitHub client is in dry-run mode. The REST dry-run guard in pkg/github/client.go does not cover this GraphQL entry point; Apps authentication can now obtain an installation token in dry-run mode, and pkg/plugins/transfer-issue/transfer-issue.go calls the mutation method.
 
-  <div class="body">
+Add focused tests that show a dry-run GraphQL mutation sends no mutation request with either Apps auth or PAT auth, while read-only GraphQL queries and non-dry-run mutations still work. Keep the change at the shared GitHub client boundary; plugin-specific policy and unrelated GraphQL behavior are out of scope.</code></pre>
+</li></ul>
+<h3>Make the GitHub Apps dry-run constructor honor its contract</h3>
+<ul>
+<li>category: cleanup
+</li>
+<li>necessity: should — the exported constructor promises a dry-run client but configures <code>DryRun: false</code>.
+</li>
+<li>where: <code>pkg/github/client.go</code> (<code>NewAppsAuthDryRunClientWithFields</code>); <code>pkg/github/client_test.go</code>.
+<pre><code>In kubernetes-sigs/prow, following PR #530, &quot;github: enable dry-run mode when using apps auth&quot; (merged as da30d8b3fec2bdb5c5e923f85df17faa04520d6f), fix NewAppsAuthDryRunClientWithFields in pkg/github/client.go so it actually constructs a dry-run client. The current implementation passes DryRun: false despite its name and comment. Peribolos uses GitHubClient(!confirm), so its behavior is separate from this helper.
 
-    <h2>Verdict</h2>
-    <div class="verdict">
-      <div class="verdict-label">APPROVE</div>
-      <div class="verdict-text">
-        The code is correct and safe: the allowlist enforcement is sound, testing is thorough, and mutations remain blocked in dry-run mode. One issue should be addressed before or just after merge: the PR title and description misrepresent scope — the change lives in the shared GitHub client, affecting every Prow component using GitHub Apps auth with <code>--dry-run</code>, not only Peribolos. The remaining findings are nits.
-      </div>
-    </div>
-
-    <h2>What this PR does</h2>
-    <ul>
-      <li>Adds an <code>allowInDryRun bool</code> field to the internal request struct in <code>pkg/github/client.go</code>; when set, the dry-run gate is bypassed for that specific request.</li>
-      <li>Sets <code>allowInDryRun: true</code> on exactly one call site: the GitHub Apps token acquisition POST (<code>/app/installations/{id}/access_tokens</code>).</li>
-      <li>Adds a hardcoded allowlist check: if <code>allowInDryRun</code> is set but the URL does not match the expected Apps token endpoint, a <code>SECURITY:</code> error is logged and the flag is ignored.</li>
-      <li>Before this change, any Prow component using <code>--dry-run</code> with GitHub Apps auth failed at token acquisition; now acquisition succeeds and all downstream mutations remain blocked.</li>
-      <li>Adds 409 test lines, including <code>TestAllowInDryRunEnforcesAllowlist</code> covering the security boundary.</li>
-    </ul>
-
-    <h2>Findings</h2>
-
-    <div class="finding" style="opacity:0.6; border-color:#999;">
-      <div class="finding-header" style="background:#f0f0f0;">
-        <span class="badge" style="background:#ddd; color:#555; border-color:#bbb;">resolved</span>
-        <span class="finding-title">Title and description misstate scope of change</span>
-      </div>
-      <div class="finding-body">
-        <div class="finding-where">pkg/github/client.go — shared infrastructure, not Peribolos code</div>
-        <div class="finding-concern">
-          The change lives in the shared GitHub client used by every Prow component. Any component running <code>--dry-run</code> with GitHub Apps auth is affected — not just Peribolos. The PR title ("Peribolos: enable dry-run mode…") and description do not disclose this. The description should explicitly state that this is a client-layer change with system-wide effect.
-        </div>
-        <div style="margin-top:10px; padding:8px; background:#f0f9f0; border-left:3px solid #28a745; font-size:13px;">
-          <strong>Resolved:</strong> PR title updated to "github: enable dry-run mode when using apps auth" reflecting the pkg/github scope.
-        </div>
-      </div>
-    </div>
-
-    <div class="finding">
-      <div class="finding-header">
-        <span class="badge question">question</span>
-        <span class="finding-title">Behavioral change for non-Peribolos components in dry-run + GH Apps</span>
-      </div>
-      <div class="finding-body">
-        <div class="finding-where">pkg/github/client.go:932–950 — request execution path</div>
-        <div class="finding-concern">
-          Before this PR, any Prow component using <code>--dry-run</code> + GH Apps failed immediately at token acquisition. After, they acquire a token and proceed until the first blocked mutation. The code path between successful auth and the first mutation call is untested for components other than Peribolos. Have Tide, Sinker, Crier, etc. been considered? Are there observable side effects (API reads, non-POST mutations, metrics, logging) in that window?
-        </div>
-      </div>
-    </div>
-
-    <div class="finding">
-      <div class="finding-header">
-        <span class="badge nit">nit</span>
-        <span class="finding-title">Allowlist violation does not fail loudly in test/dev builds</span>
-      </div>
-      <div class="finding-body">
-        <div class="finding-where">pkg/github/client.go:950</div>
-        <div class="finding-concern">
-          Misuse of <code>allowInDryRun: true</code> on a non-allowed endpoint logs a <code>SECURITY:</code> error and silently falls back to blocked. Correct for production; in test or dev builds a panic would surface accidental misuse earlier.
-        </div>
-      </div>
-    </div>
-
-    <div class="finding">
-      <div class="finding-header">
-        <span class="badge nit">nit</span>
-        <span class="finding-title">URL pattern matching is fragile and lacks boundary-case tests</span>
-      </div>
-      <div class="finding-body">
-        <div class="finding-where">pkg/github/client.go — allowlist check</div>
-        <div class="finding-concern">
-          The allowlist uses <code>strings.Contains("/app/installations/")</code> and <code>strings.HasSuffix("/access_tokens")</code> inline, not as a named constant. No test verifies that a near-miss URL (e.g. <code>/apps/installations/{id}/tokens</code>) is correctly rejected. If GitHub changes the endpoint path, the allowlist silently stops working.
-        </div>
-      </div>
-    </div>
-
-    <div class="finding">
-      <div class="finding-header">
-        <span class="badge nit">nit</span>
-        <span class="finding-title">Dry-run condition readability</span>
-      </div>
-      <div class="finding-body">
-        <div class="finding-where">pkg/github/client.go:932–934</div>
-        <div class="finding-concern">
-          The compound boolean involving <code>allowInDryRun</code> and <code>c.dry</code> lacks explicit parentheses. Intent requires careful reading to disambiguate operator precedence.
-        </div>
-      </div>
-    </div>
-
-    <h2>Things I checked and was fine with</h2>
-    <ul>
-      <li>Defense in depth: both the <code>allowInDryRun</code> flag AND the hardcoded allowlist check must pass for the carve-out to apply.</li>
-      <li><code>TestAllowInDryRunEnforcesAllowlist</code> correctly exercises the allowlist enforcement at the security boundary.</li>
-      <li>Backward compatibility: PAT users see no behavioral change; all mutation endpoints remain blocked in dry-run regardless of this change.</li>
-      <li>Only one call site sets <code>allowInDryRun: true</code>; the ~96 other request creation sites are unaffected.</li>
-      <li>No API, configuration schema, or CLI flag changes — zero deployment friction.</li>
-    </ul>
-
-    <h2>Open questions for the author</h2>
-    <ul class="question-list">
-      <li>Can the PR description be updated to explicitly state that this is a <code>pkg/github</code> client-layer change affecting all Prow components, not just Peribolos? Other component owners may want to know their component's behavior changed. <em>(Title now updated to reflect pkg/github scope; description update less critical.)</em></li>
-      <li>Have components other than Peribolos been considered or tested when running <code>--dry-run</code> with GH Apps auth? What happens in Tide, Sinker, Crier, etc. between successful token acquisition and the first blocked mutation — any reads or side effects that were previously short-circuited by the auth failure?</li>
-    </ul>
-
-    <h2>Activity since first review (2026-05-26)</h2>
-    <ul>
-      <li><strong>2026-05-27:</strong> kaovilai reviewed and commented "Works for me."</li>
-      <li><strong>2026-06-15:</strong> petr-muller approved the PR.</li>
-      <li><strong>2026-06-15:</strong> PR title updated from "<code>Peribolos</code>: enable dry-run mode for GitHub Apps" to "github: enable dry-run mode when using apps auth" — addresses the scope concern.</li>
-      <li><strong>2026-06-15:</strong> petr-muller commented "Let's move forward with this one".</li>
-    </ul>
-
-  </div>
-</div>
-</body>
-</html>
+Add a focused constructor-level test in pkg/github/client_test.go that proves Apps token acquisition succeeds and an ordinary REST mutation sends no request. Make the test exercise the exported constructor rather than manually setting c.dry. Leave the Peribolos flag path and unrelated constructors out of scope.</code></pre>
+</li></ul>
+</main></body></html>

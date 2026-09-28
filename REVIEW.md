@@ -3,8 +3,12 @@ pr: kubernetes-sigs/prow#763
 title: "log more info about failing webhooks"
 head_sha: c1f22a6dd39c5186a7196b319430ead41b0a526e
 base: main
-reviewed_at: 2026-06-22T14:35:49Z
+reviewed_at: 2026-09-28T22:10:13Z
 verdict: approve
+refresh_log:
+  - old_sha: c1f22a6dd39c5186a7196b319430ead41b0a526e
+    new_sha: c1f22a6dd39c5186a7196b319430ead41b0a526e
+    summary: "No code changes; petr-muller approved, the approved label was added, and the PR merged."
 gate:
   decision: merge
   gated_at: 2026-06-22T14:35:49Z
@@ -21,12 +25,24 @@ The PR is correct, all CI checks pass, and the one material risk (exported `Vali
 - (process) Missing `approved` label.
 - (suggestion, non-blocking) PR description should acknowledge the `ValidatePayload` API signature change.
 
+Refresh (2026-09-28): the `approved` process gate was satisfied on 2026-06-22, and the PR merged later that day. The gate decision above records the earlier state.
+
+## Verdict
+
+**Approve.** The focused change adds diagnostic reasons for webhook HMAC validation failures. The existing review found no blocking issues and suggested acknowledging the exported API change and asserting on the new message strings in tests.
+
 ## What this PR does
 
 - Changes `ValidatePayload` return from `bool` to `(bool, string)`, adding a reason string for each failure path.
 - Surfaces the reason in the HTTP 403 response via `ValidateWebhook`, e.g. `"403 Forbidden: Invalid X-Hub-Signature-256 - misconfigured webhook secret from organization/repo: foobar/foobar"`.
 - Updates a stale GitHub docs URL in `types.go`.
 - Updates tests to destructure the new return value.
+
+Since previous review:
+
+- No code changes; the PR head remains `c1f22a6dd39c5186a7196b319430ead41b0a526e`.
+- @petr-muller approved on 2026-06-22 at 16:55:01 UTC; the `approved` label was added at 16:55:09 UTC.
+- The PR merged on 2026-06-22 at 17:28:01 UTC as `8904d7531653eda0e8094117cea0cb66aff922a3`.
 
 ## Findings
 
@@ -70,3 +86,7 @@ The PR is correct, all CI checks pass, and the one material risk (exported `Vali
 
 - Should the PR description mention the `ValidatePayload` signature change for downstream consumers?
 - Would you consider adding a test case with a valid-format signature but wrong HMAC key, asserting on the `"misconfigured webhook secret"` message?
+
+## Followups
+
+No followups accepted. Skipped: Warning-level webhook validation logging; assertions for diagnostic messages.

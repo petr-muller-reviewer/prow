@@ -1,117 +1,138 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<title>Review: kubernetes-sigs/prow#763</title>
-<style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; line-height: 1.6; color: #1f2328; background: #f6f8fa; padding: 2rem 1rem; }
-  .container { max-width: 52rem; margin: 0 auto; background: #fff; border: 1px solid #d0d7de; border-radius: 6px; padding: 2rem; }
-  h1 { font-size: 1.5rem; margin-bottom: 0.25rem; }
-  h2 { font-size: 1.25rem; margin-top: 1.75rem; margin-bottom: 0.75rem; border-bottom: 1px solid #d0d7de; padding-bottom: 0.3rem; }
-  h3 { font-size: 1rem; margin-top: 1rem; margin-bottom: 0.25rem; }
-  .meta { font-size: 0.85rem; color: #656d76; margin-bottom: 1.25rem; }
-  .meta a { color: #0969da; text-decoration: none; }
-  .meta a:hover { text-decoration: underline; }
-  .verdict { padding: 0.75rem 1rem; border-radius: 6px; margin-bottom: 1.25rem; }
-  .verdict.approve { background: #dafbe1; border-left: 4px solid #1a7f37; }
-  .gate { padding: 0.75rem 1rem; border-radius: 6px; margin-bottom: 1.25rem; }
-  .gate.merge { background: #dafbe1; border-left: 4px solid #1a7f37; }
-  .gate.hold { background: #fff8c5; border-left: 4px solid #9a6700; }
-  .gate.do-not-merge { background: #ffebe9; border-left: 4px solid #cf222e; }
-  .verdict strong, .gate strong { font-size: 0.95rem; }
-  .severity { display: inline-block; font-size: 0.75rem; font-weight: 600; padding: 0.1rem 0.4rem; border-radius: 3px; margin-right: 0.4rem; vertical-align: middle; }
-  .severity.blocking { background: #ffebe9; color: #cf222e; }
-  .severity.should-fix { background: #fff8c5; color: #9a6700; }
-  .severity.nit { background: #ddf4ff; color: #0969da; }
-  .severity.question { background: #f0e6ff; color: #8250df; }
-  code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; font-size: 0.85em; background: #f6f8fa; padding: 0.15em 0.35em; border-radius: 3px; }
-  pre { background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 6px; padding: 0.75rem 1rem; overflow-x: auto; font-size: 0.85rem; line-height: 1.45; margin: 0.5rem 0; }
-  pre code { background: none; padding: 0; }
-  ul { margin-left: 1.5rem; margin-bottom: 0.5rem; }
-  li { margin-bottom: 0.25rem; }
-  .finding { margin-bottom: 1.25rem; padding-left: 0.75rem; border-left: 2px solid #d0d7de; }
-  .finding p { margin: 0.25rem 0; }
-  .checked-list li { color: #1a7f37; }
-</style>
-</head>
-<body>
-<div class="container">
-
-<h1>Review: log more info about failing webhooks</h1>
-<div class="meta">
-  <a href="https://github.com/kubernetes-sigs/prow/pull/763">kubernetes-sigs/prow#763</a><br>
-  Head: <code>c1f22a6dd39c5186a7196b319430ead41b0a526e</code> &middot; Base: <code>main</code><br>
-  Reviewed: 2026-06-22T14:35:49Z
-</div>
-
-<div class="verdict approve">
-  <strong>Verdict: Approve</strong>
-  <p>A correct, focused, low-risk operational improvement. The change adds diagnostic reason strings to webhook HMAC validation failures, helping operators identify which org/repo has a misconfigured webhook secret. No critical issues. Two should-fix suggestions: acknowledge the exported API signature change, and add test assertions for the new message strings.</p>
-</div>
-
-<div class="gate merge">
-  <strong>Gate: Merge</strong>
-  <p>All CI checks pass. The exported <code>ValidatePayload</code> signature change is the only material merge risk, but the blast radius is small (common entry point <code>ValidateWebhook</code> is unchanged) and it's a compile-time break, not a runtime surprise. Missing <code>approved</code> label is a process gate (needs <code>/approve</code> from a <code>pkg/OWNERS</code> approver).</p>
-</div>
-
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#763</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>log more info about failing webhooks</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/763">kubernetes-sigs/prow#763</a> · base <code>main</code> · head_sha <code>c1f22a6dd39c</code> · reviewed_at <code>2026-09-28T22:10:13Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span><span class="badge c-green">gate: merge</span></div>
+<details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#763
+title: &quot;log more info about failing webhooks&quot;
+head_sha: c1f22a6dd39c5186a7196b319430ead41b0a526e
+base: main
+reviewed_at: 2026-09-28T22:10:13Z
+verdict: approve
+refresh_log:
+  - old_sha: c1f22a6dd39c5186a7196b319430ead41b0a526e
+    new_sha: c1f22a6dd39c5186a7196b319430ead41b0a526e
+    summary: &quot;No code changes; petr-muller approved, the approved label was added, and the PR merged.&quot;
+gate:
+  decision: merge
+  gated_at: 2026-06-22T14:35:49Z
+  gated_head_sha: c1f22a6dd39c5186a7196b319430ead41b0a526e
+  reviewed_head_sha: c1f22a6dd39c5186a7196b319430ead41b0a526e</code></pre></details>
+<h2>Gate</h2>
+<p><strong>Decision: merge</strong></p>
+<p>The PR is correct, all CI checks pass, and the one material risk (exported <code>ValidatePayload</code> signature change) does not meet the bar for blocking. @Prucek approved with no findings. The missing <code>approved</code> label is a process gate (needs <code>/approve</code> from a <code>pkg/OWNERS</code> approver, suggested: @droslean), not a code concern.</p>
+<ul>
+<li>(process) Missing <code>approved</code> label.
+</li>
+<li>(suggestion, non-blocking) PR description should acknowledge the <code>ValidatePayload</code> API signature change.
+</li></ul>
+<p>Refresh (2026-09-28): the <code>approved</code> process gate was satisfied on 2026-06-22, and the PR merged later that day. The gate decision above records the earlier state.</p>
+<h2>Verdict</h2>
+<p><strong>Approve.</strong> The focused change adds diagnostic reasons for webhook HMAC validation failures. The existing review found no blocking issues and suggested acknowledging the exported API change and asserting on the new message strings in tests.</p>
 <h2>What this PR does</h2>
 <ul>
-  <li>Changes <code>ValidatePayload</code> return type from <code>bool</code> to <code>(bool, string)</code>, adding a human-readable reason for each failure path (invalid payload, invalid signature, missing HMAC config, wrong secret).</li>
-  <li>Surfaces the reason in the HTTP 403 response via <code>ValidateWebhook</code>, e.g. <code>"403 Forbidden: Invalid X-Hub-Signature-256 - misconfigured webhook secret from organization/repo: foobar/foobar"</code>.</li>
-  <li>Updates a stale GitHub docs URL in <code>types.go</code> (old URL redirected to the new one).</li>
-  <li>Updates tests to destructure the new return value (but does not assert on the message content).</li>
-</ul>
-
-<h2>Findings</h2>
-
-<div class="finding">
-  <h3><span class="severity should-fix">should-fix</span> Exported API signature change not acknowledged</h3>
-  <p><code>pkg/github/hmac.go:42</code></p>
-  <p><code>ValidatePayload</code> is an exported function. Changing the return type from <code>bool</code> to <code>(bool, string)</code> is a compile-time breaking change for any external importer of <code>sigs.k8s.io/prow/pkg/github</code> that calls this function directly. The blast radius is small &mdash; <code>ValidateWebhook</code> is the common entry point and its signature is unchanged &mdash; but the PR description should acknowledge the API change for downstream consumers.</p>
-  <pre><code>func ValidatePayload(payload []byte, sig string, tokenGenerator func() []byte) (bool, string) {</code></pre>
-</div>
-
-<div class="finding">
-  <h3><span class="severity should-fix">should-fix</span> No test assertions on message return values</h3>
-  <p><code>pkg/github/hmac_test.go:97-102</code></p>
-  <p>Tests correctly destructure <code>(valid, msg)</code> but only assert on <code>valid</code>. The diagnostic strings &mdash; the entire purpose of this PR &mdash; are untested. Adding an <code>expectedMsg</code> field to the table-driven test cases would prevent silent regressions. Additionally, no test case exercises the final <code>"misconfigured webhook secret"</code> path (valid JSON payload, valid-format signature, wrong HMAC key).</p>
-  <pre><code>valid, msg := ValidatePayload([]byte(tc.payload), tc.sig, tc.tokenGenerator)
-if valid != tc.valid {
-    t.Errorf("Wrong validation for the test %q: expected %t but got %t, message: %s", tc.name, tc.valid, valid, msg)
-}</code></pre>
-</div>
-
-<div class="finding">
-  <h3><span class="severity nit">nit</span> Error message wording slightly misleading</h3>
-  <p><code>pkg/github/hmac.go:78</code></p>
-  <p><code>"misconfigured webhook secret from organization/repo: "</code> implies the webhook secret is misconfigured on the sender side, but the HMAC mismatch could also mean the webhook points at the wrong Prow instance or the HMAC config on the Prow side is stale. <code>"webhook signature mismatch for organization/repo: "</code> would be more neutral and accurate.</p>
-  <pre><code>return false, "misconfigured webhook secret from organization/repo: " + orgRepo</code></pre>
-</div>
-
-<div class="finding">
-  <h3><span class="severity nit">nit</span> Diagnostic detail in HTTP body vs server-side logging</h3>
-  <p><code>pkg/github/webhooks.go:67</code></p>
-  <p>The detailed message (including the attacker-controlled <code>orgRepo</code> parsed from the unauthenticated payload) is returned in the HTTP response body. <code>responseHTTPError</code> logs at Debug level, which is often disabled in production. Logging at Warning/Info and keeping the HTTP body generic would be slightly cleaner. Not unsafe as-is: <code>http.Error</code> sets <code>text/plain</code>, no injection vector, and the reflected data is what the sender provided.</p>
-  <pre><code>responseHTTPError(w, http.StatusForbidden, "403 Forbidden: Invalid X-Hub-Signature-256 - "+message)</code></pre>
-</div>
-
-<h2>Things I checked and was fine with</h2>
-<ul class="checked-list">
-  <li>All in-tree callers of <code>ValidatePayload</code> updated (only <code>webhooks.go</code>; five callers of <code>ValidateWebhook</code> are unaffected).</li>
-  <li>No injection risk from <code>orgRepo</code> in HTTP response (<code>http.Error</code> sets <code>text/plain</code>).</li>
-  <li>HTTP status code (403) unchanged; response prefix <code>"403 Forbidden: Invalid X-Hub-Signature-256"</code> preserved for tooling compatibility.</li>
-  <li>No config, flag, or schema changes. Zero operator action required for upgrade.</li>
-  <li>CI passes: unit tests, lint, integration, race detector, image build, CLA.</li>
-  <li><code>types.go</code> URL fix verified: old URL redirects to the new one.</li>
-</ul>
-
-<h2>Open questions for the author</h2>
+<li>Changes <code>ValidatePayload</code> return from <code>bool</code> to <code>(bool, string)</code>, adding a reason string for each failure path.
+</li>
+<li>Surfaces the reason in the HTTP 403 response via <code>ValidateWebhook</code>, e.g. <code>&quot;403 Forbidden: Invalid X-Hub-Signature-256 - misconfigured webhook secret from organization/repo: foobar/foobar&quot;</code>.
+</li>
+<li>Updates a stale GitHub docs URL in <code>types.go</code>.
+</li>
+<li>Updates tests to destructure the new return value.
+</li></ul>
+<p>Since previous review:</p>
 <ul>
-  <li>Should the PR description mention the <code>ValidatePayload</code> signature change for downstream consumers?</li>
-  <li>Would you consider adding a test case with a valid-format signature but wrong HMAC key, asserting on the <code>"misconfigured webhook secret"</code> message?</li>
-</ul>
-
-</div>
-</body>
-</html>
+<li>No code changes; the PR head remains <code>c1f22a6dd39c5186a7196b319430ead41b0a526e</code>.
+</li>
+<li>@petr-muller approved on 2026-06-22 at 16:55:01 UTC; the <code>approved</code> label was added at 16:55:09 UTC.
+</li>
+<li>The PR merged on 2026-06-22 at 17:28:01 UTC as <code>8904d7531653eda0e8094117cea0cb66aff922a3</code>.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-amber">should-fix</span>Exported API signature change not acknowledged</h3>
+<ul>
+<li>where: <code>pkg/github/hmac.go:42</code>
+</li>
+<li>concern: <code>ValidatePayload</code> is exported. Changing from <code>bool</code> to <code>(bool, string)</code> is a compile-time break for any external importer calling this function. The blast radius is small (<code>ValidateWebhook</code> is the common entry point and is unchanged), but the PR description should acknowledge the API change.
+</li>
+<li>excerpt:<pre><code>func ValidatePayload(payload []byte, sig string, tokenGenerator func() []byte) (bool, string) {</code></pre>
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>No test assertions on message return values</h3>
+<ul>
+<li>where: <code>pkg/github/hmac_test.go:97-102</code>
+</li>
+<li>concern: Tests destructure <code>(valid, msg)</code> but only assert on <code>valid</code>. The diagnostic strings (the whole point of the PR) are untested. Adding an <code>expectedMsg</code> field to the table-driven tests would prevent silent regressions. No test case exercises the <code>&quot;misconfigured webhook secret&quot;</code> path (valid JSON, valid-format signature, wrong HMAC key).
+</li>
+<li>excerpt:<pre><code>valid, msg := ValidatePayload([]byte(tc.payload), tc.sig, tc.tokenGenerator)
+if valid != tc.valid {
+    t.Errorf(&quot;Wrong validation for the test %q: expected %t but got %t, message: %s&quot;, tc.name, tc.valid, valid, msg)
+}</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">nit</span>Error message wording slightly misleading</h3>
+<ul>
+<li>where: <code>pkg/github/hmac.go:78</code>
+</li>
+<li>concern: <code>&quot;misconfigured webhook secret from organization/repo: &quot;</code> implies the webhook secret is misconfigured, but the mismatch could also mean the webhook points at the wrong Prow instance or the HMAC config on the Prow side is stale. <code>&quot;webhook signature mismatch for organization/repo: &quot;</code> would be more neutral.
+</li>
+<li>excerpt:<pre><code>return false, &quot;misconfigured webhook secret from organization/repo: &quot; + orgRepo</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">nit</span>Diagnostic message in HTTP body vs server-side logging</h3>
+<ul>
+<li>where: <code>pkg/github/webhooks.go:67</code>
+</li>
+<li>concern: The detailed message (including attacker-controlled <code>orgRepo</code> from the unauthenticated payload) is returned in the HTTP response body. <code>responseHTTPError</code> logs at Debug level, which is often disabled in production. Logging at Warning/Info and keeping the HTTP body generic would be slightly cleaner, though the current approach is not unsafe (<code>text/plain</code>, no injection vector, reflected data is what the sender provided).
+</li>
+<li>excerpt:<pre><code>responseHTTPError(w, http.StatusForbidden, &quot;403 Forbidden: Invalid X-Hub-Signature-256 - &quot;+message)</code></pre>
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>All in-tree callers of <code>ValidatePayload</code> updated (only <code>webhooks.go</code>; five callers of <code>ValidateWebhook</code> are unaffected).
+</li>
+<li>No injection risk from <code>orgRepo</code> in HTTP response (<code>http.Error</code> sets <code>text/plain</code>).
+</li>
+<li>HTTP status code (403) unchanged; response prefix <code>&quot;403 Forbidden: Invalid X-Hub-Signature-256&quot;</code> preserved for tooling compatibility.
+</li>
+<li>No config, flag, or schema changes. Zero operator action required for upgrade.
+</li>
+<li>CI passes: unit tests, lint, integration, race detector, image build, CLA.
+</li>
+<li><code>types.go</code> URL fix verified: old URL redirects to the new one.
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>Should the PR description mention the <code>ValidatePayload</code> signature change for downstream consumers?
+</li>
+<li>Would you consider adding a test case with a valid-format signature but wrong HMAC key, asserting on the <code>&quot;misconfigured webhook secret&quot;</code> message?
+</li></ul>
+<h2>Followups</h2>
+<p>No followups accepted. Skipped: Warning-level webhook validation logging; assertions for diagnostic messages.</p>
+</main></body></html>

@@ -95,3 +95,27 @@ Since previous review: PR merged on 2026-05-18 with no code changes. @droslean a
 - Is the `SkipPullRequest` semantic difference intentional? Fork mode: push (dryrun) + PR (dryrun). App auth mode: skip everything after commits.
 - Should `processGitHubAppAuth` use `OrgAwareClient` for the initial `BotUser()` call to avoid duplicating the `[bot]` suffix logic?
 - Has this been tested end-to-end with a real GitHub App installation?
+
+## Followups
+
+### Document GitHub App authentication for generic-autobumper
+- category: docs
+- where: `site/content/en/docs/components/cli-tools/generic-autobumper.md`
+- necessity: should — the guide currently says a personal access token is required, although App authentication is supported.
+- why followup: PR #716 added the branch mode without updating the operator guide; the merged behavior needs a usable setup example.
+- prompt:
+
+  ```text
+  In kubernetes-sigs/prow, following merged PR #716, "generic-autobumper: add GitHub App authentication support" (merge commit 5e429888d6e8f9ca87a8025a92eb48b48b8db63f), update site/content/en/docs/components/cli-tools/generic-autobumper.md for the new branch-mode GitHub App workflow. Keep the existing PAT/fork example, but correct the statement that a token is always required. Add a concrete App-mode invocation using --github-app-id and --github-app-private-key-path, explain explicit --pr-source-mode=branch versus automatic selection, and show which legacy fork settings are unnecessary in App mode. Derive the required GitHub App repository permissions from the code paths that push and create or update PRs, then document those permissions and installation on the target repository. Acceptance criteria: an operator can choose either supported mode from the page and has a complete, accurate App setup example. Scope guard: documentation only; do not change authentication or PR behavior.
+  ```
+
+### Centralize GitHub App bot identity handling
+- category: cleanup
+- where: `cmd/generic-autobumper/bumper/bumper.go:332-341`, `cmd/generic-autobumper/bumper/orgaware.go:48-60`
+- necessity: could — both call sites currently work, but they duplicate the `[bot]` suffix rule and the wrapper's field-by-field copy is fragile.
+- why followup: PR #716 introduced both implementations to serve git commit identity and GitHub PR search; after merge they can share one behavior.
+- prompt:
+
+  ```text
+  In kubernetes-sigs/prow, following merged PR #716, "generic-autobumper: add GitHub App authentication support" (merge commit 5e429888d6e8f9ca87a8025a92eb48b48b8db63f), centralize App bot login normalization in cmd/generic-autobumper/bumper. The initial BotUser lookup in processGitHubAppAuth (bumper.go) and the later PR-search lookup through OrgAwareClient (orgaware.go) both append [bot]; make them use one rule, preserving the current default git name/email behavior and avoiding a double suffix. In OrgAwareClient.BotUser, copy the returned github.UserData before changing Login instead of reconstructing selected fields. Acceptance criteria: App logins with and without an existing [bot] suffix produce the same commit identity and PR search author as before; PAT behavior remains unchanged; existing relevant tests pass. Scope guard: do not alter PR creation, push, or credential selection behavior.
+  ```

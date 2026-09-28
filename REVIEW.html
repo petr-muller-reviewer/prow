@@ -1,168 +1,178 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Review: kubernetes-sigs/prow#716</title>
-<style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; line-height: 1.6; color: #1f2328; background: #fff; padding: 2rem 1rem; }
-  .container { max-width: 52rem; margin: 0 auto; }
-  h1 { font-size: 1.5rem; margin-bottom: 0.25rem; }
-  h2 { font-size: 1.25rem; margin-top: 2rem; margin-bottom: 0.75rem; border-bottom: 1px solid #d1d9e0; padding-bottom: 0.3rem; }
-  h3 { font-size: 1rem; margin-top: 1.25rem; margin-bottom: 0.3rem; }
-  p, li { margin-bottom: 0.5rem; }
-  ul { padding-left: 1.5rem; }
-  a { color: #0969da; text-decoration: none; }
-  a:hover { text-decoration: underline; }
-  code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; font-size: 0.875em; background: #f6f8fa; padding: 0.15em 0.35em; border-radius: 4px; }
-  pre { background: #f6f8fa; padding: 1rem; border-radius: 6px; overflow-x: auto; font-size: 0.85rem; line-height: 1.5; margin: 0.5rem 0 1rem; }
-  pre code { background: none; padding: 0; }
-  .meta { background: #f6f8fa; border: 1px solid #d1d9e0; border-radius: 6px; padding: 1rem 1.25rem; margin-bottom: 1.5rem; font-size: 0.9rem; }
-  .meta td { padding: 0.15rem 0.75rem 0.15rem 0; vertical-align: top; }
-  .meta td:first-child { font-weight: 600; white-space: nowrap; }
-  .verdict-box { background: #fff8c5; border: 1px solid #d4a72c; border-radius: 6px; padding: 1rem 1.25rem; margin-bottom: 1.5rem; }
-  .verdict-box strong { color: #9a6700; }
-  .severity { display: inline-block; font-size: 0.75rem; font-weight: 600; padding: 0.1em 0.5em; border-radius: 3px; margin-right: 0.4rem; vertical-align: middle; }
-  .sev-should-fix { background: #fff8c5; color: #9a6700; }
-  .sev-nit { background: #ddf4ff; color: #0969da; }
-  .sev-question { background: #f6f8fa; color: #636c76; }
-  .finding { margin-bottom: 1.5rem; border-left: 3px solid #d1d9e0; padding-left: 1rem; }
-  .finding-should-fix { border-left-color: #d4a72c; }
-  .finding-nit { border-left-color: #54aeff; }
-  .finding-question { border-left-color: #8c959f; }
-  .where { font-size: 0.85rem; color: #636c76; margin-bottom: 0.3rem; }
-  .checked li { color: #1a7f37; }
-</style>
-</head>
-<body>
-<div class="container">
-
-<h1>Review: generic-autobumper GitHub App auth</h1>
-
-<div class="meta">
-<table>
-  <tr><td>PR</td><td><a href="https://github.com/kubernetes-sigs/prow/pull/716">kubernetes-sigs/prow#716</a></td></tr>
-  <tr><td>Title</td><td>generic-autobumper: add GitHub App authentication support</td></tr>
-  <tr><td>Head SHA</td><td><code>1a9722a01615a1a2f0c219c4fb7815f782d22ac8</code></td></tr>
-  <tr><td>Base</td><td><code>main</code></td></tr>
-  <tr><td>Reviewed</td><td>2026-05-18T11:35:20Z</td></tr>
-  <tr><td>PR State</td><td><strong style="color:#8250df">MERGED</strong></td></tr>
-</table>
-</div>
-
-<div class="verdict-box">
-  <strong>Verdict: Needs Discussion</strong> &nbsp;<span style="background:#8250df;color:#fff;padding:0.15em 0.5em;border-radius:3px;font-size:0.8rem">MERGED</span>
-  <p>The approach is sound and follows existing Prow patterns well. The main concern is a behavioral difference in how <code>--skip-pullrequest</code> works between the two modes, and a partial struct copy that will silently drop fields. Neither is a showstopper, but both warrant author clarification before approving.</p>
-  <p style="margin-top:0.5rem;color:#636c76;font-size:0.9rem"><strong>Post-merge note:</strong> PR was merged on 2026-05-18 with approval from @droslean. No code changes since initial review. None of the findings below were addressed before merge — they are post-merge observations for awareness.</p>
-</div>
-
-<h2>What this PR does</h2>
-<ul>
-  <li>Adds <code>--pr-source-mode=branch</code> flag that uses GitHub App credentials to push branches directly to the upstream repo (no fork needed).</li>
-  <li>Introduces <code>OrgAwareClient</code> wrapper to route <code>FindIssues</code> through <code>FindIssuesWithOrg</code>, solving the App auth round-tripper's requirement for org context when resolving installation tokens.</li>
-  <li>Auto-detects mode based on whether <code>--github-app-id</code> is provided; defaults to the legacy PAT/fork flow.</li>
-  <li>Wires <code>flagutil.GitHubOptions</code> into the CLI via <code>goflag.CommandLine</code> bridge for standard Prow GitHub auth flags.</li>
-  <li>Legacy <code>processGitHub</code> is completely untouched; new code lives in a separate <code>processGitHubAppAuth</code> function.</li>
-</ul>
-<p style="margin-top:0.75rem;font-size:0.9rem;color:#636c76"><strong>Since previous review (2026-05-15):</strong> No code changes. @droslean approved 2026-05-18T10:25:42Z. PR merged at the same SHA.</p>
-
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#716</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>generic-autobumper: add GitHub App authentication support</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/716">kubernetes-sigs/prow#716</a> · base <code>main</code> · head_sha <code>1a9722a01615</code> · reviewed_at <code>2026-05-18T11:35:20Z</code></div>
+<div class="badges"><span class="badge c-amber">verdict: needs-discussion</span></div>
+<details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#716
+title: &quot;generic-autobumper: add GitHub App authentication support&quot;
+head_sha: 1a9722a01615a1a2f0c219c4fb7815f782d22ac8
+base: main
+reviewed_at: 2026-05-18T11:35:20Z
+verdict: needs-discussion
+pr_state: merged
+refresh_log:
+  - old_sha: 1a9722a01615a1a2f0c219c4fb7815f782d22ac8
+    new_sha: 1a9722a01615a1a2f0c219c4fb7815f782d22ac8
+    note: &quot;No code changes. PR merged 2026-05-18. Approved by @droslean without addressing findings.&quot;</code></pre></details>
+<h2>Summary</h2>
+<p>Adds <code>--pr-source-mode=branch</code> to generic-autobumper. When combined with <code>--github-app-id</code> and <code>--github-app-private-key-path</code>, pushes branches directly to the upstream repo (no fork) and creates same-repo PRs using <code>OrgAwareClient</code>. Legacy PAT/fork flow is default and untouched.</p>
+<p>New files: <code>orgaware.go</code> (OrgAwareClient wrapper). Modified: <code>bumper.go</code> (new <code>processGitHubAppAuth</code>, validation changes, auto-detection), <code>main.go</code> (flag wiring), <code>bumper_test.go</code> (tests for new logic).</p>
+<p>Since previous review: PR merged on 2026-05-18 with no code changes. @droslean approved (no review body). None of the findings below were addressed before merge — they are post-merge observations for awareness.</p>
 <h2>Findings</h2>
-
-<h3>Should Fix</h3>
-
-<div class="finding finding-should-fix">
-  <h3><span class="severity sev-should-fix">should-fix</span> SkipPullRequest skips push in App auth path but not in fork path</h3>
-  <div class="where"><code>cmd/generic-autobumper/bumper/bumper.go:386-391</code></div>
-  <p>When <code>SkipPullRequest=true</code>, the App auth path returns before pushing — <code>PushToCentral</code> at line 391 is never reached. In the fork path, <code>MinimalGitPush</code> is always called and treats <code>SkipPullRequest</code> as a dryrun flag (logs what it would push). This means the two modes have different semantics: fork mode pushes (dryrun) and creates the PR (dryrun), while App auth mode skips everything after committing locally.</p>
-<pre><code>if o.SkipPullRequest {
+<h3><span class="tag c-amber">should-fix</span>SkipPullRequest skips push in App auth path but not in fork path</h3>
+<ul>
+<li>where: <code>cmd/generic-autobumper/bumper/bumper.go:386-388</code>
+</li>
+<li>concern: When <code>SkipPullRequest=true</code>, the App auth path returns before pushing (<code>PushToCentral</code> at line 391 is never reached). In the fork path, <code>MinimalGitPush</code> is always called — it just treats <code>SkipPullRequest</code> as <code>dryrun</code> (logs the push but skips it). The App auth path also skips creating the <code>GitClientFactory</code> cleanup. This means the two modes have different semantics for <code>--skip-pullrequest</code>: fork mode logs what it would push, App auth mode does nothing. If the intent is to push but not create a PR, this is a bug. If the intent is to do nothing, the early return should be higher (before the commit loop).
+</li>
+<li>excerpt:<pre><code>if o.SkipPullRequest {
     return nil
 }
 
-logrus.WithField("branch", o.HeadBranchName).Info("Pushing branch directly to upstream repo")
+logrus.WithField(&quot;branch&quot;, o.HeadBranchName).Info(&quot;Pushing branch directly to upstream repo&quot;)
 if err := repoClient.PushToCentral(o.HeadBranchName, true); err != nil {</code></pre>
-</div>
-
-<div class="finding finding-should-fix">
-  <h3><span class="severity sev-should-fix">should-fix</span> BotUser partial copy drops future UserData fields</h3>
-  <div class="where"><code>cmd/generic-autobumper/bumper/orgaware.go:56-59</code></div>
-  <p>Constructs a new <code>UserData</code> copying only <code>Name</code>, <code>Login</code>, <code>Email</code>. If <code>UserData</code> gains fields (like <code>ID</code> or <code>HTMLURL</code>), they'll be silently zeroed. A struct value copy is safer:</p>
-<pre><code>// Current:
-return &amp;github.UserData{
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>BotUser partial copy drops future UserData fields</h3>
+<ul>
+<li>where: <code>cmd/generic-autobumper/bumper/orgaware.go:56-59</code>
+</li>
+<li>concern: Constructs a new <code>UserData</code> copying only <code>Name</code>, <code>Login</code>, <code>Email</code>. If <code>UserData</code> gains fields (e.g. <code>ID</code>, <code>HTMLURL</code>), they are silently zeroed. A struct copy (<code>patched := *user; patched.Login += &quot;[bot]&quot;; return &amp;patched, nil</code>) preserves all fields.
+</li>
+<li>excerpt:<pre><code>return &amp;github.UserData{
     Name:  user.Name,
-    Login: user.Login + "[bot]",
+    Login: user.Login + &quot;[bot]&quot;,
     Email: user.Email,
-}, nil
-
-// Suggested:
-patched := *user
-patched.Login = user.Login + "[bot]"
-return &amp;patched, nil</code></pre>
-</div>
-
-<div class="finding finding-should-fix">
-  <h3><span class="severity sev-should-fix">should-fix</span> Duplicate [bot] suffix logic in two places</h3>
-  <div class="where"><code>cmd/generic-autobumper/bumper/bumper.go:332-335</code> and <code>cmd/generic-autobumper/bumper/orgaware.go:48-60</code></div>
-  <p><code>processGitHubAppAuth</code> appends <code>[bot]</code> to the login for git commit identity (lines 332-335), and <code>OrgAwareClient.BotUser()</code> does the same for the GitHub search author qualifier. Both have the <code>HasSuffix</code> guard. Since <code>processGitHubAppAuth</code> calls <code>gc.BotUser()</code> directly (not through <code>OrgAwareClient</code>), it patches the login manually. If the <code>OrgAwareClient</code> were constructed earlier and used for the initial <code>BotUser</code> call, this duplication would go away.</p>
-</div>
-
-<h3>Nits</h3>
-
-<div class="finding finding-nit">
-  <h3><span class="severity sev-nit">nit</span> GitHubOptions always set unconditionally</h3>
-  <div class="where"><code>cmd/generic-autobumper/main.go:216</code></div>
-  <p><code>pro.GitHubOptions = &amp;githubOpts</code> is always set, even when no App flags were provided. Auto-detection checks <code>o.GitHubOptions.AppID != ""</code>, which works because <code>AppID</code> defaults to <code>""</code>. But if <code>flagutil.GitHubOptions</code> ever reads <code>AppID</code> from an env var or config file, auto-detection silently flips to <code>"branch"</code> mode. Consider guarding: only set <code>GitHubOptions</code> when App flags are actually present.</p>
-<pre><code>pro.GitHubOptions = &amp;githubOpts  // always set, even without --github-app-id
-if prSourceMode != "" {
+}, nil</code></pre>
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>Duplicate [bot] suffix logic in two places</h3>
+<ul>
+<li>where: <code>cmd/generic-autobumper/bumper/bumper.go:332-335</code> and <code>cmd/generic-autobumper/bumper/orgaware.go:48-60</code>
+</li>
+<li>concern: <code>processGitHubAppAuth</code> appends <code>[bot]</code> to the login for git commit identity (lines 332-335), and <code>OrgAwareClient.BotUser()</code> does the same for the GitHub search author qualifier. Both have the <code>HasSuffix</code> guard. The <code>processGitHubAppAuth</code> function calls <code>gc.BotUser()</code> directly (not through <code>OrgAwareClient</code>), so it gets the raw login and patches it manually. If the <code>OrgAwareClient</code> were used for the initial BotUser call too, this duplication wouldn't be needed.
+</li></ul>
+<h3><span class="tag c-gray">nit</span>GitHubOptions always set unconditionally</h3>
+<ul>
+<li>where: <code>cmd/generic-autobumper/main.go:216</code>
+</li>
+<li>concern: <code>pro.GitHubOptions = &amp;githubOpts</code> is always set, even when no App flags were provided. Auto-detection in <code>resolvedPRSourceMode()</code> checks <code>o.GitHubOptions.AppID != &quot;&quot;</code>, which currently works because <code>AppID</code> defaults to <code>&quot;&quot;</code>. If <code>flagutil.GitHubOptions</code> ever reads <code>AppID</code> from an env var or config file, auto-detection would silently flip to <code>&quot;branch&quot;</code>. Consider guarding: <code>if githubOpts.AppID != &quot;&quot; { pro.GitHubOptions = &amp;githubOpts }</code>.
+</li>
+<li>excerpt:<pre><code>pro.GitHubOptions = &amp;githubOpts
+if prSourceMode != &quot;&quot; {
     pro.PRSourceMode = prSourceMode
 }</code></pre>
-</div>
-
-<div class="finding finding-nit">
-  <h3><span class="severity sev-nit">nit</span> Commit loop duplicated between processGitHub and processGitHubAppAuth</h3>
-  <div class="where"><code>cmd/generic-autobumper/bumper/bumper.go:270-295</code> vs <code>344-369</code></div>
-  <p>The change-iterate-commit loop is nearly identical in both functions. A bugfix to one must be mirrored in the other. Could be extracted into a helper returning <code>(anyChange bool, err error)</code>. Low priority if the team prefers explicit duplication.</p>
-</div>
-
-<div class="finding finding-nit">
-  <h3><span class="severity sev-nit">nit</span> Force push is always enabled</h3>
-  <div class="where"><code>cmd/generic-autobumper/bumper/bumper.go:391</code></div>
-  <p><code>PushToCentral(o.HeadBranchName, true)</code> — <code>true</code> means force push. For a bot-managed autobump branch this is probably correct, but if two autobumper instances target the same branch, one silently overwrites the other. Worth a brief comment noting force push is intentional.</p>
-</div>
-
-<h3>Questions</h3>
-
-<div class="finding finding-question">
-  <h3><span class="severity sev-question">question</span> allowMods=true intentional?</h3>
-  <div class="where"><code>cmd/generic-autobumper/bumper/bumper.go:407</code></div>
-  <p>The fork path creates PRs with <code>updater.PreventMods</code> (<code>false</code>), meaning <code>maintainer_can_modify=false</code>. The App auth path passes <code>true</code>. This makes sense for same-repo PRs (branch is already in the target repo), but the inconsistency should be confirmed as intentional.</p>
-</div>
-
-<div class="finding finding-question">
-  <h3><span class="severity sev-question">question</span> dryrun=false hardcoded in App auth path</h3>
-  <div class="where"><code>cmd/generic-autobumper/bumper/bumper.go:408</code></div>
-  <p>The fork path passes <code>o.SkipPullRequest</code> as the <code>dryrun</code> parameter to <code>UpdatePullRequestWithLabels</code>. The App auth path hardcodes <code>false</code>. Since the early return at line 386 handles <code>SkipPullRequest</code>, this is technically safe — but the two paths treat "skip" differently (dryrun-everything vs do-nothing). Is this the intended design?</p>
-</div>
-
-<h2>Things I checked and found fine</h2>
-<ul class="checked">
-  <li><code>OrgAwareClient.FindIssues</code> correctly delegates to <code>FindIssuesWithOrg</code> with the stored org — solves the App auth round-tripper issue.</li>
-  <li><code>resolvedPRSourceMode()</code> auto-detection logic is correct for current defaults.</li>
-  <li>Validation properly rejects <code>branch</code> mode without App credentials and <code>fork</code> mode without token.</li>
-  <li><code>HideSecretsWriter</code> used in both paths for stdout/stderr — no credential leaks.</li>
-  <li>All secret handling delegated to <code>flagutil.GitHubOptions</code>.</li>
-  <li>Test coverage for <code>resolvedPRSourceMode</code>, validation, <code>OrgAwareClient.FindIssues</code>, and <code>OrgAwareClient.BotUser</code>.</li>
-  <li>Flag registration via <code>goflag.CommandLine</code> + <code>AddGoFlagSet</code> is an established pattern in Prow.</li>
-  <li><code>RemoteName</code> validation correctly moved to fork-only (not needed for branch mode).</li>
-</ul>
-
-<h2>Open questions for the author</h2>
+</li></ul>
+<h3><span class="tag c-gray">nit</span>Commit loop duplicated between processGitHub and processGitHubAppAuth</h3>
 <ul>
-  <li>Is the <code>SkipPullRequest</code> semantic difference intentional? Fork mode: push (dryrun) + PR (dryrun). App auth mode: skip everything after commits. If so, worth documenting in the flag help text.</li>
-  <li>Should <code>processGitHubAppAuth</code> use <code>OrgAwareClient</code> for the initial <code>BotUser()</code> call to avoid duplicating the <code>[bot]</code> suffix logic?</li>
-  <li>Has this been tested end-to-end with a real GitHub App installation?</li>
-</ul>
-
-</div>
-</body>
-</html>
+<li>where: <code>cmd/generic-autobumper/bumper/bumper.go:270-295</code> and <code>cmd/generic-autobumper/bumper/bumper.go:344-369</code>
+</li>
+<li>concern: Lines 344-369 are a near-exact copy of lines 270-295 (iterate changes, check for changes, commit). A bugfix to one must be mirrored in the other. Could be extracted into a helper that returns <code>(anyChange bool, err error)</code>. Low priority if the team prefers explicit duplication.
+</li></ul>
+<h3><span class="tag c-gray">nit</span>Force push is always enabled</h3>
+<ul>
+<li>where: <code>cmd/generic-autobumper/bumper/bumper.go:391</code>
+</li>
+<li>concern: <code>PushToCentral(o.HeadBranchName, true)</code> — the <code>true</code> means force push. For a bot-managed autobump branch this is probably correct, but if two autobumper instances target the same branch, one silently overwrites the other. Worth a log line or brief comment noting force push is intentional.
+</li>
+<li>excerpt:<pre><code>if err := repoClient.PushToCentral(o.HeadBranchName, true); err != nil {</code></pre>
+</li></ul>
+<h3><span class="tag c-blue">question</span>allowMods=true intentional?</h3>
+<ul>
+<li>where: <code>cmd/generic-autobumper/bumper/bumper.go:407</code>
+</li>
+<li>concern: The fork path calls <code>updatePRWithLabels</code> with <code>updater.PreventMods</code> (which is <code>false</code>), meaning PRs are created with <code>maintainer_can_modify=false</code>. The App auth path passes <code>allowMods=true</code>. This makes sense for same-repo PRs (the branch is already in the target repo), but the inconsistency should be intentional and documented.
+</li>
+<li>excerpt:<pre><code>return UpdatePullRequestWithLabels(orgAwareGC, o.GitHubOrg, o.GitHubRepo,
+    summary, generatePRBody(body, getAssignment(o.AssignTo)),
+    o.HeadBranchName, o.GitHubBaseBranch, o.HeadBranchName,
+    true, o.Labels, false)</code></pre>
+</li></ul>
+<h3><span class="tag c-blue">question</span>dryrun=false hardcoded in App auth path</h3>
+<ul>
+<li>where: <code>cmd/generic-autobumper/bumper/bumper.go:408</code>
+</li>
+<li>concern: The fork path passes <code>o.SkipPullRequest</code> as the <code>dryrun</code> parameter to <code>UpdatePullRequestWithLabels</code>. The App auth path hardcodes <code>false</code>. Since the App auth path already returns early when <code>SkipPullRequest=true</code> (line 386), this is technically fine — but it means the two paths handle dryrun/skip differently. The fork path treats <code>SkipPullRequest</code> as "do everything in dryrun mode"; the App auth path treats it as "do nothing at all".
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li><code>OrgAwareClient.FindIssues</code> correctly delegates to <code>FindIssuesWithOrg</code> with the stored org — solves the App auth round-tripper issue.
+</li>
+<li><code>resolvedPRSourceMode()</code> auto-detection logic is correct for current defaults.
+</li>
+<li>Validation properly rejects <code>branch</code> mode without App credentials and <code>fork</code> mode without token.
+</li>
+<li><code>HideSecretsWriter</code> used in both paths for stdout/stderr.
+</li>
+<li>No credential leaks — delegating to <code>flagutil.GitHubOptions</code> for all secret handling.
+</li>
+<li>Test coverage for <code>resolvedPRSourceMode</code>, validation, <code>OrgAwareClient.FindIssues</code>, and <code>OrgAwareClient.BotUser</code>.
+</li>
+<li>Flag registration via <code>goflag.CommandLine</code> + <code>AddGoFlagSet</code> is an established pattern in Prow.
+</li>
+<li><code>RemoteName</code> validation correctly moved to fork-only (not needed for branch mode).
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>Is the <code>SkipPullRequest</code> semantic difference intentional? Fork mode: push (dryrun) + PR (dryrun). App auth mode: skip everything after commits.
+</li>
+<li>Should <code>processGitHubAppAuth</code> use <code>OrgAwareClient</code> for the initial <code>BotUser()</code> call to avoid duplicating the <code>[bot]</code> suffix logic?
+</li>
+<li>Has this been tested end-to-end with a real GitHub App installation?
+</li></ul>
+<h2>Followups</h2>
+<h3>Document GitHub App authentication for generic-autobumper</h3>
+<ul>
+<li>category: docs
+</li>
+<li>where: <code>site/content/en/docs/components/cli-tools/generic-autobumper.md</code>
+</li>
+<li>necessity: should — the guide currently says a personal access token is required, although App authentication is supported.
+</li>
+<li>why followup: PR #716 added the branch mode without updating the operator guide; the merged behavior needs a usable setup example.
+</li>
+<li>prompt:
+<pre><code>In kubernetes-sigs/prow, following merged PR #716, &quot;generic-autobumper: add GitHub App authentication support&quot; (merge commit 5e429888d6e8f9ca87a8025a92eb48b48b8db63f), update site/content/en/docs/components/cli-tools/generic-autobumper.md for the new branch-mode GitHub App workflow. Keep the existing PAT/fork example, but correct the statement that a token is always required. Add a concrete App-mode invocation using --github-app-id and --github-app-private-key-path, explain explicit --pr-source-mode=branch versus automatic selection, and show which legacy fork settings are unnecessary in App mode. Derive the required GitHub App repository permissions from the code paths that push and create or update PRs, then document those permissions and installation on the target repository. Acceptance criteria: an operator can choose either supported mode from the page and has a complete, accurate App setup example. Scope guard: documentation only; do not change authentication or PR behavior.</code></pre>
+</li></ul>
+<h3>Centralize GitHub App bot identity handling</h3>
+<ul>
+<li>category: cleanup
+</li>
+<li>where: <code>cmd/generic-autobumper/bumper/bumper.go:332-341</code>, <code>cmd/generic-autobumper/bumper/orgaware.go:48-60</code>
+</li>
+<li>necessity: could — both call sites currently work, but they duplicate the <code>[bot]</code> suffix rule and the wrapper's field-by-field copy is fragile.
+</li>
+<li>why followup: PR #716 introduced both implementations to serve git commit identity and GitHub PR search; after merge they can share one behavior.
+</li>
+<li>prompt:
+<pre><code>In kubernetes-sigs/prow, following merged PR #716, &quot;generic-autobumper: add GitHub App authentication support&quot; (merge commit 5e429888d6e8f9ca87a8025a92eb48b48b8db63f), centralize App bot login normalization in cmd/generic-autobumper/bumper. The initial BotUser lookup in processGitHubAppAuth (bumper.go) and the later PR-search lookup through OrgAwareClient (orgaware.go) both append [bot]; make them use one rule, preserving the current default git name/email behavior and avoiding a double suffix. In OrgAwareClient.BotUser, copy the returned github.UserData before changing Login instead of reconstructing selected fields. Acceptance criteria: App logins with and without an existing [bot] suffix produce the same commit identity and PR search author as before; PAT behavior remains unchanged; existing relevant tests pass. Scope guard: do not alter PR creation, push, or credential selection behavior.</code></pre>
+</li></ul>
+</main></body></html>

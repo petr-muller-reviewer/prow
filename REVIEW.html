@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#738</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>invalidcommitmsg: add config surface for fixup commit checking</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/738">kubernetes-sigs/prow#738</a> · base <code>main</code> · head_sha <code>7189547bdfc3</code> · state <code>merged</code> · reviewed_at <code>2026-06-02T23:11:46Z</code></div>
+<div class="badges"><span class="badge c-red">verdict: request-changes</span></div>
+<details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#738
+title: &quot;invalidcommitmsg: add config surface for fixup commit checking&quot;
+head_sha: 7189547bdfc3d607ec9d4f621f1902e80f9a1347
+base: main
+reviewed_at: 2026-06-02T23:11:46Z
+verdict: request-changes
+state: merged
+refresh_log:
+  - old_sha: cdf377c5a45273b181f7f6e8416f72fa7f43696c
+    new_sha: 7189547bdfc3d607ec9d4f621f1902e80f9a1347
+    summary: &quot;PR merged; one commit added wiring up issueClosingKeywords check (resolves blocking finding #1); fixup-default polarity finding merged unresolved&quot;</code></pre></details>
+<h2>Findings</h2>
+<h3><span class="tag c-green">resolved</span>issueClosingKeywords registered in config but never consulted at runtime</h3>
+<ul>
+<li>resolved_in: <code>7189547bdfc3d607ec9d4f621f1902e80f9a1347</code>
+</li>
+<li>resolution: Commit "invalidcommitmsg: make issueClosingKeywords check configurable via plugin config" adds <code>checkIssueClosing := !cfg.IsCheckDisabled(&quot;issueClosingKeywords&quot;)</code> and gates both <code>CloseIssueRegex</code> checks (commit body at line 113, PR title at line 122) behind it. Two new test cases added: "issue closing keywords ignored when check disabled" and "issue closing keywords detected when check enabled". Also cleans up test setup to always pass both checks explicitly via <code>append</code> rather than conditional slice construction.
+</li></ul>
+<h3><span class="tag c-red">blocking</span>fixup check default silently flipped from opt-in to opt-out — merged unresolved</h3>
+<ul>
+<li>where: <code>pkg/plugins/invalidcommitmsg/invalidcommitmsg.go:92-93</code>
+</li>
+<li>concern: Old code <code>os.Getenv(&quot;ENABLE_FIXUP_CHECK&quot;) == &quot;true&quot;</code> defaulted to false — opt-in. New code: <code>InvalidCommitMsgFor</code> returns <code>&amp;InvalidCommitMsg{}</code> when no config exists; <code>IsCheckDisabled(&quot;fixupPrefix&quot;)</code> on an empty <code>Checks</code> slice returns <code>false</code> (check not found = not disabled); so <code>checkFixup = !false = true</code>. Fixup checking is now ON by default for any repo without an explicit <code>invalid_commit_msg</code> block. Any deployment that relied on not setting the env var will silently start labeling PRs with fixup commits. This was flagged by all three reviewers and was not addressed before merge. Operators upgrading should be aware and add explicit config if they want to preserve the old opt-in behavior.
+</li>
+<li>excerpt:<pre><code>// Old (opt-in, defaults off):
+checkFixup := os.Getenv(&quot;ENABLE_FIXUP_CHECK&quot;) == &quot;true&quot;
+// New (opt-out, defaults ON when no config):
+cfg := config.InvalidCommitMsgFor(org, repo)
+checkFixup := !cfg.IsCheckDisabled(&quot;fixupPrefix&quot;)  // = !false = true</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">nit</span>stale comment copied from TriggerFor</h3>
+<ul>
+<li>where: <code>pkg/plugins/config.go:1133</code>
+</li>
+<li>concern: "triggers" is wrong noun — copied verbatim from <code>TriggerFor</code>. Not addressed in the merged PR.
+</li>
+<li>excerpt:<pre><code>// Prioritize repo level triggers over org level triggers.</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">nit</span>test case names still reference removed feature flag</h3>
+<ul>
+<li>where: <code>pkg/plugins/invalidcommitmsg/invalidcommitmsg_test.go:194,202</code>
+</li>
+<li>concern: Cases named "fixup commit detected when feature flag disabled/enabled" — the env-var feature flag is gone. Not addressed in the merged PR.
+</li></ul>
+<h3><span class="tag c-gray">nit</span>validateRepoDupes error message hardcodes "welcome" — now user-facing</h3>
+<ul>
+<li>where: <code>pkg/plugins/config.go</code> (pre-existing)
+</li>
+<li>concern: <code>validateRepoDupes(c.InvalidCommitMsg)</code> produces <code>The repo &quot;x/y&quot; is duplicated in the &#x27;welcome&#x27; plugin configuration.</code> for <code>invalid_commit_msg</code> duplicates. Pre-existing bug now exposed to users of the new config surface. Not addressed in the merged PR.
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>Two-pass org/repo precedence lookup exactly matches <code>LgtmFor</code>/<code>ApproveFor</code> pattern; test covers precedence inversion (org entry before repo entry in slice)
+</li>
+<li>Loop variable <code>&amp;cfg</code> returned from range loop is safe — escape analysis allocates on heap; same pattern as <code>LgtmFor</code>/<code>DcoFor</code>
+</li>
+<li><code>getRepos()</code> satisfies <code>ListableRepos</code> — plugs into generic <code>validateRepoDupes</code> without boilerplate
+</li>
+<li><code>validateInvalidCommitMsg</code> accumulates all errors via <code>utilerrors.NewAggregate</code> (not fail-fast) — consistent with file style
+</li>
+<li>Removal of <code>&quot;os&quot;</code> import from <code>invalidcommitmsg.go</code> correct
+</li>
+<li>Test refactoring from <code>t.Setenv(&quot;ENABLE_FIXUP_CHECK&quot;, ...)</code> to config struct is complete and covers all branches
+</li>
+<li><code>omitempty</code> on <code>InvalidCommitMsg</code> field — existing <code>plugins.yaml</code> files parse and validate without change on upgrade
+</li>
+<li>Validation wired into <code>Configuration.Validate()</code> at load time — config errors surface at startup, not silently at runtime
+</li>
+<li><code>issueClosingKeywords</code> now fully wired: both <code>CloseIssueRegex</code> call sites gated, new test cases verify disabled/enabled behavior
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>The fixup checking default-on behavior was merged without documentation or migration note — should a follow-up issue or release note be filed?
+</li>
+<li>Should <code>ENABLE_FIXUP_CHECK</code> removal include a startup log warning for deployments that still have it set in their environment manifests?
+</li></ul>
+<h2>Followups</h2>
+<p>No followups accepted; four candidates were skipped.</p>
+</main></body></html>

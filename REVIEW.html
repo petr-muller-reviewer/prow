@@ -1,860 +1,211 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PR #708 Review: netlify-preview plugin</title>
-<style>
-  :root {
-    --bg: #0d1117;
-    --surface: #161b22;
-    --border: #30363d;
-    --text: #e6edf3;
-    --text-muted: #8b949e;
-    --accent: #58a6ff;
-    --red: #f85149;
-    --orange: #d29922;
-    --green: #3fb950;
-    --purple: #bc8cff;
-    --cyan: #39d2c0;
-    --code-bg: #1c2128;
-  }
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    line-height: 1.6;
-    padding: 2rem;
-    max-width: 960px;
-    margin: 0 auto;
-  }
-  h1 {
-    font-size: 1.6rem;
-    margin-bottom: 0.25rem;
-    color: var(--accent);
-  }
-  .subtitle {
-    color: var(--text-muted);
-    font-size: 0.9rem;
-    margin-bottom: 2rem;
-    border-bottom: 1px solid var(--border);
-    padding-bottom: 1rem;
-  }
-  .subtitle a { color: var(--accent); text-decoration: none; }
-  .subtitle a:hover { text-decoration: underline; }
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#708</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>external-plugins: add netlify-preview plugin to retry deploy previews</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/708">kubernetes-sigs/prow#708</a> · base <code>main</code> · head_sha <code>e8849971aad1</code> · reviewed_at <code>2026-09-29T17:56:49Z</code></div>
+<div class="badges"><span class="badge c-red">verdict: request-changes</span><span class="badge c-red">gate: do-not-merge</span></div>
+<details><summary>Full metadata</summary><pre><code>pr: &quot;kubernetes-sigs/prow#708&quot;
+title: &quot;external-plugins: add netlify-preview plugin to retry deploy previews&quot;
+head_sha: e8849971aad14f136ab4b965d06a9fe679b9115b
+base: main
+reviewed_at: 2026-09-29T17:56:49Z
+verdict: request-changes
+gate:
+  decision: do-not-merge
+  gated_at: 2026-09-29T17:57:34Z
+  gated_head_sha: e8849971aad14f136ab4b965d06a9fe679b9115b
+  reviewed_head_sha: e8849971aad14f136ab4b965d06a9fe679b9115b</code></pre></details>
+<h2>Gate</h2>
+<p><strong>Do not merge.</strong> The PR head is unchanged since the saved review, and both blocking findings still exist in the current code. Fixing them is required before another gate pass; the remaining should-fix findings also need a disposition. No new compatibility risk for existing Prow deployments was found.</p>
+<h3>Gating list</h3>
+<ul>
+<li><strong>Unaddressed, blocks merge — <code>REVIEW.md</code>:</strong> The client follows an unvalidated pagination URL and adds the Netlify token ([<code>netlify/client.go:80-99</code>](cmd/external-plugins/netlify-preview/netlify/client.go)). Restrict authenticated requests to the configured HTTPS API origin.
+</li>
+<li><strong>Unaddressed, blocks merge — <code>REVIEW.md</code>:</strong> An untrusted comment author can force a rebuild when the PR author or <code>ok-to-test</code> label makes the PR trusted ([<code>server.go:197-207</code>](cmd/external-plugins/netlify-preview/server.go)). Require a trusted author for <code>/netlify-rebuild</code>.
+</li></ul>
+<h3>Other findings still open</h3>
+<ul>
+<li><strong>Unaddressed — <code>REVIEW.md</code>:</strong> The active-state guard covers only <code>building</code> and <code>enqueued</code> (<code>plugin/plugin.go:82-86</code>); case-insensitive parsing and first-command-only dispatch can ignore an explicit rebuild (<code>plugin/plugin.go:37-45</code>); and Netlify API failures leave an explicit rebuild unanswered (<code>server.go:154-159,177-181</code>). Resolve or explicitly disposition these behavior findings before merge.
+</li>
+<li><strong>Unaddressed — <code>REVIEW.md</code>:</strong> The docs omit the mapping restart and <code>--dry-run=false</code> requirement (<code>main.go:80,119</code>); asynchronous errors lack PR context (<code>server.go:86-89</code>); and Netlify operations have no concurrency limit (<code>server.go:86-90</code>). These are operational should-fix findings for the new plugin.
+</li>
+<li><strong>Borderline — <code>@petr-muller</code>:</strong> The request for live mapping reload was explicitly deferred as follow-up in the PR discussion. That deferral is acceptable for this opt-in plugin if the restart requirement is documented.
+</li></ul>
+<h3>Independent merge risk</h3>
+<ul>
+<li>The diff adds one image registration, a new external-plugin directory, and a new documentation page. It does not change existing exported packages, CRDs, configuration fields, flags, or ProwJob behavior; existing deployments have no direct compatibility impact.
+</li>
+<li>Operators who enable the new binary must provide its config and credentials and set <code>--dry-run=false</code> for actual retries. The unresolved authorization and request-volume issues affect those opt-in deployments and their shared Netlify account.
+</li>
+<li>Earlier inline feedback on command naming, quiet <code>/retest</code>, and deploy pagination was addressed in the current head; it does not add another gate.
+</li></ul>
+<h2>Verdict</h2>
+<p><strong>Request changes.</strong> Authenticated Netlify pagination can follow a cross-origin URL, and an untrusted commenter can repeatedly force rebuilds on a trusted PR. The existing command-handling and retry findings below also warrant attention. The later <a href="https://github.com/kubernetes-sigs/prow/pull/708#issuecomment-5097599488">PR discussion</a> establishes <code>/netlify-rebuild</code> and a quiet <code>/retest</code> as the intended behavior, superseding the older PR description.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Adds an external Prow plugin that responds to <code>/retest</code> and <code>/netlify-rebuild</code> on pull requests.
+</li>
+<li>Uses Prow's trigger trust rules, then finds the latest matching Netlify deploy preview for the PR.
+</li>
+<li>Lists up to ten pages of previews and retries eligible deploys through the Netlify API.
+</li>
+<li>Adds plugin configuration, image registration, documentation, and unit tests.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-red">blocking</span>Restrict authenticated pagination to the Netlify API origin</h3>
+<ul>
+<li>where: <code>cmd/external-plugins/netlify-preview/netlify/client.go:80-99</code>
+</li>
+<li>concern: <code>nextLink</code> can supply an arbitrary absolute URL, and <code>listDeploysPage</code> adds the Netlify bearer token before requesting it. If a <code>Link</code> header contains a cross-origin URL, the token is disclosed to that origin. Validate HTTPS and the configured API origin before following a pagination link.
+</li>
+<li>excerpt:<pre><code>pageDeploys, next, err := c.listDeploysPage(ctx, nextURL)
+// ...
+req, err := http.NewRequestWithContext(ctx, http.MethodGet, deploysURL, nil)
+// ...
+c.authorize(req)</code></pre>
+</li></ul>
+<h3><span class="tag c-red">blocking</span>Require a trusted commenter for force rebuilds</h3>
+<ul>
+<li>where: <code>cmd/external-plugins/netlify-preview/server.go:197-207</code>
+</li>
+<li>concern: When the comment author fails <code>TrustedUser</code>, this fallback still accepts a trusted PR author or an <code>ok-to-test</code> label. Thus any commenter can repeatedly invoke <code>/netlify-rebuild</code> on that PR, contrary to the plugin documentation's comment-author rule. Gate the force command on the comment author's trust.
+</li>
+<li>excerpt:<pre><code>if trustedResponse.IsTrusted {
+    return true, nil
+}
+_, trusted, err := trigger.TrustedPullRequest(s.ghc, triggerConfig, issueAuthor, org, repo, number, nil)
+return trusted, err</code></pre>
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>Skip retries for every active deploy state</h3>
+<ul>
+<li>where: <code>cmd/external-plugins/netlify-preview/plugin/plugin.go:82-86</code>
+</li>
+<li>concern: Netlify can report an in-progress deploy as <code>retrying</code>, <code>uploading</code>, <code>preparing</code>, or <code>processing</code>, but this guard recognizes only <code>building</code> and <code>enqueued</code>. A <code>/netlify-rebuild</code> comment during one of those states reaches <code>RetryDeploy</code> again, causing a duplicate request or an API rejection. Classify all active states before deciding to retry; the <a href="https://open-api.netlify.com/">Netlify API state list</a> includes these values.
+</li>
+<li>excerpt:<pre><code>if preview.State == &quot;building&quot; || preview.State == &quot;enqueued&quot; {
+    return Decision{Action: ActionAlreadyRunning}
+}
+if command == NetlifyRebuildCommand {
+    return Decision{Action: ActionRetry, ShouldRetry: true}
+}</code></pre>
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>Make accepted command casing consistent with dispatch</h3>
+<ul>
+<li>where: <code>cmd/external-plugins/netlify-preview/plugin/plugin.go:37-45</code>
+</li>
+<li>concern: The case-insensitive regex accepts <code>/NETLIFY-REBUILD</code> but returns that spelling unchanged. It does not equal <code>NetlifyRebuildCommand</code> later, so a ready preview gets no retry or reply. The same regex accepts <code>/ReTest</code>, while Prow's trigger uses a case-sensitive <code>/retest</code> regex, so Netlify can retry without CI. Either reject mixed-case commands or normalize them consistently with the trigger.
+</li>
+<li>excerpt:<pre><code>var commandRe = regexp.MustCompile(`(?mi)^/(retest|netlify-rebuild)\s*$`)
 
-  .toc {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 1rem 1.5rem;
-    margin-bottom: 2rem;
-  }
-  .toc h2 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 0.5rem; }
-  .toc ul { list-style: none; }
-  .toc li { padding: 0.15rem 0; }
-  .toc a { color: var(--text); text-decoration: none; font-size: 0.9rem; }
-  .toc a:hover { color: var(--accent); }
-  .toc .sev { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 0.5rem; vertical-align: middle; }
-
-  .file-list {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 1rem 1.5rem;
-    margin-bottom: 2rem;
-  }
-  .file-list h2 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 0.5rem; }
-  .file-list code { font-size: 0.82rem; color: var(--cyan); }
-  .file-list li { padding: 0.1rem 0; list-style: none; }
-
-  section { margin-bottom: 1.5rem; }
-  .finding {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 1.25rem 1.5rem;
-    margin-bottom: 1rem;
-    border-left: 3px solid var(--border);
-  }
-  .finding.critical { border-left-color: var(--red); }
-  .finding.moderate { border-left-color: var(--orange); }
-  .finding.minor    { border-left-color: var(--text-muted); }
-  .finding.positive { border-left-color: var(--green); }
-
-  .finding-header {
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-    margin-bottom: 0.6rem;
-  }
-  .badge {
-    font-size: 0.7rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    padding: 0.15rem 0.5rem;
-    border-radius: 10px;
-    white-space: nowrap;
-  }
-  .badge.critical { background: rgba(248,81,73,0.15); color: var(--red); }
-  .badge.moderate { background: rgba(210,153,34,0.15); color: var(--orange); }
-  .badge.minor    { background: rgba(139,148,158,0.15); color: var(--text-muted); }
-  .badge.positive { background: rgba(63,185,80,0.15); color: var(--green); }
-  .badge.converge { background: rgba(188,140,255,0.15); color: var(--purple); }
-
-  .finding h3 {
-    font-size: 1rem;
-    font-weight: 600;
-  }
-  .finding .location {
-    font-size: 0.8rem;
-    color: var(--text-muted);
-    font-family: monospace;
-  }
-  .finding p, .finding ul {
-    font-size: 0.9rem;
-    color: var(--text);
-    margin-top: 0.4rem;
-  }
-  .finding ul { margin-left: 1.2rem; margin-top: 0.3rem; }
-  .finding li { margin-bottom: 0.2rem; }
-  .finding code {
-    background: var(--code-bg);
-    padding: 0.15rem 0.35rem;
-    border-radius: 3px;
-    font-size: 0.82rem;
-  }
-  pre {
-    background: var(--code-bg);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    padding: 0.75rem 1rem;
-    overflow-x: auto;
-    font-size: 0.82rem;
-    margin-top: 0.5rem;
-    line-height: 1.5;
-  }
-  .suggestion {
-    margin-top: 0.5rem;
-    padding: 0.5rem 0.75rem;
-    background: rgba(88,166,255,0.06);
-    border-left: 2px solid var(--accent);
-    border-radius: 0 4px 4px 0;
-    font-size: 0.85rem;
-    color: var(--text-muted);
-  }
-  .suggestion strong { color: var(--accent); }
-
-  .summary-box {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 1.25rem 1.5rem;
-    margin-top: 2rem;
-  }
-  .summary-box h2 { font-size: 1rem; margin-bottom: 0.5rem; color: var(--purple); }
-  .summary-box p, .summary-box ul { font-size: 0.9rem; color: var(--text-muted); }
-  .summary-box ul { margin-left: 1.2rem; margin-top: 0.3rem; }
-  .summary-box li { margin-bottom: 0.2rem; }
-
-  .advisor-box {
-    background: var(--surface);
-    border: 2px solid var(--purple);
-    border-radius: 6px;
-    padding: 1.25rem 1.5rem;
-    margin-top: 2rem;
-    margin-bottom: 2rem;
-  }
-  .advisor-box h2 { font-size: 1.1rem; margin-bottom: 0.75rem; color: var(--purple); }
-  .advisor-box .verdict {
-    font-size: 1.3rem;
-    font-weight: 700;
-    color: var(--green);
-    margin-bottom: 0.5rem;
-  }
-  .advisor-box p, .advisor-box li { font-size: 0.9rem; }
-  .advisor-box ul { margin-left: 1.2rem; margin-top: 0.3rem; }
-  .advisor-box li { margin-bottom: 0.25rem; }
-  .advisor-box code {
-    background: var(--code-bg);
-    padding: 0.15rem 0.35rem;
-    border-radius: 3px;
-    font-size: 0.82rem;
-  }
-  .advisor-box h3 {
-    font-size: 0.9rem;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    margin-top: 1rem;
-    margin-bottom: 0.4rem;
-  }
-
-  .pr-comment-box {
-    background: var(--code-bg);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 1rem 1.25rem;
-    margin-top: 0.75rem;
-    font-size: 0.85rem;
-    color: var(--text);
-    line-height: 1.5;
-    white-space: pre-wrap;
-  }
-
-  .perspective-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 0.75rem;
-    margin-bottom: 2rem;
-  }
-  .perspective-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 1rem;
-    text-align: center;
-  }
-  .perspective-card h3 { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.4rem; }
-  .perspective-card .verdict-label {
-    font-size: 0.9rem;
-    font-weight: 600;
-  }
-  .perspective-card .verdict-label.approve { color: var(--green); }
-  .perspective-card .verdict-label.comment { color: var(--orange); }
-  .perspective-card .sub { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem; }
-
-  .stats {
-    display: flex;
-    gap: 1.5rem;
-    margin: 1rem 0;
-    flex-wrap: wrap;
-  }
-  .stat {
-    text-align: center;
-  }
-  .stat .num {
-    font-size: 1.5rem;
-    font-weight: 700;
-  }
-  .stat .label {
-    font-size: 0.75rem;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-  }
-  .stat.critical .num { color: var(--red); }
-  .stat.moderate .num { color: var(--orange); }
-  .stat.minor .num { color: var(--text-muted); }
-  .stat.positive .num { color: var(--green); }
-  .stat.converge .num { color: var(--purple); }
-
-  details { margin-top: 0.5rem; }
-  details summary {
-    cursor: pointer;
-    font-size: 0.85rem;
-    color: var(--accent);
-  }
-  details summary:hover { text-decoration: underline; }
-
-  .checklist {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 1.25rem 1.5rem;
-    margin-top: 1.5rem;
-  }
-  .checklist h2 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 0.75rem; }
-  .checklist label {
-    display: block;
-    padding: 0.3rem 0;
-    font-size: 0.9rem;
-    cursor: pointer;
-    user-select: none;
-  }
-  .checklist input[type="checkbox"] {
-    margin-right: 0.5rem;
-    accent-color: var(--green);
-  }
-  .checklist .group-label {
-    font-weight: 600;
-    color: var(--text-muted);
-    font-size: 0.8rem;
-    text-transform: uppercase;
-    margin-top: 0.75rem;
-    margin-bottom: 0.25rem;
-  }
-
-  @media (max-width: 700px) {
-    .perspective-grid { grid-template-columns: 1fr; }
-  }
-</style>
-</head>
-<body>
-
-<h1>PR #708: external-plugins: add netlify-preview plugin</h1>
-<div class="subtitle">
-  Author: <strong>Caesarsage</strong> &middot;
-  Branch: <code>netlify-command</code> &rarr; <code>main</code> &middot;
-  <a href="https://github.com/kubernetes-sigs/prow/pull/708">github.com/kubernetes-sigs/prow/pull/708</a> &middot;
-  +1252 &minus;0 across 11 files &middot; 6 commits &middot;
-  Reviewed <code>35fd839</code> &middot; Refreshed 2026-07-28
-</div>
-
-<!-- ==================== RE-REVIEW RECOMMENDED ==================== -->
-
-<div class="advisor-box" style="border-color: var(--orange);">
-  <h2 style="color: var(--orange);">Re-review Recommended</h2>
-
-  <h3>2026-08-17T22:11:26Z &mdash; <code>35fd839</code> &rarr; <code>e884997</code></h3>
-  <p><strong>What changed</strong> (single commit, "address review feedback", 8 files, +447/&minus;57, 390 net lines):</p>
-  <ul>
-    <li><code>config/config.go</code> (+8/&minus;8) &mdash; renamed <code>Repo</code> type to <code>SiteConfig</code> per singh1203's naming nit.</li>
-    <li><code>plugin/plugin.go</code> (+10/&minus;10) &mdash; renamed <code>/rebuild-preview</code> command and <code>RebuildPreviewCommand</code> constant to <code>/netlify-rebuild</code> / <code>NetlifyRebuildCommand</code>, per petr-muller's and the Kueue thread's naming suggestion.</li>
-    <li><code>netlify/client.go</code> (+69/&minus;12, net +57) &mdash; <strong>replaced <code>ListDeploys</code> entirely</strong> with a new <code>ForEachDeployPage</code> method: paginates via the Netlify <code>Link</code> response header (new <code>nextLink</code> header-parser), narrows server-side with <code>deploy-previews=true</code>, caps at <code>maxListDeployPages = 10</code> pages of <code>per_page=100</code>, and early-exits the page walk once a match is found.</li>
-    <li><code>server.go</code> (+44/&minus;28, net +16) &mdash; <strong>rewrote the comment-response logic</strong>: introduced a <code>noopLevel</code> (Debug for <code>/retest</code>, Info for <code>/netlify-rebuild</code>) so log verbosity differs by command, and gated every <code>s.comment(...)</code> call behind <code>command == NetlifyRebuildCommand</code> &mdash; <code>/retest</code> no longer posts any PR comment on the untrusted-user, missing-config, already-retried, or no-op paths; only <code>/netlify-rebuild</code> does. <code>netlifyClient</code> interface signature changed (<code>ListDeploys</code> &rarr; <code>ForEachDeployPage</code>).</li>
-    <li><code>netlify/client_test.go</code> (+149), <code>server_test.go</code> (+178), <code>plugin_test.go</code> (+31/&minus;17) &mdash; substantial new test coverage for pagination, the new command name, and per-command comment gating.</li>
-    <li><code>site/content/.../netlify-preview.md</code> (+15) &mdash; docs updated for the renamed command.</li>
-  </ul>
-
-  <p><strong>Why this exceeds "update in place":</strong> This is not a targeted fix &mdash; it's a rewrite of the exact three converging concerns the review flagged (<code>ListDeploys</code> pagination, <code>/retest</code> overlap noise, and the command name), each with a genuinely new mechanism: a hand-rolled <code>Link</code>-header parser and page-capped iteration protocol that didn't exist before, and a behavior change where <code>/retest</code> goes from "always comments" to "never comments, logs at Debug instead." Both mechanisms carry their own new edge cases (off-by-one in <code>maxListDeployPages</code>, malformed <code>Link</code> headers, whether early-exit-on-first-match correctly handles a PR with multiple deploys across pages, whether the trusted-user deny path silently swallowing <code>/retest</code> is desired) that the prior review never evaluated because the code didn't exist yet. The <code>netlifyClient</code> interface's public shape also changed. This satisfies the "&gt;100 lines net change AND touches areas of existing findings" trigger.</p>
-
-  <h3>Activity since the last review (2026-07-28)</h3>
-  <ul>
-    <li><strong>2026-08-13</strong> &mdash; Caesarsage pushed the above commit and left an inline comment on <code>server.go</code> explaining the pagination design: paginated via <code>Link</code> header, 100/page max, no server-side <code>review_id</code> filter so "some walking is unavoidable," early-exit on first match, 10-page cap, <code>deploy-previews=true</code> narrows server-side.</li>
-    <li><strong>2026-08-13</strong> &mdash; Caesarsage submitted a COMMENTED review (no body) alongside that comment.</li>
-    <li><strong>2026-08-13</strong> &mdash; kubernetes-prow[bot] posted the routine "NOT APPROVED" approval-notifier comment (no reviewer/approver activity to act on).</li>
-  </ul>
-
-  <h3>Preliminary findings against <code>e884997</code></h3>
-  <p style="color:var(--text-muted); font-size:0.85rem;">From <code>/code-review</code> (medium effort) &mdash; supersedes the need for a from-scratch look at these specific spots when the full re-review happens.</p>
-  <ul>
-    <li><strong><code>netlify/client.go:116</code></strong> &mdash; <code>nextLink</code> splits the raw <code>Link</code> header on literal commas instead of using a proper link-header parser (cf. <code>pkg/github/links.go</code>). If a <code>Link</code> header ever contains a comma inside a URL, the split breaks that URL, the bracket check fails, <code>nextLink</code> returns <code>""</code>, and <code>ForEachDeployPage</code> silently stops paginating early &mdash; a real deploy on a later page gets missed with no error. New code from this commit; not covered by any prior finding.</li>
-    <li><strong><code>plugin/plugin.go:37</code></strong> &mdash; <code>commandRe</code> matches <code>/retest</code> case-insensitively (<code>(?mi)</code>), diverging from <code>pkg/pjutil.RetestRe</code>'s case-sensitive <code>(?m)^/retest\s*$</code> used by the trigger plugin. A commenter writing <code>/ReTest</code> retries the Netlify preview but not CI &mdash; inconsistent behavior for what looks like the same command. Pre-existing regex, but its interaction with the now-more-consequential <code>/retest</code> no-op path deserves a look during re-review.</li>
-    <li><strong><code>server.go</code> (5 call sites: ~118, 135, 144, 184, 191)</strong> &mdash; the new "only <code>/netlify-rebuild</code> gets a comment reply" rule from this commit is repeated as <code>if command == netlifypreview.NetlifyRebuildCommand { return s.comment(...) }; return nil</code> five separate times in <code>handleIssueComment</code>, instead of being expressed once. A future new early-return path can easily forget the gate, silently making <code>/retest</code> chatty again or <code>/netlify-rebuild</code> silent. New pattern introduced by this commit &mdash; a maintainability concern on the exact code this refresh flagged for re-review.</li>
-    <li><strong><code>plugin/plugin.go:39</code></strong> &mdash; <code>ParseCommand</code> uses <code>FindStringSubmatch</code> (first match only), so a comment body with both <code>/retest</code> and <code>/netlify-rebuild</code> on separate lines only honors the first one found; the second is silently dropped. Pre-existing behavior, now more consequential since the two commands diverge sharply in comment/logging behavior post-rewrite.</li>
-  </ul>
-  <p style="color:var(--text-muted); font-size:0.85rem;">Two additional <code>/code-review</code> findings restate ground already tracked in this file and aren't repeated here: config key format not validated (<code>config/config.go:49</code>, cf. "Config key format not validated" above) and config not hot-reloaded (<code>main.go:119</code>, cf. "Config loaded once at startup" above); a fifth finding (duplicate <code>flagutil</code> import, <code>main.go:34</code>) restates "Redundant flagutil import" above at an updated line number.</p>
-</div>
-
-<!-- ==================== GATE DECISION ==================== -->
-
-<div class="advisor-box" style="border-color: var(--green);">
-  <h2 style="color: var(--green);">Gate Decision &mdash; 2026-06-30</h2>
-  <div class="verdict" style="color: var(--green);">MERGE</div>
-  <p>
-    Purely additive external plugin with zero blast radius on existing Prow installations. All 12 review
-    findings remain unaddressed (no code changes since review), but none are blockers &mdash; they are
-    quality improvements to a brand-new, opt-in plugin. No GitHub reviewer has submitted
-    <code>CHANGES_REQUESTED</code>. The <code>ListDeploys</code> pagination gap is the most impactful
-    item and should be a fast follow-up.
-  </p>
-
-  <h3>Findings Disposition</h3>
-  <ul>
-    <li><strong>ListDeploys pagination (3/3)</strong> &mdash; not addressed. Functional limitation for new adopters; recommend immediate follow-up.</li>
-    <li><strong>/retest overlap (3/3)</strong> &mdash; not addressed. Deliberate design choice per #693; noisier than ideal.</li>
-    <li><strong>Silent API failures (2/3)</strong> &mdash; not addressed. UX gap for new adopters; not a regression.</li>
-    <li><strong>Redundant import, 4 moderate, 4 minor</strong> &mdash; not addressed. Code quality items with no external impact.</li>
-    <li><strong>singh1203 inline comment</strong> (Config type naming) &mdash; discussed, author explained rationale.</li>
-  </ul>
-
-  <h3>Merge Risk</h3>
-  <p>
-    No notable merge risk. All code is new under <code>cmd/external-plugins/netlify-preview/</code>.
-    Only existing-file change: one line in <code>.prow-images.yaml</code> to register the image build.
-    No API, config, or behavioral changes to existing components.
-  </p>
-</div>
-
-<!-- ==================== ADVISOR RECOMMENDATION ==================== -->
-
-<div class="advisor-box">
-  <h2>Maintainer Advisor &mdash; Final Recommendation</h2>
-  <div class="verdict">APPROVE WITH SUGGESTIONS</div>
-  <p>
-    Well-structured, purely additive external plugin with low deployment risk and no modifications
-    to existing Prow components. All three reviewers converged on the same set of minor concerns,
-    none of which represent correctness bugs or security issues. The code follows established Prow
-    external plugin patterns closely, has good test coverage, and the remaining issues are
-    improvements that can be addressed in follow-up work without blocking the merge.
-  </p>
-
-  <h3>Suggested PR Comment</h3>
-  <div class="pr-comment-box">This is a clean, well-structured external plugin that follows established Prow patterns. All three review dimensions (code quality, maintainability, deployment risk) came back positive. The main item I would like to see addressed &mdash; either before merge or as an immediate follow-up &mdash; is adding `per_page=100` to the `ListDeploys` call, since the current default of 20 can cause false "no preview found" results on active repos. The `/retest` overlap with trigger is fine as a design choice but deserves a code comment explaining the intent. Approving with suggestions; none of the remaining items are blockers.</div>
-</div>
-
-<!-- ==================== REVIEWER VERDICTS ==================== -->
-
-<div class="perspective-grid">
-  <div class="perspective-card">
-    <h3>Code Quality</h3>
-    <div class="verdict-label approve">APPROVE</div>
-    <div class="sub">Senior Go Engineer</div>
-  </div>
-  <div class="perspective-card">
-    <h3>Maintainability</h3>
-    <div class="verdict-label comment">COMMENT</div>
-    <div class="sub">Burden: LOW</div>
-  </div>
-  <div class="perspective-card">
-    <h3>Deployment Risk</h3>
-    <div class="verdict-label approve">LOW RISK</div>
-    <div class="sub">Purely additive</div>
-  </div>
-</div>
-
-<!-- ==================== STATS ==================== -->
-
-<div class="stats">
-  <div class="stat converge"><div class="num">4</div><div class="label">Converging</div></div>
-  <div class="stat moderate"><div class="num">4</div><div class="label">Moderate</div></div>
-  <div class="stat minor"><div class="num">6</div><div class="label">Minor</div></div>
-  <div class="stat positive"><div class="num">8</div><div class="label">Positive</div></div>
-</div>
-
-<div class="file-list">
-  <h2>Files changed</h2>
-  <ul>
-    <li><code>.prow-images.yaml</code></li>
-    <li><code>cmd/external-plugins/netlify-preview/config/config.go</code></li>
-    <li><code>cmd/external-plugins/netlify-preview/config/config_test.go</code></li>
-    <li><code>cmd/external-plugins/netlify-preview/main.go</code></li>
-    <li><code>cmd/external-plugins/netlify-preview/netlify/client.go</code></li>
-    <li><code>cmd/external-plugins/netlify-preview/netlify/client_test.go</code></li>
-    <li><code>cmd/external-plugins/netlify-preview/plugin/plugin.go</code></li>
-    <li><code>cmd/external-plugins/netlify-preview/plugin/plugin_test.go</code></li>
-    <li><code>cmd/external-plugins/netlify-preview/server.go</code></li>
-    <li><code>cmd/external-plugins/netlify-preview/server_test.go</code></li>
-    <li><code>site/content/en/docs/components/external-plugins/netlify-preview.md</code></li>
-  </ul>
-</div>
-
-<div class="toc">
-  <h2>Findings</h2>
-  <ul>
-    <li><span class="sev" style="background:var(--purple)"></span><a href="#f1">ListDeploys has no pagination (3/3 reviewers)</a></li>
-    <li><span class="sev" style="background:var(--purple)"></span><a href="#f2">/retest overlaps with built-in trigger plugin (3/3 reviewers)</a></li>
-    <li><span class="sev" style="background:var(--purple)"></span><a href="#f3">Silent failure when Netlify API calls fail (2/3 reviewers)</a></li>
-    <li><span class="sev" style="background:var(--purple)"></span><a href="#f4">Redundant flagutil import (2/3 reviewers)</a></li>
-    <li><span class="sev" style="background:var(--orange)"></span><a href="#f5">Dead validation for --netlify-api-url</a></li>
-    <li><span class="sev" style="background:var(--orange)"></span><a href="#f6">Goroutine error logging at Info level + wrong logger</a></li>
-    <li><span class="sev" style="background:var(--orange)"></span><a href="#f7">Misleading test name</a></li>
-    <li><span class="sev" style="background:var(--orange)"></span><a href="#f8">Webhook validation error discarded</a></li>
-    <li><span class="sev" style="background:var(--text-muted)"></span><a href="#f9">Unbounded io.ReadAll on error responses</a></li>
-    <li><span class="sev" style="background:var(--text-muted)"></span><a href="#f10">Missing server-level test coverage for edge paths</a></li>
-    <li><span class="sev" style="background:var(--text-muted)"></span><a href="#f11">Config key format not validated</a></li>
-    <li><span class="sev" style="background:var(--text-muted)"></span><a href="#f12">Config loaded once at startup (no hot-reload)</a></li>
-    <li><span class="sev" style="background:var(--text-muted)"></span><a href="#f14">Canceled/skipped Netlify build states not distinguished</a></li>
-    <li><span class="sev" style="background:var(--text-muted)"></span><a href="#f15">Single Netlify token assumed for all configured repos</a></li>
-    <li><span class="sev" style="background:var(--green)"></span><a href="#f13">Positive observations</a></li>
-  </ul>
-</div>
-
-<!-- ==================== CONVERGING CONCERNS ==================== -->
-
-<section>
-
-<div class="finding critical" id="f1">
-  <div class="finding-header">
-    <span class="badge converge">3/3 Reviewers</span>
-    <h3>ListDeploys has no pagination &mdash; may miss deploys on busy repos</h3>
-  </div>
-  <div class="location">netlify/client.go:65</div>
-  <p>
-    The Netlify <code>GET /api/v1/sites/{site_id}/deploys</code> endpoint returns paginated results
-    (default 20 per page). For active repos like <code>kubernetes/website</code>, the latest deploy
-    preview for a given PR may not appear in the first page if many production or branch deploys
-    have occurred since.
-  </p>
-  <p>
-    Without a <code>per_page</code> query parameter or pagination loop, the plugin may falsely
-    report "No Netlify deploy preview was found" for PRs that do have one.
-  </p>
-  <p>
-    <strong>Highest-confidence issue across all three reviews.</strong> The maintainer advisor
-    recommends this be addressed either before merge or as an immediate follow-up.
-  </p>
-  <div class="suggestion">
-    <strong>Suggestion:</strong> At minimum, pass <code>?per_page=100</code> as a query parameter to widen the
-    window. Ideally, also filter by <code>branch=deploy-preview-{number}</code> if the Netlify API supports it,
-    so the relevant deploy is always in the result set. Consider paginating if the first page yields no match.
-  </div>
-</div>
-
-<div class="finding critical" id="f2">
-  <div class="finding-header">
-    <span class="badge converge">3/3 Reviewers</span>
-    <h3>/retest overlaps with built-in trigger plugin</h3>
-  </div>
-  <div class="location">plugin/plugin.go:37,69 &middot; server.go:131</div>
-  <p>
-    Prow's built-in <code>trigger</code> plugin already handles <code>/retest</code> to re-run
-    failed presubmit jobs (<code>pkg/plugins/trigger/trigger.go:140</code>). On repos where this
-    external plugin is enabled, <strong>both plugins fire</strong> on every <code>/retest</code> comment.
-    This is a deliberate design choice (per #693), but creates implicit coupling: any future change
-    to <code>/retest</code> semantics in trigger must consider this plugin and vice versa.
-  </p>
-  <p>Consequences:</p>
-  <ul>
-    <li>Every <code>/retest</code> hits the Netlify API to list deploys, even when the user only wants to re-run Prow CI.</li>
-    <li>The plugin posts a comment on every <code>/retest</code> where Netlify has nothing useful to do (preview is ready, no preview exists, etc.). This is the <em>common case</em> and will be noisy.</li>
-    <li>On <code>kubernetes/website</code> with frequent <code>/retest</code> usage, this means an extra bot comment on most retests.</li>
-  </ul>
-  <div class="suggestion">
-    <strong>Suggestion:</strong> Either (a) only post a comment when a retry is actually performed &mdash; stay silent on
-    no-ops for <code>/retest</code> specifically, or (b) use a distinct command like <code>/retest-preview</code>
-    instead of overloading <code>/retest</code>. At minimum, add a code comment on <code>commandRe</code>
-    explaining the intentional overlap with the trigger plugin, and document the dual-processing behavior.
-  </div>
-</div>
-
-<div class="finding moderate" id="f3">
-  <div class="finding-header">
-    <span class="badge converge">2/3 Reviewers</span>
-    <h3>Silent failure when Netlify API calls fail</h3>
-  </div>
-  <div class="location">server.go:165</div>
-  <p>
-    When <code>RetryDeploy</code> (or <code>ListDeploys</code>) fails, the error is returned and
-    logged by the goroutine, but <strong>no comment is posted to the PR</strong>. The user gets
-    complete silence &mdash; they don't know whether the retry was attempted, succeeded, or failed.
-  </p>
-  <div class="suggestion">
-    <strong>Suggestion:</strong> Post a comment like "Failed to communicate with Netlify API" before
-    returning the error, so users have feedback when something goes wrong.
-  </div>
-</div>
-
-<div class="finding moderate" id="f4">
-  <div class="finding-header">
-    <span class="badge converge">2/3 Reviewers</span>
-    <h3>Redundant flagutil import</h3>
-  </div>
-  <div class="location">main.go:189-190</div>
-  <p>
-    <code>flagutil</code> is imported twice &mdash; once bare and once aliased as <code>prowflagutil</code>.
-    The bare import is only used in <code>Validate()</code> for the <code>flagutil.OptionGroup</code> interface.
-  </p>
-<pre>"sigs.k8s.io/prow/pkg/flagutil"
-prowflagutil "sigs.k8s.io/prow/pkg/flagutil"</pre>
-  <div class="suggestion">
-    <strong>Suggestion:</strong> Drop the bare import and use <code>prowflagutil.OptionGroup</code> in <code>Validate()</code>,
-    or drop the alias and use <code>flagutil</code> everywhere.
-  </div>
-</div>
-
-</section>
-
-<!-- ==================== MODERATE ==================== -->
-
-<section>
-
-<div class="finding moderate" id="f5">
-  <div class="finding-header">
-    <span class="badge moderate">Moderate</span>
-    <h3>Dead validation for --netlify-api-url</h3>
-  </div>
-  <div class="location">main.go:224-226</div>
-  <p>
-    The <code>--netlify-api-url</code> flag has a default value of <code>https://api.netlify.com</code>,
-    but <code>Validate()</code> rejects an empty value. Since the default is always set by <code>flag.StringVar</code>,
-    the empty-string check can never trigger.
-  </p>
-  <div class="suggestion">
-    <strong>Suggestion:</strong> Remove the validation check for <code>netlifyAPIURL</code>, since the default
-    guarantees it's non-empty.
-  </div>
-</div>
-
-<div class="finding moderate" id="f6">
-  <div class="finding-header">
-    <span class="badge moderate">Moderate</span>
-    <h3>Goroutine error logging at Info level + wrong logger</h3>
-  </div>
-  <div class="location">server.go:86-90</div>
-  <p>
-    Two issues in the goroutine error path:
-  </p>
-  <ul>
-    <li><strong>Wrong logger:</strong> Error is logged via <code>s.log</code> instead of the request-scoped
-      <code>l</code>, losing the event-type and event-GUID structured fields.</li>
-    <li><strong>Wrong level:</strong> Operational failures (Netlify API errors, GitHub API errors) are logged at
-      <code>Info</code> level. These should be <code>Warn</code> or <code>Error</code> for monitoring visibility.</li>
-  </ul>
-<pre>go func() {
-    if err := s.handleIssueComment(l, ic); err != nil {
-        s.log.WithError(err).WithFields(l.Data).Info("Failed to handle issue comment.")
+func ParseCommand(body string) (Command, bool) {
+    body = markdown.DropCodeBlock(body)
+    matches := commandRe.FindStringSubmatch(body)
+    if len(matches) != 2 {
+        return &quot;&quot;, false
     }
-}()</pre>
-  <div class="suggestion">
-    <strong>Suggestion:</strong> Use <code>l.WithError(err).Error("Failed to handle issue comment.")</code>
-    to preserve structured fields and use an appropriate log level.
-  </div>
-</div>
-
-<div class="finding moderate" id="f7">
-  <div class="finding-header">
-    <span class="badge moderate">Moderate</span>
-    <h3>Misleading test name</h3>
-  </div>
-  <div class="location">server_test.go:156</div>
-  <p>
-    <code>TestHandleIssueCommentFailsClosedWhenMappingMissing</code> &mdash; the name says "fails closed" but
-    the test verifies behavior when the repo-to-site config mapping is absent.
-  </p>
-  <div class="suggestion">
-    <strong>Suggestion:</strong> Rename to something like
-    <code>TestHandleIssueCommentReportsMissingMapping</code>.
-  </div>
-</div>
-
-<div class="finding moderate" id="f8">
-  <div class="finding-header">
-    <span class="badge moderate">Moderate</span>
-    <h3>Webhook validation error discarded</h3>
-  </div>
-  <div class="location">server.go:64</div>
-  <p>
-    The fifth return value (error) from <code>github.ValidateWebhook</code> is discarded with <code>_</code>.
-    While <code>ValidateWebhook</code> writes the HTTP error response itself, logging the error would
-    help debug webhook authentication failures in production.
-  </p>
-  <div class="suggestion">
-    <strong>Suggestion:</strong> Log at Debug level:
-    <code>if err != nil { s.log.WithError(err).Debug("Webhook validation failed.") }</code>
-  </div>
-</div>
-
-</section>
-
-<!-- ==================== MINOR ==================== -->
-
-<section>
-
-<div class="finding minor" id="f9">
-  <div class="finding-header">
-    <span class="badge minor">Minor</span>
-    <h3>Unbounded io.ReadAll on error responses</h3>
-  </div>
-  <div class="location">netlify/client.go:78, 99</div>
-  <p>
-    On non-2xx responses, <code>io.ReadAll(resp.Body)</code> reads the entire body with no size limit.
-    A misbehaving proxy or CDN could return a very large error body.
-  </p>
-  <div class="suggestion">
-    <strong>Suggestion:</strong> Use <code>io.LimitReader(resp.Body, 4096)</code> or similar to cap the read.
-  </div>
-</div>
-
-<div class="finding minor" id="f10">
-  <div class="finding-header">
-    <span class="badge minor">Minor</span>
-    <h3>Missing server-level test coverage for edge paths</h3>
-  </div>
-  <div class="location">server_test.go</div>
-  <p>
-    No server-level test for the <code>responseForDecision</code> helper or the
-    <code>ActionUnsupportedState</code> path (only covered at the unit level in <code>plugin_test.go</code>).
-    Also no test for the dry-run path where <code>RetryDeploy</code> is skipped but the comment is still posted.
-  </p>
-</div>
-
-<div class="finding minor" id="f11">
-  <div class="finding-header">
-    <span class="badge minor">Minor</span>
-    <h3>Config key format not validated</h3>
-  </div>
-  <div class="location">config/config.go:51-56</div>
-  <p>
-    <code>Validate()</code> checks that <code>site_id</code> is non-empty but does not verify that
-    config keys match the expected <code>org/repo</code> format. A typo like <code>website</code>
-    instead of <code>kubernetes/website</code> would silently produce a config that never matches.
-  </p>
-  <div class="suggestion">
-    <strong>Suggestion:</strong> Validate that each key contains exactly one <code>/</code> separator.
-  </div>
-</div>
-
-<div class="finding minor" id="f12">
-  <div class="finding-header">
-    <span class="badge minor">Minor</span>
-    <h3>Config loaded once at startup (no hot-reload)</h3>
-  </div>
-  <div class="location">main.go &middot; config/config.go</div>
-  <p>
-    The plugin config is loaded via <code>os.ReadFile</code> at startup, not dynamically reloaded.
-    Adding new repos requires a pod restart. This differs from core Prow plugins that support
-    hot-reloading via <code>ConfigAgent</code>. Not blocking for initial adoption, but worth
-    considering if the plugin sees wider use.
-  </p>
-</div>
-
-<div class="finding minor" id="f14">
-  <div class="finding-header">
-    <span class="badge minor">Minor</span>
-    <h3>Canceled/skipped Netlify build states not distinguished</h3>
-  </div>
-  <div class="location">plugin/plugin.go (Evaluate)</div>
-  <p>
-    <strong>Source:</strong> apullo777 (Kueue), 2026-07-27, PR comment.
-  </p>
-  <p>
-    Kueue uses a Netlify <code>build.ignore</code> rule to skip previews for certain PRs, producing
-    canceled/skipped deploy states. These currently fall into <code>Evaluate()</code>'s generic
-    unsupported-state path rather than being handled explicitly, so a user retrying a deliberately-skipped
-    preview gets the same response as any other unsupported state, with no indication the skip was intentional.
-  </p>
-  <p>
-    Not blocking for the current single-consumer (kubernetes/website) scope, but relevant if this plugin
-    is adopted more broadly.
-  </p>
-</div>
-
-<div class="finding minor" id="f15">
-  <div class="finding-header">
-    <span class="badge minor">Minor</span>
-    <h3>Single Netlify token assumed for all configured repos</h3>
-  </div>
-  <div class="location">config/config.go &middot; main.go (--netlify-token-file)</div>
-  <p>
-    <strong>Source:</strong> apullo777 (Kueue), 2026-07-27, PR comment.
-  </p>
-  <p>
-    The plugin takes one Netlify API token for the whole process; the per-repo config only maps
-    <code>site_id</code>. Fine for the current single-consumer scope, but would need to become
-    per-repository credentials if a second consumer (e.g. Kueue, using a separate Netlify project)
-    can't share the same token. Caesarsage has explicitly deferred this until credential sharing is
-    confirmed one way or the other.
-  </p>
-</div>
-
-</section>
-
-<!-- ==================== POSITIVE ==================== -->
-
-<section>
-
-<div class="finding positive" id="f13">
-  <div class="finding-header">
-    <span class="badge positive">Positive</span>
-    <h3>What's done well</h3>
-  </div>
-  <ul>
-    <li><strong>Clean separation of concerns:</strong> config, Netlify client, command parsing/decision logic, and server handler are in distinct packages with clear interfaces.</li>
-    <li><strong>Interfaces at consumer:</strong> <code>githubClient</code>, <code>netlifyClient</code>, <code>pluginConfigAgent</code> are defined at the consumer site (server.go), following the Go idiom of "accept interfaces, return structs." Narrow and specific to what this plugin needs.</li>
-    <li><strong>Pure decision logic:</strong> The <code>Evaluate</code> function is a pure function with no side effects, making it trivially testable. The decision/action pattern cleanly separates "what to do" from "doing it."</li>
-    <li><strong>Trust gating reuses existing Prow infrastructure:</strong> <code>trigger.TrustedUser</code> and <code>trigger.TrustedPullRequest</code> are correctly reused rather than reimplemented, reducing drift risk.</li>
-    <li><strong>Code block stripping:</strong> <code>markdown.DropCodeBlock</code> is correctly used before parsing commands, preventing commands in code examples from triggering actions.</li>
-    <li><strong>Good test coverage:</strong> All layers are tested &mdash; config loading, Netlify client with mock HTTP transport, command parsing edge cases, decision logic for all state/command combinations, and server-level integration tests for trust gating and happy path. Tests are behavior-oriented, not implementation-detail-oriented.</li>
-    <li><strong>Follows existing plugin conventions:</strong> Project structure, flag handling, health endpoint, and webhook validation all match the patterns in <code>needs-rebase</code> and other external plugins.</li>
-    <li><strong>Safe defaults:</strong> Dry-run defaults to <code>true</code>, <code>url.PathEscape</code> for URL construction, <code>context.WithTimeout</code> for external API calls, strict YAML unmarshalling.</li>
-  </ul>
-</div>
-
-</section>
-
-<!-- ==================== ACTIVITY SINCE REVIEW ==================== -->
-
-<div class="summary-box">
-  <h2>Activity since 2026-05-30</h2>
-  <ul>
-    <li><strong>2026-05-31</strong> — Caesarsage submitted two self-review inline comments on <code>config/config.go</code>:
-      <ul>
-        <li>Proposed a doc comment for the <code>Config</code> type: <em>"Config is the configuration wrapper to the repository..."</em></li>
-        <li>Note on copyright year commit: <em>"reverting this, adding Years is no longer supported"</em></li>
-      </ul>
-    </li>
-    <li><strong>2026-05-31</strong> — Force-push: <code>11b326397</code> &rarr; <code>35fd83923</code> (same tree content, no code changes)</li>
-    <li><strong>2026-06-01</strong> — Caesarsage posted <code>/retest</code> to trigger CI on the updated head</li>
-    <li><strong>2026-06-04</strong> — Caesarsage cc'd @stmcginnis asking for a review</li>
-    <li><strong>2026-06-30</strong> — petr-muller submitted a COMMENTED review with 8 inline comments:
-      <ul>
-        <li><code>main.go</code>: config hot-reload will eventually be needed</li>
-        <li><code>server.go</code>: deny comments on untrusted users should only fire for <code>/rebuild-preview</code>, not <code>/retest</code> (2 comments)</li>
-        <li><code>server.go</code>: ListDeploys pagination concern &mdash; is the API paginated?</li>
-        <li><code>server.go</code>: success comment may be unnecessary noise, GH status context may suffice</li>
-        <li><code>server.go</code>: goroutine log level should be <code>Debug</code> for <code>/retest</code> no-ops</li>
-        <li><code>plugin/plugin.go</code>: targeted command should mention netlify, like <code>/netlify-rebuild</code></li>
-        <li><code>server.go</code>: <code>/retest</code> responses are too noisy &mdash; only respond to the targeted command</li>
-      </ul>
-    </li>
-    <li><strong>2026-07-27</strong> &mdash; apullo777 (Kueue) opened a detailed cross-reference from kubernetes-sigs/kueue#13474, proposing Kueue as a second consumer and reinforcing several open points:
-      <ul>
-        <li><code>/retest</code> noise: Kueue sees frequent <code>/retest</code> for unrelated flakes while the preview is already green &mdash; wants the netlify-specific rebuild command kept separate and quiet</li>
-        <li>Pagination: relevant at Kueue's PR volume, since older PRs' previews may fall off the first page</li>
-        <li>Additional preview states: Kueue's <code>build.ignore</code> rule produces canceled/skipped Netlify builds, which currently fall into <code>Evaluate()</code>'s unsupported-state path</li>
-        <li>Credential configuration: plugin assumes one Netlify token for all repos; Kueue uses a separate Netlify project (<code>kubernetes-sigs-kueue</code>) and may need per-repository credentials</li>
-      </ul>
-    </li>
-    <li><strong>2026-07-27</strong> &mdash; mimowo (Kueue) confirmed the "stuck" Netlify issue affects Kueue too; suggested <code>/retest</code> could short-circuit for Netlify success without generating traffic</li>
-    <li><strong>2026-07-27</strong> &mdash; Caesarsage committed to concrete follow-up direction (COMMENTED review, no code change):
-      <ul>
-        <li>Make <code>/retest</code> a quiet, best-effort path; only the explicit command gets user-facing responses</li>
-        <li>Rename the explicit command to <code>/netlify-rebuild</code> (converges with petr-muller's earlier naming suggestion)</li>
-        <li>Review and implement pagination (Netlify supports <code>page</code>/<code>per_page</code> and <code>Link</code> headers)</li>
-        <li>Kueue support deferred until credential sharing is confirmed; keeping this PR scoped to generic plugin behavior first</li>
-        <li>Declined to expand <code>main.go</code> hot-reload handling in this PR, deferring to follow-up</li>
-      </ul>
-    </li>
-  </ul>
-  <p style="margin-top:0.5rem; color:var(--text-muted); font-size:0.85rem;">No code changes (SHA unchanged at <code>35fd839</code>). This activity substantially reinforces three existing findings &mdash; <code>/retest</code> overlap, <code>ListDeploys</code> pagination, and config hot-reload &mdash; and surfaces two new minor findings below.</p>
-</div>
-
-<!-- ==================== DEPLOYMENT NOTES ==================== -->
-
-<div class="summary-box">
-  <h2>Deployment Notes</h2>
-  <ul>
-    <li>Existing Prow installations are <strong>completely unaffected</strong>. This plugin only activates when an operator explicitly deploys it and registers it in <code>external_plugins</code>.</li>
-    <li>If both trigger and this plugin are active on the same repo, <code>/retest</code> will fire both independently. This is expected behavior but operators should be aware.</li>
-    <li>Dry-run defaults to <code>true</code>, providing a safe initial deployment experience.</li>
-    <li>New adopters must provision: Netlify API token, config YAML mapping repos to site IDs, HMAC webhook secret.</li>
-  </ul>
-</div>
-
-<!-- ==================== CHECKLIST ==================== -->
-
-<div class="checklist">
-  <h2>Review checklist</h2>
-
-  <div class="group-label">Converging concerns (3/3 or 2/3 reviewers)</div>
-  <label><input type="checkbox"> ListDeploys pagination: add <code>per_page=100</code> or branch filter to avoid false negatives</label>
-  <label><input type="checkbox"> /retest overlap: add code comment on <code>commandRe</code> explaining intentional overlap; consider silent no-ops</label>
-  <label><input type="checkbox"> Silent API failures: post user-facing comment when Netlify API calls fail</label>
-  <label><input type="checkbox"> Remove redundant flagutil import</label>
-
-  <div class="group-label">Moderate &mdash; request fix</div>
-  <label><input type="checkbox"> Remove dead netlifyAPIURL validation or remove the default</label>
-  <label><input type="checkbox"> Fix goroutine logging: use request-scoped logger <code>l</code> at Error/Warn level</label>
-  <label><input type="checkbox"> Rename misleading test</label>
-  <label><input type="checkbox"> Log discarded webhook validation error at Debug level</label>
-
-  <div class="group-label">Minor &mdash; suggest</div>
-  <label><input type="checkbox"> Bound io.ReadAll on error responses with LimitReader</label>
-  <label><input type="checkbox"> Add server-level tests for edge paths and dry-run</label>
-  <label><input type="checkbox"> Validate config keys match org/repo format</label>
-  <label><input type="checkbox"> Consider config hot-reload for future</label>
-
-  <div class="group-label">Verify</div>
-  <label><input type="checkbox"> Tests pass: <code>go test ./cmd/external-plugins/netlify-preview/...</code></label>
-  <label><input type="checkbox"> Build succeeds: <code>go build ./cmd/external-plugins/netlify-preview/</code></label>
-  <label><input type="checkbox"> No lint issues</label>
-</div>
-
-<div class="summary-box">
-  <h2>Bottom line</h2>
-  <p>
-    Well-structured plugin with clean code, good test coverage, and correct reuse of Prow's trust
-    infrastructure. Three independent reviewers (code quality, maintainability, deployment risk) all
-    returned positive assessments. The four converging concerns &mdash; <code>ListDeploys</code>
-    pagination, <code>/retest</code> overlap documentation, silent API failures, and the duplicate
-    import &mdash; are the highest-confidence items. None are blockers, but the pagination gap is
-    the most impactful and should be addressed before or immediately after merge.
-  </p>
-</div>
-
-</body>
-</html>
+    return Command(matches[1]), true
+}</code></pre>
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>Honor the rebuild command when a comment contains both commands</h3>
+<ul>
+<li>where: <code>cmd/external-plugins/netlify-preview/plugin/plugin.go:39-45</code>
+</li>
+<li>concern: <code>FindStringSubmatch</code> returns only the first command in a comment. For <code>/retest</code> followed by <code>/netlify-rebuild</code>, the plugin chooses <code>/retest</code>; when the preview is ready, it silently does nothing despite the explicit rebuild request. Parse all command lines or define and enforce an unambiguous priority.
+</li>
+<li>excerpt:<pre><code>matches := commandRe.FindStringSubmatch(body)
+if len(matches) != 2 {
+    return &quot;&quot;, false
+}
+return Command(matches[1]), true</code></pre>
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>Tell the user when the Netlify API rejects a rebuild</h3>
+<ul>
+<li>where: <code>cmd/external-plugins/netlify-preview/server.go:177-181</code>
+</li>
+<li>concern: <code>/netlify-rebuild</code> replies on successful retries and no-op decisions, but a failed <code>RetryDeploy</code> returns an error without posting a reply. A failed <code>ForEachDeployPage</code> at lines 154-159 has the same result. For a rate limit or API outage, the commenter sees a command with no response and cannot tell whether a retry happened.
+</li>
+<li>excerpt:<pre><code>if !s.dryRun {
+    if err := s.netlifyClient.RetryDeploy(ctx, preview.ID); err != nil {
+        return err
+    }
+}</code></pre>
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>Document the restart and production flag</h3>
+<ul>
+<li>where: <code>cmd/external-plugins/netlify-preview/main.go:80-83</code>
+</li>
+<li>concern: The site mapping is loaded only at startup, so changing it requires a restart. The binary also defaults to <code>--dry-run=true</code>, so an operator following the new plugin page will not trigger real retries until setting <code>--dry-run=false</code>. Document both steps in the deployment instructions.
+</li>
+<li>excerpt:<pre><code>fs.BoolVar(&amp;o.dryRun, &quot;dry-run&quot;, true, &quot;Dry run for testing. Uses API tokens but does not mutate.&quot;)
+fs.StringVar(&amp;o.configPath, &quot;config-path&quot;, &quot;/etc/netlify-preview/config.yaml&quot;, &quot;Path to the netlify-preview plugin config file.&quot;)</code></pre>
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>Include PR context in asynchronous failures</h3>
+<ul>
+<li>where: <code>cmd/external-plugins/netlify-preview/server.go:86-89</code>
+</li>
+<li>concern: The failure logger uses the original entry, which has only event type and GUID. Repository, PR number, and command fields are added to a separate entry inside <code>handleIssueComment</code>, so API failures are hard to trace back to the request. Carry those fields into the error log or wrap returned errors with them.
+</li>
+<li>excerpt:<pre><code>go func() {
+    if err := s.handleIssueComment(l, ic); err != nil {
+        s.log.WithError(err).WithFields(l.Data).Info(&quot;Failed to handle issue comment.&quot;)
+    }
+}()</code></pre>
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>Bound concurrent Netlify operations</h3>
+<ul>
+<li>where: <code>cmd/external-plugins/netlify-preview/server.go:86-90</code>
+</li>
+<li>concern: Each actionable comment starts an unrestricted goroutine and can list up to ten pages. A burst of comments can consume shared Netlify API capacity. Bound concurrent operations or add a per-PR cooldown.
+</li>
+<li>excerpt:<pre><code>go func() {
+    if err := s.handleIssueComment(l, ic); err != nil {
+        s.log.WithError(err).WithFields(l.Data).Info(&quot;Failed to handle issue comment.&quot;)
+    }
+}()</code></pre>
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>Compared the PR head <code>e8849971aad14f136ab4b965d06a9fe679b9115b</code> with its merge base on <code>upstream/main</code> and inspected all changed production code, tests, docs, and image registration.
+</li>
+<li>Confirmed webhook signature validation uses Prow's <code>github.ValidateWebhook</code> and trust checks use the trigger plugin's helpers.
+</li>
+<li>Confirmed the later PR discussion intentionally replaced <code>/rebuild-preview</code> with <code>/netlify-rebuild</code> and made <code>/retest</code> quiet on a ready preview; those are not current behavior defects.
+</li>
+<li>Existing Prow deployments are unaffected until they opt in to this external plugin; no existing configuration fields or ProwJob behavior changed.
+</li>
+<li><code>go test ./cmd/external-plugins/netlify-preview/...</code> passed.
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>None.
+</li></ul>
+</main></body></html>

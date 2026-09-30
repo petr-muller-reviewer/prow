@@ -1,62 +1,90 @@
 ---
 issue: kubernetes-sigs/prow#957
 title: "The 403 fallback of the workflow approval accepts every 403"
-state: open
+state: closed
 labels: []
-main_sha: cd1c1dbd246180e7183af5eae6cc68c2053ffcdc
-triaged_at: 2026-09-21T08:57:28Z
+main_sha: 7626c76a396f367698b87f0650c8c5df14ae6c4e
+triaged_at: 2026-09-30T13:33:08Z
 verdict: accepted
+refresh_log:
+  - at: 2026-09-30T12:38:56Z
+    since: 2026-09-21T08:57:28Z
+    summary: "PR #955 merged the topology-based fix; issue #957 closed as completed."
 ---
+
+# Triage
+
+## Verdict
+
+**Accepted bug, appropriately fixed in code and closed.** PR #955 merged at 2026-09-30T01:24:49Z with the topology-based correction and `Fixes #957`; GitHub closed the issue as completed at 2026-09-30T01:24:51Z. The merged code chooses re-run for a same-repository PR and approval for a fork PR before attempting either endpoint. Focused tests pass; a live blocked-run test was not reported.
+
+## What the issue reports
+
+- The original trigger fallback reran pending workflows after any residual approval 403.
+- Other authorization failures could also produce that 403, so the fallback was broader than its intended same-repository bot case.
+- The invalid pending-run query meant this path had been dormant until #955 fixed the query.
+
+Since previous triage:
+
+- PR #955 merged the query and fallback fixes; issue #957 closed automatically. No new issue comments or labels appeared.
 
 ## Findings
 
-### [reproducibility] Every residual 403 invokes rerun
-- detail: The approval helper falls back after `github.IsForbidden(err)`. The existing test uses `github.NewForbidden()` and expects the workflow to be rerun, so the broad condition is deterministic and covered as current behaviour.
-- evidence: `pkg/plugins/trigger/generic-comment.go:336-344`; `pkg/plugins/trigger/generic-comment_test.go:2005-2110`.
+### [related-code] Merged code chooses the operation from PR topology
+- where: `pkg/plugins/trigger/generic-comment.go:312-361`
+- excerpt: |
+    return pr.Head.Repo.FullName != "" && strings.EqualFold(pr.Head.Repo.FullName, pr.Base.Repo.FullName)
+- relevance: Fork PRs take the approval path; approval errors, including 403, are logged without a re-run.
 
-### [cause] Forbidden errors do not encode the reason for refusal
-- detail: `IsForbidden` tests only whether the error is `forbiddenError`. Request handling retries rate/abuse 403s and turns a scope mismatch into a normal error, but all other 403 responses become this type. Thus permission, SSO/IP policy, or installation-state failures are indistinguishable from the endpoint's non-fork refusal at the plugin call site.
-- evidence: `pkg/github/client.go:923-941`; `pkg/github/client.go:1049-1112`.
+### [related-code] Workflow calls require a trusted commenter
+- where: `pkg/plugins/trigger/generic-comment.go:148-155`
+- excerpt: |
+    if isOkToTest && trigger.TriggerGitHubWorkflows {
+        if trustedResponse.IsTrusted {
+- relevance: A PR author cannot use an existing `ok-to-test` label to approve new workflow runs after a push.
+
+### [reproducibility] Focused unit tests pass
+- detail: `go test ./pkg/plugins/trigger -run 'Test(IsSameRepoPullRequest|ApproveWorkflowRunsByRepository)$' -count=1` passed. Cases cover same-repository rerun, fork approval 403 without rerun, case-insensitive names, and absent head-repository information.
+- evidence: `pkg/plugins/trigger/generic-comment_test.go:2081-2250`.
+
+### [related-pr] #955 merged and closed the issue
+- ref: kubernetes-sigs/prow#955
+- relevance: Merged at 2026-09-30T01:24:49Z as `7626c76a396f367698b87f0650c8c5df14ae6c4e`; includes fix commit `8f60d1cec2b2` and `Fixes #957`.
+
+### [related-pr] #956 remains open
+- ref: kubernetes-sigs/prow#956
+- relevance: Extends approval to push events and depends on the behavior merged in #955.
+
+## Resolved
+
+### [reproducibility] Every residual 403 invoked rerun before #955
+- detail: On main SHA `cd1c1dbd246180e7183af5eae6cc68c2053ffcdc`, the helper used `github.IsForbidden(err)` to rerun. #955 removed this fallback and selects the endpoint from PR topology before the call.
+- evidence: Historical `pkg/plugins/trigger/generic-comment.go:336-344`; merged fix `pkg/plugins/trigger/generic-comment.go:312-361`.
+
+### [cause] Forbidden errors did not encode the reason for refusal
+- detail: The client still classifies residual 403 responses broadly, but the approval helper no longer uses that classification to decide whether to rerun.
+- evidence: Historical `pkg/github/client.go:923-941`; merged fix commit `8f60d1cec2b2`.
 
 ### [cause] Rerun is not equivalent to approval
-- detail: The approve and rerun endpoints are distinct operations. The fallback changes the triggering actor, so a generic authorization failure must not be treated as evidence that rerun is safe.
-- evidence: `pkg/github/client.go:2241-2254`; `pkg/github/client.go:2304-2320`.
-
-### [related-code] The caller already has PR topology
-- where: `pkg/plugins/trigger/generic-comment.go:137-154`
-- excerpt: |
-    pr, err := refGetter.PullRequest()
-    ...
-    approveGitHubActionsWorkflowRuns(c, org, repo, pr.Head.Ref, headSHA)
-- relevance: The caller can pass same-repository/fork information from `pr.Head.Repo` to constrain the fallback without parsing an opaque error body.
+- detail: The original fallback conflated these operations; #955 makes their use depend on PR topology.
+- evidence: `pkg/plugins/trigger/generic-comment.go:312-361`.
 
 ### [related-pr] #798 introduced the fallback
 - ref: kubernetes-sigs/prow#798
-- relevance: Added the rerun after every `IsForbidden` result for bot-created same-repository PRs.
-
-### [related-pr] #955 makes the path reachable
-- ref: kubernetes-sigs/prow#955
-- relevance: Removes the invalid multi-event query from `GetPendingApprovalActionRuns`; currently the query returns no matching runs in practice. Fix this issue before or with #955.
-
-### [related-pr] #956 expands approval attempts
-- ref: kubernetes-sigs/prow#956
-- relevance: Depends on #955 and must use the corrected fallback decision rather than duplicate the current predicate.
+- relevance: Added the former rerun-after-403 behavior for bot-created same-repository PRs; #955 replaced it.
 
 ## Checked
 - Confirmed the reported fallback and error classification on main SHA `cd1c1dbd246180e7183af5eae6cc68c2053ffcdc`.
 - Confirmed #798 tests explicitly expect a rerun after generic `NewForbidden()`.
 - Confirmed #955's invalid `event=pull_request OR pull_request_target` query is present in `pkg/github/client.go:2274-2301`.
-- Searched related Prow issues; #957 is the specific record for this condition.
-- Verified available recommended labels: `kind/bug`, `area/plugins`, `help wanted`.
+- Confirmed PR #955's merged commit and closing reference; current issue state is closed as completed, with no labels or new comments.
+- Confirmed the merged helper branches on `isSameRepoPullRequest` in `pkg/plugins/trigger/generic-comment.go:312-361`.
+- Ran the focused Go tests above successfully against the merged code.
+- Checked [GitHub's approve endpoint documentation](https://docs.github.com/en/rest/actions/workflow-runs#approve-a-workflow-run-for-a-fork-pull-request): it is scoped to public-fork PRs. [GitHub's rerun documentation](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/re-run-workflows-and-jobs) says reruns retain the original actor's privileges; the original concern is bypassing approval, not gaining the rerunner's token permissions.
 
 ## Next steps
-- Accept as a bug and label `kind/bug`, `area/plugins`, and `help wanted` if desired.
-- Prefer a topology-gated fallback: rerun only after confirming the PR is same-repository; log and retain a forbidden error for forks or unknown topology.
-- Alternatively, add a narrow client-level predicate for a stable documented non-fork API response; do not expose generic body matching at the plugin layer without response-level tests.
-- Add tests for same-repository fallback and for fork/unauthorized-policy 403s that must not rerun; ensure #956 shares the decision point.
-- Validate in a deployment using `trigger_github_workflows: true` and `actions: write`.
+- No further action on #957; it is fixed and closed.
+- If operational validation is desired, test an `action_required` same-repository run in a configured deployment during rollout of #955/#956.
 
 ## Open questions
-- Is GitHub's non-fork response body a stable documented discriminator, or should Prow use PR topology exclusively?
-- Is same-repository topology necessary and sufficient for rerun, or should it also require a typed non-fork error?
-- Does an integration test confirm that rerunning a fork PR cannot elevate token or secrets access relative to approval?
+- None blocking closure of #957. PR #955 reports unit tests only; deployment behavior has not been confirmed in this triage.

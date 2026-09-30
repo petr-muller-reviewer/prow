@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#755</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>assign: optionally restrict /assign on issues to org members</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/755">kubernetes-sigs/prow#755</a> · base <code>main</code> · head_sha <code>1ee75d56f07c</code> · reviewed_at <code>2026-09-30T15:38:20Z</code></div>
+<div class="badges"><span class="badge c-red">verdict: request-changes</span></div>
+<h2>Verdict</h2>
+<p>Request changes.</p>
+<p>The opt-in, issue-only policy preserves existing behavior, but three confirmed defects merit changes before merge: malformed scope keys silently never apply, a null repo entry fails to override an org restriction, and warn mode posts a nudge even when GitHub rejects the assignment. Restricted issue assignments also depend on GitHub membership access, so operators should verify the bot's credentials before broad rollout.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Adds per-repository, per-organization, and wildcard <code>assign</code> configuration with an optional <code>restrict</code> block and required <code>warn</code> or <code>block</code> action.
+</li>
+<li>Applies the restriction to <code>/assign</code> on issues based on the commenter's organization membership; pull requests and <code>/unassign</code> remain unrestricted.
+</li>
+<li>Allows issues with configured exempt labels to bypass the restriction, with case-insensitive label matching.
+</li>
+<li>Adds configuration validation, supplemental-config merging, scope detection, help text, and tests for the new behavior.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-red">blocking</span>Validate assign scope keys</h3>
+<ul>
+<li>where: <code>pkg/plugins/config.go:1685-1690</code>
+</li>
+<li>concern:<pre><code>`validateAssign()` checks the action but never validates map keys. A key such as `org/repo/extra` or `&quot;&quot;` loads successfully, yet `AssignFor()` only looks up exact `org/repo`, `org`, and `*` keys, so an intended access restriction silently never applies. Reject invalid keys and test the rejected forms.</code></pre>
+</li>
+<li>excerpt:<pre><code>func validateAssign(assign map[string]*Assign) error {
+    for key, cfg := range assign {
+        if cfg == nil || cfg.Restrict == nil {
+            continue
+        }
+        switch cfg.Restrict.Action {</code></pre>
+</li></ul>
+<h3><span class="tag c-red">blocking</span>Honor a null repo entry as an override</h3>
+<ul>
+<li>where: <code>pkg/plugins/config.go:1176-1184</code>
+</li>
+<li>concern:<pre><code>The documented most-specific entry is supposed to replace an org or wildcard restriction, including an empty repo entry used to opt out. YAML `org/repo:` decodes to a present map key with a nil `*Assign`, but `AssignFor()` tests the value for non-nil and falls through to the org entry, so that repo remains restricted. The test covers `org/repo: {}` but not the equally natural null form. Check key presence before falling back, or reject null entries explicitly during validation.</code></pre>
+</li>
+<li>excerpt:<pre><code>if c.Assign[fmt.Sprintf(&quot;%s/%s&quot;, org, repo)] != nil {
+    return c.Assign[fmt.Sprintf(&quot;%s/%s&quot;, org, repo)]
+}
+if c.Assign[org] != nil {
+    return c.Assign[org]
+}</code></pre>
+</li></ul>
+<h3><span class="tag c-red">blocking</span>Suppress the warn nudge when assignment fails</h3>
+<ul>
+<li>where: <code>pkg/plugins/assign/assign.go:264-268</code>
+</li>
+<li>concern:<pre><code>For a non-member in warn mode, `AssignIssue` can return `github.MissingUsers` when GitHub rejects an assignee. The code posts the nudge anyway, then returns the error to `handle()`, which posts a second assignment-failure comment. This leaves two bot replies for one command and suggests the assignment proceeded even when it did not. Post the nudge only for a successful assignment, or coordinate the two responses in one place.</code></pre>
+</li>
+<li>excerpt:<pre><code>assignErr := gc.AssignIssue(owner, repo, number, logins)
+if err := gc.CreateComment(owner, repo, number, plugins.FormatResponseRaw(e.Body, e.HTMLURL, e.User.Login, warnMessage(org, restrict.ExemptLabels))); err != nil {
+    log.WithError(err).Error(&quot;failed to post warning comment for /assign by a non-org-member&quot;)
+}
+return assignErr</code></pre>
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>Let an org member assign when label lookup fails</h3>
+<ul>
+<li>where: <code>pkg/plugins/assign/assign.go:275-285</code>
+</li>
+<li>concern:<pre><code>With `exempt_labels` configured, `commenterMayAssign()` fetches labels before checking the commenter. A label API failure therefore stops even a confirmed org member&#x27;s `/assign`, although member assignments do not depend on an exemption. Check membership on label lookup failure so members can still assign while non-members remain fail-closed.</code></pre>
+</li>
+<li>excerpt:<pre><code>labels, err := gc.GetIssueLabels(owner, repo, number)
+if err != nil {
+    return false, err
+}
+if hasExemptLabel(labels, exemptLabels) {
+    return true, nil
+}</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">nit</span>Report a failed warning-comment post</h3>
+<ul>
+<li>where: <code>pkg/plugins/assign/assign.go:265-268</code>
+</li>
+<li>concern:<pre><code>When assignment succeeds but `CreateComment` fails, the handler returns success after logging the failure, so users never receive the configured warning. Surface the comment failure to operators without blindly retrying the already completed assignment.</code></pre>
+</li>
+<li>excerpt:<pre><code>if err := gc.CreateComment(owner, repo, number, plugins.FormatResponseRaw(e.Body, e.HTMLURL, e.User.Login, warnMessage(org, restrict.ExemptLabels))); err != nil {
+    log.WithError(err).Error(&quot;failed to post warning comment for /assign by a non-org-member&quot;)
+}
+return assignErr</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">nit</span>Add context to lookup errors</h3>
+<ul>
+<li>where: <code>pkg/plugins/assign/assign.go:275-285</code>
+</li>
+<li>concern:<pre><code>Raw label and membership API errors are returned without the issue, org, or lookup operation, making failures harder to diagnose in a multi-repository installation. Wrap them with that context.</code></pre>
+</li>
+<li>excerpt:<pre><code>if err != nil {
+    return false, err
+}
+return gc.IsMember(org, commenter)</code></pre>
+</li></ul>
+<h2>Resolved</h2>
+<h3>[previously should-fix] HasConfigFor() did not recognize Assign</h3>
+<ul>
+<li>resolved by: <code>HasConfigFor()</code> now includes <code>Assign</code> in its equality baseline and enumerates org, repo, and wildcard keys; <code>TestHasConfigFor</code> covers all three scopes.
+</li></ul>
+<h3>[previously should-fix] Restriction fields were flat on Assign</h3>
+<ul>
+<li>resolved by: The fields now live under optional <code>Assign.Restrict</code>, and <code>validateAssign()</code> requires <code>restrict.action</code> to be <code>warn</code> or <code>block</code>.
+</li></ul>
+<h3>[previously question] Restriction scope and membership direction were unclear</h3>
+<ul>
+<li>resolved by: The code, config comments, help text, and tests now specify issue-only behavior and check the commenter's membership rather than assignment targets.
+</li></ul>
+<h3>[previously question] Org-level and wildcard lookup lacked direct tests</h3>
+<ul>
+<li>resolved by: <code>TestAssignFor</code> now exercises org, repo, wildcard, precedence, and an empty <code>{}</code> repo override.
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>Reviewed the five-file PR diff against merge base <code>e62c14122b7de539fb60236fb8085c0fd1f5dc83</code> at head <code>1ee75d56f07c27eec50c0714aa2b2762bbdbb472</code>.
+</li>
+<li><code>newAssignHandler</code> gates the restriction on <code>!e.IsPR</code>; the existing <code>handle()</code> uses <code>gc.UnassignIssue</code> separately for <code>/unassign</code>.
+</li>
+<li><code>commenterMayAssign</code> bypasses membership checks on exempt labels and propagates label and membership lookup errors.
+</li>
+<li><code>validateAssign</code> rejects missing or unsupported actions for non-nil <code>restrict</code> blocks.
+</li>
+<li>Supplemental config merging and <code>HasConfigFor()</code> include the new <code>Assign</code> map.
+</li>
+<li>Inspected <code>TestAssignRestrict</code>, <code>TestValidateAssign</code>, <code>TestAssignFor</code>, <code>TestHasConfigFor</code>, and <code>TestMergeFrom</code>; the three blocking scenarios above lack direct coverage. The Code Quality reviewer ran <code>go test ./pkg/plugins/assign ./pkg/plugins</code> successfully at this head.
+</li>
+<li>Existing configurations retain their <code>/assign</code> behavior when <code>restrict</code> is absent; PR assignments and <code>/unassign</code> remain available when it is present.
+</li>
+<li>GitHub's <a href="https://docs.github.com/en/rest/orgs/members?apiVersion=2022-11-28#check-organization-membership-for-a-user">organization membership endpoint</a> documents <code>Members: read</code> for fine-grained tokens and a <code>302</code> response when the requester is not an org member; the Prow client converts that <code>302</code> to an error.
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>Should an empty repo override written as <code>org/repo:</code> disable the inherited restriction, like <code>org/repo: {}</code>?
+</li>
+<li>In warn mode, should a failed assignment produce only the existing GitHub failure response?
+</li>
+<li>Can the deployment bot read private org membership in each org that will enable this restriction, and will the rollout start with one repository before org-wide or wildcard scope?
+</li></ul>
+</main></body></html>

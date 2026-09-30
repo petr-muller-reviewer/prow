@@ -1,16 +1,25 @@
 ---
 pr: kubernetes-sigs/prow#816
-title: "[WIP] slackevents: alert on merged PRs with cncf-cla: no label"
+title: "slackevents: alert on merged PRs with cncf-cla: no label"
 head_sha: 8491820a2ce9bf06e5e9c3dad7e12498ef702dab
 base: main
-reviewed_at: 2026-07-29T12:53:38Z
+reviewed_at: 2026-09-30T13:15:16Z
 verdict: request-changes
+refresh_log:
+  - old_sha: 8491820a2ce9bf06e5e9c3dad7e12498ef702dab
+    new_sha: 8491820a2ce9bf06e5e9c3dad7e12498ef702dab
+    summary: "No code changes; incorporated local Slack test report, WIP removal, and new PR comments and labels."
 ---
 
-## Summary
-Adds `plugins.CLAAlert` config (repo/org-scoped Slack channel list) and a new `PullRequestEvent` handler in `slackevents`. On merge, if the PR carries `cncf-cla: no` and repo/org has a configured `CLAAlert`, posts a Slack message to each configured channel. Includes help-provider/doc updates and 9 unit test cases. PR tagged WIP/do-not-merge.
+## What this PR does
+Adds `plugins.CLAAlert` config (repo/org-scoped Slack channel list) and a new `PullRequestEvent` handler in `slackevents`. On merge, if the PR carries `cncf-cla: no` and repo/org has a configured `CLAAlert`, posts a Slack message to each configured channel. Includes help-provider/doc updates and 9 unit test cases.
 
 Reviewed twice: a direct code review, and a three-perspective maintainer review (code quality, maintainability, deployment risk) with advisor synthesis. All four independent passes converge on the same primary defect below; no correctness bug or deployment-blocking risk was found by any reviewer.
+
+Since previous review:
+- No code changes: `8491820a2ce9bf06e5e9c3dad7e12498ef702dab` remains the PR head.
+- On 2026-09-29, AaruniAggarwal removed `[WIP]` from the title; the `do-not-merge/work-in-progress` label was removed. The author reported a successful local merge test and showed the bot's `WriteMessage` log and Slack alert. This confirms the basic delivery path but does not test multi-channel failure handling or merge attribution when author and merger differ.
+- The author requested a review on 2026-09-29. On 2026-09-30, petr-muller commented `/ok-to-test`, and the bot added `ok-to-test` and removed `needs-ok-to-test`. There are no new inline comments or submitted reviews.
 
 ## Findings
 

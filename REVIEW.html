@@ -1,195 +1,129 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>Review: kubernetes-sigs/prow#638</title>
-<style>
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-    line-height: 1.6;
-    color: #1a1a1a;
-    max-width: 860px;
-    margin: 2rem auto;
-    padding: 0 1.5rem;
-    background: #fff;
-  }
-  code, pre {
-    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
-    font-size: 0.9em;
-  }
-  pre {
-    background: #f6f8fa;
-    padding: 0.8rem 1rem;
-    border-radius: 6px;
-    overflow-x: auto;
-    border: 1px solid #e1e4e8;
-  }
-  code.inline {
-    background: #f6f8fa;
-    padding: 0.15em 0.4em;
-    border-radius: 4px;
-  }
-  header {
-    border-bottom: 2px solid #e1e4e8;
-    padding-bottom: 1rem;
-    margin-bottom: 1.5rem;
-  }
-  header table {
-    border-collapse: collapse;
-  }
-  header td {
-    padding: 0.15rem 0.6rem 0.15rem 0;
-    vertical-align: top;
-  }
-  header td.key {
-    color: #57606a;
-    font-weight: 600;
-    white-space: nowrap;
-  }
-  h1 { font-size: 1.4rem; margin: 0 0 0.5rem 0; }
-  h2 {
-    font-size: 1.15rem;
-    margin-top: 2rem;
-    border-bottom: 1px solid #e1e4e8;
-    padding-bottom: 0.3rem;
-  }
-  .verdict {
-    background: #dafbe1;
-    border: 1px solid #2da44e;
-    border-radius: 6px;
-    padding: 0.8rem 1rem;
-    margin: 1rem 0;
-  }
-  .verdict .label {
-    font-weight: 700;
-    text-transform: uppercase;
-    color: #116329;
-    letter-spacing: 0.03em;
-  }
-  .finding {
-    border: 1px solid #e1e4e8;
-    border-radius: 6px;
-    padding: 0.9rem 1.1rem;
-    margin: 1rem 0;
-  }
-  .finding h3 {
-    margin: 0 0 0.5rem 0;
-    font-size: 1.02rem;
-  }
-  .badge {
-    display: inline-block;
-    font-size: 0.72rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-    padding: 0.15em 0.55em;
-    border-radius: 4px;
-    margin-right: 0.5em;
-    vertical-align: middle;
-  }
-  .badge.should-fix { background: #fff8c5; color: #7d6608; border: 1px solid #d4a72c; }
-  .badge.nit { background: #eef1f4; color: #57606a; border: 1px solid #d0d7de; }
-  .badge.question { background: #ddf4ff; color: #0969da; border: 1px solid #54aeff; }
-  .loc {
-    font-family: monospace;
-    background: #f6f8fa;
-    padding: 0.1em 0.4em;
-    border-radius: 4px;
-    font-size: 0.85em;
-  }
-  ul { padding-left: 1.3rem; }
-  li { margin: 0.3rem 0; }
-  a { color: #0969da; }
-</style>
-</head>
-<body>
-
-<header>
-  <h1>kubernetes-sigs/prow#638</h1>
-  <table>
-    <tr><td class="key">Title</td><td>Automate adding kind/* labels to cherry-pick PRs</td></tr>
-    <tr><td class="key">Head SHA</td><td><code class="inline">9404b76f07618de9757274ca3797b46e2d51e76a</code></td></tr>
-    <tr><td class="key">Base</td><td><code class="inline">main</code></td></tr>
-    <tr><td class="key">Reviewed at</td><td>2026-07-27T00:26:12Z</td></tr>
-    <tr><td class="key">Link</td><td><a href="https://github.com/kubernetes-sigs/prow/pull/638">github.com/kubernetes-sigs/prow/pull/638</a></td></tr>
-  </table>
-</header>
-
-<div class="verdict">
-  <span class="label">Verdict: Approve</span>
-  <p>Small, additive, low-risk feature — copies <code class="inline">kind/*</code> labels from the source PR into the cherry-pick PR body as <code class="inline">/kind</code> commands, with no config/API/schema changes and a fail-open error path. Three independent maintainer-perspective reviews (code quality, maintainability, deployment risk) all converged on the same non-blocking issues: a redundant GitHub API call, an under-leveled log line, and missing unit test coverage for the new label-parsing helper.</p>
-</div>
-
-<h2>What this PR does</h2>
-<ul>
-  <li>When the cherrypicker plugin creates a cherry-pick PR, it fetches the source PR's <code class="inline">kind/*</code> labels and appends them as <code class="inline">/kind &lt;name&gt;</code> command lines in the new PR's body.</li>
-  <li>Label extraction is deduplicated and deterministically sorted via <code class="inline">sets.New</code>/<code class="inline">sets.List</code>, matching existing patterns in the file.</li>
-  <li>If the label fetch fails, the cherry-pick still proceeds — it just omits the <code class="inline">/kind</code> lines rather than failing the whole operation.</li>
-  <li>Mirrors behavior already shipped for the manual cherry-pick flow in kubernetes/kubernetes.</li>
-  <li>Touches no plugin config structs, YAML/JSON fields, or CLI flags — purely additive runtime behavior.</li>
-</ul>
-
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#638</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>Automate adding kind/* labels to cherry-pick PRs</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/638">kubernetes-sigs/prow#638</a> · base <code>main</code> · head_sha <code>9404b76f0761</code> · reviewed_at <code>2026-07-27T00:26:12Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span></div>
 <h2>Findings</h2>
-
-<div class="finding">
-  <h3><span class="badge should-fix">should-fix</span>redundant GetIssueLabels call per cherry-pick target branch</h3>
-  <p><span class="loc">cmd/external-plugins/cherrypicker/server.go:586-590</span></p>
-  <p><code class="inline">handle()</code> calls <code class="inline">s.ghc.GetIssueLabels(org, repo, num)</code> again even though the caller (<code class="inline">handlePullRequest</code>/<code class="inline">handlePullRequestLabelAdded</code>, ~line 390) already fetched the same labels for the same PR. Since <code class="inline">handle()</code> runs once per target branch, this re-fetches identical data from GitHub on every branch iteration for a chained cherry-pick. Thread the already-fetched labels/kindLabels into <code class="inline">handle()</code> as a parameter instead of re-querying.</p>
-  <pre>// server.go ~390 (existing call in caller)
+<h3><span class="tag c-amber">should-fix</span>redundant GetIssueLabels call per cherry-pick target branch</h3>
+<ul>
+<li>where: <code>cmd/external-plugins/cherrypicker/server.go:586-590</code>
+</li>
+<li>concern: <code>handle()</code> calls <code>s.ghc.GetIssueLabels(org, repo, num)</code> again even though the caller (<code>handlePullRequest</code>/<code>handlePullRequestLabelAdded</code>, ~line 390) already fetched the same labels for the same PR. Since <code>handle()</code> runs once per target branch, this re-fetches identical data from GitHub on every branch iteration for a chained cherry-pick. Thread the already-fetched labels/kindLabels into <code>handle()</code> as a parameter instead of re-querying.
+</li>
+<li>excerpt:<pre><code>// server.go ~390 (existing call in caller)
 labels, err := s.ghc.GetIssueLabels(org, repo, num)
 ...
 // server.go ~586 (new, duplicate call inside handle())
 labels, err := s.ghc.GetIssueLabels(org, repo, num)
 if err != nil {
-    logger.WithError(err).Debug("failed to get issue labels")
-}</pre>
-</div>
-
-<div class="finding">
-  <h3><span class="badge should-fix">should-fix</span>label-fetch failure logged at Debug, not Warn</h3>
-  <p><span class="loc">cmd/external-plugins/cherrypicker/server.go:587</span></p>
-  <p>The new <code class="inline">GetIssueLabels</code> error is logged at <code class="inline">Debug</code>, while a similar non-fatal "don't fail the operation but surface the problem" case elsewhere in this file (~line 622, "failed to assign to new PR") uses <code class="inline">Warn</code>. A real API failure here (e.g. a token-permission regression) would silently and invisibly drop <code class="inline">/kind</code> lines from every cherry-pick with no signal in default-level logs. Bump to <code class="inline">Warn</code>.</p>
-</div>
-
-<div class="finding">
-  <h3><span class="badge should-fix">should-fix</span>no unit test for kindLabelsFromIssueLabels edge cases</h3>
-  <p><span class="loc">cmd/external-plugins/cherrypicker/server.go:733-744</span></p>
-  <p>The function's documented edge cases (a label exactly <code class="inline">"kind/"</code> with empty suffix, duplicate <code class="inline">kind/x</code> labels) are only exercised indirectly via one end-to-end <code class="inline">server_test.go</code> case with two well-formed labels. Add a small table-driven test directly against this pure function.</p>
-</div>
-
-<div class="finding">
-  <h3><span class="badge nit">nit</span>no test for the GetIssueLabels error path in handle()</h3>
-  <p><span class="loc">cmd/external-plugins/cherrypicker/server.go (handle)</span></p>
-  <p>No test verifies the cherry-pick PR is still created successfully (without <code class="inline">/kind</code> lines) when the label fetch fails — the one new branch of behavior added to <code class="inline">handle()</code>.</p>
-</div>
-
-<div class="finding">
-  <h3><span class="badge nit">nit</span>redundant sort in lib.go</h3>
-  <p><span class="loc">cmd/external-plugins/cherrypicker/lib/lib.go:37-46</span></p>
-  <p><code class="inline">kindLabels</code> is sorted here even though the only production caller (<code class="inline">kindLabelsFromIssueLabels</code>, via <code class="inline">sets.List</code>) already returns a sorted slice. Defensible as defensive robustness for other future callers, not a bug.</p>
-</div>
-
-<div class="finding">
-  <h3><span class="badge question">question</span>CreateCherrypickBody's growing positional parameter list</h3>
-  <p><span class="loc">cmd/external-plugins/cherrypicker/lib/lib.go</span></p>
-  <p>This exported function's signature keeps growing positionally (release notes, chain branches, now kindLabels) as more "copy X from parent PR" features get added. Worth an options struct next time a field is added — not blocking now.</p>
-</div>
-
-<h2>Things I checked and was fine with</h2>
+    logger.WithError(err).Debug(&quot;failed to get issue labels&quot;)
+}</code></pre>
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>label-fetch failure logged at Debug, not Warn</h3>
 <ul>
-  <li>No config struct, YAML/JSON field, CLI flag, or ProwJob semantics changes — purely additive behavior, low deployment risk.</li>
-  <li>Label-fetch failure degrades gracefully: cherry-pick still proceeds without <code class="inline">/kind</code> lines rather than aborting.</li>
-  <li>Dedup/sort of kind labels via <code class="inline">sets.New</code>/<code class="inline">sets.List</code> is deterministic and idiomatic, consistent with existing usage in the file.</li>
-  <li><code class="inline">HelpProvider</code> text updated alongside the behavior change.</li>
-  <li>Existing <code class="inline">server_test.go</code> case updated for the new parameter/happy path; unrelated <code class="inline">bugzilla_test.go</code> call site correctly updated for the new signature; bugzilla cherry-pick body regex detection confirmed unaffected by the new <code class="inline">/kind</code> lines.</li>
-  <li><code class="inline">CreateCherrypickBody</code>'s signature change is internal-only (all in-tree call sites updated), not a public API break.</li>
-</ul>
-
-<h2>Open questions for the author</h2>
+<li>where: <code>cmd/external-plugins/cherrypicker/server.go:587</code>
+</li>
+<li>concern: the new <code>GetIssueLabels</code> error is logged at <code>Debug</code>, while a similar non-fatal "don't fail the operation but surface the problem" case elsewhere in this file (~line 622, "failed to assign to new PR") uses <code>Warn</code>. A real API failure here (e.g. a token-permission regression) would silently and invisibly drop <code>/kind</code> lines from every cherry-pick with no signal in default-level logs. Bump to <code>Warn</code>.
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>no unit test for kindLabelsFromIssueLabels edge cases</h3>
 <ul>
-  <li>In repos without kind-label automation configured, or without a matching <code class="inline">kind/*</code> label, the emitted <code class="inline">/kind &lt;name&gt;</code> command could produce a bot error/reply comment on the new cherry-pick PR — was this considered, and is it worth a one-line release-note mention?</li>
-  <li>Was the duplicate <code class="inline">GetIssueLabels</code> call (already fetched by the caller) an intentional simplification, or just missed when threading data into <code class="inline">handle()</code>?</li>
-</ul>
-
-</body>
-</html>
+<li>where: <code>cmd/external-plugins/cherrypicker/server.go:733-744</code>
+</li>
+<li>concern: the function's documented edge cases (a label exactly <code>&quot;kind/&quot;</code> with empty suffix, duplicate <code>kind/x</code> labels) are only exercised indirectly via one end-to-end <code>server_test.go</code> case with two well-formed labels. Add a small table-driven test directly against this pure function.
+</li></ul>
+<h3><span class="tag c-gray">nit</span>no test for the GetIssueLabels error path in handle()</h3>
+<ul>
+<li>where: <code>cmd/external-plugins/cherrypicker/server.go</code> (<code>handle</code>)
+</li>
+<li>concern: no test verifies the cherry-pick PR is still created successfully (without <code>/kind</code> lines) when the label fetch fails — the one new branch of behavior added to <code>handle()</code>.
+</li></ul>
+<h3><span class="tag c-gray">nit</span>redundant sort in lib.go</h3>
+<ul>
+<li>where: <code>cmd/external-plugins/cherrypicker/lib/lib.go:37-46</code>
+</li>
+<li>concern: <code>kindLabels</code> is sorted here even though the only production caller (<code>kindLabelsFromIssueLabels</code>, via <code>sets.List</code>) already returns a sorted slice. Defensible as defensive robustness for other future callers, not a bug.
+</li></ul>
+<h3><span class="tag c-blue">question</span>CreateCherrypickBody's growing positional parameter list</h3>
+<ul>
+<li>where: <code>cmd/external-plugins/cherrypicker/lib/lib.go</code>
+</li>
+<li>concern: this exported function's signature keeps growing positionally (release notes, chain branches, now kindLabels) as more "copy X from parent PR" features get added. Worth an options struct next time a field is added — not blocking now.
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>No config struct, YAML/JSON field, CLI flag, or ProwJob semantics changes — purely additive behavior, low deployment risk.
+</li>
+<li>Label-fetch failure degrades gracefully: cherry-pick still proceeds without <code>/kind</code> lines rather than aborting.
+</li>
+<li>Dedup/sort of kind labels via <code>sets.New</code>/<code>sets.List</code> is deterministic and idiomatic, consistent with existing usage in the file.
+</li>
+<li><code>HelpProvider</code> text updated alongside the behavior change.
+</li>
+<li>Existing <code>server_test.go</code> case updated for the new parameter/happy path; unrelated <code>bugzilla_test.go</code> call site correctly updated for the new signature; bugzilla cherry-pick body regex detection confirmed unaffected by the new <code>/kind</code> lines.
+</li>
+<li><code>CreateCherrypickBody</code>'s signature change is internal-only (all in-tree call sites updated), not a public API break.
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>In repos without kind-label automation configured, or without a matching <code>kind/*</code> label, the emitted <code>/kind &lt;name&gt;</code> command could produce a bot error/reply comment on the new cherry-pick PR — was this considered, and is it worth a one-line release-note mention?
+</li>
+<li>Was the duplicate <code>GetIssueLabels</code> call (already fetched by the caller) an intentional simplification, or just missed when threading data into <code>handle()</code>?
+</li></ul>
+<h2>Followups</h2>
+<h3>Reuse parent PR labels across cherry-pick targets</h3>
+<ul>
+<li>category: cleanup
+</li>
+<li>necessity: should — avoid repeated GitHub API calls for the same source PR, especially when one event creates multiple cherry-picks.
+</li>
+<li>where: <code>cmd/external-plugins/cherrypicker/server.go</code> (<code>handlePullRequest</code>, <code>handleIssueComment</code>, <code>handle</code>); <code>cmd/external-plugins/cherrypicker/server_test.go</code>
+</li>
+<li>why followup: PR #638 added a label fetch in <code>handle()</code> to keep kind-label copying local to PR creation. The merged-PR path already has the same labels, so an event can now fetch them again for every target branch; this efficiency fix did not block the merge.
+</li>
+<li>handoff prompt:
+<pre><code>In kubernetes-sigs/prow, following merged PR #638, &quot;Automate adding kind/* labels to cherry-pick PRs&quot; (merge commit bcf4297e528a75b2aa580c5dce3e7b97e38f4553), remove redundant source-PR label fetches in cmd/external-plugins/cherrypicker/server.go. Work from the current merged default branch. handlePullRequest already calls GetIssueLabels before iterating target branches; reuse those labels (or normalized kind names) when building every cherry-pick PR. For a merged PR triggered by an issue comment, obtain labels at most once after the request has passed validation and reuse them across all targets. Preserve the existing handling of mandatory label-fetch failure in handlePullRequest and the best-effort behavior for an optional fetch in the comment path. Add a focused multi-target test in server_test.go that checks the expected PR bodies and GetIssueLabels call count for both event paths. Keep PR creation, branch selection, and non-kind labels otherwise unchanged.</code></pre>
+</li></ul>
+<h3>Test kind-label edge cases and surface fetch failures</h3>
+<ul>
+<li>category: reliability
+</li>
+<li>necessity: should — protect the new label-copy behavior and make silent omissions visible.
+</li>
+<li>where: <code>cmd/external-plugins/cherrypicker/server.go</code> (<code>kindLabelsFromIssueLabels</code>, label-fetch error path); <code>cmd/external-plugins/cherrypicker/server_test.go</code>
+</li>
+<li>why followup: PR #638 covers only well-formed labels in one end-to-end case; its documented empty-suffix and duplicate handling and its best-effort label-fetch failure path are untested. The failure is logged only at Debug. These are narrow reliability improvements after merge.
+</li>
+<li>handoff prompt:
+<pre><code>In kubernetes-sigs/prow, following merged PR #638, &quot;Automate adding kind/* labels to cherry-pick PRs&quot; (merge commit bcf4297e528a75b2aa580c5dce3e7b97e38f4553), strengthen kind-label handling in cmd/external-plugins/cherrypicker/server.go and server_test.go. Work from the current merged default branch; if the earlier followup to reuse source-PR labels has landed, test its remaining optional fetch path. Add table-driven tests of kindLabelsFromIssueLabels covering non-kind labels, `kind/` with an empty suffix, duplicate kind labels, and sorted output. Make the fake GitHub client able to return a GetIssueLabels error, then test that a comment-driven cherry-pick still opens a PR without `/kind` lines when that optional fetch fails. Log that omission at Warn with the underlying error so operators can diagnose it. Keep the operation best-effort and avoid broader cherrypicker error-handling changes.</code></pre>
+</li></ul>
+</main></body></html>

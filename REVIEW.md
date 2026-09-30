@@ -55,3 +55,25 @@ verdict: approve
 
 - In repos without kind-label automation configured, or without a matching `kind/*` label, the emitted `/kind <name>` command could produce a bot error/reply comment on the new cherry-pick PR — was this considered, and is it worth a one-line release-note mention?
 - Was the duplicate `GetIssueLabels` call (already fetched by the caller) an intentional simplification, or just missed when threading data into `handle()`?
+
+## Followups
+
+### Reuse parent PR labels across cherry-pick targets
+- category: cleanup
+- necessity: should — avoid repeated GitHub API calls for the same source PR, especially when one event creates multiple cherry-picks.
+- where: `cmd/external-plugins/cherrypicker/server.go` (`handlePullRequest`, `handleIssueComment`, `handle`); `cmd/external-plugins/cherrypicker/server_test.go`
+- why followup: PR #638 added a label fetch in `handle()` to keep kind-label copying local to PR creation. The merged-PR path already has the same labels, so an event can now fetch them again for every target branch; this efficiency fix did not block the merge.
+- handoff prompt:
+  ```text
+  In kubernetes-sigs/prow, following merged PR #638, "Automate adding kind/* labels to cherry-pick PRs" (merge commit bcf4297e528a75b2aa580c5dce3e7b97e38f4553), remove redundant source-PR label fetches in cmd/external-plugins/cherrypicker/server.go. Work from the current merged default branch. handlePullRequest already calls GetIssueLabels before iterating target branches; reuse those labels (or normalized kind names) when building every cherry-pick PR. For a merged PR triggered by an issue comment, obtain labels at most once after the request has passed validation and reuse them across all targets. Preserve the existing handling of mandatory label-fetch failure in handlePullRequest and the best-effort behavior for an optional fetch in the comment path. Add a focused multi-target test in server_test.go that checks the expected PR bodies and GetIssueLabels call count for both event paths. Keep PR creation, branch selection, and non-kind labels otherwise unchanged.
+  ```
+
+### Test kind-label edge cases and surface fetch failures
+- category: reliability
+- necessity: should — protect the new label-copy behavior and make silent omissions visible.
+- where: `cmd/external-plugins/cherrypicker/server.go` (`kindLabelsFromIssueLabels`, label-fetch error path); `cmd/external-plugins/cherrypicker/server_test.go`
+- why followup: PR #638 covers only well-formed labels in one end-to-end case; its documented empty-suffix and duplicate handling and its best-effort label-fetch failure path are untested. The failure is logged only at Debug. These are narrow reliability improvements after merge.
+- handoff prompt:
+  ```text
+  In kubernetes-sigs/prow, following merged PR #638, "Automate adding kind/* labels to cherry-pick PRs" (merge commit bcf4297e528a75b2aa580c5dce3e7b97e38f4553), strengthen kind-label handling in cmd/external-plugins/cherrypicker/server.go and server_test.go. Work from the current merged default branch; if the earlier followup to reuse source-PR labels has landed, test its remaining optional fetch path. Add table-driven tests of kindLabelsFromIssueLabels covering non-kind labels, `kind/` with an empty suffix, duplicate kind labels, and sorted output. Make the fake GitHub client able to return a GetIssueLabels error, then test that a comment-driven cherry-pick still opens a PR without `/kind` lines when that optional fetch fails. Log that omission at Warn with the underlying error so operators can diagnose it. Keep the operation best-effort and avoid broader cherrypicker error-handling changes.
+  ```

@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Review: kubernetes-sigs/prow#638</title>
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+    color: #1a1a1a;
+    max-width: 860px;
+    margin: 2rem auto;
+    padding: 0 1.5rem;
+    background: #fff;
+  }
+  code, pre {
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 0.9em;
+  }
+  pre {
+    background: #f6f8fa;
+    padding: 0.8rem 1rem;
+    border-radius: 6px;
+    overflow-x: auto;
+    border: 1px solid #e1e4e8;
+  }
+  code.inline {
+    background: #f6f8fa;
+    padding: 0.15em 0.4em;
+    border-radius: 4px;
+  }
+  header {
+    border-bottom: 2px solid #e1e4e8;
+    padding-bottom: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  header table {
+    border-collapse: collapse;
+  }
+  header td {
+    padding: 0.15rem 0.6rem 0.15rem 0;
+    vertical-align: top;
+  }
+  header td.key {
+    color: #57606a;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  h1 { font-size: 1.4rem; margin: 0 0 0.5rem 0; }
+  h2 {
+    font-size: 1.15rem;
+    margin-top: 2rem;
+    border-bottom: 1px solid #e1e4e8;
+    padding-bottom: 0.3rem;
+  }
+  .verdict {
+    background: #dafbe1;
+    border: 1px solid #2da44e;
+    border-radius: 6px;
+    padding: 0.8rem 1rem;
+    margin: 1rem 0;
+  }
+  .verdict .label {
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #116329;
+    letter-spacing: 0.03em;
+  }
+  .finding {
+    border: 1px solid #e1e4e8;
+    border-radius: 6px;
+    padding: 0.9rem 1.1rem;
+    margin: 1rem 0;
+  }
+  .finding h3 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.02rem;
+  }
+  .badge {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding: 0.15em 0.55em;
+    border-radius: 4px;
+    margin-right: 0.5em;
+    vertical-align: middle;
+  }
+  .badge.should-fix { background: #fff8c5; color: #7d6608; border: 1px solid #d4a72c; }
+  .badge.nit { background: #eef1f4; color: #57606a; border: 1px solid #d0d7de; }
+  .badge.question { background: #ddf4ff; color: #0969da; border: 1px solid #54aeff; }
+  .loc {
+    font-family: monospace;
+    background: #f6f8fa;
+    padding: 0.1em 0.4em;
+    border-radius: 4px;
+    font-size: 0.85em;
+  }
+  ul { padding-left: 1.3rem; }
+  li { margin: 0.3rem 0; }
+  a { color: #0969da; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>kubernetes-sigs/prow#638</h1>
+  <table>
+    <tr><td class="key">Title</td><td>Automate adding kind/* labels to cherry-pick PRs</td></tr>
+    <tr><td class="key">Head SHA</td><td><code class="inline">9404b76f07618de9757274ca3797b46e2d51e76a</code></td></tr>
+    <tr><td class="key">Base</td><td><code class="inline">main</code></td></tr>
+    <tr><td class="key">Reviewed at</td><td>2026-07-27T00:26:12Z</td></tr>
+    <tr><td class="key">Link</td><td><a href="https://github.com/kubernetes-sigs/prow/pull/638">github.com/kubernetes-sigs/prow/pull/638</a></td></tr>
+  </table>
+</header>
+
+<div class="verdict">
+  <span class="label">Verdict: Approve</span>
+  <p>Small, additive, low-risk feature — copies <code class="inline">kind/*</code> labels from the source PR into the cherry-pick PR body as <code class="inline">/kind</code> commands, with no config/API/schema changes and a fail-open error path. Three independent maintainer-perspective reviews (code quality, maintainability, deployment risk) all converged on the same non-blocking issues: a redundant GitHub API call, an under-leveled log line, and missing unit test coverage for the new label-parsing helper.</p>
+</div>
+
+<h2>What this PR does</h2>
+<ul>
+  <li>When the cherrypicker plugin creates a cherry-pick PR, it fetches the source PR's <code class="inline">kind/*</code> labels and appends them as <code class="inline">/kind &lt;name&gt;</code> command lines in the new PR's body.</li>
+  <li>Label extraction is deduplicated and deterministically sorted via <code class="inline">sets.New</code>/<code class="inline">sets.List</code>, matching existing patterns in the file.</li>
+  <li>If the label fetch fails, the cherry-pick still proceeds — it just omits the <code class="inline">/kind</code> lines rather than failing the whole operation.</li>
+  <li>Mirrors behavior already shipped for the manual cherry-pick flow in kubernetes/kubernetes.</li>
+  <li>Touches no plugin config structs, YAML/JSON fields, or CLI flags — purely additive runtime behavior.</li>
+</ul>
+
+<h2>Findings</h2>
+
+<div class="finding">
+  <h3><span class="badge should-fix">should-fix</span>redundant GetIssueLabels call per cherry-pick target branch</h3>
+  <p><span class="loc">cmd/external-plugins/cherrypicker/server.go:586-590</span></p>
+  <p><code class="inline">handle()</code> calls <code class="inline">s.ghc.GetIssueLabels(org, repo, num)</code> again even though the caller (<code class="inline">handlePullRequest</code>/<code class="inline">handlePullRequestLabelAdded</code>, ~line 390) already fetched the same labels for the same PR. Since <code class="inline">handle()</code> runs once per target branch, this re-fetches identical data from GitHub on every branch iteration for a chained cherry-pick. Thread the already-fetched labels/kindLabels into <code class="inline">handle()</code> as a parameter instead of re-querying.</p>
+  <pre>// server.go ~390 (existing call in caller)
+labels, err := s.ghc.GetIssueLabels(org, repo, num)
+...
+// server.go ~586 (new, duplicate call inside handle())
+labels, err := s.ghc.GetIssueLabels(org, repo, num)
+if err != nil {
+    logger.WithError(err).Debug("failed to get issue labels")
+}</pre>
+</div>
+
+<div class="finding">
+  <h3><span class="badge should-fix">should-fix</span>label-fetch failure logged at Debug, not Warn</h3>
+  <p><span class="loc">cmd/external-plugins/cherrypicker/server.go:587</span></p>
+  <p>The new <code class="inline">GetIssueLabels</code> error is logged at <code class="inline">Debug</code>, while a similar non-fatal "don't fail the operation but surface the problem" case elsewhere in this file (~line 622, "failed to assign to new PR") uses <code class="inline">Warn</code>. A real API failure here (e.g. a token-permission regression) would silently and invisibly drop <code class="inline">/kind</code> lines from every cherry-pick with no signal in default-level logs. Bump to <code class="inline">Warn</code>.</p>
+</div>
+
+<div class="finding">
+  <h3><span class="badge should-fix">should-fix</span>no unit test for kindLabelsFromIssueLabels edge cases</h3>
+  <p><span class="loc">cmd/external-plugins/cherrypicker/server.go:733-744</span></p>
+  <p>The function's documented edge cases (a label exactly <code class="inline">"kind/"</code> with empty suffix, duplicate <code class="inline">kind/x</code> labels) are only exercised indirectly via one end-to-end <code class="inline">server_test.go</code> case with two well-formed labels. Add a small table-driven test directly against this pure function.</p>
+</div>
+
+<div class="finding">
+  <h3><span class="badge nit">nit</span>no test for the GetIssueLabels error path in handle()</h3>
+  <p><span class="loc">cmd/external-plugins/cherrypicker/server.go (handle)</span></p>
+  <p>No test verifies the cherry-pick PR is still created successfully (without <code class="inline">/kind</code> lines) when the label fetch fails — the one new branch of behavior added to <code class="inline">handle()</code>.</p>
+</div>
+
+<div class="finding">
+  <h3><span class="badge nit">nit</span>redundant sort in lib.go</h3>
+  <p><span class="loc">cmd/external-plugins/cherrypicker/lib/lib.go:37-46</span></p>
+  <p><code class="inline">kindLabels</code> is sorted here even though the only production caller (<code class="inline">kindLabelsFromIssueLabels</code>, via <code class="inline">sets.List</code>) already returns a sorted slice. Defensible as defensive robustness for other future callers, not a bug.</p>
+</div>
+
+<div class="finding">
+  <h3><span class="badge question">question</span>CreateCherrypickBody's growing positional parameter list</h3>
+  <p><span class="loc">cmd/external-plugins/cherrypicker/lib/lib.go</span></p>
+  <p>This exported function's signature keeps growing positionally (release notes, chain branches, now kindLabels) as more "copy X from parent PR" features get added. Worth an options struct next time a field is added — not blocking now.</p>
+</div>
+
+<h2>Things I checked and was fine with</h2>
+<ul>
+  <li>No config struct, YAML/JSON field, CLI flag, or ProwJob semantics changes — purely additive behavior, low deployment risk.</li>
+  <li>Label-fetch failure degrades gracefully: cherry-pick still proceeds without <code class="inline">/kind</code> lines rather than aborting.</li>
+  <li>Dedup/sort of kind labels via <code class="inline">sets.New</code>/<code class="inline">sets.List</code> is deterministic and idiomatic, consistent with existing usage in the file.</li>
+  <li><code class="inline">HelpProvider</code> text updated alongside the behavior change.</li>
+  <li>Existing <code class="inline">server_test.go</code> case updated for the new parameter/happy path; unrelated <code class="inline">bugzilla_test.go</code> call site correctly updated for the new signature; bugzilla cherry-pick body regex detection confirmed unaffected by the new <code class="inline">/kind</code> lines.</li>
+  <li><code class="inline">CreateCherrypickBody</code>'s signature change is internal-only (all in-tree call sites updated), not a public API break.</li>
+</ul>
+
+<h2>Open questions for the author</h2>
+<ul>
+  <li>In repos without kind-label automation configured, or without a matching <code class="inline">kind/*</code> label, the emitted <code class="inline">/kind &lt;name&gt;</code> command could produce a bot error/reply comment on the new cherry-pick PR — was this considered, and is it worth a one-line release-note mention?</li>
+  <li>Was the duplicate <code class="inline">GetIssueLabels</code> call (already fetched by the caller) an intentional simplification, or just missed when threading data into <code class="inline">handle()</code>?</li>
+</ul>
+
+</body>
+</html>

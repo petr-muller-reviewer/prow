@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Triage: kubernetes-sigs/prow#609</title>
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+    color: #1a1a1a;
+    max-width: 860px;
+    margin: 2rem auto;
+    padding: 0 1.5rem;
+    background: #fdfdfd;
+  }
+  code, pre {
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    background: #f2f2f2;
+    border-radius: 3px;
+  }
+  code { padding: 0.1em 0.35em; font-size: 0.92em; }
+  pre {
+    padding: 0.8em 1em;
+    overflow-x: auto;
+    border-left: 3px solid #ccc;
+  }
+  pre code { background: none; padding: 0; }
+  h1 { font-size: 1.5rem; margin-bottom: 0.2rem; }
+  h2 {
+    font-size: 1.15rem;
+    margin-top: 2.2rem;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 0.3rem;
+  }
+  h3 { font-size: 1rem; margin-top: 1.3rem; }
+  .meta {
+    background: #f6f6f6;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    padding: 0.9rem 1.2rem;
+    margin-bottom: 1.5rem;
+    font-size: 0.92rem;
+  }
+  .meta div { margin: 0.15rem 0; }
+  .meta .label { color: #666; display: inline-block; min-width: 6.5rem; }
+  .verdict-box {
+    background: #eef7ee;
+    border: 1px solid #b8ddb8;
+    border-radius: 6px;
+    padding: 1rem 1.2rem;
+  }
+  .verdict-line { font-weight: 600; font-size: 1.05rem; margin-bottom: 0.4rem; }
+  a { color: #0969da; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  ul { padding-left: 1.4rem; }
+  li { margin: 0.3rem 0; }
+  .tag {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    background: #e7edf7;
+    color: #2952a3;
+    border-radius: 3px;
+    padding: 0.1em 0.5em;
+    margin-right: 0.5em;
+  }
+</style>
+</head>
+<body>
+
+<h1>Triage: Pipeline controller deletes PipelineRuns when two cluster contexts share the same cluster</h1>
+
+<div class="meta">
+  <div><span class="label">Issue</span> <a href="https://github.com/kubernetes-sigs/prow/issues/609">kubernetes-sigs/prow#609</a></div>
+  <div><span class="label">State</span> closed</div>
+  <div><span class="label">Labels</span> <code>kind/bug</code>, <code>lifecycle/rotten</code></div>
+  <div><span class="label">Triaged at</span> 2026-07-26T23:45:22Z</div>
+  <div><span class="label">Main SHA</span> <code>e601a1ffafd7d8d3a781238a4c5f4233d6248f68</code></div>
+  <div><span class="label">Verdict</span> accepted</div>
+</div>
+
+<h2>Verdict</h2>
+<div class="verdict-box">
+  <div class="verdict-line">Accepted — and already resolved on main.</div>
+  <p>This was a legitimate, repository-owned bug: the pipeline (Tekton) controller deleted valid <code>PipelineRun</code>s whenever two kubeconfig contexts resolved to the same underlying cluster. The original 2026-02-10 triage correctly identified the root cause and recommended a startup-validation fix; <a href="https://github.com/kubernetes-sigs/prow/pull/749">PR&nbsp;#749</a> implemented exactly that, merged 2026-06-16 and closed the issue. No further maintainer action is needed.</p>
+</div>
+
+<h2>What the issue reports</h2>
+<ul>
+  <li>Reporter runs multiple build clusters (<code>cluster-a</code>, <code>cluster-b</code>, <code>cluster-c</code>, plus <code>default</code>).</li>
+  <li>Mid-migration, they pointed a ProwJob's <code>cluster:</code> field at a named context that shared the same kubeconfig/API server as <code>default</code>.</li>
+  <li>The pipeline controller got confused between the two contexts pointing at the same physical cluster, and silently deleted running PipelineRuns.</li>
+  <li>Reporter pinpointed the offending code at <code>cmd/pipeline/controller.go:463</code> themselves and asked whether validation was feasible.</li>
+</ul>
+
+<h2>Analysis</h2>
+
+<h3>Reproducibility / observed behavior</h3>
+<p>Matches the fix author's own PR description almost verbatim: two contexts sharing a server endpoint each get their own informer; both see the same <code>PipelineRun</code> events; the "wrong context" one gets deleted.</p>
+
+<h3>Probable cause</h3>
+<p>The controller creates one informer per kubeconfig context, with no deduplication by underlying cluster identity. When two contexts share a server endpoint, both informers watch the same <code>PipelineRun</code> resources. The reconcile check <code>ClusterToCtx(pj.Spec.Cluster) != ctx</code> treats a context-name mismatch as "wrong cluster," even though the cluster is identical, and deletes the resource.</p>
+
+<h3>Related code</h3>
+<p><code>cmd/pipeline/controller.go:463</code> — the deletion trigger:</p>
+<pre><code>ClusterToCtx(pj.Spec.Cluster) != ctx  // true across duplicate contexts -> wantPipelineRun = false</code></pre>
+<p><code>cmd/pipeline/main.go:127-136</code> (pre-fix numbering) — pre-existing dedup precedent used as the template for the fix: <code>InClusterContext → DefaultClusterAlias</code> aliasing handled only the empty-string vs <code>"default"</code> case, not the general case of any two contexts sharing a server URL.</p>
+
+<h3>Related issues / PRs</h3>
+<ul>
+  <li><span class="tag">fix</span><a href="https://github.com/kubernetes-sigs/prow/pull/749">PR #749</a> — <em>fix(pipeline): reject duplicate cluster endpoints at startup</em> (carterpewpew). Adds <code>validateUniqueClusters(configs map[string]rest.Config) error</code> to <code>cmd/pipeline/main.go</code>: builds a <code>Host → []contextName</code> reverse map and calls <code>logrus.Fatal</code> if any host has more than one context. Adds <code>TestValidateUniqueClusters</code> (unique/duplicate/empty/single-config cases). 21 lines in <code>main.go</code>, 43 in <code>main_test.go</code>. Merged 2026-06-16T17:45:39Z, closed #609 automatically via <code>Fixes: #609</code>.</li>
+</ul>
+
+<h2>What I checked</h2>
+<ul>
+  <li>Confirmed <code>validateUniqueClusters</code> is present and wired into <code>main()</code> in the current worktree's <code>cmd/pipeline/main.go</code> (post-fix).</li>
+  <li>Confirmed via <code>git merge-base --is-ancestor</code> that PR #749's merge commit (<code>0f4e9fead</code>) is an ancestor of this triage's <code>main_sha</code> — the fix is live on main, not just merged in isolation.</li>
+  <li>Reviewed all issue comments/timeline events after the 2026-06-10 <code>lifecycle/rotten</code> label — the only new activity is PR #749's cross-reference and the resulting close. No explanatory close comment; it was closed automatically by the PR's <code>Fixes:</code> keyword, not the lifecycle bot (a rotten-driven auto-close would have landed ~2026-07-10, after the actual 2026-06-16 close).</li>
+  <li>Diffed PR #749 against the originally recommended "Approach 1" (startup validation and deduplication) — matches directly: same file, same technique, same order of magnitude of change.</li>
+</ul>
+
+<h2>Recommended next steps</h2>
+<ul>
+  <li>None. Issue is closed and the fix is on main. No labels, comments, or further code changes are needed.</li>
+</ul>
+
+<h2>Open questions</h2>
+<ul>
+  <li>None.</li>
+</ul>
+
+</body>
+</html>

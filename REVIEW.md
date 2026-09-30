@@ -1,10 +1,14 @@
 ---
 pr: kubernetes-sigs/prow#955
 title: "fix(github): drop invalid event query filter"
-head_sha: 40eb181d73bb9f3097db3ae5b052f2a83850c942
+head_sha: e7327921f392ccb426739d03e3b353b1105779da
 base: main
-reviewed_at: 2026-09-29T17:56:50Z
+reviewed_at: 2026-09-30T12:39:35Z
 verdict: approve
+refresh_log:
+  - old_sha: 40eb181d73bb9f3097db3ae5b052f2a83850c942
+    new_sha: e7327921f392ccb426739d03e3b353b1105779da
+    summary: "Clarified the rerun actor comment, hardened the waiting test, and recorded subsequent approval and merge."
 gate:
   decision: hold
   gated_at: 2026-09-29T17:57:32Z
@@ -16,7 +20,7 @@ gate:
 
 ## Gate
 
-**Hold.** The PR head still matches the saved review, and the substantive GitHub review requests are addressed in the current code. The saved review's operator-documentation finding remains open: this fix activates Actions calls in opted-in deployments, with permission and command-trust behavior that the current configuration documentation does not explain. Add the operator guidance or a suitable release note before merging.
+**Historical gate: hold at `40eb181d` on 2026-09-29.** The PR has since merged at `e7327921`. The substantive GitHub review requests were addressed, but the saved review's operator-documentation finding remained open at merge. This gate record describes the earlier recommendation; it was not rerun after the final commits.
 
 **Gating list:**
 
@@ -36,6 +40,12 @@ Approve with suggestions. The invalid GitHub event query is corrected, and no me
 - Waits for Actions calls to finish before the comment handler returns.
 - Adds fake-client support and tests for approval, retry, trust, and waiting behavior.
 
+Since previous review:
+
+- `pkg/plugins/trigger/generic-comment.go:322-325` now correctly identifies Prow as the rerun initiator.
+- `pkg/plugins/trigger/generic-comment_test.go:1994-2067` uses `sync.Once` and cleanup to make the waiting test safe if another run is added or the test fails early.
+- `cblecker` approved the PR at 2026-09-29T23:02:32Z; the PR was subsequently merged at `e7327921`.
+
 ## Findings
 
 ### [should-fix] Explain the enabled Actions behavior to operators
@@ -45,13 +55,15 @@ Approve with suggestions. The invalid GitHub event query is corrected, and no me
     // TriggerGitHubWorkflows enables workflows run by github to be triggered by prow.
     TriggerGitHubWorkflows bool `json:"trigger_github_workflows,omitempty"`
 
+## Resolved
+
 ### [nit] Identify the rerun initiator correctly
-- where: `pkg/plugins/trigger/generic-comment.go:322-324`
-- concern: The comment says a same-repository bot PR is rerun with the bot as the triggering actor. Prow initiates the API rerun; GitHub preserves the original actor's privileges. Clarify this distinction. See [GitHub's rerun documentation](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/re-run-workflows-and-jobs).
+- where: `pkg/plugins/trigger/generic-comment.go:322-325`
+- concern: Resolved in `8f60d1cec`. The comment now says the API caller (Prow) initiates the rerun and clears the approval gate.
 - excerpt: |
-    // GitHub documents the approve endpoint only for a fork PR. For a PR from the
-    // base repository, for example the PR of a bot, a re-run starts the run with
-    // the bot as the triggering actor.
+    // base repository, for example the PR of a bot, re-run the workflow instead.
+    // The re-run sets the triggering actor to the API caller (prow), which clears
+    // the approval gate.
 
 ## Checked
 
@@ -68,3 +80,21 @@ Approve with suggestions. The invalid GitHub event query is corrected, and no me
 ## Open questions
 
 None.
+
+## Followups
+
+### Document GitHub Actions triggering behavior
+
+- category: docs
+- necessity: should
+- where: `pkg/plugins/config.go:610-611`, `pkg/plugins/plugin-config-documented.yaml:706-707`, `site/content/en/docs/jobs.md:240-246`
+
+```text
+In kubernetes-sigs/prow, following merged PR #955, "fix(github): drop invalid event query filter" (merge commit 7626c76a396f367698b87f0650c8c5df14ae6c4e), document the behavior enabled by trigger_github_workflows on the merged default branch.
+
+Update the TriggerGitHubWorkflows field comment in pkg/plugins/config.go, its matching example in pkg/plugins/plugin-config-documented.yaml, and the user-facing command guidance in site/content/en/docs/jobs.md. Explain that the flag is opt-in; a trusted /ok-to-test commenter starts pending Actions runs (approve for fork PRs, rerun for same-repository PRs); and a trusted /retest or /test all commenter reruns eligible failed Actions runs. Explain that an ok-to-test label on a PR does not grant its untrusted author permission to start Actions runs, even though ProwJobs can still start. State the GitHub Actions read permission needed to list runs and write permission needed to approve or rerun them, linking to GitHub's workflow-run REST API documentation.
+
+Check the status of PR #956 before writing. If it has merged, include its push-approval behavior as implemented; if it has not, document only the behavior present after #955 and avoid promising automatic approval after a push.
+
+Acceptance criteria: the two config descriptions and jobs guide agree with the merged implementation; operators can tell which commands affect Actions, who can issue them, and which permissions are required. Keep this followup documentation-only: do not change trigger logic, API calls, or tests. Do not post to GitHub unless separately asked.
+```

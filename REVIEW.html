@@ -31,8 +31,18 @@ ul, ol { padding-left:1.5rem; }
 details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
 </style></head><body><main>
 <h1>fix(hack): keep codegen verification read-only</h1>
-<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/981">kubernetes-sigs/prow#981</a> · base <code>main</code> · head_sha <code>f9ecdd47f6ba</code> · reviewed_at <code>2026-09-27T12:55:59Z</code></div>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/981">kubernetes-sigs/prow#981</a> · base <code>main</code> · head_sha <code>b579745c003f</code> · reviewed_at <code>2026-09-30T16:25:40Z</code></div>
 <div class="badges"><span class="badge c-green">verdict: approve</span></div>
+<details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#981
+title: &quot;fix(hack): keep codegen verification read-only&quot;
+head_sha: b579745c003f1c9ba9438679b1f91588d6a6eea2
+base: main
+reviewed_at: 2026-09-30T16:25:40Z
+verdict: approve
+refresh_log:
+  - old_sha: f9ecdd47f6ba8aa8920a693775c8e2a958435a8f
+    new_sha: b579745c003f1c9ba9438679b1f91588d6a6eea2
+    summary: &quot;Filtered deleted source and output paths before tar; derived proto exclusions from output_paths; incorporated reviewer discussion.&quot;</code></pre></details>
 <h2>Verdict</h2>
 <p>Approve. I found no actionable regressions in the revised verifier. It generates in a temporary source tree, compares the updater's output locations, and removes that tree on exit.</p>
 <h2>What this PR does</h2>
@@ -45,6 +55,14 @@ details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-si
 </li>
 <li>Removes the temporary tree when generation, comparison, or verification exits.
 </li></ul>
+<p>Since previous review:</p>
+<ul>
+<li>Commit <code>b579745c0</code> changed <code>hack/make-rules/verify/codegen.sh</code> (+18/−7): skip deleted paths before both tar copies, and derive proto exclusions from <code>output_paths</code>.
+</li>
+<li>On September 27, cblecker commented that deleted tracked paths break tar and that the proto exclusion list duplicated <code>output_paths</code>.
+</li>
+<li>On September 30, petr-muller replied to both threads that the changes were addressed and requested another look in a PR comment.
+</li></ul>
 <h2>Findings</h2>
 <p>None.</p>
 <h2>Checked</h2>
@@ -56,6 +74,8 @@ details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-si
 <li>Confirmed the revised copy includes untracked files, addressing the earlier false failure for files added before staging.
 </li>
 <li><code>bash -n</code> and <code>git diff --check</code> passed. Full code generation was not run.
+</li>
+<li>Reviewed the 18 additions and 7 deletions in <code>b579745c0</code>: existence checks retain symlinks, skip deleted paths in both copies, and the nested loop skips proto files already covered by <code>output_paths</code>. <code>bash -n</code> and <code>git diff --check</code> passed for this commit; full code generation was not run.
 </li></ul>
 <h2>Open questions</h2>
 <p>None.</p>

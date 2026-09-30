@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#740</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>docs: add operator-facing GitHub API access documentation</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/740">kubernetes-sigs/prow#740</a> · base <code>main</code> · head_sha <code>968c8c5f3e44</code> · reviewed_at <code>2026-07-27T00:26:51Z</code></div>
+<div class="badges"><span class="badge c-red">verdict: request-changes</span></div>
+<h2>What this PR does</h2>
+<ul>
+<li>Adds <code>site/content/en/docs/github-api-access.md</code>: central operator doc covering GitHub auth (PAT vs GitHub App), rate-limit management (client-side throttling, ghproxy), and endpoint configuration (REST/GraphQL/Search).
+</li>
+<li>Adds short "GitHub API Access" sections to hook, crier, deck, tide, branchprotector, status-reconciler docs, each linking back to the central page.
+</li>
+<li>Docs-only change, +115/-3 across 7 files. PR is already merged (has <code>lgtm</code>/<code>approved</code> labels); findings below are for a fast follow-up.
+</li>
+<li>Confirmed via a 3-perspective maintainer review (code quality, maintainability, deployment risk) — all three independently converged on the same core errors.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-red">blocking</span>Self-contradictory rate-limit comparison</h3>
+<ul>
+<li>where: <code>site/content/en/docs/github-api-access.md</code> (GitHub App Authentication section, "Higher rate limits" bullet)
+</li>
+<li>concern: States "GitHub Apps receive higher API rate limits (5,000 requests/hour per installation vs 5,000/hour for personal tokens)" — same number on both sides of a claimed contrast. GitHub App installation limits actually scale with repos/users covered (baseline higher than 5,000, commonly 12,500-15,000+). Flagged independently by all three maintainer-review perspectives.
+</li>
+<li>excerpt:<pre><code>- **Higher rate limits:** GitHub Apps receive higher API rate limits (5,000 requests/hour per installation vs 5,000/hour for personal tokens)</code></pre>
+</li></ul>
+<h3><span class="tag c-red">blocking</span>Fabricated flag <code>--github-search-endpoint</code></h3>
+<ul>
+<li>where: <code>site/content/en/docs/github-api-access.md</code> (Configuring Components to Use ghproxy section, endpoint flag list and example config block)
+</li>
+<li>concern: <code>--github-search-endpoint</code> does not exist anywhere in the codebase (checked <code>pkg/flagutil/github.go</code> and grepped all <code>.go</code> files). Search requests (<code>FindIssues</code>/<code>FindIssuesWithOrg</code>) use the same REST base configured by <code>--github-endpoint</code>. Deployment-risk review flags this as the one item with real blast radius: if an operator copy-pastes the example into a component's args, Go's flag package rejects the unrecognized flag and the rollout fails to start.
+</li>
+<li>excerpt:<pre><code>- `--github-search-endpoint`: Search API endpoint (often the same as REST)</code></pre>
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>Inaccurate, non-per-component throttling flag defaults</h3>
+<ul>
+<li>where: <code>site/content/en/docs/github-api-access.md</code> (Client-side Throttling section)
+</li>
+<li>concern: Claims <code>--github-hourly-tokens</code> defaults to "matches GitHub's limit" and <code>--github-allowed-burst</code> defaults to "100" as if universal. Per <code>pkg/flagutil/github.go</code> (<code>ThrottlerDefaults</code>), both actually default to <code>0</code> (disabled) unless a component opts in explicitly. <code>hook</code>, <code>deck</code>, <code>crier</code> (three of the six components this PR documents) never opt in — throttling is off by default for them. <code>branchprotector</code>/<code>status-reconciler</code>/<code>peribolos</code> use 300/100, <code>invitations-accepter</code> uses 300/300, <code>needs-rebase</code> uses 360/360. No single default matches what's stated.
+</li>
+<li>excerpt:<pre><code>- `--github-hourly-tokens`: Maximum GitHub tokens to consume per hour (default: matches GitHub&#x27;s limit)
+- `--github-allowed-burst`: Maximum burst of tokens that can be consumed at once (default: 100)</code></pre>
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>Tide doesn't expose the documented throttling flags at all</h3>
+<ul>
+<li>where: <code>site/content/en/docs/components/core/tide/_index.md</code> (GitHub API Access section) and <code>github-api-access.md</code> (Client-side Throttling section)
+</li>
+<li>concern: <code>cmd/tide/main.go</code> calls <code>AddCustomizedFlags(fs, prowflagutil.DisableThrottlerOptions())</code>, so <code>--github-hourly-tokens</code>/<code>--github-allowed-burst</code> aren't registered on tide at all. Tide instead has its own <code>--sync-hourly-tokens</code> (default 800) and <code>--status-hourly-tokens</code> (default 400). The tide doc section links to the central page's generic throttling guidance with no callout of this divergence — an operator following it could try a flag tide rejects, or miss the flags that actually matter.
+</li>
+<li>excerpt:<pre><code>Tide is a heavy consumer of the GitHub API. ... It requires GitHub authentication credentials and should be configured with ghproxy to manage rate limits. See [Managing GitHub API Access](/docs/github-api-access/) ...</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">nit</span>Overgeneralized "flags can be specified multiple times" claim</h3>
+<ul>
+<li>where: <code>site/content/en/docs/github-api-access.md</code> (Configuring Components to Use ghproxy section)
+</li>
+<li>concern: True for <code>--github-endpoint</code> (repeatable <code>Strings</code> flag) but <code>--github-graphql-endpoint</code> is a single string flag with no fallback list — the blanket claim across all endpoint flags overstates GraphQL's behavior.
+</li>
+<li>excerpt:<pre><code>When multiple endpoints are provided for the same API type, components try them in order and fall back to the next if one is unavailable.</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">nit</span>Empty frontmatter description</h3>
+<ul>
+<li>where: <code>site/content/en/docs/github-api-access.md:1-5</code>
+</li>
+<li>concern: <code>description: &gt;</code> has no content after it — most other docs pages populate this for site listings/SEO.
+</li>
+<li>excerpt:<pre><code>---
+title: &quot;Managing GitHub API Access&quot;
+weight: 104
+description: &gt;
+
+---</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">nit</span>Lost concrete detail in crier.md</h3>
+<ul>
+<li>where: <code>site/content/en/docs/components/core/crier.md</code>
+</li>
+<li>concern: Removed lines specified the conventional token mount path (<code>--github-token-path</code> defaulting to <code>/etc/github/oauth</code>), still used in example deployment YAMLs (e.g. <code>test/integration/config/prow/cluster/crier_deployment.yaml</code>). The generic replacement text doesn't preserve this detail.
+</li>
+<li>excerpt:<pre><code>-You also need to mount a github oauth token by specifying `--github-token-path` flag, which defaults to `/etc/github/oauth`.
+-
+-If you have a [ghproxy](/docs/ghproxy/) deployed, also remember to point `--github-endpoint` to your ghproxy to avoid token throttle.</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">nit</span>No reciprocal link from ghproxy docs</h3>
+<ul>
+<li>where: <code>site/content/en/docs/ghproxy/_index.md</code>
+</li>
+<li>concern: The new page links to ghproxy, but ghproxy's own doc doesn't link forward to the new central page — operators landing on ghproxy first won't discover the broader operational overview.
+</li></ul>
+<h3><span class="tag c-blue">question</span>Search API rate-limit claim unverifiable from this repo</h3>
+<ul>
+<li>where: <code>site/content/en/docs/github-api-access.md</code> (Managing API Rate Limits section)
+</li>
+<li>concern: "Search API: 30 requests/minute (shared across v3 and v4)" is a claim about GitHub's own API, not something prow implements/asserts in code — no way to confirm or refute it from this codebase. Worth double-checking against current GitHub docs.
+</li>
+<li>excerpt:<pre><code>- **Search API:** 30 requests/minute (shared across v3 and v4)</code></pre>
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>"Cached responses don't count against the token budget" claim — confirmed correct. <code>pkg/github/client.go:447-461</code> explicitly refunds the throttling token when <code>ghcache.CacheModeIsFree(cacheMode)</code> is true, matching existing wording in <code>site/content/en/docs/ghproxy/_index.md</code>.
+</li>
+<li>ETag/conditional-request handling claim — confirmed against <code>pkg/ghcache/ghcache.go</code>.
+</li>
+<li>Flag names <code>--github-token-path</code>, <code>--github-app-id</code>, <code>--github-app-private-key-path</code>, <code>--github-hourly-tokens</code>, <code>--github-allowed-burst</code>, <code>--github-endpoint</code>, <code>--github-graphql-endpoint</code> all exist verbatim in <code>pkg/flagutil/github.go:133-141</code>.
+</li>
+<li>Component-doc additions (hook, crier, deck, tide, branchprotector, status-reconciler) are consistent in structure/tone, correctly link back to the central page rather than duplicating detail, and match an existing established pattern (same style already used for ghproxy links). <code>weight: 104</code> slots cleanly into nav ordering with no collision.
+</li>
+<li>No doc-linter or doc-gen mechanism exists tying these prose numbers to <code>pkg/flagutil/github.go</code> — flagged as a maintainability risk (future drift) rather than a current defect beyond what's listed above.
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>Where does the "5,000 requests/hour per installation" figure for GitHub Apps come from — was this meant to be a different (higher) number?
+</li>
+<li>Is <code>--github-search-endpoint</code> intended for a future flag that doesn't exist yet, or was it just an assumption that should be removed?
+</li>
+<li>Can the throttling defaults section be reworded to reflect that flags default to disabled (0) and defaults are set per-component, rather than implying a single universal default?
+</li>
+<li>Should the tide doc section explicitly mention <code>--sync-hourly-tokens</code>/<code>--status-hourly-tokens</code> instead of pointing at the generic throttling flags?
+</li></ul>
+<h2>Followups</h2>
+<h3>Correct GitHub endpoint guidance</h3>
+<ul>
+<li>category: docs
+</li>
+<li>necessity: must
+</li>
+<li>where: <code>site/content/en/docs/github-api-access.md:69-84</code>; <code>pkg/flagutil/github.go:131-134</code>
+</li>
+<li>why followup: PR #740 is merged, and its new operator guide includes an unregistered flag and an invalid GraphQL fallback example. Correcting published configuration guidance is a focused post-merge docs change.
+<pre><code>In kubernetes-sigs/prow, following merged PR #740, &quot;docs: add operator-facing GitHub API access documentation&quot; (merge commit 9fa65c208d31319fc1d64b01100656a8c7a52199), correct the endpoint configuration guidance in site/content/en/docs/github-api-access.md. The guide lists --github-search-endpoint, which Prow does not register, and shows --github-graphql-endpoint twice as a fallback pair even though pkg/flagutil/github.go registers it as a single string flag. The repeatable --github-endpoint flag controls REST requests, including REST search.
+
+Update the prose and example so operators see only supported flags and understand that REST endpoints can be ordered for fallback while GraphQL takes one endpoint. Check the final example against the current flag definitions and relevant client routing code.
+
+Acceptance criteria: the guide no longer advertises --github-search-endpoint; it explains where REST search traffic goes; it does not promise GraphQL endpoint fallback or repeat the GraphQL flag in its example; every example flag exists in the current code.
+
+Scope guard: change documentation only. Do not add a search flag or alter GitHub client behavior, throttling guidance, or rate-limit figures as part of this followup.</code></pre>
+</li></ul>
+</main></body></html>

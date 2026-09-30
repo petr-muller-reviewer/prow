@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#981</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>fix(hack): keep codegen verification read-only</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/981">kubernetes-sigs/prow#981</a> · base <code>main</code> · head_sha <code>f9ecdd47f6ba</code> · reviewed_at <code>2026-09-27T12:55:59Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span></div>
+<h2>Verdict</h2>
+<p>Approve. I found no actionable regressions in the revised verifier. It generates in a temporary source tree, compares the updater's output locations, and removes that tree on exit.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Runs <code>update/codegen.sh</code> from a temporary copy of the working tree so verification does not overwrite checkout files.
+</li>
+<li>Includes tracked, untracked, and locally ignored files needed for whole-directory comparisons.
+</li>
+<li>Reuses a copied protoc cache and compares generated API, client, config, gangway, pipeline, plugin, CRD, and proto outputs.
+</li>
+<li>Removes the temporary tree when generation, comparison, or verification exits.
+</li></ul>
+<h2>Findings</h2>
+<p>None.</p>
+<h2>Checked</h2>
+<ul>
+<li>Compared the full PR diff at <code>f9ecdd47f6ba8aa8920a693775c8e2a958435a8f</code> with its merge base on <code>main</code>.
+</li>
+<li>Checked the updater's output paths against the verifier's comparisons.
+</li>
+<li>Confirmed the revised copy includes untracked files, addressing the earlier false failure for files added before staging.
+</li>
+<li><code>bash -n</code> and <code>git diff --check</code> passed. Full code generation was not run.
+</li></ul>
+<h2>Open questions</h2>
+<p>None.</p>
+</main></body></html>

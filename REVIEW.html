@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Review: kubernetes-sigs/prow#781</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+         line-height: 1.6; color: #222; max-width: 860px; margin: 2rem auto; padding: 0 1.5rem; }
+  code, pre { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; }
+  pre { background: #f4f4f4; padding: 0.75rem 1rem; border-radius: 6px; overflow-x: auto; }
+  header { border-bottom: 2px solid #ddd; padding-bottom: 1rem; margin-bottom: 1.5rem; }
+  header dl { display: grid; grid-template-columns: max-content 1fr; gap: 0.25rem 1rem; margin: 0.5rem 0; }
+  header dt { font-weight: 600; color: #555; }
+  h1 { font-size: 1.4rem; margin: 0 0 0.5rem; }
+  h2 { font-size: 1.15rem; margin-top: 2rem; border-bottom: 1px solid #eee; padding-bottom: 0.3rem; }
+  h3 { font-size: 1rem; margin-bottom: 0.3rem; }
+  .verdict { background: #eafaf0; border: 1px solid #b7e4c7; border-radius: 6px; padding: 1rem 1.25rem; }
+  .verdict .line { font-weight: 700; color: #1e7a3e; }
+  ul { padding-left: 1.4rem; }
+  li { margin-bottom: 0.4rem; }
+  .file { background: #f4f4f4; padding: 0.1rem 0.4rem; border-radius: 4px; }
+  .finding { border-left: 3px solid #ccc; padding: 0.5rem 0 0.5rem 1rem; margin-bottom: 1.25rem; }
+  .finding.nit { border-left-color: #999; }
+  .sev { text-transform: uppercase; font-size: 0.75rem; font-weight: 700; color: #777; letter-spacing: 0.03em; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>deck: filter tide history per-record instead of per-pool</h1>
+  <dl>
+    <dt>PR</dt><dd><a href="https://github.com/kubernetes-sigs/prow/pull/781">kubernetes-sigs/prow#781</a></dd>
+    <dt>Head SHA</dt><dd><code>de9a3cb9af63b4abf71f6956a13f07ffb443c16e</code></dd>
+    <dt>Base</dt><dd><code>main</code></dd>
+    <dt>Reviewed at</dt><dd>2026-07-27T00:21:32Z</dd>
+  </dl>
+</header>
+
+<div class="verdict">
+  <div class="line">Verdict: Approve</div>
+  <p>Small, well-scoped bug fix, independently confirmed by a three-perspective maintainer review (code quality, maintainability, deployment risk) with no critical or converging blocking issues. The per-record filtering change is a straightforward correctness fix, removes dead code, and is backed by tests that directly reproduce the bug scenario. Two nits are worth a follow-up but don't block merge.</p>
+</div>
+
+<h2>What this PR does</h2>
+<ul>
+  <li><code>filterHistory</code> used to union all <code>TenantIDs</code> across every record in a pool into one set (<code>recordIDs</code>), then kept or dropped the <em>whole pool</em> based on that union via <code>HasAll</code>.</li>
+  <li>One record with a foreign tenant ID (e.g. a batch-merge leg) was enough to hide the entire pool's history, including records that should have been visible.</li>
+  <li>Fix: <code>ta.filter</code> is now evaluated per-record, using only that record's own <code>TenantIDs</code>; the pool is kept (with only the matching records) if at least one record passes.</li>
+  <li><code>recordIDs</code> helper removed (no other callers); also removes a confusing no-op <code>Insert()</code> call with no arguments.</li>
+  <li>Tests: two existing expectations adjusted to reflect per-record semantics, plus one new case exercising mixed tenant IDs within a single pool.</li>
+</ul>
+
+<h2>Findings</h2>
+
+<h3>Should fix</h3>
+<p>None.</p>
+
+<h3>Nits</h3>
+
+<div class="finding nit">
+  <div class="sev">nit</div>
+  <h3>Pre-size <code>filteredRecords</code> slice</h3>
+  <p><span class="file">cmd/deck/tide.go:196</span></p>
+  <pre>var filteredRecords []history.Record
+for _, record := range records {
+    curIDs := sets.New[string](record.TenantIDs...)
+    if match := ta.filter(orgRepoID, curIDs, needsHide); match {
+        filteredRecords = append(filteredRecords, record)
+    }
+}</pre>
+  <p>Grows via repeated <code>append</code> with no capacity hint, even though the upper bound (<code>len(records)</code>) is known. <code>make([]history.Record, 0, len(records))</code> avoids incremental reallocation for pools with many records. Negligible at typical history sizes.</p>
+</div>
+
+<div class="finding nit">
+  <div class="sev">nit</div>
+  <h3>Undocumented filtering-granularity asymmetry vs <code>filterPools</code></h3>
+  <p><span class="file">cmd/deck/tide.go:189-204</span></p>
+  <pre>// filterHistory filters per-record (unlike filterPools, which filters
+// per-pool) because a pool's history can contain records with
+// heterogeneous tenant IDs, e.g. from batch merges.</pre>
+  <p><code>filterPools</code> still filters at the aggregate/pool level (<code>pool.TenantIDs</code> as one set), while <code>filterHistory</code> now filters per-record. Defensible given the different data shapes, but nothing notes this is intentional — a future maintainer editing one might assume the other behaves the same way. A short comment (suggested above) would close this cheaply.</p>
+</div>
+
+<h3>Questions</h3>
+<p>None.</p>
+
+<h2>Things I checked and was fine with</h2>
+<ul>
+  <li>The <code>orgRepoID</code> injection into <code>curIDs</code> happens per-record now instead of once per pool, but <code>orgRepoID</code> is pool-level and identical across records in the loop, so this is behavior-neutral vs. the old per-pool computation.</li>
+  <li><code>recordIDs</code> has no remaining references after removal.</li>
+  <li><code>filterPools</code> (pool-level, not per-record) intentionally left untouched &mdash; pools don't have the same "some records legitimately belong to another tenant" problem.</li>
+  <li>New test case ("per-record filtering keeps matching records when pool has mixed tenant IDs") covers default-only, mixed, private-only, and untagged records in one pool.</li>
+  <li>Adjusted test expectations (<span class="file">clustered-tenant/test:master</span> losing its untagged <code>MERGE_BATCH</code> record) correctly reflect the new semantics; traced through <code>exampleConfigNoDefaults</code> to confirm <code>orgRepoID</code> is empty for that repo.</li>
+  <li>Per-record <code>sets.New[string](...)</code> allocation replaces the old once-per-pool allocation &mdash; extra allocations, but negligible for realistic history sizes.</li>
+  <li>Deployment risk: display-only change in Deck, no config/API/persisted-state impact, fully backward-compatible for single-tenant deployments. Multi-tenant Deck operators will see more (previously hidden) history rows post-upgrade &mdash; intended, but a visible behavior change worth a release-note mention.</li>
+</ul>
+
+<h2>Open questions for the author</h2>
+<p>None.</p>
+
+</body>
+</html>

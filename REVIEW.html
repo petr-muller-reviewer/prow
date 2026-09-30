@@ -162,4 +162,21 @@ Acceptance criteria: the guide no longer advertises --github-search-endpoint; it
 
 Scope guard: change documentation only. Do not add a search flag or alter GitHub client behavior, throttling guidance, or rate-limit figures as part of this followup.</code></pre>
 </li></ul>
+<h3>Correct GitHub rate-limit claims</h3>
+<ul>
+<li>category: docs
+</li>
+<li>necessity: should
+</li>
+<li>where: <code>site/content/en/docs/github-api-access.md:30-41</code>
+</li>
+<li>why followup: PR #740 is merged. Its operator guide says GitHub App installation limits are always higher than personal-token limits, although both can start at 5,000 requests/hour, and it describes the REST Search limit as shared with GraphQL. Operators use these claims to choose authentication and plan API capacity.
+<pre><code>In kubernetes-sigs/prow, following merged PR #740, &quot;docs: add operator-facing GitHub API access documentation&quot; (merge commit 9fa65c208d31319fc1d64b01100656a8c7a52199), correct the rate-limit guidance in site/content/en/docs/github-api-access.md. Work from the merged default branch and check current GitHub documentation before editing: https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api and https://docs.github.com/en/graphql/overview/rate-limits-and-query-limits-for-the-graphql-api.
+
+Replace the claim that GitHub App installations always have a higher hourly limit than personal access tokens. Explain that the installation REST limit starts at 5,000 requests/hour, can scale with users and repositories up to GitHub&#x27;s documented cap, and differs for GitHub Enterprise Cloud installations. Correct the Search API bullet so the 30 requests/minute limit, if still current, is identified as the REST search resource rather than a limit shared with GraphQL. Keep REST, GraphQL, and Search limits distinct, and link the relevant authoritative GitHub documentation near the claims.
+
+Acceptance criteria: no comparison implies every App installation exceeds a personal token&#x27;s baseline; Search is not described as sharing its REST rate-limit bucket with GraphQL; stated numbers and exceptions match the GitHub docs checked during the work.
+
+Scope guard: documentation only. Do not change Prow&#x27;s throttling implementation, endpoint routing, or the separate endpoint and component-throttling guidance.</code></pre>
+</li></ul>
 </main></body></html>

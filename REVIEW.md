@@ -56,3 +56,7 @@ formatting defect (see should-fix below).
 - Was this found via code audit or via an actual incident/report? Affects whether a CVE-style disclosure or backport to release branches is warranted.
 - Should a `gofmt`-only cleanup commit be pushed for `trigger.go:281-282`?
 - Should a release note be added calling out the stricter `trusted_apps` matching semantics?
+
+## Followups
+
+No followups accepted. The formatting cleanup and `trusted_apps` documentation note were considered and skipped.

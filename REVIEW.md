@@ -43,3 +43,7 @@ Routine bump of all `gcr.io/k8s-staging-test-infra/{alpine,git,git-custom-k8s-au
 
 - Can you confirm the new image tags are pullable from `gcr.io/k8s-staging-test-infra` before this merges?
 - Is there an upstream image promotion PR or release link that could be added to the PR description for traceability?
+
+## Followups
+
+No followup opportunities identified for PR #747.

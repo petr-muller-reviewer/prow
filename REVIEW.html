@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#783</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>repoowners: add advisory_approvers OWNERS field</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/783">kubernetes-sigs/prow#783</a> · base <code>main</code> · head_sha <code>682e7cd91945</code> · reviewed_at <code>2026-09-28T14:58:29Z</code></div>
+<div class="badges"><span class="badge c-red">verdict: request-changes</span><span class="badge c-red">gate: do-not-merge</span></div>
+<details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#783
+title: &quot;repoowners: add advisory_approvers OWNERS field&quot;
+head_sha: 682e7cd91945551b4f5b64a7bbb73b1f1b1ecc57
+base: main
+reviewed_at: 2026-09-28T14:58:29Z
+verdict: request-changes
+gate:
+  decision: do-not-merge
+  gated_at: 2026-09-28T14:59:05Z
+  gated_head_sha: 682e7cd91945551b4f5b64a7bbb73b1f1b1ecc57
+  reviewed_head_sha: 682e7cd91945551b4f5b64a7bbb73b1f1b1ecc57
+refresh_log:
+  - at: 2026-09-28T14:58:29Z
+    old_sha: 682e7cd91945551b4f5b64a7bbb73b1f1b1ecc57
+    new_sha: 682e7cd91945551b4f5b64a7bbb73b1f1b1ecc57
+    summary: &quot;No code changes; incorporated the author&#x27;s clarification on bot assignment and documentation.&quot;</code></pre></details>
+<h2>Gate</h2>
+<p><strong>Decision: do-not-merge.</strong> The PR head is unchanged since the review. Three blocking findings still contradict the intended <code>advisory_approvers</code> behavior: advisory-only directories lose ordinary leaf suggestions, advisory-only root files fail validation, and blunderbuss can still request reviews from advisory approvers. The author confirmed on 2026-09-28 that bots should never assign or suggest them.</p>
+<p><strong>Gating findings</strong></p>
+<ul>
+<li><strong>Blocks merge — <code>REVIEW.md</code>, advisory-only leaf:</strong> <code>pkg/repoowners/repoowners.go:903-908</code> still stops at a leaf layer containing only advisory approvers, then subtracts them and returns no regular parent candidates. Fix the traversal/selection behavior or explicitly reject this configuration if unsupported.
+</li>
+<li><strong>Blocks merge — <code>REVIEW.md</code>, advisory-only root:</strong> <code>pkg/plugins/verify-owners/verify-owners.go:459-466</code> still checks only <code>approvers</code> before adding <code>advisoryApprovers</code> to owners. Decide whether advisory-only root files are valid; then accept them or validate against them explicitly.
+</li>
+<li><strong>Blocks merge — <code>REVIEW.md</code>, blunderbuss fallback:</strong> <code>pkg/plugins/blunderbuss/blunderbuss.go:118-123,338-344,421-426</code> still exposes all <code>Approvers()</code> as fallback reviewers when approver fallback is enabled and ordinary reviewers are insufficient. Filter advisory users through the entire fallback and cover this path in a test.
+</li>
+<li><strong>Must address before merge — <code>REVIEW.md</code> and @damdo, documentation:</strong> <code>site/content/en/docs/components/plugins/approve/approvers/_index.md:28-42,70-82</code> still omits the field and its assignment semantics. Document the field and its interaction with <code>reviewers</code>, as the author agreed to do.
+</li>
+<li><strong>Must address before merge — <code>REVIEW.md</code>, maintainability:</strong> <code>pkg/repoowners/repoowners.go:269-275,948-950</code> still does not document the dual-storage invariant or why <code>TopLevelApprovers</code> includes advisory users while <code>LeafApprovers</code> excludes them. Add the comments requested in the review.
+</li>
+<li><strong>Needs confirmation — <code>REVIEW.md</code>, advisory user also listed as reviewer:</strong> <code>pkg/repoowners/repoowners_test.go</code> still expects such a user in <code>LeafReviewers</code>, which permits assignment as a reviewer. Confirm whether the author's stated never-assign intent includes this overlap and document the answer.
+</li></ul>
+<p><strong>Independent merge risk</strong></p>
+<ul>
+<li><code>pkg/repoowners/repoowners.go:59</code> adds an optional exported config field and OWNERS key. Existing OWNERS files and defaults are unchanged; no existing deployment needs a migration. Repositories adopting the new key will encounter the selection and validation failures above, and mixed-version deployments may differ until every component understands the field. No flags, CRDs, or existing exported API signatures change.
+</li></ul>
+<h2>What this PR does</h2>
+<ul>
+<li>Adds <code>advisory_approvers</code> to simple and filtered OWNERS configuration.
+</li>
+<li>Merges advisory users into <code>approvers</code> so they retain <code>/approve</code> authority and other approver privileges.
+</li>
+<li>Subtracts advisory users from <code>LeafApprovers</code>, removing them from approval-notifier suggestions.
+</li>
+<li>Extends verify-owners membership validation to advisory users.
+</li></ul>
+<p>Since previous review:</p>
+<ul>
+<li>No code changed. On 2026-09-28, smg247 <a href="https://github.com/kubernetes-sigs/prow/pull/783#issuecomment-5871948669">clarified</a> that advisory approvers should never be assigned or suggested by the bot and agreed that the field needs documentation.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-red">blocking</span>LeafApprovers returns empty set for advisory-only directories</h3>
+<ul>
+<li>where: <code>pkg/repoowners/repoowners.go:903-908</code>
+</li>
+<li>concern: If a directory's OWNERS lists only <code>advisory_approvers</code> with no regular <code>approvers</code>, <code>applyConfigToPath</code> merges advisory users into <code>o.approvers</code> at that path. <code>entriesForFile</code> with <code>leafOnly: true</code> finds them and stops, never reaching parent. The subtraction yields empty. Auto-assignment finds zero candidates.
+</li>
+<li>excerpt:<pre><code>all := o.entriesForFile(path, o.approvers, true).Set()
+advisory := o.entriesForFile(path, o.advisoryApprovers, true).Set()
+return all.Difference(advisory)</code></pre>
+</li></ul>
+<h3><span class="tag c-red">blocking</span>verify-owners rejects root OWNERS with only advisory_approvers</h3>
+<ul>
+<li>where: <code>pkg/plugins/verify-owners/verify-owners.go:459-464</code>
+</li>
+<li>concern: <code>approvers</code> and <code>advisoryApprovers</code> are separate slices. The <code>len(approvers) == 0</code> root check fires before <code>advisoryApprovers</code> are appended to <code>owners</code> on line 466. A root OWNERS with only <code>advisory_approvers</code> is rejected as having no approvers.
+</li>
+<li>excerpt:<pre><code>if filepath.Dir(c.Filename) == &quot;.&quot; &amp;&amp; len(approvers) == 0 {</code></pre>
+</li></ul>
+<h3><span class="tag c-red">blocking</span>Advisory approvers remain eligible for blunderbuss fallback</h3>
+<ul>
+<li>where: <code>pkg/plugins/blunderbuss/blunderbuss.go:118-120,421-426</code>
+</li>
+<li>concern: The fallback adapter exposes regular <code>Approvers()</code> as <code>Reviewers()</code>. After consuming leaf candidates, <code>getReviewers</code> fills the requested-reviewer count from that unfiltered set. Advisory approvers therefore can receive a review request whenever the regular leaf candidates are insufficient. The author <a href="https://github.com/kubernetes-sigs/prow/pull/783#issuecomment-5871948669">confirmed</a> that they should never be assigned or suggested by the bot. Filter advisory users from the full fallback path and add coverage.
+</li>
+<li>excerpt:<pre><code>func (foc fallbackReviewersClient) Reviewers(path string) layeredsets.String {
+    return foc.ownersClient.Approvers(path)
+}</code></pre>
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>Dual-storage invariant is under-documented</h3>
+<ul>
+<li>where: <code>pkg/repoowners/repoowners.go:270</code> and <code>:756-769</code>
+</li>
+<li>concern: Advisory approvers live in both <code>o.advisoryApprovers</code> and <code>o.approvers</code>. Only documented by comment in LeafApprovers. Future methods reading <code>o.approvers</code> must know advisory users are mixed in. Add doc comment on the <code>advisoryApprovers</code> struct field. Flagged by code quality and maintainability reviewers independently.
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>TopLevelApprovers/LeafApprovers asymmetry undocumented</h3>
+<ul>
+<li>where: <code>pkg/repoowners/repoowners.go:948-950</code>
+</li>
+<li>concern: <code>TopLevelApprovers</code> includes advisory approvers (reads <code>o.approvers</code> directly), <code>LeafApprovers</code> subtracts them. Asymmetry is correct but undocumented. A future contributor might "fix" it. Add one-line comment.
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>Document advisory_approvers for OWNERS authors</h3>
+<ul>
+<li>where: <code>site/content/en/docs/components/plugins/approve/approvers/_index.md:28-42,70-82</code>
+</li>
+<li>concern: The OWNERS example and approver-selection explanation do not describe <code>advisory_approvers</code>. The author <a href="https://github.com/kubernetes-sigs/prow/pull/783#issuecomment-5871948669">agreed</a> it should be documented. Explain that listed users retain approval rights but should not be assigned or suggested by bots, including the behavior when they also appear in <code>reviewers</code>.
+</li></ul>
+<h3><span class="tag c-blue">question</span>Is advisory-only OWNERS a valid use case?</h3>
+<ul>
+<li>where: both blocking findings
+</li>
+<li>concern: Both blocking bugs only trigger when an OWNERS file has <code>advisory_approvers</code> but no regular <code>approvers</code>. If this is unsupported, add explicit validation. If supported, fix both bugs.
+</li></ul>
+<h3><span class="tag c-blue">question</span>Should advisory approvers listed as reviewers appear in LeafReviewers?</h3>
+<ul>
+<li>where: <code>pkg/repoowners/repoowners_test.go</code> TestAdvisoryApproverAlsoReviewer
+</li>
+<li>concern: Test asserts advisory approver who is also a reviewer still appears in LeafReviewers (can be auto-assigned as reviewer, not as approver). Confirm intentional.
+</li></ul>
+<h2>Resolved</h2>
+<h3><span class="tag c-blue">question</span>Is a distinct advisory_approvers field justified?</h3>
+<ul>
+<li>where: <code>pkg/repoowners/repoowners.go:898-907</code> and PR discussion on 2026-09-23
+</li>
+<li>resolution: On 2026-09-28, smg247 <a href="https://github.com/kubernetes-sigs/prow/pull/783#issuecomment-5871948669">said</a> the field is worth merging. The documentation work is tracked separately above.
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>RepoOwner no longer exposes AdvisoryApprovers; the six fake-only method implementations were removed
+</li>
+<li>Approval-notifier candidate selection uses LeafApprovers (excluding advisory is correct)
+</li>
+<li>Approvers callers use it for authorization (including advisory is correct)
+</li>
+<li>filterCollaborators preserves superset invariant (intersection preserves subsets)
+</li>
+<li>AllApprovers/AllOwners/TopLevelApprovers include advisory via merged o.approvers
+</li>
+<li>SimpleConfig.Empty() includes the new field
+</li>
+<li>Add-then-subtract design is safer default than keep-separate-union-in-Approvers
+</li>
+<li>Test coverage is thorough across repoowners and verify-owners
+</li>
+<li>Deployment risk is low: additive, omitempty, rolling upgrades/rollbacks safe
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>Is advisory-only OWNERS (no regular approvers) a valid use case? Both blocking findings hinge on this.
+</li>
+<li>Should advisory approvers also listed as reviewers appear in LeafReviewers? TestAdvisoryApproverAlsoReviewer asserts yes.
+</li></ul>
+</main></body></html>

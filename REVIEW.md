@@ -25,3 +25,10 @@ None.
 
 ## Open questions
 None.
+
+## Dependency followups
+No actionable opportunities were identified for PR #759 (merged as `37d12bec71174fdb925833014b32133404abd775`).
+
+- `github.com/sigstore/timestamp-authority/v2` v2.0.3→v2.0.6 (releases v2.0.4–v2.0.6): the changelog covers dependency refreshes, a chi middleware panic fix, an increased default HTTP idle timeout, and the TSA authentication certificate correctness fix (GHSA-xm5m-wgh2-rrg3). It offers no API migration or feature for our code to adopt, and `hack/tools` contains no owned Go import sites for this module.
+- `github.com/sigstore/sigstore` v1.10.3→v1.10.5 (indirect): releases mention a target-name security fix and OpenBao support, but there are no matching import sites in `hack/tools`.
+- The remaining indirect manifest changes likewise have no matching Go imports under `hack/tools`; references elsewhere in the repository belong to the root module and are not governed by this nested module's dependency update.

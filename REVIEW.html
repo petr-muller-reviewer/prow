@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Review: kubernetes-sigs/prow#751</title>
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+    max-width: 52em;
+    margin: 2em auto;
+    padding: 0 1em;
+    color: #1a1a1a;
+    background: #fafafa;
+  }
+  h1 { font-size: 1.4em; border-bottom: 2px solid #0969da; padding-bottom: 0.3em; }
+  h2 { font-size: 1.15em; margin-top: 1.8em; color: #24292f; border-bottom: 1px solid #d0d7de; padding-bottom: 0.2em; }
+  h3 { font-size: 1em; margin-top: 1.2em; }
+  code, pre {
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 0.9em;
+  }
+  code { background: #eef1f5; padding: 0.15em 0.35em; border-radius: 3px; }
+  pre {
+    background: #f0f3f6;
+    padding: 0.8em 1em;
+    border-radius: 4px;
+    overflow-x: auto;
+    line-height: 1.45;
+  }
+  .meta { background: #fff; border: 1px solid #d0d7de; border-radius: 6px; padding: 0.8em 1.2em; margin-bottom: 1.5em; }
+  .meta p { margin: 0.2em 0; }
+  .verdict { padding: 0.6em 1em; border-radius: 6px; margin-bottom: 1.5em; }
+  .verdict.approve { background: #dafbe1; border-left: 4px solid #1a7f37; }
+  .severity { display: inline-block; font-size: 0.8em; font-weight: 600; padding: 0.1em 0.5em; border-radius: 3px; margin-right: 0.4em; vertical-align: middle; }
+  .severity.should-fix { background: #fff8c5; color: #6a5403; }
+  .severity.nit { background: #eef1f5; color: #57606a; }
+  .severity.question { background: #ddf4ff; color: #0550ae; }
+  .convergence { font-size: 0.8em; color: #57606a; font-style: italic; margin-left: 0.3em; }
+  ul { padding-left: 1.4em; }
+  li { margin-bottom: 0.3em; }
+  a { color: #0969da; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .checked { background: #f6f8fa; border-radius: 6px; padding: 0.6em 1em; }
+</style>
+</head>
+<body>
+
+<h1>Review: kubernetes-sigs/prow#751</h1>
+
+<div class="meta">
+  <p><strong>PR:</strong> <a href="https://github.com/kubernetes-sigs/prow/pull/751">kubernetes-sigs/prow#751</a></p>
+  <p><strong>Title:</strong> Add retry logic to handle successive failure attempts</p>
+  <p><strong>Author:</strong> bradmwilliams</p>
+  <p><strong>Base:</strong> main</p>
+  <p><strong>Head SHA:</strong> <code>6d527d4bcd6f273d4f3f0a563702a1502238dfb2</code></p>
+  <p><strong>Reviewed:</strong> 2026-06-15T10:41:31Z</p>
+</div>
+
+<h2>Verdict</h2>
+<div class="verdict approve">
+  <strong>Approve with suggestions.</strong>
+  <p>A small, well-scoped fix for a real Jira API quirk (incremental field rejection on 400 responses). The retry loop is clean and preserves all error paths correctly. Deployment risk is low — purely internal, no config/API changes, no callers outside the jira package. The main gaps are missing retry logging (flagged by all three review perspectives) and absent test coverage for <code>CloneIssue</code>. Neither blocks merge, but logging in particular would save real debugging time in production.</p>
+</div>
+
+<h2>What this PR does</h2>
+<ul>
+  <li>Wraps the <code>CreateIssue</code> call in <code>CloneIssue</code> with a <code>for range 5</code> retry loop, replacing the old "try once, fix fields, retry once" pattern.</li>
+  <li>On each iteration, if <code>CreateIssue</code> returns a 400, calls <code>unsetProblematicFields</code> to remove the reported fields and loops again.</li>
+  <li>Non-400 errors and <code>unsetProblematicFields</code> failures still return immediately inside the loop.</li>
+  <li>After the loop, <code>if err != nil</code> catches exhaustion of all retries.</li>
+  <li>Net: +11 / -8 lines in a single file (<code>pkg/jira/jira.go</code>).</li>
+</ul>
+
+<h2>Findings</h2>
+
+<h3><span class="severity should-fix">should-fix</span> No retry logging <span class="convergence">(all 3 reviewers)</span></h3>
+<p><code>pkg/jira/jira.go:533-549</code></p>
+<p>The retry loop silently removes fields and retries up to 5 times. No log trail shows which fields were removed or how many retries occurred. Each retry <em>mutates the issue by deleting fields</em> — a side effect that should leave a trace. A <code>logrus</code> line per iteration with the attempt number and removed field names would significantly improve production debuggability.</p>
+<pre>for range 5 {
+    createdIssue, err = jc.CreateIssue(childIssue)
+    if err == nil {
+        break
+    }
+    ...
+    childIssue, newErr = unsetProblematicFields(childIssue, JiraErrorBody(err))</pre>
+
+<h3><span class="severity should-fix">should-fix</span> No test coverage for CloneIssue <span class="convergence">(2 reviewers)</span></h3>
+<p><code>pkg/jira/jira.go:513-574</code></p>
+<p>Zero tests for <code>CloneIssue</code> exist in <code>jira_test.go</code>. Pre-existing debt, but the new retry loop introduces a non-trivial state machine (success on first try, success after N retries, exhaustion of retries, non-400 error, <code>unsetProblematicFields</code> failure) that warrants at least one table-driven test with a fake <code>Client</code> returning different 400 errors on successive calls.</p>
+
+<h3><span class="severity nit">nit</span> Magic retry cap <span class="convergence">(2 reviewers)</span></h3>
+<p><code>pkg/jira/jira.go:533</code></p>
+<p>The retry limit <code>5</code> is a bare literal. A named constant (e.g. <code>maxCloneRetries</code>) would make intent self-documenting and the value easier to find or change.</p>
+<pre>for range 5 {</pre>
+
+<h3><span class="severity nit">nit</span> Wasted work on final iteration</h3>
+<p><code>pkg/jira/jira.go:533-549</code></p>
+<p>On the 5th (final) iteration, if <code>CreateIssue</code> returns a 400 and <code>unsetProblematicFields</code> succeeds, the corrected issue is never retried — the loop ends and the error is returned. The last <code>unsetProblematicFields</code> call does JSON marshal/unmarshal work that is thrown away. Not a correctness bug (the function correctly returns the error), but wasteful. Could guard the unset call with a check that it's not the last iteration, or use <code>range 6</code>.</p>
+
+<h3><span class="severity question">question</span> No-progress retry scenario</h3>
+<p><code>pkg/jira/jira.go:533-549</code></p>
+<p>If Jira returns a 400 with an empty <code>Errors</code> map or fields not present in the issue, <code>unsetProblematicFields</code> succeeds but changes nothing. The loop resubmits the identical payload up to 5 times. Pre-existing issue (single retry also failed the same way), but the loop amplifies it from 2 to 5 wasted API calls. A check that <code>processedResponse.Errors</code> is non-empty before retrying would guard against this.</p>
+
+<h2>Things I checked and was fine with</h2>
+<div class="checked">
+<ul>
+  <li><code>for range 5</code> is idiomatic Go 1.22+ — Prow targets recent Go.</li>
+  <li><code>err</code> variable scoping: declared on line 516 via <code>data, err := ...</code>, reused via assignment (not <code>:=</code>) in the loop — correct.</li>
+  <li>Early-return paths preserved inside the loop: non-400 errors and <code>unsetProblematicFields</code> failures return immediately.</li>
+  <li>Post-loop <code>if err != nil</code> correctly catches retry exhaustion.</li>
+  <li><code>unsetProblematicFields</code> correctly deletes reported fields from the issue map and strips null customfields.</li>
+  <li>No configuration, API, or interface changes — purely internal implementation.</li>
+  <li>No callers of <code>CloneIssue</code> outside the jira package — minimal blast radius.</li>
+  <li>Deployment risk is LOW: no config migration, no ordering dependencies, safe to roll back, fully backwards-compatible.</li>
+</ul>
+</div>
+
+<h2>Open questions for the author</h2>
+<ul>
+  <li>Should we add a log line when retrying, including the attempt number and which fields were unset? Would save significant debugging time for Jira field configuration issues.</li>
+  <li>Is there a known upper bound on how many distinct problematic fields Jira reports across successive attempts? Is the choice of 5 retries based on observed behavior?</li>
+  <li>Should the loop guard against the no-progress case where <code>unsetProblematicFields</code> removes zero fields?</li>
+</ul>
+
+</body>
+</html>

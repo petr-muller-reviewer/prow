@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#982</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>shrink page sizes on timeout and retry graphql errors</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/982">kubernetes-sigs/prow#982</a> · base <code>main</code> · head_sha <code>8f28257f115b</code> · reviewed_at <code>2026-10-01T15:00:30Z</code></div>
+<div class="badges"><span class="badge c-red">verdict: request-changes</span></div>
+<h2>Verdict</h2>
+<p>Request changes pending clarification or protection of mutation retry safety.</p>
+<p>All three reviewer perspectives raised the shared mutation retry policy. The code confirms that mutations inherit automatic retries; the scenario where GitHub commits a mutation before returning a gateway error is plausible, but was not demonstrated. The author should establish the safety guarantee or restrict retries to queries with explicit opt-in for safe mutations. No configuration migration is needed; operators should expect additional requests and longer waits during GitHub failures.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Makes Tide's GraphQL search page size configurable per request.
+</li>
+<li>Halves the page size after 502/504 errors and retries the same cursor.
+</li>
+<li>Retries transient GraphQL HTTP responses with request-body replay and cancellable backoff.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-blue">question</span>Establish mutation retry safety</h3>
+<ul>
+<li>where: <code>pkg/github/client.go:857-859</code>
+</li>
+<li>concern: CONFIRMED: the shared transport retries replayable GraphQL requests without distinguishing queries from mutations. PLAUSIBLE: if GitHub completes a mutation such as <code>transferIssue</code> before a gateway returns an error, replay could return an error after success or repeat a side effect; GitHub's behavior in that scenario was not verified. What guarantee makes these mutations safe to retry, or can retries be restricted to queries with explicit opt-in for safe mutations?
+</li>
+<li>excerpt:<pre><code>resp, err := t.upstream.RoundTrip(req)
+if err != nil || !t.shouldRetry(r, resp.StatusCode) || retries &gt;= t.maxRetries {
+    return resp, err
+}</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">nit</span>Avoid duplicate headers on retries</h3>
+<ul>
+<li>where: <code>pkg/github/client.go:853-854</code>
+</li>
+<li>concern: The first attempt passes the original request through <code>addHeaderTransport</code>, which appends preview headers and the user agent. Retries clone that modified request and append those headers again; consider cloning before every attempt or making header insertion idempotent. No resulting GitHub request failure was demonstrated.
+</li>
+<li>excerpt:<pre><code>req = r.Clone(r.Context())
+req.Body = body</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">nit</span>Consider a typed gateway status error</h3>
+<ul>
+<li>where: <code>pkg/tide/github.go:185-192</code>
+</li>
+<li>concern: Tide recognizes gateway timeouts by parsing the GraphQL library's formatted error text. A typed status error exposed by the GitHub client would provide a more stable contract; the existing integration test already guards the current format.
+</li>
+<li>excerpt:<pre><code>var gatewayTimeoutRe = regexp.MustCompile(`non-200 OK status code: 50[24]\b`)</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">nit</span>Consider jitter for shared retries</h3>
+<ul>
+<li>where: <code>pkg/github/client.go:872-875</code>
+</li>
+<li>concern: Deterministic exponential backoff can synchronize retry traffic across clients during a shared GitHub outage. Consider adding jitter while preserving bounded retries and context cancellation; this is an operational suggestion, not an observed outage caused by the change.
+</li>
+<li>excerpt:<pre><code>if err := t.sleep(r.Context(), backoff); err != nil {
+    return nil, err
+}
+backoff *= 2</code></pre>
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>Tide reduces the page size and retries the same cursor after gateway timeouts.
+</li>
+<li>The retry transport replays request bodies using <code>GetBody</code> and cancels during backoff when the request context ends.
+</li>
+<li>Search decodes into a fresh result value per attempt and keeps the reduced page size on later pages.
+</li>
+<li>No configuration schema, permissions, or deployment migration changes were identified.
+</li>
+<li>Added tests cover cursor reuse, shrinking, backoff, response body closure, and the real GraphQL client path. Tests were inspected but not run.
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>Can GitHub return a gateway error after applying one of our mutations, and what makes replay safe in that case?
+</li>
+<li>Can the GraphQL wrapper mark operations so mutations require explicit opt-in for retries?
+</li></ul>
+</main></body></html>

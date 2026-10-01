@@ -85,3 +85,16 @@ refresh_log:
 - Was the double-counting in `requirementDiff` intentional as a stronger penalty for missing required contexts, or an oversight from not noticing that `unsuccessfulContexts` already handles this?
 - Would removing the new `MissingRequiredContexts` call from `requirementDiff` entirely (relying on `unsuccessfulContexts`) be acceptable, since that function already covers the missing-context case?
 - If both calls are genuinely needed (e.g., `requirementDiff` is sometimes called with a `contextChecker` that does not go through `contextCheckerGetterFactory`), can that reason be documented with a comment?
+
+## Followups
+
+Accepted: 1; skipped: 0.
+
+### Correct duplicate missing-context scoring (correctness; must)
+- where: `pkg/tide/status.go:235-245`, `pkg/tide/status_test.go:1320-1431`
+- why: `unsuccessfulContexts` already adds missing required contexts, while `requirementDiff` adds them a second time. The status text deduplicates names after `diff` is computed, so the inflated score can affect Tide query ranking. This was a blocking finding in the review; since PR #746 is merged, this is a corrective post-merge followup.
+- prompt:
+
+```text
+In kubernetes-sigs/prow, following merged PR #746 — "tide: fix status reporting for missing newly required contexts" (merge commit 49f27aa4c3738cceacae8c85f48699bbdb0f8293), correct duplicate missing-required-context scoring in pkg/tide/status.go and its regression coverage in pkg/tide/status_test.go. unsuccessfulContexts already adds cc.MissingRequiredContexts to its failed-context result, so remove the redundant second addition in requirementDiff. Update the affected expectedDiff assertions and comments, and add focused coverage if needed, so each missing required context contributes once to the score used to rank Tide queries. Keep the change scoped to duplicate missing-required-context accounting and its tests; leave unrelated duplicate failed-context scoring and context-policy refactors out of scope. Acceptance criteria: the missing context remains reported in the status description, contributes once to diff, and relevant status tests pass.
+```

@@ -31,8 +31,35 @@ ul, ol { padding-left:1.5rem; }
 details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
 </style></head><body><main>
 <h1>override: allow overriding pending check runs, and cancel check run overrides</h1>
-<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/967">kubernetes-sigs/prow#967</a> · base <code>main</code> · head_sha <code>a8f462ce4898</code> · reviewed_at <code>2026-09-23T21:23:09Z</code></div>
-<div class="badges"><span class="badge c-green">verdict: approve</span></div>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/967">kubernetes-sigs/prow#967</a> · base <code>main</code> · head_sha <code>a8f462ce4898</code> · reviewed_at <code>2026-10-01T13:59:46Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span><span class="badge c-green">gate: merge</span></div>
+<details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#967
+title: &quot;override: allow overriding pending check runs, and cancel check run overrides&quot;
+head_sha: a8f462ce48984f843a7f4d4c5709fcae09ffb615
+base: main
+reviewed_at: 2026-10-01T13:59:46Z
+verdict: approve
+gate:
+  decision: merge
+  gated_at: 2026-10-01T14:00:17Z
+  gated_head_sha: a8f462ce48984f843a7f4d4c5709fcae09ffb615
+  reviewed_head_sha: a8f462ce48984f843a7f4d4c5709fcae09ffb615
+refresh_log:
+  - at: 2026-10-01T13:59:46Z
+    old_sha: a8f462ce48984f843a7f4d4c5709fcae09ffb615
+    new_sha: a8f462ce48984f843a7f4d4c5709fcae09ffb615
+    summary: &quot;No code changes; PR merged after an approval and a discussion of overriding the tide status.&quot;</code></pre></details>
+<h2>Gate</h2>
+<p><strong>Decision: merge.</strong></p>
+<p>The reviewed head is the merged PR head, with no code changes after review. The only local risk item is the unvalidated live-GitHub behavior of updating a completed check run to <code>cancelled</code>; it is documented by the author, covered by the fake client, and failure is reported without silently claiming success. It is a rollout follow-up rather than a merge blocker. The only human feedback after review asked about overriding the <code>tide</code> status, and the author clarified that Tide does not use its own status when calculating mergeability; it raises no remaining code concern.</p>
+<p>Gating list:</p>
+<ul>
+<li><code>REVIEW.md</code> question at <code>pkg/plugins/override/override.go:843-851</code>: acceptable to merge; validate the completed-run cancellation transition against representative GitHub/GHES environments during rollout.
+</li></ul>
+<p>Independent merge risk:</p>
+<ul>
+<li>No API or configuration compatibility change was introduced. The intended behavioral change is limited to authorized <code>/override</code> users on App-authenticated installations: they can satisfy queued or in-progress check runs, and <code>/override-cancel</code> can restore a failed effective state. Deployments should validate the new GitHub Checks PATCH capability during rollout.
+</li></ul>
 <h2>Verdict</h2>
 <p>Approve with rollout suggestions.</p>
 <p>The check-run override and cancellation paths are localized to the override plugin, verify Prow App ownership before mutating runs, and cover pending checks, identity matching, failures, ordering, and the complete lifecycle. The remaining live-GitHub validation gap and best-effort cancellation behavior are appropriate operational follow-ups, not merge blockers.</p>
@@ -47,6 +74,14 @@ details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-si
 <li>Keeps status override cancellation and reports successful and failed individual cancellations together.
 </li>
 <li>Distinguishes already-passing contexts from unknown contexts in override replies.
+</li></ul>
+<p>Since previous review:</p>
+<ul>
+<li>No code changed; the reviewed head remains the merged PR head.
+</li>
+<li>A reviewer asked about overriding the <code>tide</code> context; the author clarified that Tide does not use its own status to calculate mergeability.
+</li>
+<li>Prucek approved the PR and it was merged.
 </li></ul>
 <h2>Findings</h2>
 <h3><span class="tag c-blue">question</span>Validate cancellation against the live Checks API</h3>
@@ -78,9 +113,24 @@ if err := oc.UpdateCheckRun(org, repo, cr.ID, cancelledCR); err != nil {</code><
 <li>No configuration schema, default, or API migration is introduced; non-App-auth installations retain status-only behavior.
 </li>
 <li>The working tree matches the reviewed PR head and <code>git diff --check</code> is clean.
+</li>
+<li>The PR merged at the reviewed head after approval.
 </li></ul>
 <h2>Open questions</h2>
 <ul>
 <li>Has <code>PATCH /check-runs/{id}</code> with <code>conclusion: cancelled</code> been validated against the GitHub and GHES versions Prow supports? If so, please add the result to the PR before rollout.
 </li></ul>
+<h2>Followups</h2>
+<h3>Detect App-pinned required checks before overriding</h3>
+<pre><code>In kubernetes-sigs/prow, following merged PR #967 (&quot;override: allow overriding pending check runs, and cancel check run overrides&quot;, merge commit 1bf709c1c93479bfb662fa070f5d967cfc13942b), investigate support for detecting App-pinned required checks before `/override` creates a Prow check-run override.
+
+Inspect the GitHub and GHES APIs available to Prow for the App identity associated with each required check, and establish which supported server versions expose that data. If a compatible API is available across Prow&#x27;s supported versions, extend the branch-protection/check-requirement model and the override plugin so `/override` detects a required check pinned to a different App and returns an explicit non-success explanation instead of reporting a successful override that cannot satisfy branch protection. Add focused unit tests for the model and plugin behavior, including a Prow-App match and a foreign-App mismatch.
+
+Acceptance criteria:
+- The investigation identifies the authoritative API and GHES compatibility constraints, with sources or tests in the change rationale.
+- When Prow can identify an App-pinned required check belonging to a different App, `/override` does not claim that it has satisfied that requirement and tells the user why.
+- Matching Prow-App requirements and existing unpinned requirements preserve current override behavior.
+- Tests cover the new detection and compatibility behavior.
+
+Out of scope: changing GitHub branch-protection configuration, adding a general ruleset-management feature, or attempting to bypass an App-pinned requirement.</code></pre>
 </main></body></html>

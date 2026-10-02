@@ -19,24 +19,24 @@ refresh_log:
 
 ## Gate
 
-**Decision: do-not-merge.** The PR head is unchanged since the saved review, and three blocking fork-reconciliation failures remain. Team access can be removed from a valid fork or changed on a repository rejected as the wrong fork; malformed fork configuration can still permit repository and collaborator writes before the run fails. Resolve these before merging. The remaining should-fix findings also lack a disposition.
+**Decision: do-not-merge.** The PR head is unchanged since the saved review, and three blocking fork-reconciliation failures remain. Team access can be removed from a valid fork or changed on a repository rejected as the wrong fork; a malformed `fork.from` can still permit writes to an existing same-name repository before the run fails. Resolve these before merging. The remaining should-fix findings also lack a disposition.
 
 Gating findings:
 
 - **Not addressed — local `REVIEW.md`, `cmd/peribolos/main.go:1154-1159,1899-1930` (blocks merge):** Team reconciliation receives neither the config-to-actual fork-name map nor `conflictedForks`. A renamed fork can lose its existing team permission, while a same-name wrong repository can receive team access changes. Map names and suppress actions for rejected fork entries.
-- **Not addressed — local `REVIEW.md`, `cmd/peribolos/main.go:1106-1132,1490-1497` (blocks merge):** Fork validation returns an error without conflict information, but repository and collaborator stages still run. Reject the invalid configuration before dependent writes, or exclude its entries from all downstream stages.
-- **Not addressed — local `REVIEW.md`, `cmd/peribolos/main.go:1591-1599,1382-1384` (should fix):** A fork found under a `previously` name is mapped to that old name and deliberately not renamed. This also leaves the earlier reviewer request for an explicit configured fork name unresolved for such forks.
-- **Not addressed — local `REVIEW.md`, `cmd/peribolos/main.go:1472-1475,1106-1112` (should fix):** `fork.from` still accepts extra slash segments; fork creation still precedes case-insensitive repository-name collision validation. Correct both validation paths before accepting fork changes.
+- **Not addressed — local `REVIEW.md`, `cmd/peribolos/main.go:1106-1132,1493-1498` (blocks merge):** Fork validation returns an error without conflict information, but repository and collaborator stages still run. Reject the invalid configuration before dependent writes, or exclude its entries from all downstream stages.
+- **Not addressed — local `REVIEW.md`, `cmd/peribolos/main.go:1594-1602,1382-1384` (should fix):** A fork found under a `previously` name is mapped to that old name and deliberately not renamed. This also leaves the earlier reviewer request for an explicit configured fork name unresolved for such forks.
+- **Not addressed — local `REVIEW.md`, `cmd/peribolos/main.go:1475-1478,1106-1112` (should fix):** `fork.from` still accepts extra slash segments; fork creation still precedes case-insensitive repository-name collision validation. Correct both validation paths before accepting fork changes.
 
 Independent merge risk:
 
-- **Existing deployments with unchanged configs:** No new fork API call or fork reconciliation occurs without `fork:` entries (`cmd/peribolos/main.go:1500-1502`); the reported runtime failures are confined to feature adoption.
+- **Existing deployments with unchanged configs:** No new fork API call or fork reconciliation occurs without `fork:` entries (`cmd/peribolos/main.go:1500-1502`); the reported runtime failures are confined to feature adoption. This remains true when `--fix-forks` inherits an existing deployment's `--fix-repos` flag.
 - **Dump-to-apply behavior:** `--dump` now emits `fork:` for existing forks (`cmd/peribolos/main.go:479-480`). Adopting a newly dumped config opts those repositories into fork reconciliation on an ordinary `--fix-repos` run because `--fix-forks` inherits that flag (`main.go:112-123`). Document this rollout effect.
 - **Go source compatibility:** Adding `CreateForkInOrg` to exported `github.RepositoryClient` (`pkg/github/client.go:208`) requires out-of-tree implementations to add the method. This is a compile-time integration risk, not a runtime break for unchanged peribolos configs. The earlier `org.Repo` metadata-field extraction was removed, so its keyed literals remain compatible.
 
 ## Verdict
 
-**Request changes.** Fork resolution is not carried through to team repository permissions: a renamed fork can lose access, and a rejected same-name repository can still receive access changes. Invalid fork configuration can also leave repository or collaborator writes in its wake. The remaining findings concern rename handling, source validation, and validation order.
+**Request changes.** Fork resolution is not carried through to team repository permissions: a renamed fork can lose access, and a rejected same-name repository can still receive access changes. An invalid `fork.from` can also leave writes to an existing same-name repository in its wake. The remaining findings concern rename handling, source validation, and validation order.
 
 ## What this PR does
 
@@ -52,8 +52,8 @@ Since previous review:
 ## Findings
 
 ### [blocking] Map fork names before reconciling team repository permissions
-- where: `cmd/peribolos/main.go:1154-1159`
-- concern: `configureForks` can map a config key to an existing fork with a different name, but `configureTeamRepos` still receives the original `team.Repos` keys. If the team currently has access to the actual fork, reconciliation attempts a grant on the absent config-key name and removes the team's permission on the real fork. Pass the mapping through team reconciliation before computing its permission delta.
+- where: `cmd/peribolos/main.go:1154-1159,1594-1602`
+- concern: `configureForks` can map a config key such as `my-custom-name` to an existing fork named `upstream-repo`, but `configureTeamRepos` still receives the original `team.Repos` keys. If the team currently has access to the actual fork, reconciliation attempts a grant on the absent config-key name and removes the team's permission on the real fork. Pass the mapping through team reconciliation before computing its permission delta.
 - excerpt: |
     if err := configureTeamRepos(client, githubTeams, name, orgName, team); err != nil {
         return fmt.Errorf("failed to configure %s team %s repos: %w", orgName, name, err)
@@ -69,8 +69,8 @@ Since previous review:
     }
 
 ### [blocking] Stop downstream writes when fork configuration fails validation
-- where: `cmd/peribolos/main.go:1490-1495`
-- concern: Invalid `fork.from` returns an error and nil conflict information, but `configureOrg` defers the error and still runs `configureRepos` and collaborators. For an existing non-fork at that config key, malformed fork configuration can therefore change its metadata or access before the run fails. Stop before downstream reconciliation or mark invalid fork entries as unavailable to every dependent stage.
+- where: `cmd/peribolos/main.go:1493-1498`
+- concern: Invalid `fork.from` returns an error and nil conflict information, but `configureOrg` defers the error and still runs `configureRepos` and collaborators. For example, with `reports: {fork: {from: invalid-source}, description: New description}`, a confirmed `--fix-repos` run updates an existing non-fork `reports` repository's description before returning the fork validation error. Stop before downstream reconciliation or mark invalid fork entries as unavailable to every dependent stage.
 - excerpt: |
     if len(validationErrors) > 0 {
         sort.Slice(validationErrors, func(i, j int) bool {
@@ -80,7 +80,7 @@ Since previous review:
     }
 
 ### [should-fix] Honor `previously` when locating and renaming a fork
-- where: `cmd/peribolos/main.go:1591-1599`
+- where: `cmd/peribolos/main.go:1594-1602`
 - concern: When a fork exists under a name listed in `Repo.Previously`, the parent index finds it but maps the config key to that old name. `configureRepos` then deliberately updates using the old name, so changing the config key with `previously` never performs the requested rename. Rename the matched fork or report the mismatch explicitly.
 - excerpt: |
     if actualName, ok := forkParentIndex()[expectedUpstream]; ok {
@@ -90,7 +90,7 @@ Since previous review:
     }
 
 ### [should-fix] Reject extra path segments in `fork.from`
-- where: `cmd/peribolos/main.go:1472-1475`
+- where: `cmd/peribolos/main.go:1475-1478`
 - concern: `strings.SplitN(..., "/", 2)` accepts `owner/repo/extra` and treats `repo/extra` as a repository name. The create call then builds a malformed GitHub API path rather than rejecting the input as invalid configuration. Require exactly two nonempty segments.
 - excerpt: |
     parts := strings.SplitN(repoCfg.Fork.From, "/", 2)

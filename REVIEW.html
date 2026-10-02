@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#956</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>feat(trigger): approve workflow runs on push</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/956">kubernetes-sigs/prow#956</a> · base <code>main</code> · head_sha <code>ecb089550f32</code> · reviewed_at <code>2026-09-30T15:15:16Z</code></div>
+<div class="badges"><span class="badge c-red">verdict: request-changes</span></div>
+<h2>Verdict</h2>
+<p>Request changes. All three maintainer perspectives independently found that polling can stop after the first approval batch and miss a workflow run that appears slightly later. The feature remains opt-in and needs no config migration, but enabled installations should account for additional Actions API traffic and longer-lived trigger handlers.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Starts GitHub Actions approval work for eligible, trusted pull-request events after the webhook is handled.
+</li>
+<li>Polls for workflow runs matching the pull request's branch and head SHA.
+</li>
+<li>Approves pending fork runs and reruns eligible same-repository runs.
+</li>
+<li>Rechecks the pull request's head SHA and trust before acting, and tracks the work during hook shutdown.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-red">blocking</span>Keep polling after the first approval batch</h3>
+<ul>
+<li>where: <code>pkg/plugins/trigger/workflow-approval.go:127-128</code>
+</li>
+<li>concern: After approving the first visible run, the next list response can still contain only that run. Its ID is already in <code>attempted</code>, so <code>pending</code> is empty and the loop exits before a sibling run appears on a later poll, leaving that run at <code>action_required</code>. Continue observing for a bounded settlement period after an approval, and add a regression test where the sibling first appears on the third list response.
+</li>
+<li>excerpt:<pre><code>if len(pending) == 0 {
+    return true, nil
+}</code></pre>
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>Document the cost of enabling workflow approval</h3>
+<ul>
+<li>where: <code>pkg/plugins/trigger/workflow-approval.go:33-37</code>
+</li>
+<li>concern: An eligible event can hold a trigger handler for about 30 seconds and make up to five paginated Actions-list requests, even when no workflow run is created. Operator-facing guidance should describe the added API load and the Actions permission needed for approval or rerun, so installations can plan before enabling the existing flag.
+</li>
+<li>excerpt:<pre><code>// These values give 5 attempts over approximately 30 seconds.
+const (
+    workflowRunPollInterval = 2000
+    workflowRunPollSteps    = 5
+)</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">nit</span>Make poll-exhaustion logging more diagnostic</h3>
+<ul>
+<li>where: <code>pkg/plugins/trigger/workflow-approval.go:141-142</code>
+</li>
+<li>concern: The same log message covers a PR with no workflow runs and runs that stayed at the approval gate. Distinguishing those outcomes, ideally with attempt and approval counts, would make incidents easier to diagnose.
+</li>
+<li>excerpt:<pre><code>if wait.Interrupted(err) {
+    log.Info(&quot;Gave up waiting for the workflow runs to leave the approval gate.&quot;)
+}</code></pre>
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>Reviewed the two feature commits in the merge diff against <code>upstream/main</code> (merge base <code>e7327921f392ccb426739d03e3b353b1105779da</code>).
+</li>
+<li>Inspected event selection, trust and head-SHA revalidation, Actions run filtering, and deferred approval handling.
+</li>
+<li>Existing polling test introduces a delayed sibling on the second list response, but does not cover an already-attempted run alone on that response.
+</li>
+<li>The <code>trigger_github_workflows</code> setting remains a default-off bool; no configuration migration was identified. Approval work is deferred until after ProwJob handling, and hook shutdown waits for it.
+</li>
+<li>PR CI checks, including unit tests, race detector, lint, and integration tests, were passing on September 30. Local tests were not run at this head.
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>None.
+</li></ul>
+</main></body></html>

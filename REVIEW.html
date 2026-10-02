@@ -31,14 +31,19 @@ ul, ol { padding-left:1.5rem; }
 details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
 </style></head><body><main>
 <h1>tide: add query observability metrics</h1>
-<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/968">kubernetes-sigs/prow#968</a> · base <code>main</code> · head_sha <code>f34ab19e7bb9</code> · reviewed_at <code>2026-10-02T11:50:55Z</code></div>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/968">kubernetes-sigs/prow#968</a> · base <code>main</code> · head_sha <code>f34ab19e7bb9</code> · reviewed_at <code>2026-10-02T12:10:30Z</code></div>
 <div class="badges"><span class="badge c-red">verdict: request-changes</span><span class="badge c-red">gate: do-not-merge</span></div>
 <details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#968
 title: &quot;tide: add query observability metrics&quot;
 head_sha: f34ab19e7bb9ba3036793a6f6b45d14b0cba0bc3
 base: main
-reviewed_at: 2026-10-02T11:50:55Z
+reviewed_at: 2026-10-02T12:10:30Z
 verdict: request-changes
+refresh_log:
+  - at: 2026-10-02T12:07:46Z
+    old_sha: f34ab19e7bb9ba3036793a6f6b45d14b0cba0bc3
+    new_sha: f34ab19e7bb9ba3036793a6f6b45d14b0cba0bc3
+    summary: &quot;No code changes; incorporated four inline maintainer comments and a COMMENTED review.&quot;
 gate:
   decision: do-not-merge
   gated_at: 2026-10-02T11:48:55Z
@@ -67,6 +72,12 @@ gate:
 <li>Publishes per-cycle shard outcome counts and a success-shard ratio for each controller.
 </li>
 <li>Extends the existing sync query result counter with a <code>partial</code> outcome.
+</li></ul>
+<p>Since previous review:</p>
+<ul>
+<li>No code changed. At 12:02–12:07 UTC on 2026-10-02, @petr-muller left four inline comments about the metrics reference, duplicated shard accounting, the <code>sync</code> gauge name, and how partial failures were previously counted; the submitted review was <code>COMMENTED</code>.
+</li>
+<li>These comments align with existing findings. The pre-PR <code>tidequeryresults</code> counter recorded every non-nil search error, including a partial result, as <code>result=&quot;error&quot;</code>.
 </li></ul>
 <h2>Findings</h2>
 <h3><span class="tag c-red">blocking</span>Preserve the existing query error series</h3>
@@ -166,6 +177,8 @@ default:
 <p>None.</p>
 <h2>Checked</h2>
 <ul>
+<li>Considered overlap between the proposed metrics and the existing <code>tidequeryresults</code> counter. The maintainer accepted retaining the broader metric set, so metric count alone is not a review finding.
+</li>
 <li>Inspected both Tide search paths and the shared paginated search helper.
 </li>
 <li>Re-reviewed the full PR diff against <code>upstream/main</code> at <code>6844e439e237641e025f0e094833768c6928bc00</code>, including PR #982's gateway timeout and page-size retry changes. A synthetic merge was clean; no new integration defect was found.

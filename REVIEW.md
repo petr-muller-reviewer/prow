@@ -3,8 +3,13 @@ pr: kubernetes-sigs/prow#968
 title: "tide: add query observability metrics"
 head_sha: f34ab19e7bb9ba3036793a6f6b45d14b0cba0bc3
 base: main
-reviewed_at: 2026-10-02T11:50:55Z
+reviewed_at: 2026-10-02T12:10:30Z
 verdict: request-changes
+refresh_log:
+  - at: 2026-10-02T12:07:46Z
+    old_sha: f34ab19e7bb9ba3036793a6f6b45d14b0cba0bc3
+    new_sha: f34ab19e7bb9ba3036793a6f6b45d14b0cba0bc3
+    summary: "No code changes; incorporated four inline maintainer comments and a COMMENTED review."
 gate:
   decision: do-not-merge
   gated_at: 2026-10-02T11:48:55Z
@@ -38,6 +43,11 @@ The Code Quality, Maintainability, and Deployment Risk reviews agree that this c
 - Counts query errors by a bounded error class and counts searches that return some PRs before failing.
 - Publishes per-cycle shard outcome counts and a success-shard ratio for each controller.
 - Extends the existing sync query result counter with a `partial` outcome.
+
+Since previous review:
+
+- No code changed. At 12:02–12:07 UTC on 2026-10-02, @petr-muller left four inline comments about the metrics reference, duplicated shard accounting, the `sync` gauge name, and how partial failures were previously counted; the submitted review was `COMMENTED`.
+- These comments align with existing findings. The pre-PR `tidequeryresults` counter recorded every non-nil search error, including a partial result, as `result="error"`.
 
 ## Findings
 
@@ -133,6 +143,7 @@ None.
 
 ## Checked
 
+- Considered overlap between the proposed metrics and the existing `tidequeryresults` counter. The maintainer accepted retaining the broader metric set, so metric count alone is not a review finding.
 - Inspected both Tide search paths and the shared paginated search helper.
 - Re-reviewed the full PR diff against `upstream/main` at `6844e439e237641e025f0e094833768c6928bc00`, including PR #982's gateway timeout and page-size retry changes. A synthetic merge was clean; no new integration defect was found.
 - Independently checked Code Quality, Maintainability, and Deployment Risk findings against the PR head; all three reviews agree on the error-series and empty-cycle problems.

@@ -31,8 +31,19 @@ ul, ol { padding-left:1.5rem; }
 details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
 </style></head><body><main>
 <h1><code>peribolos</code>: add org roles feature</h1>
-<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/555">kubernetes-sigs/prow#555</a> · base <code>main</code> · head_sha <code>f46e6a6c1e42</code> · reviewed_at <code>2026-09-30T15:38:15Z</code></div>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/555">kubernetes-sigs/prow#555</a> · base <code>main</code> · head_sha <code>f46e6a6c1e42</code> · reviewed_at <code>2026-10-02T08:52:46Z</code></div>
 <div class="badges"><span class="badge c-red">verdict: request-changes</span></div>
+<details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#555
+title: &quot;`peribolos`: add org roles feature&quot;
+head_sha: f46e6a6c1e428b22dee10711af765936b50308b4
+base: main
+reviewed_at: 2026-10-02T08:52:46Z
+verdict: request-changes
+refresh_log:
+  - old_sha: f46e6a6c1e428b22dee10711af765936b50308b4
+    new_sha: f46e6a6c1e428b22dee10711af765936b50308b4
+    at: 2026-10-02T08:52:46Z
+    summary: Incorporated one review and four inline comments; no code changed.</code></pre></details>
 <h2>Verdict</h2>
 <p>Request changes.</p>
 <p>The code-quality and deployment reviewers independently found partial-application and incomplete-dump risks; code quality and maintainability both found mode-dependent validation and HTTP-test gaps. Role reconciliation is opt-in and preserves ignored and inherited grants, but enabling it also forces potentially destructive team reconciliation. These confirmed issues, plus incorrect <code>@</code>-prefixed user assignments, warrant changes before merge.</p>
@@ -45,6 +56,12 @@ details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-si
 <li>Adds role assignments to configuration dumps and reconciliation behind <code>--fix-org-roles</code>.
 </li>
 <li>Adds validation and reconciliation tests, including ignored teams and inherited assignments.
+</li></ul>
+<p>Since previous review:</p>
+<ul>
+<li>No code changed; <code>cblecker</code> submitted a commented review with four inline comments.
+</li>
+<li>The reviewer prioritized distinguishing expected role-API unavailability from transient or malformed dump failures, and requested public role documentation.
 </li></ul>
 <h2>Findings</h2>
 <h3><span class="tag c-red">blocking</span>Provide a safe role-only path without team reconciliation</h3>
@@ -90,7 +107,7 @@ for normalizedUser := range toAdd {
 <ul>
 <li>where: <code>cmd/peribolos/main.go:493-513</code>
 </li>
-<li>concern: If listing roles or their team/user assignments fails, <code>--dump</code> warns, omits role grants, and exits successfully. An automated backup can retain incomplete YAML without detecting the loss. Fail the dump or emit a machine-detectable incomplete result.
+<li>concern: Every failure is treated as expected best-effort behavior, including timeouts, exhausted rate limits, decode errors, and persistent 5xx responses. <code>--dump</code> then exits successfully with role grants missing. Limit the best-effort path to the intentional 403/404 cases, return other errors, and include the organization in warnings; apply the same policy to per-role assignment listing.
 </li>
 <li>excerpt:<pre><code>roles, err := client.ListOrganizationRoles(orgName)
 if err != nil {
@@ -169,6 +186,19 @@ func (f *FakeClient) AssignOrganizationRoleToTeam(org, teamSlug string, roleID i
     return nil
 }</code></pre>
 </li></ul>
+<h3><span class="tag c-gray">nit</span>Centralize organization-role assignment states</h3>
+<ul>
+<li>where: <code>pkg/github/types.go:1845</code>
+</li>
+<li>concern: The <code>&quot;indirect&quot;</code> string and the rule that <code>mixed</code> counts as direct are repeated in dump and reconciliation paths. Define a named assignment type with constants and a helper such as <code>IsDirect()</code> so the API contract and its interpretation stay in one place.
+</li>
+<li>excerpt:<pre><code>type OrganizationRoleAssignment struct {
+    ID         int    `json:&quot;id&quot;`
+    Login      string `json:&quot;login,omitempty&quot;`
+    Slug       string `json:&quot;slug,omitempty&quot;`
+    Assignment string `json:&quot;assignment,omitempty&quot;` // &quot;direct&quot;, &quot;indirect&quot;, or &quot;mixed&quot;
+}</code></pre>
+</li></ul>
 <h3><span class="tag c-blue">question</span>Account for out-of-tree <code>github.Client</code> implementations</h3>
 <ul>
 <li>where: <code>pkg/github/client.go:287-295</code>
@@ -196,6 +226,8 @@ func (f *FakeClient) AssignOrganizationRoleToTeam(org, teamSlug string, roleID i
 <li>Role reconciliation preserves intentionally ignored teams and indirect assignments; team renames update the slug used later.
 </li>
 <li>The role feature adds GitHub role-API permission needs and per-org/per-role API calls when enabled.
+</li>
+<li>New review activity was incorporated: <code>cblecker</code> submitted a COMMENTED review on 2026-10-02 at 00:10 UTC; the author also asked about the stale <code>needs-rebase</code> label on 2026-10-01.
 </li></ul>
 <h2>Open questions</h2>
 <ul>

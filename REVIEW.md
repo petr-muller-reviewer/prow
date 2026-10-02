@@ -3,8 +3,13 @@ pr: kubernetes-sigs/prow#555
 title: "`peribolos`: add org roles feature"
 head_sha: f46e6a6c1e428b22dee10711af765936b50308b4
 base: main
-reviewed_at: 2026-09-30T15:38:15Z
+reviewed_at: 2026-10-02T08:52:46Z
 verdict: request-changes
+refresh_log:
+  - old_sha: f46e6a6c1e428b22dee10711af765936b50308b4
+    new_sha: f46e6a6c1e428b22dee10711af765936b50308b4
+    at: 2026-10-02T08:52:46Z
+    summary: Incorporated one review and four inline comments; no code changed.
 ---
 
 # Review of kubernetes-sigs/prow#555
@@ -21,6 +26,11 @@ The code-quality and deployment reviewers independently found partial-applicatio
 - Adds GitHub client methods for listing roles and managing direct assignments.
 - Adds role assignments to configuration dumps and reconciliation behind `--fix-org-roles`.
 - Adds validation and reconciliation tests, including ignored teams and inherited assignments.
+
+Since previous review:
+
+- No code changed; `cblecker` submitted a commented review with four inline comments.
+- The reviewer prioritized distinguishing expected role-API unavailability from transient or malformed dump failures, and requested public role documentation.
 
 ## Findings
 
@@ -63,7 +73,7 @@ The code-quality and deployment reviewers independently found partial-applicatio
 ### [blocking] Make incomplete role dumps detectable
 
 - where: `cmd/peribolos/main.go:493-513`
-- concern: If listing roles or their team/user assignments fails, `--dump` warns, omits role grants, and exits successfully. An automated backup can retain incomplete YAML without detecting the loss. Fail the dump or emit a machine-detectable incomplete result.
+- concern: Every failure is treated as expected best-effort behavior, including timeouts, exhausted rate limits, decode errors, and persistent 5xx responses. `--dump` then exits successfully with role grants missing. Limit the best-effort path to the intentional 403/404 cases, return other errors, and include the organization in warnings; apply the same policy to per-role assignment listing.
 - excerpt: |
     roles, err := client.ListOrganizationRoles(orgName)
     if err != nil {
@@ -137,6 +147,18 @@ The code-quality and deployment reviewers independently found partial-applicatio
         return nil
     }
 
+### [nit] Centralize organization-role assignment states
+
+- where: `pkg/github/types.go:1845`
+- concern: The `"indirect"` string and the rule that `mixed` counts as direct are repeated in dump and reconciliation paths. Define a named assignment type with constants and a helper such as `IsDirect()` so the API contract and its interpretation stay in one place.
+- excerpt: |
+    type OrganizationRoleAssignment struct {
+        ID         int    `json:"id"`
+        Login      string `json:"login,omitempty"`
+        Slug       string `json:"slug,omitempty"`
+        Assignment string `json:"assignment,omitempty"` // "direct", "indirect", or "mixed"
+    }
+
 ### [question] Account for out-of-tree `github.Client` implementations
 
 - where: `pkg/github/client.go:287-295`
@@ -159,6 +181,7 @@ The code-quality and deployment reviewers independently found partial-applicatio
 - Existing configuration remains compatible: `roles` is optional and `--fix-org-roles` defaults off.
 - Role reconciliation preserves intentionally ignored teams and indirect assignments; team renames update the slug used later.
 - The role feature adds GitHub role-API permission needs and per-org/per-role API calls when enabled.
+- New review activity was incorporated: `cblecker` submitted a COMMENTED review on 2026-10-02 at 00:10 UTC; the author also asked about the stale `needs-rebase` label on 2026-10-01.
 
 ## Open questions
 

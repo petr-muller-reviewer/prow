@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#969</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>tide: add max query concurrency</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/969">kubernetes-sigs/prow#969</a> · base <code>main</code> · head_sha <code>7cd8b4253edd</code> · reviewed_at <code>2026-10-02T09:16:05Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span></div>
+<details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#969
+title: &quot;tide: add max query concurrency&quot;
+head_sha: 7cd8b4253eddb3847465a1586723ef9fb5d9583b
+base: main
+reviewed_at: 2026-10-02T09:16:05Z
+verdict: approve
+refresh_log:
+  - at: 2026-09-28T15:23:24Z
+    from_sha: d40ab8d38539e9a794ab24c55ea27e42fe960361
+    to_sha: d40ab8d38539e9a794ab24c55ea27e42fe960361
+    summary: &quot;No code changes; incorporated cblecker&#x27;s five inline comments and review summary.&quot;</code></pre></details>
+<h2>Gate</h2>
+<p>The prior gate decision was <strong>Hold</strong> on 2026-09-27 at head <code>d40ab8d38539e9a794ab24c55ea27e42fe960361</code>. Its concerns included the unclear limit scope, missing operator documentation, and the query-error log. The PR has since changed; this review covers head <code>7cd8b4253eddb3847465a1586723ef9fb5d9583b</code>. The gate itself has not been rerun.</p>
+<h2>Verdict</h2>
+<p><strong>Approve with suggestions.</strong> The three maintainer perspectives found no blocking issues, and deployment risk is low. The setting preserves current behavior by default, its per-controller scope and org sharding are documented, and tests cover limited and unlimited concurrency. As a non-blocking observability improvement, include the org in status-search failure context; operators who set a low cap should watch sync and status refresh duration.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Adds <code>tide.max_query_concurrency</code> to limit PR-search fan-out independently in the sync and status controllers.
+</li>
+<li>Keeps zero as unlimited and rejects negative values, preserving existing configuration behavior.
+</li>
+<li>Documents the per-controller cap, possible combined maximum, and GitHub Apps org sharding.
+</li>
+<li>Adds tests for configured concurrency, returned PRs, and config parsing.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-gray">nit</span>Include org context in status-search failures</h3>
+<ul>
+<li>where: <code>pkg/tide/status.go:681-682</code>
+</li>
+<li>concern: Status searches run once per org when GitHub Apps auth is enabled, but the per-query log context records only the query and errors are later aggregated. Adding the org as a structured field or wrapping each error with its org would make failures easier to identify.
+</li>
+<li>excerpt:<pre><code>for org, query := range queries {
+    g.Go(func() error {
+        now := time.Now()
+        log := sc.logger.WithField(&quot;query&quot;, query)</code></pre>
+</li></ul>
+<h2>Resolved</h2>
+<ul>
+<li><strong>Define the concurrency limit's actual scope:</strong> the config comment and operator guide now say the limit applies separately to sync and status, can allow up to twice the configured number of searches, and shards by org only with GitHub Apps auth.
+</li>
+<li><strong>Document the new operator setting:</strong> the Tide configuration guide now covers the setting and its unlimited default.
+</li>
+<li><strong>Test a positive concurrency limit:</strong> config tests cover negative, zero, and positive values; Tide tests measure limited and unlimited in-flight searches and check returned PRs.
+</li>
+<li><strong>Explain why errgroup callbacks return nil:</strong> both search paths explain that the group is used as a limiter while errors are collected separately, and explicitly discard <code>Wait()</code> results.
+</li>
+<li><strong>Avoid a duplicate Error log for query failures:</strong> the inner sync log is now Debug level and uses provider-neutral wording.
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>The config parser rejects negative limits; zero remains unlimited.
+</li>
+<li>The cap is applied per controller. A configured value of <code>N</code> can allow up to <code>2N</code> searches across sync and status in one Tide instance.
+</li>
+<li>Existing configurations require no migration. If operators add the new field, older strict-config binaries may reject it during validation.
+</li>
+<li>The added config and concurrency tests cover the reviewed paths. Tests were not run during this review.
+</li>
+<li>No breaking deployment changes, credential changes, or new permissions were identified.
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>For GitHub Apps auth, is a single controller-wide queue across org shards the intended operational tradeoff, given that one org's searches can wait behind another's?
+</li></ul>
+</main></body></html>

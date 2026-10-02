@@ -31,13 +31,13 @@ ul, ol { padding-left:1.5rem; }
 details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
 </style></head><body><main>
 <h1>tide: add max query concurrency</h1>
-<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/969">kubernetes-sigs/prow#969</a> · base <code>main</code> · head_sha <code>7cd8b4253edd</code> · reviewed_at <code>2026-10-02T09:16:05Z</code></div>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/969">kubernetes-sigs/prow#969</a> · base <code>main</code> · head_sha <code>7cd8b4253edd</code> · reviewed_at <code>2026-10-02T11:44:29Z</code></div>
 <div class="badges"><span class="badge c-green">verdict: approve</span></div>
 <details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#969
 title: &quot;tide: add max query concurrency&quot;
 head_sha: 7cd8b4253eddb3847465a1586723ef9fb5d9583b
 base: main
-reviewed_at: 2026-10-02T09:16:05Z
+reviewed_at: 2026-10-02T11:44:29Z
 verdict: approve
 refresh_log:
   - at: 2026-09-28T15:23:24Z
@@ -45,9 +45,9 @@ refresh_log:
     to_sha: d40ab8d38539e9a794ab24c55ea27e42fe960361
     summary: &quot;No code changes; incorporated cblecker&#x27;s five inline comments and review summary.&quot;</code></pre></details>
 <h2>Gate</h2>
-<p>The prior gate decision was <strong>Hold</strong> on 2026-09-27 at head <code>d40ab8d38539e9a794ab24c55ea27e42fe960361</code>. Its concerns included the unclear limit scope, missing operator documentation, and the query-error log. The PR has since changed; this review covers head <code>7cd8b4253eddb3847465a1586723ef9fb5d9583b</code>. The gate itself has not been rerun.</p>
+<p>The prior gate decision was <strong>Hold</strong> on 2026-09-27 at head <code>d40ab8d38539e9a794ab24c55ea27e42fe960361</code>. Its concerns included the unclear limit scope, missing operator documentation, and query-error logging. The PR has since changed; this review covers head <code>7cd8b4253eddb3847465a1586723ef9fb5d9583b</code>. The gate itself has not been rerun.</p>
 <h2>Verdict</h2>
-<p><strong>Approve with suggestions.</strong> The three maintainer perspectives found no blocking issues, and deployment risk is low. The setting preserves current behavior by default, its per-controller scope and org sharding are documented, and tests cover limited and unlimited concurrency. As a non-blocking observability improvement, include the org in status-search failure context; operators who set a low cap should watch sync and status refresh duration.</p>
+<p><strong>Approve with suggestions.</strong> The three maintainer perspectives found no blocking issues. The optional setting preserves current behavior by default, and its scope and auth-based sharding are documented. Clarifying that the cap is per Tide process, and that aggregate concurrency grows with replica count, would help operators size it. A low configured cap may lengthen sync and status cycles.</p>
 <h2>What this PR does</h2>
 <ul>
 <li>Adds <code>tide.max_query_concurrency</code> to limit PR-search fan-out independently in the sync and status controllers.
@@ -59,22 +59,22 @@ refresh_log:
 <li>Adds tests for configured concurrency, returned PRs, and config parsing.
 </li></ul>
 <h2>Findings</h2>
-<h3><span class="tag c-gray">nit</span>Include org context in status-search failures</h3>
+<h3><span class="tag c-amber">should-fix</span>Document replica-scaled concurrency</h3>
 <ul>
-<li>where: <code>pkg/tide/status.go:681-682</code>
+<li>where: <code>site/content/en/docs/components/core/tide/config.md:31-34</code>
 </li>
-<li>concern: Status searches run once per org when GitHub Apps auth is enabled, but the per-query log context records only the query and errors are later aggregated. Adding the org as a structured field or wrapping each error with its org would make failures easier to identify.
+<li>concern: The guide describes the per-controller cap and the maximum across sync and status, but does not say the limit is local to one Tide process. Multiple replicas multiply the aggregate concurrency, so document that scope to help operators size the setting.
 </li>
-<li>excerpt:<pre><code>for org, query := range queries {
-    g.Go(func() error {
-        now := time.Now()
-        log := sc.logger.WithField(&quot;query&quot;, query)</code></pre>
+<li>excerpt:<pre><code>* `max_query_concurrency`: The maximum number of GitHub PR search queries each Tide
+   controller (sync and status) runs in parallel. The limit applies per controller,
+   so up to twice this number of searches may run at once. Queries are split by org
+   only with GitHub Apps authentication. Defaults to 0, which means unlimited.</code></pre>
 </li></ul>
 <h2>Resolved</h2>
 <ul>
-<li><strong>Define the concurrency limit's actual scope:</strong> the config comment and operator guide now say the limit applies separately to sync and status, can allow up to twice the configured number of searches, and shards by org only with GitHub Apps auth.
+<li><strong>Define the concurrency limit's actual scope:</strong> the config comment and operator guide state that the limit applies separately to sync and status, can allow up to twice the configured number of searches, and shards by org only with GitHub Apps auth.
 </li>
-<li><strong>Document the new operator setting:</strong> the Tide configuration guide now covers the setting and its unlimited default.
+<li><strong>Document the new operator setting:</strong> the Tide configuration guide covers the setting and its unlimited default.
 </li>
 <li><strong>Test a positive concurrency limit:</strong> config tests cover negative, zero, and positive values; Tide tests measure limited and unlimited in-flight searches and check returned PRs.
 </li>
@@ -86,13 +86,13 @@ refresh_log:
 <ul>
 <li>The config parser rejects negative limits; zero remains unlimited.
 </li>
-<li>The cap is applied per controller. A configured value of <code>N</code> can allow up to <code>2N</code> searches across sync and status in one Tide instance.
+<li>The cap is applied per controller. A configured value of <code>N</code> can allow up to <code>2N</code> searches across sync and status in one Tide process, with additional concurrency from multiple replicas.
 </li>
-<li>Existing configurations require no migration. If operators add the new field, older strict-config binaries may reject it during validation.
+<li>Existing configurations need no migration. If operators add the new field, older strict <code>checkconfig</code> tooling may reject it during rollback validation; the normal runtime loader tolerates unknown fields.
 </li>
 <li>The added config and concurrency tests cover the reviewed paths. Tests were not run during this review.
 </li>
-<li>No breaking deployment changes, credential changes, or new permissions were identified.
+<li>No credential, RBAC, or breaking deployment changes were identified.
 </li></ul>
 <h2>Open questions</h2>
 <ul>

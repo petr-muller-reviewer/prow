@@ -7,6 +7,10 @@ reviewed_at: 2026-07-27T00:21:32Z
 verdict: approve
 ---
 
+## Verdict
+
+Approve. The per-record filtering change fixes the history visibility bug, removes dead code, and has a regression test for mixed tenant IDs. The two nits below do not block the merge.
+
 ## What this PR does
 - `filterHistory` used to union all `TenantIDs` across every record in a pool into one set (`recordIDs`), then kept or dropped the whole pool based on that union via `HasAll`.
 - One record with a foreign tenant ID (e.g. a batch-merge leg) was enough to hide the entire pool's history, including records that should have been visible.
@@ -47,3 +51,7 @@ verdict: approve
 
 ## Open questions
 None.
+
+## Followups
+
+None accepted.

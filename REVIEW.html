@@ -31,113 +31,57 @@ ul, ol { padding-left:1.5rem; }
 details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
 </style></head><body><main>
 <h1><code>peribolos</code>: add org roles feature</h1>
-<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/555">kubernetes-sigs/prow#555</a> · base <code>main</code> · head_sha <code>f46e6a6c1e42</code> · reviewed_at <code>2026-10-02T08:52:46Z</code></div>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/555">kubernetes-sigs/prow#555</a> · base <code>main</code> · head_sha <code>a0ba73401af9</code> · reviewed_at <code>2026-10-05T22:28:07Z</code></div>
 <div class="badges"><span class="badge c-red">verdict: request-changes</span></div>
-<details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#555
-title: &quot;`peribolos`: add org roles feature&quot;
-head_sha: f46e6a6c1e428b22dee10711af765936b50308b4
-base: main
-reviewed_at: 2026-10-02T08:52:46Z
-verdict: request-changes
-refresh_log:
-  - old_sha: f46e6a6c1e428b22dee10711af765936b50308b4
-    new_sha: f46e6a6c1e428b22dee10711af765936b50308b4
-    at: 2026-10-02T08:52:46Z
-    summary: Incorporated one review and four inline comments; no code changed.</code></pre></details>
 <h2>Verdict</h2>
 <p>Request changes.</p>
-<p>The code-quality and deployment reviewers independently found partial-application and incomplete-dump risks; code quality and maintainability both found mode-dependent validation and HTTP-test gaps. Role reconciliation is opt-in and preserves ignored and inherited grants, but enabling it also forces potentially destructive team reconciliation. These confirmed issues, plus incorrect <code>@</code>-prefixed user assignments, warrant changes before merge.</p>
+<p>This opt-in feature preserves existing configuration behavior, and its role reconciler is mostly clear and well tested. However, a remote-role failure can occur after unrelated organization mutations, and accepted <code>@</code>-prefixed users are submitted to the API unnormalized. Role endpoint contract coverage is also needed before relying on this privileged API integration broadly.</p>
 <h2>What this PR does</h2>
 <ul>
-<li>Adds per-organization role declarations for team and user assignments to peribolos configuration.
+<li>Adds organization custom-role declarations for teams and users to peribolos configuration.
 </li>
-<li>Adds GitHub client methods for listing roles and managing direct assignments.
+<li>Adds GitHub client methods to list roles and reconcile direct role assignments.
 </li>
-<li>Adds role assignments to configuration dumps and reconciliation behind <code>--fix-org-roles</code>.
+<li>Includes roles in dumps and reconciliation behind <code>--fix-org-roles</code>.
 </li>
-<li>Adds validation and reconciliation tests, including ignored teams and inherited assignments.
-</li></ul>
-<p>Since previous review:</p>
-<ul>
-<li>No code changed; <code>cblecker</code> submitted a commented review with four inline comments.
-</li>
-<li>The reviewer prioritized distinguishing expected role-API unavailability from transient or malformed dump failures, and requested public role documentation.
+<li>Adds validation, dump behavior, client error classification, tests, and operator documentation for the feature.
 </li></ul>
 <h2>Findings</h2>
-<h3><span class="tag c-red">blocking</span>Provide a safe role-only path without team reconciliation</h3>
+<h3><span class="tag c-red">blocking</span>Preflight remote roles before mutable reconciliation</h3>
 <ul>
-<li>where: <code>cmd/peribolos/main.go:155-156</code>
+<li>where: <code>cmd/peribolos/main.go:1170-1259, 1809-1831</code>
 </li>
-<li>concern: <code>--fix-org-roles</code> requires <code>--fix-teams</code>, and <code>configureOrg</code> then runs <code>configureTeams</code> before roles. Even a user-only role configuration can create or delete undeclared teams managed elsewhere, or fail at the removal cap. Allow role-only management without destructive team reconciliation, resolving team slugs read-only when needed.
+<li>concern: Role API access and configured role-name validation happen after metadata, membership, repository, team, and team-membership reconciliation. A missing role, unavailable endpoint, or insufficient permission can leave those earlier changes applied while no roles are reconciled. List and validate configured roles before any mutable subsystem runs.
 </li>
-<li>excerpt:<pre><code>if o.fixOrgRoles &amp;&amp; !o.fixTeams {
-    return fmt.Errorf(&quot;--fix-org-roles requires --fix-teams&quot;)
+<li>excerpt:<pre><code>githubTeams, ignoredTeamSlugs, ignoredSecretTeamSlugs, err := configureTeams(...)
+...
+} else if err := configureOrgRoles(client, orgName, orgConfig, githubTeams, ...); err != nil {
+    return fmt.Errorf(&quot;failed to configure %s organization roles: %w&quot;, orgName, err)
+}
+...
+roles, err := client.ListOrganizationRoles(orgName)
+if err != nil {
+    return fmt.Errorf(&quot;failed to list organization roles: %w&quot;, err)
 }</code></pre>
 </li></ul>
-<h3><span class="tag c-red">blocking</span>Validate remote role names and access before other mutations</h3>
+<h3><span class="tag c-red">blocking</span>Submit normalized usernames to the role API</h3>
 <ul>
-<li>where: <code>cmd/peribolos/main.go:1804-1809</code>
+<li>where: <code>cmd/peribolos/main.go:1963-2009</code>
 </li>
-<li>concern: <code>configureOrg</code> can update org metadata, members, repositories, and teams before this remote role check runs. A misspelled role or role-API permission failure therefore aborts after earlier changes have been applied. Preflight role existence and access before reconciliation starts.
+<li>concern: <code>github.NormLogin</code> accepts <code>@alice</code> for comparison, but the assignment call passes <code>originalUser</code>, producing an API path containing <code>@alice</code> rather than the account handle. Pass <code>normalizedUser</code> (or a display-preserving value with the prefix removed) and add an <code>@</code>-prefixed regression test.
 </li>
-<li>excerpt:<pre><code>// Validate all configured roles exist in GitHub BEFORE any mutations
-for roleName := range orgConfig.Roles {
-    if _, ok := githubRolesByName[strings.ToLower(roleName)]; !ok {
-        return fmt.Errorf(&quot;role %q does not exist in organization %s - create the role in GitHub before assigning it&quot;, roleName, orgName)
-    }
-}</code></pre>
-</li></ul>
-<h3><span class="tag c-red">blocking</span>Normalize role usernames before calling the GitHub API</h3>
-<ul>
-<li>where: <code>cmd/peribolos/main.go:1965-1974</code>
-</li>
-<li>concern: <code>ValidateRoles</code> accepts <code>@alice</code> because <code>github.NormLogin</code> strips the prefix, but this call sends the original <code>@alice</code> as the API username. Send the normalized handle and test an <code>@</code>-prefixed role user.
-</li>
-<li>excerpt:<pre><code>toAdd := wantSet.Difference(haveSet)
+<li>excerpt:<pre><code>wantMap[github.NormLogin(user)] = user
+...
 for normalizedUser := range toAdd {
     originalUser := wantMap[normalizedUser]
-    // Skip users who have pending org invitations - they must accept before we can assign roles
-    if invitees.Has(normalizedUser) {
-        logrus.Infof(&quot;Waiting for %s to accept org invitation before assigning role %s&quot;, originalUser, roleName)
-        continue
-    }
+    ...
     if err := client.AssignOrganizationRoleToUser(orgName, originalUser, roleID); err != nil {</code></pre>
 </li></ul>
-<h3><span class="tag c-red">blocking</span>Make incomplete role dumps detectable</h3>
+<h3><span class="tag c-amber">should-fix</span>Avoid role API access for an org with no roles</h3>
 <ul>
-<li>where: <code>cmd/peribolos/main.go:493-513</code>
+<li>where: <code>cmd/peribolos/main.go:1809-1817</code>
 </li>
-<li>concern: Every failure is treated as expected best-effort behavior, including timeouts, exhausted rate limits, decode errors, and persistent 5xx responses. <code>--dump</code> then exits successfully with role grants missing. Limit the best-effort path to the intentional 403/404 cases, return other errors, and include the organization in warnings; apply the same policy to per-role assignment listing.
-</li>
-<li>excerpt:<pre><code>roles, err := client.ListOrganizationRoles(orgName)
-if err != nil {
-    logrus.WithError(err).Warn(&quot;Failed to list organization roles; omitting roles from dump&quot;)
-    roles = nil
-}</code></pre>
-</li></ul>
-<h3><span class="tag c-red">blocking</span>Validate role users according to membership-management mode</h3>
-<ul>
-<li>where: <code>pkg/config/org/org.go:190-205</code>
-</li>
-<li>concern: When <code>--fix-org-members</code> is off, a config listing some admins or members need not list every existing org member. This validation nevertheless rejects a role user managed elsewhere whenever those lists are nonempty. Pass the membership-management mode into validation or check actual org membership.
-</li>
-<li>excerpt:<pre><code>validateUsers := len(c.Members) &gt; 0 || len(c.Admins) &gt; 0
-var errors []string
-for roleName, role := range c.Roles {
-    for _, teamName := range role.Teams {
-        if !availableTeams[strings.ToLower(teamName)] {
-            errors = append(errors, fmt.Sprintf(&quot;role %q references undefined team %q&quot;, roleName, teamName))
-        }
-    }
-    if !validateUsers {
-        continue
-    }</code></pre>
-</li></ul>
-<h3><span class="tag c-red">blocking</span>Skip the role API when an org declares no roles</h3>
-<ul>
-<li>where: <code>cmd/peribolos/main.go:1789-1795</code>
-</li>
-<li>concern: <code>--fix-org-roles</code> is global, but even an org with no <code>roles</code> calls <code>ListOrganizationRoles</code> before the empty-config check. A permission or availability error can fail that org despite there being no role work to do. Return before the API call when <code>orgConfig.Roles</code> is empty.
+<li>concern: With global <code>--fix-org-roles</code>, an org that declares no roles still calls <code>ListOrganizationRoles</code>. An unavailable or unauthorized role endpoint can therefore fail an otherwise no-op pass. Return when <code>len(orgConfig.Roles) == 0</code> before making the API call.
 </li>
 <li>excerpt:<pre><code>roles, err := client.ListOrganizationRoles(orgName)
 if err != nil {
@@ -148,89 +92,60 @@ if len(roles) == 0 &amp;&amp; len(orgConfig.Roles) == 0 {
     return nil
 }</code></pre>
 </li></ul>
-<h3><span class="tag c-red">blocking</span>Test the new role client methods at the HTTP boundary</h3>
+<h3><span class="tag c-amber">should-fix</span>Do not infer authoritative membership from nonempty lists</h3>
 <ul>
-<li>where: <code>pkg/github/client.go:5512-5529</code>
+<li>where: <code>pkg/config/org/org.go:190-205</code>
 </li>
-<li>concern: The seven new REST methods have no dedicated HTTP-level tests, while peribolos tests use fakes. Endpoint paths, verbs, response decoding, pagination, and status handling could regress unnoticed. Add focused HTTP-server tests for the role methods before relying on them to change access grants.
+<li>concern: Any nonempty <code>members</code> or <code>admins</code> list is treated as the complete organization membership, even when membership reconciliation is not enabled or the config deliberately describes only a subset. That rejects role users who already belong to the organization. Gate this validation on an authoritative membership mode, or validate against GitHub's actual membership.
 </li>
-<li>excerpt:<pre><code>func (c *client) ListOrganizationRoles(org string) ([]OrganizationRole, error) {
-    c.log(&quot;ListOrganizationRoles&quot;, org)
-    if c.fake {
-        return nil, nil
-    }
-
-    path := fmt.Sprintf(&quot;/orgs/%s/organization-roles&quot;, org)
-    var roles []OrganizationRole
-    err := c.readPaginatedResults(</code></pre>
+<li>excerpt:<pre><code>validateUsers := len(c.Members) &gt; 0 || len(c.Admins) &gt; 0
+...
+if !validateUsers {
+    continue
+}
+for _, user := range role.Users {
+    if !availableUsers[github.NormLogin(user)] {</code></pre>
 </li></ul>
-<h3><span class="tag c-red">blocking</span>Document the operator contract for organization roles</h3>
+<h3><span class="tag c-amber">should-fix</span>Add REST endpoint-contract tests for role operations</h3>
 <ul>
-<li>where: <code>site/content/en/docs/components/cli-tools/peribolos.md:21-76</code>
+<li>where: <code>pkg/github/client.go:5522-5640</code>, <code>pkg/github/client_test.go</code>
 </li>
-<li>concern: The public guide has no role example or explanation of the flag dependency, per-role opt-in management, inherited and ignored assignments, role-API permissions, or dump behavior. Add these rules alongside the existing YAML example before presenting this as a supported configuration surface.
+<li>concern: The seven new role client methods have no endpoint-specific HTTP tests. Reconciler tests using a local fake and the generic paginated-error test cannot catch an incorrect method, path, expected status, pagination, or <code>{total_count, roles}</code> wrapper decode. Add <code>httptest</code> coverage for the list and assignment endpoints.
 </li>
-<li>excerpt:<pre><code>Peribolos allows the org settings, teams and memberships to be declared in a yaml file. GitHub is then updated to match the declared configuration.</code></pre>
+<li>excerpt:<pre><code>path := fmt.Sprintf(&quot;/orgs/%s/organization-roles&quot;, org)
+...
+return &amp;orgRolesResponse{}
+...
+path: fmt.Sprintf(&quot;/orgs/%s/organization-roles/users/%s/%d&quot;, org, user, roleID),</code></pre>
 </li></ul>
-<h3><span class="tag c-amber">should-fix</span>Make the shared fake's role behavior observable</h3>
+<h3><span class="tag c-amber">should-fix</span>Make the standard fake model role state</h3>
 <ul>
-<li>where: <code>pkg/github/fakegithub/fakegithub.go:1459-1474</code>
+<li>where: <code>pkg/github/fakegithub/fakegithub.go:1459-1487</code>
 </li>
-<li>concern: All seven new methods on the shared <code>FakeClient</code> silently return empty data or success without recording assignments, so consumers using the fake cannot observe role changes or inject role-list errors. Model role state and operations, or reject unsupported calls explicitly.
+<li>concern: The exported fake implements every new role method as a nil/no-op stub. Consumers cannot model current assignments or assert mutations, which weakens integration testing for the new public client surface. Store role and assignment state, or keep clients that do not need roles on a narrower interface.
 </li>
 <li>excerpt:<pre><code>func (f *FakeClient) ListOrganizationRoles(org string) ([]github.OrganizationRole, error) {
     return nil, nil
 }
 
-func (f *FakeClient) AssignOrganizationRoleToTeam(org, teamSlug string, roleID int) error {
+func (f *FakeClient) AssignOrganizationRoleToUser(org, user string, roleID int) error {
     return nil
 }</code></pre>
 </li></ul>
-<h3><span class="tag c-gray">nit</span>Centralize organization-role assignment states</h3>
-<ul>
-<li>where: <code>pkg/github/types.go:1845</code>
-</li>
-<li>concern: The <code>&quot;indirect&quot;</code> string and the rule that <code>mixed</code> counts as direct are repeated in dump and reconciliation paths. Define a named assignment type with constants and a helper such as <code>IsDirect()</code> so the API contract and its interpretation stay in one place.
-</li>
-<li>excerpt:<pre><code>type OrganizationRoleAssignment struct {
-    ID         int    `json:&quot;id&quot;`
-    Login      string `json:&quot;login,omitempty&quot;`
-    Slug       string `json:&quot;slug,omitempty&quot;`
-    Assignment string `json:&quot;assignment,omitempty&quot;` // &quot;direct&quot;, &quot;indirect&quot;, or &quot;mixed&quot;
-}</code></pre>
-</li></ul>
-<h3><span class="tag c-blue">question</span>Account for out-of-tree <code>github.Client</code> implementations</h3>
-<ul>
-<li>where: <code>pkg/github/client.go:287-295</code>
-</li>
-<li>concern: Embedding <code>OrganizationRolesClient</code> expands the exported <code>github.Client</code> interface by seven methods, which is source-breaking for any out-of-tree implementations or fakes. Do downstream consumers exist, and should this dependency be narrowed or accompanied by release guidance? Their presence is unverified in this worktree.
-</li>
-<li>excerpt:<pre><code>type Client interface {
-    PullRequestClient
-    RepositoryClient
-    CommitClient
-    IssueClient
-    CommentClient
-    OrganizationClient
-    OrganizationRolesClient
-    TeamClient</code></pre>
-</li></ul>
 <h2>Checked</h2>
 <ul>
-<li>All three maintainer perspectives examined the PR at <code>f46e6a6c1e428b22dee10711af765936b50308b4</code>; the local product tree matches that head apart from review artifacts.
+<li>Reviewed merged commit <code>a0ba73401af9961d586043b59d15881b92d222fa</code> against parent <code>7626c76a396f367698b87f0650c8c5df14ae6c4e</code>.
 </li>
-<li><code>go test ./cmd/peribolos ./pkg/config/org ./pkg/github</code> passed in the code-quality review.
+<li>Confirmed that the new <code>roles</code> field is optional and <code>--fix-org-roles</code> defaults off, preserving existing configuration behavior.
 </li>
-<li>Existing configuration remains compatible: <code>roles</code> is optional and <code>--fix-org-roles</code> defaults off.
+<li>Confirmed the final change adds dump failure classification, secret-team log protection, direct-versus-indirect assignment handling, paginated status-error coverage, and public documentation.
 </li>
-<li>Role reconciliation preserves intentionally ignored teams and indirect assignments; team renames update the slug used later.
-</li>
-<li>The role feature adds GitHub role-API permission needs and per-org/per-role API calls when enabled.
-</li>
-<li>New review activity was incorporated: <code>cblecker</code> submitted a COMMENTED review on 2026-10-02 at 00:10 UTC; the author also asked about the stale <code>needs-rebase</code> label on 2026-10-01.
+<li>Confirmed dump now adds one role-list request and two paginated assignment-list requests per organization role; this may affect API use and latency in large organizations.
 </li></ul>
 <h2>Open questions</h2>
 <ul>
-<li>Are there out-of-tree <code>github.Client</code> implementations that need migration guidance for the expanded interface?
+<li>Are organization-role APIs available on every supported GitHub Enterprise version, and are the required token permissions documented beside <code>--fix-org-roles</code>?
+</li>
+<li>Are there downstream implementations of the exported <code>github.Client</code> interface that need migration guidance after it gained organization-role methods?
 </li></ul>
 </main></body></html>

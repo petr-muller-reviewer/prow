@@ -3,13 +3,17 @@ pr: kubernetes-sigs/prow#969
 title: "tide: add max query concurrency"
 head_sha: 7cd8b4253eddb3847465a1586723ef9fb5d9583b
 base: main
-reviewed_at: 2026-10-02T11:44:29Z
+reviewed_at: 2026-10-05T20:50:49Z
 verdict: approve
 refresh_log:
   - at: 2026-09-28T15:23:24Z
     from_sha: d40ab8d38539e9a794ab24c55ea27e42fe960361
     to_sha: d40ab8d38539e9a794ab24c55ea27e42fe960361
     summary: "No code changes; incorporated cblecker's five inline comments and review summary."
+  - at: 2026-10-05T20:50:49Z
+    from_sha: 7cd8b4253eddb3847465a1586723ef9fb5d9583b
+    to_sha: 7cd8b4253eddb3847465a1586723ef9fb5d9583b
+    summary: "No code changes; recorded cblecker's approval and the PR merge."
 ---
 
 # Review
@@ -28,6 +32,12 @@ The prior gate decision was **Hold** on 2026-09-27 at head `d40ab8d38539e9a794ab
 - Keeps zero as unlimited and rejects negative values, preserving existing configuration behavior.
 - Documents the per-controller cap, possible combined maximum, and GitHub Apps org sharding.
 - Adds tests for configured concurrency, returned PRs, and config parsing.
+
+Since previous review: no code changes. The PR merged on 2026-10-02 at 23:35 UTC.
+
+- `cblecker` submitted an `APPROVED` review on 2026-10-02 at 23:14 UTC.
+- `kubernetes-prow[bot]` posted the approval notification at 23:14 UTC.
+- No inline review comments were added.
 
 ## Findings
 
@@ -60,3 +70,25 @@ The prior gate decision was **Hold** on 2026-09-27 at head `d40ab8d38539e9a794ab
 ## Open questions
 
 - For GitHub Apps auth, is a single controller-wide queue across org shards the intended operational tradeoff, given that one org's searches can wait behind another's?
+
+## Followups
+
+### 1. docs — Document replica-scaled concurrency (`should`)
+
+```text
+In `kubernetes-sigs/prow`, following merged PR #969 — “tide: add max query concurrency” (merge commit `04b0f796cea5297358c0db2c1a89c349a5d2a2ad`), update the Tide operator guide and the `Tide.MaxQueryConcurrency` comment to make the replica-scaled scope explicit. Explain that sync and status each apply the configured limit within one Tide process, allowing up to 2×N PR search tasks per process, and that aggregate concurrency scales with replica count. Preserve the documented zero-means-unlimited behavior and GitHub Apps org-sharding detail.
+
+Acceptance criteria: the config comment and operator guide agree with the implementation and state the per-process and replica-scaled bounds; no runtime behavior or limit scope changes.
+
+Scope guard: keep this documentation-only; do not change scheduling, defaults, or the concurrency limit implementation.
+```
+
+### 2. observability — Measure query limiter wait time (`could`)
+
+```text
+In `kubernetes-sigs/prow`, following merged PR #969 — “tide: add max query concurrency” (merge commit `04b0f796cea5297358c0db2c1a89c349a5d2a2ad`), add a Prometheus histogram for the time PR search tasks spend waiting for an `errgroup.Group` concurrency slot in `GitHubProvider.Query` (`pkg/tide/github.go`) and `statusController.search` (`pkg/tide/status.go`). The existing per-search duration starts after a task begins, so it omits time blocked while `g.Go` waits for a slot. Use bounded labels that distinguish the controller without labeling raw query strings, register the metric with Tide's existing metrics, and add deterministic coverage for a saturated limit and the unlimited case.
+
+Acceptance criteria: the metric includes submission-to-worker-start delay for both search paths, has bounded label cardinality, and tests demonstrate observations when a limit of 1 queues work while leaving scheduling results unchanged.
+
+Scope guard: do not change concurrency defaults, scheduling/fairness semantics, or unrelated Tide metrics.
+```

@@ -31,19 +31,23 @@ ul, ol { padding-left:1.5rem; }
 details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
 </style></head><body><main>
 <h1>tide: add max query concurrency</h1>
-<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/969">kubernetes-sigs/prow#969</a> · base <code>main</code> · head_sha <code>7cd8b4253edd</code> · reviewed_at <code>2026-10-02T11:44:29Z</code></div>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/969">kubernetes-sigs/prow#969</a> · base <code>main</code> · head_sha <code>7cd8b4253edd</code> · reviewed_at <code>2026-10-05T20:50:49Z</code></div>
 <div class="badges"><span class="badge c-green">verdict: approve</span></div>
 <details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#969
 title: &quot;tide: add max query concurrency&quot;
 head_sha: 7cd8b4253eddb3847465a1586723ef9fb5d9583b
 base: main
-reviewed_at: 2026-10-02T11:44:29Z
+reviewed_at: 2026-10-05T20:50:49Z
 verdict: approve
 refresh_log:
   - at: 2026-09-28T15:23:24Z
     from_sha: d40ab8d38539e9a794ab24c55ea27e42fe960361
     to_sha: d40ab8d38539e9a794ab24c55ea27e42fe960361
-    summary: &quot;No code changes; incorporated cblecker&#x27;s five inline comments and review summary.&quot;</code></pre></details>
+    summary: &quot;No code changes; incorporated cblecker&#x27;s five inline comments and review summary.&quot;
+  - at: 2026-10-05T20:50:49Z
+    from_sha: 7cd8b4253eddb3847465a1586723ef9fb5d9583b
+    to_sha: 7cd8b4253eddb3847465a1586723ef9fb5d9583b
+    summary: &quot;No code changes; recorded cblecker&#x27;s approval and the PR merge.&quot;</code></pre></details>
 <h2>Gate</h2>
 <p>The prior gate decision was <strong>Hold</strong> on 2026-09-27 at head <code>d40ab8d38539e9a794ab24c55ea27e42fe960361</code>. Its concerns included the unclear limit scope, missing operator documentation, and query-error logging. The PR has since changed; this review covers head <code>7cd8b4253eddb3847465a1586723ef9fb5d9583b</code>. The gate itself has not been rerun.</p>
 <h2>Verdict</h2>
@@ -57,6 +61,14 @@ refresh_log:
 <li>Documents the per-controller cap, possible combined maximum, and GitHub Apps org sharding.
 </li>
 <li>Adds tests for configured concurrency, returned PRs, and config parsing.
+</li></ul>
+<p>Since previous review: no code changes. The PR merged on 2026-10-02 at 23:35 UTC.</p>
+<ul>
+<li><code>cblecker</code> submitted an <code>APPROVED</code> review on 2026-10-02 at 23:14 UTC.
+</li>
+<li><code>kubernetes-prow[bot]</code> posted the approval notification at 23:14 UTC.
+</li>
+<li>No inline review comments were added.
 </li></ul>
 <h2>Findings</h2>
 <h3><span class="tag c-amber">should-fix</span>Document replica-scaled concurrency</h3>
@@ -98,4 +110,17 @@ refresh_log:
 <ul>
 <li>For GitHub Apps auth, is a single controller-wide queue across org shards the intended operational tradeoff, given that one org's searches can wait behind another's?
 </li></ul>
+<h2>Followups</h2>
+<h3>1. docs — Document replica-scaled concurrency (<code>should</code>)</h3>
+<pre><code>In `kubernetes-sigs/prow`, following merged PR #969 — “tide: add max query concurrency” (merge commit `04b0f796cea5297358c0db2c1a89c349a5d2a2ad`), update the Tide operator guide and the `Tide.MaxQueryConcurrency` comment to make the replica-scaled scope explicit. Explain that sync and status each apply the configured limit within one Tide process, allowing up to 2×N PR search tasks per process, and that aggregate concurrency scales with replica count. Preserve the documented zero-means-unlimited behavior and GitHub Apps org-sharding detail.
+
+Acceptance criteria: the config comment and operator guide agree with the implementation and state the per-process and replica-scaled bounds; no runtime behavior or limit scope changes.
+
+Scope guard: keep this documentation-only; do not change scheduling, defaults, or the concurrency limit implementation.</code></pre>
+<h3>2. observability — Measure query limiter wait time (<code>could</code>)</h3>
+<pre><code>In `kubernetes-sigs/prow`, following merged PR #969 — “tide: add max query concurrency” (merge commit `04b0f796cea5297358c0db2c1a89c349a5d2a2ad`), add a Prometheus histogram for the time PR search tasks spend waiting for an `errgroup.Group` concurrency slot in `GitHubProvider.Query` (`pkg/tide/github.go`) and `statusController.search` (`pkg/tide/status.go`). The existing per-search duration starts after a task begins, so it omits time blocked while `g.Go` waits for a slot. Use bounded labels that distinguish the controller without labeling raw query strings, register the metric with Tide&#x27;s existing metrics, and add deterministic coverage for a saturated limit and the unlimited case.
+
+Acceptance criteria: the metric includes submission-to-worker-start delay for both search paths, has bounded label cardinality, and tests demonstrate observations when a limit of 1 queues work while leaving scheduling results unchanged.
+
+Scope guard: do not change concurrency defaults, scheduling/fairness semantics, or unrelated Tide metrics.</code></pre>
 </main></body></html>

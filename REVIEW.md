@@ -3,15 +3,42 @@ pr: kubernetes-sigs/prow#478
 title: "branchprotector: remove protection from excluded branches"
 head_sha: f1b83a2b61ff3db5fc7eaaa77b6d728c0bea001d
 base: main
-reviewed_at: 2026-05-13T23:24:41Z
+reviewed_at: 2026-10-05T21:46:29Z
 verdict: request-changes
+gate:
+  decision: do-not-merge
+  gated_at: 2026-10-05T21:47:11Z
+  gated_head_sha: f1b83a2b61ff3db5fc7eaaa77b6d728c0bea001d
+  reviewed_head_sha: f1b83a2b61ff3db5fc7eaaa77b6d728c0bea001d
 refresh_log:
   - previous_sha: f1b83a2b61ff3db5fc7eaaa77b6d728c0bea001d
     new_sha: f1b83a2b61ff3db5fc7eaaa77b6d728c0bea001d
     summary: "No code changes. Created REVIEW.md from existing REVIEW.html. Incorporated PR discussion: smg247 independently raised the same semantic-change concern (2025-07-11), Prucek gave /lgtm (2025-06-18)."
+  - previous_sha: f1b83a2b61ff3db5fc7eaaa77b6d728c0bea001d
+    new_sha: f1b83a2b61ff3db5fc7eaaa77b6d728c0bea001d
+    summary: "No code changes. Added the maintainer's Aug 13 position against changing exclude semantics or expanding branchprotector, and noted the do-not-merge/hold label."
 ---
 
 # PR #478 -- branchprotector: remove protection from excluded branches
+
+## Gate
+
+**Decision: do-not-merge.** The PR head is unchanged from the reviewed SHA. Its 41-line change adds an active removal path for branches matched by existing `exclude` configuration, and the maintainer discussion explicitly rejects changing those semantics. This is a backward-incompatible change with no opt-in or migration path.
+
+### Findings disposition
+
+- **Not addressed — changing `exclude` semantics** (`REVIEW.md`; `@smg247`, 2025-07-11; `@petr-muller`, 2026-08-13): `UpdateRepo()` still queues a nil request for each protected, excluded branch not explicitly configured (`cmd/branchprotector/protect.go:351-365`), and `configureBranches()` passes it to `RemoveBranchProtection()` (`protect.go:182-188`). This can remove manually maintained protection. The maintainers' latest stated position opposes that behavior. **Disposition:** do not merge this implementation; remove the deletion behavior or agree on an explicitly opt-in design first.
+- **Not addressed — no excluded/unprotected test** (`REVIEW.md`): current tests exercise excluded branches that trigger removal, but do not cover an excluded branch whose `Protected` field is false (`cmd/branchprotector/protect_test.go:1098-1178`). **Disposition:** add coverage if removal behavior is retained; this does not resolve the compatibility blocker.
+- **Not addressed — removal logged at INFO** (`REVIEW.md`): the destructive operation is logged with `logrus.Infof` (`cmd/branchprotector/protect.go:359`). **Disposition:** use prominent warning-level output if removal behavior is retained; this does not resolve the compatibility blocker.
+
+### Independent merge risk
+
+- No exported API or configuration schema changes. The functional behavior changes for every existing branchprotector deployment whose `exclude` patterns match currently protected branches: a run with `--confirm` can remove those branches' GitHub protection, potentially allowing pushes or deletions that protection previously blocked. The behavior is not opt-in and the diff adds no release note or migration guidance; logging is INFO level.
+
+### Gating list
+
+- `cmd/branchprotector/protect.go:351-365` — active protection removal changes the established meaning of `exclude`, risks existing deployments, and conflicts with maintainer feedback. Do not merge unless the behavior is removed or an explicitly opt-in alternative is agreed.
+- `cmd/branchprotector/protect_test.go:1098-1178` and `cmd/branchprotector/protect.go:359` — unprotected-excluded test coverage and warning-level logging remain outstanding if the removal behavior is retained.
 
 **State:** OPEN | **Author:** kaovilai | **Diff:** +41/-0
 **Link:** https://github.com/kubernetes-sigs/prow/pull/478
@@ -30,6 +57,8 @@ When branches are added to the `exclude` list, branchprotector correctly skips a
 |------|--------|
 | `cmd/branchprotector/protect.go` | Collects `allBranches`; after main loop, iterates excluded+protected branches and sends removal requests |
 | `cmd/branchprotector/protect_test.go` | Adds expected `Request: nil` entries to two existing test cases |
+
+Since previous review: no code changes; the PR remains open at the same head. On 2026-05-14, Prucek removed the rotten lifecycle label. On 2026-08-13, petr-muller said in issue #477 that they oppose changing `exclude` semantics or adding more branchprotector features, are moving toward closing both #477 and #478, and would leave the PR open briefly for counterarguments; `/hold` was added to this PR. No new inline comments or submitted reviews were added.
 
 ### Since initial review
 

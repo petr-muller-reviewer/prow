@@ -147,3 +147,43 @@ Since previous review:
 
 - When no shards are configured, should `tide_pool_completeness_ratio` retain the previous non-empty cycle's value (as the new documentation describes), or should the code reset or clear it in both controllers?
 - Should the classified error counter represent only the final logical search outcome after PR #982's retries, as it does now, or also count recovered gateway timeouts? Please document the intended meaning so operators can distinguish final failures from retry pressure.
+
+## Followups
+
+Accepted 3 followups; skipped 1. PR #968 merged on 2026-10-05 at merge commit `27fe62bda55fff7c69d80f526129ff5e7cc556a5`.
+
+### Empty-cycle completeness metrics — bugfix, must
+
+```text
+In kubernetes-sigs/prow, as a post-merge followup to PR #968 — "tide: add query observability metrics" (merge commit 27fe62bda55fff7c69d80f526129ff5e7cc556a5), fix stale Tide query metrics when no shards run. In `pkg/tide/github.go`, `queryShardCounts.report` leaves `tide_pool_completeness_ratio` unchanged when the shard total is zero. In `pkg/tide/status.go`, `statusController.search` returns before reporting any query gauges when no Tide queries are configured.
+
+Choose and implement explicit empty-cycle semantics consistently for the sync and status controllers. Ensure zero-query and zero-shard cycles cannot leave prior query-shard or completeness values visible; document the chosen meaning and add regression tests for both paths.
+
+Acceptance criteria: tests show the selected metric state after a populated cycle is followed by an empty cycle in both controllers; the metrics reference describes the empty-cycle behavior; focused Tide tests pass.
+
+Scope guard: do not change query scheduling, error classification, or metric names; keep the change limited to empty-cycle gauge behavior, its documentation, and regression tests.
+```
+
+### Query outcome metric tests — tests, must
+
+```text
+In kubernetes-sigs/prow, as a post-merge followup to PR #968 — "tide: add query observability metrics" (merge commit 27fe62bda55fff7c69d80f526129ff5e7cc556a5), add focused tests for the new query outcome metrics in `pkg/tide/github_test.go` and `pkg/tide/status_test.go`.
+
+Cover successful, terminal-error, and partial-result searches in the sync and status paths. Assert the new duration and returned-PR observations, classified-error and partial-result counters, and the legacy `tidequeryresults` success/error contract where that counter is emitted. Do not duplicate empty-cycle scenarios; those are covered by the separate empty-cycle followup.
+
+Acceptance criteria: the tests fail if partial failures stop counting as legacy errors, if the new classified or partial counters use the wrong labels/counts, or if either controller records the wrong duration/result or PR-count observations; focused Tide tests pass.
+
+Scope guard: add test coverage only; do not change metric behavior, add retry-attempt instrumentation, or cover empty-cycle semantics here.
+```
+
+### Document final query error and retry semantics — docs, could
+
+```text
+In kubernetes-sigs/prow, as a post-merge followup to PR #968 — "tide: add query observability metrics" (merge commit 27fe62bda55fff7c69d80f526129ff5e7cc556a5), clarify the retry semantics of `tide_query_errors_total` in `site/content/en/docs/metrics/_index.md`.
+
+The counter increments only when the completed search returns an error (`pkg/tide/github.go` and `pkg/tide/status.go`); retries recovered inside the search/client path are not counted. State that the counter reflects final logical search errors and does not measure recovered retry attempts. Keep the duration metric's coverage of the full search call clear if useful.
+
+Acceptance criteria: an operator can distinguish final shard failures from transient retries that recovered, and the documentation matches the current instrumentation.
+
+Scope guard: documentation only; do not add retry-attempt metrics or change the search/retry behavior.
+```

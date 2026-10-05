@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#968</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>tide: add query observability metrics</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/968">kubernetes-sigs/prow#968</a> · base <code>main</code> · head_sha <code>f34ab19e7bb9</code> · reviewed_at <code>2026-10-02T12:10:30Z</code></div>
+<div class="badges"><span class="badge c-red">verdict: request-changes</span><span class="badge c-red">gate: do-not-merge</span></div>
+<details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#968
+title: &quot;tide: add query observability metrics&quot;
+head_sha: f34ab19e7bb9ba3036793a6f6b45d14b0cba0bc3
+base: main
+reviewed_at: 2026-10-02T12:10:30Z
+verdict: request-changes
+refresh_log:
+  - at: 2026-10-02T12:07:46Z
+    old_sha: f34ab19e7bb9ba3036793a6f6b45d14b0cba0bc3
+    new_sha: f34ab19e7bb9ba3036793a6f6b45d14b0cba0bc3
+    summary: &quot;No code changes; incorporated four inline maintainer comments and a COMMENTED review.&quot;
+gate:
+  decision: do-not-merge
+  gated_at: 2026-10-02T11:48:55Z
+  gated_head_sha: f34ab19e7bb9ba3036793a6f6b45d14b0cba0bc3
+  reviewed_head_sha: f34ab19e7bb9ba3036793a6f6b45d14b0cba0bc3</code></pre></details>
+<h2>Gate</h2>
+<p><strong>Decision: do-not-merge.</strong> A full re-review against <code>upstream/main</code> at <code>6844e439e237641e025f0e094833768c6928bc00</code> found that the PR head is unchanged and all blocking findings remain. PR #982 changed Tide's GraphQL timeout and retry path on <code>main</code>; the combined tree merges cleanly and its Tide and GitHub package tests pass, but retries do not address the metric contract or stale gauges. There are no substantive GitHub reviews or comments resolving these concerns.</p>
+<p>Gating findings:</p>
+<ul>
+<li><strong>Not addressed — existing error series</strong> (<code>REVIEW.md</code>, <code>pkg/tide/github.go:127-129</code>): a paginated search that returns PRs before failing still records <code>tidequeryresults{result=&quot;partial&quot;}</code> instead of <code>result=&quot;error&quot;</code>. Preserve the old series before merge.
+</li>
+<li><strong>Not addressed — empty-cycle completeness</strong> (<code>REVIEW.md</code>, <code>pkg/tide/github.go:172-178</code>, <code>pkg/tide/status.go:639-644</code>): the ratio remains stale when no shards run, and status returns before resetting gauges when all queries are removed. Define and publish the empty-cycle state before merge.
+</li>
+<li><strong>Not addressed — tests and metric reference</strong> (<code>REVIEW.md</code>, <code>pkg/tide/github.go:183-190</code>, <code>pkg/tide/tide.go:308-349</code>): this PR adds no focused tests for the new outcomes and does not add the six series to <code>site/content/en/docs/metrics/_index.md</code>. Add both before merge.
+</li></ul>
+<p>Independent merge risk: PR #968 adds no exported API, Tide configuration, or permission changes. Its existing <code>tidequeryresults</code> label semantics do change for terminal partial failures, including failures after PR #982's retries are exhausted; deployments with error-only alert queries can silently undercount them. Recovered gateway timeouts appear in duration but not the classified error counter, because that counter observes the final logical search result.</p>
+<h2>Verdict</h2>
+<p>Request changes before merging.</p>
+<p>The Code Quality, Maintainability, and Deployment Risk reviews agree that this change can hide terminal partial failures from existing error monitoring and leave the new completeness gauge stale after queries are removed. The monitoring risk is high because existing error-only alerts can silently undercount failures. The new metric contract also needs focused tests and an update to the metrics reference; PR #982's retry behavior on current <code>main</code> introduces no additional confirmed blocker.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Measures the duration and returned PR count of each GitHub search shard in the sync and status controllers.
+</li>
+<li>Counts query errors by a bounded error class and counts searches that return some PRs before failing.
+</li>
+<li>Publishes per-cycle shard outcome counts and a success-shard ratio for each controller.
+</li>
+<li>Extends the existing sync query result counter with a <code>partial</code> outcome.
+</li></ul>
+<p>Since previous review:</p>
+<ul>
+<li>No code changed. At 12:02–12:07 UTC on 2026-10-02, @petr-muller left four inline comments about the metrics reference, duplicated shard accounting, the <code>sync</code> gauge name, and how partial failures were previously counted; the submitted review was <code>COMMENTED</code>.
+</li>
+<li>These comments align with existing findings. The pre-PR <code>tidequeryresults</code> counter recorded every non-nil search error, including a partial result, as <code>result=&quot;error&quot;</code>.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-red">blocking</span>Preserve the existing query error series</h3>
+<ul>
+<li>where: <code>pkg/tide/github.go:127-129</code>
+</li>
+<li>concern: A search that returns one page of PRs and then fails, including after PR #982's gateway timeout retries are exhausted, now increments <code>tidequeryresults{result=&quot;partial&quot;}</code> instead of its existing <code>result=&quot;error&quot;</code> series. Existing error-rate alerts and dashboards will miss these terminal failures. Keep the old counter's success/error meaning and use the new partial-results counter for the extra distinction.
+</li>
+<li>excerpt:<pre><code>result := queryResult(err, len(results))
+queryID := strconv.Itoa(i)
+tideMetrics.queryResults.WithLabelValues(queryID, org, result).Inc()</code></pre>
+</li></ul>
+<h3><span class="tag c-red">blocking</span>Reset completeness when no shards run</h3>
+<ul>
+<li>where: <code>pkg/tide/github.go:172-178</code>
+</li>
+<li>concern: If the sync controller has no query shards, the shard gauges become zero while <code>poolCompletenessRatio</code> retains its previous value. The status path also returns before updating any of these gauges when no Tide queries are configured (<code>pkg/tide/status.go:639-644</code>). After a configuration change, dashboards can show completeness for a cycle that did not run; define and publish a value for this case in both paths.
+</li>
+<li>excerpt:<pre><code>total := shardSuccess + shardPartial + shardError
+tideMetrics.syncQueryShards.WithLabelValues(controller, &quot;success&quot;).Set(float64(shardSuccess))
+tideMetrics.syncQueryShards.WithLabelValues(controller, &quot;partial&quot;).Set(float64(shardPartial))
+tideMetrics.syncQueryShards.WithLabelValues(controller, &quot;error&quot;).Set(float64(shardError))
+if total &gt; 0 {
+    tideMetrics.poolCompletenessRatio.WithLabelValues(controller).Set(float64(shardSuccess) / float64(total))
+}</code></pre>
+</li></ul>
+<h3><span class="tag c-red">blocking</span>Test the new query outcomes and metric values</h3>
+<ul>
+<li>where: <code>pkg/tide/github.go:183-190</code>
+</li>
+<li>concern: Current <code>main</code> tests search pagination and gateway retries, but neither those tests nor this PR assert the metric values for partial-page failures or cycles with no shards. Add focused behavior tests that assert the old error counter, the new partial and classified error counters, and the empty-cycle gauges in both controllers.
+</li>
+<li>excerpt:<pre><code>func queryResult(err error, resultCount int) string {
+    if err == nil {
+        return &quot;success&quot;
+    }
+    if resultCount == 0 {
+        return &quot;error&quot;
+    }
+    return &quot;partial&quot;
+}</code></pre>
+</li></ul>
+<h3><span class="tag c-red">blocking</span>Document the added metrics</h3>
+<ul>
+<li>where: <code>pkg/tide/tide.go:308-349</code>
+</li>
+<li>concern: The metrics reference at <code>site/content/en/docs/metrics/_index.md:22</code> omits all six new series. Add their types, labels, and meanings so operators know what to query; retain the existing <code>tidequeryresults</code> success/error contract in both code and documentation.
+</li>
+<li>excerpt:<pre><code>queryDuration: prometheus.NewHistogramVec(prometheus.HistogramOpts{
+    Name: &quot;tide_query_duration_seconds&quot;,
+    Help: &quot;Duration of individual Tide GitHub search queries per shard.&quot;,
+}, []string{
+    &quot;controller&quot;,
+    &quot;result&quot;,
+}),</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">nit</span>Consolidate repeated query outcome accounting</h3>
+<ul>
+<li>where: <code>pkg/tide/status.go:724-746</code>
+</li>
+<li>concern: The status and sync controllers repeat the same outcome switch and final gauge publication (<code>pkg/tide/github.go:141-148,172-178</code>). A small shared recorder would keep their outcome and label behavior aligned as these metrics evolve. This is a maintainability judgment call; the repository has no documented rule requiring it.
+</li>
+<li>excerpt:<pre><code>switch resultLabel {
+case &quot;error&quot;:
+    shardError++
+case &quot;partial&quot;:
+    shardPartial++
+default:
+    shardSuccess++
+}</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">nit</span>Clarify the shard gauge name or Help text</h3>
+<ul>
+<li>where: <code>pkg/tide/tide.go:340-345</code>
+</li>
+<li>concern: <code>tide_sync_query_shards</code> also records <code>controller=&quot;status&quot;</code>, so its name and Help text suggest a narrower scope than the data it contains. Clarify the contract for operators.
+</li>
+<li>excerpt:<pre><code>syncQueryShards: prometheus.NewGaugeVec(prometheus.GaugeOpts{
+    Name: &quot;tide_sync_query_shards&quot;,
+    Help: &quot;Number of query shards in the most recent sync cycle by outcome.&quot;,
+}, []string{
+    &quot;controller&quot;,
+    &quot;result&quot;,
+}),</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">nit</span>Narrow error class matching where possible</h3>
+<ul>
+<li>where: <code>pkg/tide/github.go:219-221</code>
+</li>
+<li>concern: The fallback classification matches broad message fragments, including bare HTTP status numbers, so unrelated text can be classified as a server error. Prefer structured error details where available, or match the known client error format more narrowly; keep a documented fallback for unstructured errors.
+</li>
+<li>excerpt:<pre><code>if strings.Contains(msg, &quot;502&quot;) || strings.Contains(msg, &quot;503&quot;) || strings.Contains(msg, &quot;504&quot;) || strings.Contains(msg, &quot;500&quot;) {
+    return &quot;server_error&quot;
+}</code></pre>
+</li></ul>
+<h2>Resolved</h2>
+<p>None.</p>
+<h2>Checked</h2>
+<ul>
+<li>Considered overlap between the proposed metrics and the existing <code>tidequeryresults</code> counter. The maintainer accepted retaining the broader metric set, so metric count alone is not a review finding.
+</li>
+<li>Inspected both Tide search paths and the shared paginated search helper.
+</li>
+<li>Re-reviewed the full PR diff against <code>upstream/main</code> at <code>6844e439e237641e025f0e094833768c6928bc00</code>, including PR #982's gateway timeout and page-size retry changes. A synthetic merge was clean; no new integration defect was found.
+</li>
+<li>Independently checked Code Quality, Maintainability, and Deployment Risk findings against the PR head; all three reviews agree on the error-series and empty-cycle problems.
+</li>
+<li>Confirmed the new histogram and counter label sets are bounded by controller, configured query index or org shard, result, and fixed error classes.
+</li>
+<li>Checked that the PR adds no Tide configuration fields, permissions, external services, or GitHub API calls.
+</li>
+<li><code>go test ./pkg/tide -run &#x27;TestQueryShardsByOrgWhenAppsAuthIsEnabledOnly|TestQueryIgnoresMergedPRs|TestSearch&#x27; -count=1</code> passed.
+</li>
+<li><code>git diff --check</code> passed for PR #968's effective diff against current <code>main</code>.
+</li>
+<li><code>go test ./pkg/tide ./pkg/github</code> passed on the synthetic merge of PR #968 with current <code>main</code>.
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>What value should <code>tide_pool_completeness_ratio</code> report when no query shards are configured: zero, or no series? Please make the choice explicit in code and the metric documentation.
+</li>
+<li>Should the classified error counter represent only the final logical search outcome after PR #982's retries, as it does now, or also count recovered gateway timeouts? Please document the intended meaning so operators can distinguish final failures from retry pressure.
+</li></ul>
+</main></body></html>

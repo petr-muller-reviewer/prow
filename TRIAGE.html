@@ -1,269 +1,155 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Triage: kubernetes-sigs/prow#693</title>
-<style>
-  :root {
-    --bg: #1a1a2e;
-    --card: #16213e;
-    --border: #0f3460;
-    --text: #eee;
-    --muted: #888;
-    --green: #2ecc71;
-    --yellow: #f1c40f;
-    --orange: #e67e22;
-    --red: #e74c3c;
-    --blue: #3498db;
-    --accent: #e94560;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    line-height: 1.65;
-    padding: 2rem;
-    max-width: 900px;
-    margin: 0 auto;
-  }
-  a { color: var(--blue); text-decoration: none; }
-  a:hover { text-decoration: underline; }
-  h2 {
-    font-size: 1.05rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--blue);
-    margin: 2rem 0 0.6rem;
-    padding-bottom: 0.25rem;
-    border-bottom: 1px solid var(--border);
-  }
-  h3 { font-size: 0.95rem; font-weight: 600; margin: 1rem 0 0.3rem; }
-  p { margin: 0.4rem 0; font-size: 0.92rem; }
-  ul, ol { padding-left: 1.4rem; margin: 0.4rem 0; }
-  li { margin: 0.3rem 0; font-size: 0.92rem; }
-  code, pre {
-    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
-  }
-  code {
-    background: rgba(255,255,255,0.09);
-    padding: 0.1rem 0.35rem;
-    border-radius: 3px;
-    font-size: 0.83rem;
-  }
-  pre {
-    background: rgba(0,0,0,0.35);
-    padding: 0.8rem 1rem;
-    border-radius: 6px;
-    font-size: 0.82rem;
-    line-height: 1.5;
-    overflow-x: auto;
-    margin: 0.5rem 0;
-    white-space: pre-wrap;
-  }
-
-  /* Header */
-  .header {
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 1.2rem 1.4rem;
-    margin-bottom: 1.2rem;
-  }
-  .header h1 {
-    font-size: 1.25rem;
-    margin-bottom: 0.6rem;
-    line-height: 1.35;
-  }
-  .header h1 a { color: var(--text); }
-  .meta {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-    gap: 0.3rem 1.5rem;
-    font-size: 0.82rem;
-    color: var(--muted);
-  }
-  .meta span { display: block; }
-  .meta strong { color: var(--text); }
-
-  /* Verdict */
-  .verdict-block {
-    border-left: 4px solid var(--yellow);
-    background: rgba(241,196,15,0.08);
-    border-radius: 0 6px 6px 0;
-    padding: 0.8rem 1rem;
-    margin: 0.6rem 0;
-  }
-  .verdict-block.needs-discussion { border-color: var(--yellow); background: rgba(241,196,15,0.08); }
-  .verdict-block.accepted { border-color: var(--green); background: rgba(46,204,113,0.08); }
-  .verdict-block.wontfix { border-color: var(--red); background: rgba(231,76,60,0.08); }
-  .verdict-label {
-    display: inline-block;
-    padding: 0.2rem 0.65rem;
-    border-radius: 4px;
-    font-size: 0.8rem;
-    font-weight: 700;
-    margin-bottom: 0.4rem;
-    background: var(--yellow);
-    color: #000;
-  }
-
-  /* Sections */
-  .section { margin: 0; }
-  .card {
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 0.8rem 1rem;
-    margin: 0.5rem 0;
-  }
-  .card.warn { border-color: var(--yellow); background: rgba(241,196,15,0.06); }
-  .card.info { border-color: var(--blue); background: rgba(52,152,219,0.06); }
-
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.88rem;
-    margin: 0.5rem 0;
-  }
-  th, td { padding: 0.4rem 0.7rem; border: 1px solid var(--border); text-align: left; }
-  th { background: var(--border); font-weight: 600; }
-  .yes { color: var(--green); font-weight: 600; }
-  .no { color: var(--red); }
-  .unverified { color: var(--yellow); }
-
-  .label {
-    display: inline-block;
-    padding: 0.15rem 0.5rem;
-    border-radius: 4px;
-    font-size: 0.77rem;
-    font-weight: 600;
-    margin: 0.1rem 0.15rem;
-    background: var(--border);
-    color: #acd;
-  }
-
-  .footer {
-    margin-top: 2.5rem;
-    padding-top: 0.7rem;
-    border-top: 1px solid var(--border);
-    font-size: 0.77rem;
-    color: var(--muted);
-    text-align: center;
-  }
-</style>
-</head>
-<body>
-
-<!-- ===== HEADER ===== -->
-<div class="header">
-  <h1><a href="https://github.com/kubernetes-sigs/prow/issues/693">kubernetes-sigs/prow#693</a><br>Integrate with Netlify for /retest Prow command</h1>
-  <div class="meta">
-    <span><strong>State:</strong> open</span>
-    <span><strong>Labels:</strong> <span class="label">kind/feature</span><span class="label">area/plugins</span></span>
-    <span><strong>Triaged:</strong> 2026-05-30T13:22:53Z</span>
-    <span><strong>Main SHA:</strong> <code>53a81071b</code></span>
-    <span><strong>Original:</strong> <a href="https://github.com/kubernetes/test-infra/issues/35103">test-infra#35103</a></span>
-    <span><strong>Author:</strong> Caesarsage (Destiny Erhabor)</span>
-  </div>
-</div>
-
-<!-- ===== VERDICT ===== -->
-<h2>Verdict</h2>
-<div class="verdict-block needs-discussion">
-  <div class="verdict-label">needs-discussion</div>
-  <p>The feature is legitimate and architecturally feasible within Prow, but the Netlify API situation is unresolved. No documented API endpoint exists for triggering deploy preview rebuilds. Caesarsage's spike (2026-04-30) claims an undocumented <code>POST /api/v1/deploys/{deploy_id}/retry</code> endpoint works, but this is unverified and absent from the official Netlify OpenAPI spec. If confirmed, the Prow change is straightforward (Level 2, following the <code>TriggerGitHubWorkflows</code> pattern). If not, the feature is blocked at Level 4. Security concern also open: Netlify PATs have no granular scoping. Both questions need resolution before implementation proceeds.</p>
-</div>
-
-<!-- ===== WHAT THE ISSUE REPORTS ===== -->
-<h2>What the Issue Reports</h2>
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#693</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>Integrate with Netlify for /retest Prow command</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/issues/693">kubernetes-sigs/prow#693</a> · main_sha <code>53a81071b1f5</code> · state <code>open</code> · labels <code>kind/feature, area/plugins</code> · triaged_at <code>2026-05-30T13:22:53Z</code></div>
+<div class="badges"><span class="badge c-amber">verdict: needs-discussion</span></div>
+<details><summary>Full metadata</summary><pre><code>issue: kubernetes-sigs/prow#693
+title: &quot;Integrate with Netlify for /retest Prow command&quot;
+state: open
+labels: kind/feature, area/plugins
+main_sha: 53a81071b1f5a432c33362a42aa7bc9837f7ed14
+triaged_at: 2026-05-30T13:22:53Z
+verdict: needs-discussion
+advice:
+  advised_at: 2026-10-05T23:34:56Z
+  based_on_triaged_at: 2026-05-30T13:22:53Z</code></pre></details>
+<h2>Findings</h2>
+<h3><span class="tag c-blue">reproducibility</span>Feature gap, not a bug</h3>
 <ul>
-  <li>When an org member uses <code>/retest</code> on a PR in k/website or k/contributor-site, Netlify should rebuild the deploy preview.</li>
-  <li>Currently the only self-service option is the PR author pushing an amended/empty commit — high friction for a simple flake retry.</li>
-  <li>Originally filed at test-infra#35103 by lmktfy (Tim Bannister, SIG Docs chair); copied here by Caesarsage because GitHub does not allow cross-org issue transfers.</li>
-  <li>BenTheElder noted Netlify exposes deploy triggers "but that's not quite it" and raised security concerns about handing Netlify credentials to presubmits that run arbitrary user code.</li>
-  <li>Caesarsage self-assigned and posted a spike result on 2026-04-30 claiming an undocumented retry endpoint exists.</li>
-</ul>
-
-<!-- ===== ANALYSIS ===== -->
-<h2>Analysis</h2>
-
-<h3>Netlify API — documented endpoints</h3>
-<table>
-  <tr><th>Method</th><th>Triggers build?</th><th>True deploy preview?</th><th>Updates PR status?</th></tr>
-  <tr><td>Build hook + <code>trigger_branch</code></td><td class="yes">Yes</td><td class="no">No — branch deploy</td><td class="no">No</td></tr>
-  <tr><td><code>POST /sites/{id}/builds</code></td><td class="yes">Yes</td><td class="no">No — prod only</td><td class="no">No</td></tr>
-  <tr><td><code>POST /sites/{id}/deploys</code> with branch</td><td class="unverified">Partial</td><td class="no">No</td><td class="no">No</td></tr>
-  <tr><td>Push empty commit to PR branch</td><td class="yes">Yes</td><td class="yes">Yes</td><td class="yes">Yes</td></tr>
-  <tr><td>Re-deliver GitHub webhook (repo admin)</td><td class="yes">Yes</td><td class="yes">Yes</td><td class="yes">Yes</td></tr>
-  <tr><td style="color:var(--yellow)"><code>POST /deploys/{id}/retry</code> (undocumented)</td><td class="yes">Yes</td><td class="unverified">Claimed yes</td><td class="unverified">Unverified</td></tr>
-</table>
-<p>Key distinction: a <strong>deploy preview</strong> is tied to a PR number, gets the URL <code>deploy-preview-N--site.netlify.app</code>, and posts status back to the GitHub PR. A <strong>branch deploy</strong> has none of those properties.</p>
-
-<h3>Caesarsage's spike (2026-04-30) — unverified</h3>
-<div class="card warn">
-  <p>Caesarsage confirmed build hooks and <code>POST /sites/{id}/builds</code> produce only branch deploys (consistent with our analysis), then claimed <code>POST /api/v1/deploys/{deploy_id}/retry</code> reruns the same deploy preview for forked PRs and preserves PR preview identity.</p>
-  <p>This endpoint is <strong>absent from Netlify's official OpenAPI spec (v2.53.0)</strong>. The only supporting evidence is a <a href="https://answers.netlify.com/t/how-to-retry-preview-build-after-branch-environment-variables-have-been-set/107149">Nov 2023 community thread</a> where even the original poster could not find it in official docs. No curl transcript or API response was provided.</p>
-  <p>If the endpoint works as claimed, feasibility shifts from Level 4 (blocked) to Level 2-3 (moderate). Security concern remains active: Netlify PATs have no granular scoping — a token grants full account access.</p>
-</div>
-
-<h3>Existing Prow pattern for external CI</h3>
-<div class="card info">
-  <p><code>TriggerGitHubWorkflows</code> at <code>pkg/plugins/trigger/generic-comment.go:168-196</code> is the exact template. On <code>/retest</code> it fetches failed GitHub Action runs and re-triggers them via the GitHub API, in parallel with ProwJob re-creation. A Netlify integration would add an analogous config option (e.g. <code>TriggerNetlifyDeployPreviews</code>) to the <code>Trigger</code> struct and follow the same goroutine pattern.</p>
-</div>
-
-<h3>Related code</h3>
+<li>detail: <code>/retest</code> only re-triggers ProwJobs and (optionally) GitHub Actions. No mechanism to trigger other external CI systems such as Netlify.
+</li>
+<li>evidence: <code>pkg/plugins/trigger/generic-comment.go:38-196</code> — full retest flow; Netlify absent.
+</li></ul>
+<h3><span class="tag c-amber">cause</span>Netlify API does not expose deploy preview rebuild endpoint</h3>
 <ul>
-  <li><code>pkg/plugins/trigger/generic-comment.go:38</code> — <code>handleGenericComment()</code> entry point</li>
-  <li><code>pkg/plugins/trigger/generic-comment.go:168-196</code> — GitHub Actions re-trigger (model for Netlify)</li>
-  <li><code>pkg/plugins/trigger/generic-comment.go:213-231</code> — <code>commentMatchesTrigger()</code>, <code>/retest</code> regex</li>
-  <li><code>pkg/plugins/trigger/generic-comment.go:254-288</code> — <code>FilterPresubmits()</code>, <code>getContexts()</code></li>
-  <li><code>pkg/plugins/trigger/trigger.go:332-356</code> — <code>RunRequestedWithLabels()</code>, ProwJob creation</li>
-  <li><code>pkg/plugins/config.go:485-510</code> — <code>Trigger</code> struct (add new bool here)</li>
-  <li><code>pkg/pjutil/filter.go:33-36</code> — <code>RetestRe</code>, <code>RetestRequiredRe</code></li>
-</ul>
-
-<h3>Related issues / PRs</h3>
+<li>detail: Deploy previews are triggered exclusively by GitHub push webhook events. No documented Netlify API endpoint exists to trigger a deploy preview rebuild for a specific PR. Build hooks (<code>POST /build_hooks/{id}</code>) and <code>POST /sites/{id}/builds</code> only produce branch deploys — a distinct concept that does not create the <code>deploy-preview-N</code> URL and does not update GitHub PR status checks.
+</li>
+<li>evidence: Netlify OpenAPI spec v2.53.0 (<code>open-api.netlify.com</code>) — no retry/rebuild-preview endpoint. Netlify docs for deploy types confirm deploy previews require a push event.
+</li></ul>
+<h3><span class="tag c-amber">cause</span>Undocumented retry endpoint claimed by Caesarsage — unverified</h3>
 <ul>
-  <li><a href="https://github.com/kubernetes/test-infra/issues/35103">test-infra#35103</a> — original issue; contains BenTheElder's security analysis, lmktfy's request, and full discussion history</li>
-</ul>
-
-<!-- ===== WHAT I CHECKED ===== -->
-<h2>What I Checked</h2>
+<li>detail: On 2026-04-30 Caesarsage posted a spike result claiming <code>POST /api/v1/deploys/{deploy_id}/retry</code> reruns the same deploy preview for forked PRs and preserves PR preview identity. This endpoint does not appear in the official Netlify OpenAPI spec. Evidence is a single Netlify support thread from Nov 2023 where even the poster could not find it in official docs. If validated, feasibility shifts from Level 4 to Level 2-3.
+</li>
+<li>evidence: <a href="https://answers.netlify.com/t/how-to-retry-preview-build-after-branch-environment-variables-have-been-set/107149">https://answers.netlify.com/t/how-to-retry-preview-build-after-branch-environment-variables-have-been-set/107149</a>
+</li></ul>
+<h3><span class="tag c-amber">cause</span>Netlify PAT has no granular scoping</h3>
 <ul>
-  <li>Netlify OpenAPI spec v2.53.0 — no retry/rebuild-preview endpoint in official spec</li>
-  <li>Netlify community threads: build hooks, deploy previews, PAT scoping, Netlify open-api issue #168 (granular scoping, open since ~2019)</li>
-  <li>Full <code>/retest</code> flow in <code>pkg/plugins/trigger/generic-comment.go</code></li>
-  <li><code>pkg/plugins/config.go:139-149</code> — <code>ExternalPlugin</code> struct</li>
-  <li><code>pkg/plugins/plugins.go:176-213</code> — plugin registration and <code>Agent</code> struct</li>
-  <li>test-infra#35103 full comment thread</li>
-  <li>Codebase-wide grep for "netlify" — only result is a documentation file</li>
-</ul>
-
-<!-- ===== NEXT STEPS ===== -->
-<h2>Recommended Next Steps</h2>
-<ol>
-  <li>Ask Caesarsage to share a curl transcript or minimal test demonstrating that <code>POST /api/v1/deploys/{deploy_id}/retry</code> produces a deploy preview (not a branch deploy) and updates the GitHub PR status check.</li>
-  <li>If endpoint is confirmed: open design discussion on credential handling — how a Netlify PAT would be stored (Kubernetes Secret?) and referenced from trigger plugin config. Precedent needed.</li>
-  <li>If endpoint is confirmed and security model agreed: implement following <code>TriggerGitHubWorkflows</code> pattern — new bool in <code>Trigger</code> struct, config for site ID + PAT secret ref, goroutine calling <code>GET /sites/{site_id}/deploys</code> to find deploy_id then <code>POST /deploys/{id}/retry</code>.</li>
-  <li>If endpoint is unreliable or undocumented risk is unacceptable: post a comment documenting workarounds (empty commit, webhook re-delivery) and note this is blocked pending Netlify API improvements.</li>
-</ol>
-
-<!-- ===== OPEN QUESTIONS ===== -->
-<h2>Open Questions</h2>
+<li>detail: Netlify Personal Access Tokens grant full account access equivalent to the creating user. There is no scope restriction to build-only or single-site. Build hook URLs (URL-as-secret) are safer but cannot trigger deploy previews. This is the security concern BenTheElder raised in the original test-infra issue.
+</li>
+<li>evidence: Netlify open-api issue #168 (open since ~2019), community threads on restricted tokens.
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>TriggerGitHubWorkflows — existing external CI pattern</h3>
 <ul>
-  <li>Does <code>POST /api/v1/deploys/{deploy_id}/retry</code> actually preserve the <code>deploy-preview-N</code> URL and update the GitHub PR status check? Can Caesarsage share a test transcript showing the before/after status?</li>
-  <li>How does Prow look up the <code>deploy_id</code> for a PR's latest deploy preview? Likely <code>GET /sites/{site_id}/deploys?branch=deploy-preview-{pr_number}</code> — needs verification that this query works and returns the right deploy.</li>
-  <li>Is relying on an undocumented Netlify endpoint acceptable for upstream Prow? What's the policy on undocumented external APIs?</li>
-  <li>How should Netlify credentials be stored and referenced? Kubernetes Secret + config field pointing to it? Is there precedent in Prow for other external API credentials?</li>
-</ul>
+<li>where: <code>pkg/plugins/trigger/generic-comment.go:168-196</code>
+</li>
+<li>excerpt:<pre><code>if trigger.TriggerGitHubWorkflows &amp;&amp; (pjutil.RetestRe.MatchString(textToCheck) || pjutil.TestAllRe.MatchString(textToCheck)) {
+    failedRuns, err := c.GitHubClient.GetFailedActionRunsByHeadBranch(org, repo, pr.Head.Ref, headSHA)
+    for _, run := range failedRuns {
+        go func() { c.GitHubClient.TriggerFailedGitHubWorkflow(org, repo, runID) }()
+    }
+}</code></pre>
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>Trigger plugin config struct</h3>
+<ul>
+<li>where: <code>pkg/plugins/config.go:485-510</code>
+</li>
+<li>excerpt:<pre><code>type Trigger struct {
+    Repos []string
+    TrustedApps []string
+    TrustedOrg string
+    IgnoreOkToTest bool
+    TriggerGitHubWorkflows bool
+}</code></pre>
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>/retest regex and filter</h3>
+<ul>
+<li>where: <code>pkg/pjutil/filter.go:33-36</code>
+</li>
+<li>excerpt:<pre><code>var RetestRe = regexp.MustCompile(`(?m)^/retest\s*$`)
+var RetestRequiredRe = regexp.MustCompile(`(?m)^/retest-required\s*$`)</code></pre>
+</li></ul>
+<h3><span class="tag c-blue">related-issue</span>Original feature request</h3>
+<ul>
+<li>ref: kubernetes/test-infra#35103
+</li>
+<li>relevance: Source issue; contains BenTheElder's security analysis and lmktfy's original request. Went stale/rotten multiple times since Jul 2025. Caesarsage duplicated it here because GitHub doesn't allow cross-org issue transfers.
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>Netlify OpenAPI spec v2.53.0 — no retry/rebuild-preview endpoint documented
+</li>
+<li><code>pkg/plugins/trigger/generic-comment.go</code> — full /retest flow; TriggerGitHubWorkflows is the existing pattern
+</li>
+<li><code>pkg/plugins/config.go:139-149</code> — ExternalPlugin struct (alternative integration point)
+</li>
+<li><code>pkg/plugins/plugins.go:176-213</code> — plugin registration and Agent struct
+</li>
+<li><code>pkg/pjutil/filter.go</code>, <code>pkg/pjutil/pjutil.go</code> — retest regex, ProwJob creation
+</li>
+<li>Netlify community threads on build hooks, deploy previews, PAT scoping
+</li>
+<li>Netlify docs: build hooks, deploy types, manage deploys
+</li></ul>
+<h2>Next steps</h2>
+<ul>
+<li>Validate whether <code>POST /api/v1/deploys/{deploy_id}/retry</code> actually preserves deploy preview identity and updates GitHub PR status. Caesarsage should provide a test result or curl transcript.
+</li>
+<li>If endpoint works: assess security model — is a full-access PAT acceptable, or should we wait for Netlify to add scoped tokens?
+</li>
+<li>If endpoint works and security is acceptable: implement following the TriggerGitHubWorkflows pattern in <code>generic-comment.go:168-196</code>, adding a <code>TriggerNetlifyBuildHooks</code> (or <code>TriggerNetlifyDeployPreviews</code>) config option to the Trigger struct.
+</li>
+<li>If endpoint is unreliable/undocumented: document workarounds (empty commit, webhook re-delivery) and leave issue open pending Netlify API improvements.
+</li></ul>
+<h2>Advice</h2>
+<p>Issue #693 remains open, assigned to Caesarsage, with the same <code>kind/feature</code> and <code>area/plugins</code> labels and no new issue comments since the saved triage. PR #708 is still open and directly implements this request. In PR discussion, Caesarsage reported live Netlify/GitHub API testing on 2026-05-07. On 2026-07-27, apullo777 and mimowo raised Kueue-specific concerns; Caesarsage said they would keep <code>/retest</code> quiet, use <code>/netlify-rebuild</code> for explicit rebuilds, handle deploy pagination, and defer Kueue-specific support until the generic behavior is reviewed. The current PR diff includes pagination and both commands. Review the existing PR rather than starting a duplicate implementation; settle the retry endpoint/token questions and the boundary between generic behavior and Kueue follow-up before merging.</p>
+<h3>Advance review on PR #708</h3>
+<ul>
+<li>Rationale: the PR is the implementation in flight, has end-to-end testing reported by its author, and has not merged. <code>pkg/plugins/OWNERS</code> names cjwagner and the ContribEx leads as required reviewers; the latest Prow approval notice requests cblecker as approver. The open discussion leaves endpoint/token acceptability and Kueue-specific scope for maintainers to decide.
+<pre><code>gh pr comment 708 --repo kubernetes-sigs/prow --body &quot;$(cat &lt;&lt;&#x27;EOF&#x27;
+&gt; *This was generated by AI during triage.*
 
-<div class="footer">
-  kubernetes-sigs/prow#693 &mdash; triaged 2026-05-30 &mdash;
-  <a href="https://github.com/petr-muller/prow/blob/issue-triage-693/ISSUE-TRIAGE.md">full triage doc</a>
-</div>
-
-</body>
-</html>
+Could @cjwagner, @MadhavJivrajani, @Priyankasaggu11929, and @cblecker coordinate the next review of #708? The PR now includes deploy pagination and keeps `/retest` quiet while providing `/netlify-rebuild`; Caesarsage also reported end-to-end testing against the real Netlify and GitHub APIs. Please confirm whether the retry endpoint and token model are acceptable, and whether Kueue support, canceled/skipped preview states, and per-repository credentials belong in this PR or should be follow-up work. Keep #693 open until the PR is reviewed, merged, and its behavior verified.
+EOF
+)&quot;</code></pre>
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>Does <code>POST /api/v1/deploys/{deploy_id}/retry</code> actually update GitHub PR status checks and preserve the deploy-preview-N URL? Can Caesarsage share a test transcript?
+</li>
+<li>How would Prow look up the <code>deploy_id</code> for a PR's latest deploy preview? Likely <code>GET /sites/{site_id}/deploys?branch=deploy-preview-{pr_number}</code> — needs verification.
+</li>
+<li>Is relying on an undocumented Netlify endpoint acceptable for a feature in an upstream project? What happens when Netlify changes it without notice?
+</li>
+<li>Should Netlify credentials (PAT or build hook URL) be stored in a Kubernetes Secret and referenced from the trigger plugin config? What's the precedent for other external credentials in Prow?
+</li></ul>
+</main></body></html>

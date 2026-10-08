@@ -1,116 +1,124 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>Review of kubernetes-sigs/prow#870</title>
-<style>
-  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; line-height: 1.6; color: #1a1a1a; max-width: 900px; margin: 2rem auto; padding: 0 1.5rem; }
-  code, pre { font-family: "SF Mono", Consolas, Menlo, monospace; }
-  code { background: #f2f2f2; padding: 0.1em 0.35em; border-radius: 3px; font-size: 0.9em; }
-  pre { background: #f6f8fa; padding: 1em; border-radius: 6px; overflow-x: auto; font-size: 0.88em; }
-  h1 { font-size: 1.4rem; }
-  h2 { font-size: 1.15rem; margin-top: 2.2rem; border-bottom: 1px solid #ddd; padding-bottom: 0.3rem; }
-  h3 { font-size: 1rem; margin-bottom: 0.3rem; }
-  .meta { color: #555; font-size: 0.92em; }
-  .verdict { background: #eef7ee; border: 1px solid #bfe3bf; padding: 0.8em 1.2em; border-radius: 6px; }
-  .badge { display: inline-block; font-size: 0.75em; font-weight: 600; text-transform: uppercase; padding: 0.15em 0.5em; border-radius: 4px; margin-right: 0.4em; }
-  .badge-nit { background: #fff3cd; color: #7a5c00; }
-  .badge-blocking { background: #f8d7da; color: #7a1d24; }
-  .badge-should-fix { background: #ffe5cc; color: #7a3d00; }
-  .badge-question { background: #dbe9ff; color: #1d3f7a; }
-  ul { padding-left: 1.4em; }
-  .finding { margin-bottom: 1.6em; }
-  .where { color: #555; font-size: 0.9em; }
-</style>
-</head>
-<body>
-
-<h1>Review of <a href="https://github.com/kubernetes-sigs/prow/pull/870">kubernetes-sigs/prow#870</a></h1>
-<p class="meta">
-  statusreconciler: never drop config deltas (fix #848)<br>
-  head_sha: <code>ed41879ed05957591fd2e5a7bca5d2056c40c6ff</code> · base: <code>main</code><br>
-  reviewed_at: 2026-08-27T09:31:54Z
-</p>
-
-<h2>Verdict</h2>
-<div class="verdict">
-  <strong>Approve.</strong> Small, well-contained fix with a clearly reasoned invariant
-  (single-producer/single-consumer, deltas always chain) backed by tests for both the
-  coalescing path and the keep-up path. All three call sites were updated consistently and
-  no correctness or regression issues were found.
-</div>
-
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#870</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>statusreconciler: never drop config deltas (fix #848)</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/870">kubernetes-sigs/prow#870</a> · base <code>main</code> · head_sha <code>4ce803f6e239</code> · reviewed_at <code>2026-10-07T17:10:41Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span><span class="badge c-green">gate: merge</span></div>
+<details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#870
+title: &quot;statusreconciler: never drop config deltas (fix #848)&quot;
+head_sha: 4ce803f6e239c73555a74ba054db7587357599f5
+base: main
+reviewed_at: 2026-10-07T17:10:41Z
+verdict: approve
+refresh_log:
+  - old_sha: ed41879ed05957591fd2e5a7bca5d2056c40c6ff
+    new_sha: 4ce803f6e239c73555a74ba054db7587357599f5
+    summary: &quot;Rebased the existing change onto current main, simplified delta delivery, and added concurrent and independent-subscriber coverage; resolved the deliverDelta readability nit.&quot;
+gate:
+  decision: merge
+  gated_at: 2026-10-07T17:13:20Z
+  gated_head_sha: 4ce803f6e239c73555a74ba054db7587357599f5
+  reviewed_head_sha: 4ce803f6e239c73555a74ba054db7587357599f5</code></pre></details>
+<h2>Gate</h2>
+<p><strong>Verdict: merge.</strong></p>
+<p>The maintainer has accepted the <code>pkg/config</code> API change: internal consumers are ported and external migration is trivial. This resolves @Prucek's compatibility concern as a merge gate. The PR head remains <code>4ce803f6e239c73555a74ba054db7587357599f5</code>; no unresolved review finding or independent risk requires a hold.</p>
+<h3>Gating list</h3>
+<ul>
+<li>None. @Prucek's concern about downstream compatibility is dispositioned by the maintainer's acceptance of the API break and confirmation that migration is straightforward.
+</li></ul>
+<h3>Independent merge risk</h3>
+<ul>
+<li><strong>Backward-incompatible Go API:</strong> downstream modules importing <code>sigs.k8s.io/prow/pkg/config</code> and calling <code>Agent.Subscribe</code> need a source update; existing built binaries are unaffected. This is not opt-in and has no compatibility shim or separate migration note. The maintainer accepts this break and says migration is trivial.
+</li>
+<li><strong>Changed event behavior:</strong> the single-slot buffer coalesces unread deltas, so slow subscribers receive the earliest <code>Before</code> and latest <code>After</code> rather than every intermediate config transition. Internal consumers are ported; external consumers relying on each delta as a distinct event need to adapt. The coalescing behavior is described in code comments.
+</li></ul>
 <h2>What this PR does</h2>
 <ul>
-  <li>Fixes #848: <code>config.Agent.Set</code> used to deliver each delta via a per-send goroutine with a
-    1-minute timeout, silently dropping the delta if the subscriber was still busy — the
-    status-reconciler relies on <code>Before</code> chaining to the previous <code>After</code>, so a dropped delta
-    permanently hid config changes.</li>
-  <li>Makes delivery lossless at the source: <code>Subscribe()</code> now creates and owns a single-slot
-    buffered channel, returning it as a receive-only <code>DeltaChan</code> (<code>&lt;-chan Delta</code>), instead of
-    taking a caller-supplied channel.</li>
-  <li><code>Set</code> calls the new <code>deliverDelta</code> helper, which coalesces into the single slot instead of
-    blocking or dropping: if a pending <code>{Before, _}</code> hasn't been drained, it's taken back and
-    replaced with <code>{Before, newAfter}</code>, widening the delta to the transition the subscriber
-    still owes.</li>
-  <li>Removes the per-send goroutine and one-minute timer entirely; fixes the bug for every
-    subscriber, not just status-reconciler.</li>
-  <li>Updates all three call sites (<code>moonraker</code>, <code>pubsub/subscriber</code>, <code>statusreconciler</code>) to the
-    new ownership model — they no longer allocate their own channel and just take back what
-    <code>Subscribe()</code> returns.</li>
-  <li>Adds two new tests in <code>pkg/config/agent_test.go</code> covering coalescing under a busy
-    subscriber and correct chaining when the subscriber keeps up.</li>
-</ul>
-
-<h2>Findings</h2>
-
-<div class="finding">
-  <h3><span class="badge badge-nit">Nit</span> <code>deliverDelta</code>'s double-select could be linearized</h3>
-  <div class="where"><code>pkg/config/agent.go:434-451</code></div>
-  <p>Given the documented single-producer/single-consumer invariant (<code>Set</code> is serialized by
-     <code>ca.mut</code>, and nothing else writes to <code>sub</code>), the loop always resolves in at most two
-     iterations — try-send, then (if full) drain-and-merge, then guaranteed send. It could be
-     written as a straight-line sequence instead of a <code>for { select { ... select ... } }</code>,
-     making the "no livelock" guarantee visible from the control flow rather than only from
-     the comment. Purely a readability suggestion, not a correctness issue.</p>
-  <pre>func deliverDelta(sub chan Delta, delta Delta) {
-	for {
-		select {
-		case sub &lt;- delta:
-			return
-		default:
-			select {
-			case pending := &lt;-sub:
-				delta = Delta{Before: pending.Before, After: delta.After}
-			default:
-			}
-		}
-	}
-}</pre>
-</div>
-
-<h2>Things I checked and was fine with</h2>
+<li>Fixes #848: <code>config.Agent.Set</code> used to deliver each delta via a per-send goroutine with a 1-minute timeout, silently dropping the delta if the subscriber was still busy — the status-reconciler relies on <code>Before</code> chaining to the previous <code>After</code>, so a dropped delta permanently hid config changes.
+</li>
+<li>Makes delivery lossless at the source: <code>Subscribe()</code> now creates and owns a single-slot buffered channel, returning it as a receive-only <code>DeltaChan</code> (<code>&lt;-chan Delta</code>), instead of taking a caller-supplied channel.
+</li>
+<li><code>Set</code> calls the new <code>deliverDelta</code> helper, which coalesces into the single slot instead of blocking or dropping: if a pending <code>{Before, _}</code> hasn't been drained, it's taken back and replaced with <code>{Before, newAfter}</code>, widening the delta to the transition the subscriber still owes.
+</li>
+<li>Removes the per-send goroutine and one-minute timer entirely; fixes the bug for every subscriber, not just status-reconciler.
+</li>
+<li>Updates all three call sites (<code>moonraker</code>, <code>pubsub/subscriber</code>, <code>statusreconciler</code>) to the new ownership model — they no longer allocate their own channel and just take back what <code>Subscribe()</code> returns.
+</li>
+<li>Adds two new tests in <code>pkg/config/agent_test.go</code> covering coalescing under a busy subscriber and correct chaining when the subscriber keeps up.
+</li></ul>
+<p>Since previous review:</p>
 <ul>
-  <li>Channel-ownership change (<code>Subscribe</code> returning <code>DeltaChan</code> instead of taking a
-    caller-supplied channel) — traced all three call sites (<code>moonraker.go</code>,
-    <code>pubsub/subscriber/server.go</code>, <code>statusreconciler/status.go</code>); all updated consistently and
-    compile against the new signature.</li>
-  <li>Delta-chaining correctness: since <code>Before</code> on the merged delta is the original pending
-    <code>Before</code> and deltas always chain (each <code>Before</code> equals the previous <code>After</code>), coalescing
-    preserves the invariant subscribers rely on.</li>
-  <li>Removed the old goroutine/timeout drop path does not regress moonraker or pubsub — both
-    already track their own last-seen config independently and don't depend on the drop
-    behavior.</li>
-  <li>New tests (<code>TestSetCoalescesForBusySubscriber</code>, <code>TestSetDeliversChainedDeltasWhenDrained</code>)
-    exercise both the coalescing path and the keep-up path correctly.</li>
-  <li>No other subscribers or <code>DeltaChan</code>/<code>Subscribe</code> usages left on the old API in the repo.</li>
-</ul>
-
-<h2>Open questions for the author</h2>
+<li>The PR was rebased and force-pushed to <code>0b67715d2d0dc0287dc0395dfea2a197a74235a0</code> on October 1. On October 7, Petr Muller added <code>4ce803f6e239c73555a74ba054db7587357599f5</code> (<code>pkg/config/agent.go</code>, <code>pkg/config/agent_test.go</code>; 106 additions, 15 deletions), replacing the coalescing loop with a drain-and-retry sequence and adding concurrent-receive and independent-subscriber tests. This resolves the <code>deliverDelta</code> readability nit.
+</li>
+<li>On October 1, <code>kubernetes-prow[bot]</code> reported new changes and removed the <code>lgtm</code> and <code>do-not-merge/invalid-commit-message</code> labels. On October 7, Petr Muller commented `/hold cancel<code>; the bot removed </code>do-not-merge/hold`. No inline review comments or submitted reviews were added.
+</li></ul>
+<h2>Resolved</h2>
+<h3><span class="tag c-gray">nit</span><code>deliverDelta</code>'s double-select could be linearized</h3>
 <ul>
-  <li>None — the change is small, well-contained, and the reasoning is spelled out clearly in
-    the <code>deliverDelta</code> doc comment.</li>
-</ul>
-
-</body>
-</html>
+<li>where: <code>pkg/config/agent.go:434-451</code>
+</li>
+<li>concern: given the documented single-producer/single-consumer invariant (<code>Set</code> is serialized by <code>ca.mut</code>, and nothing else writes to <code>sub</code>), the loop always resolves in at most two iterations — try-send, then (if full) drain-and-merge, then guaranteed send. It could be written as a straight-line sequence instead of a <code>for { select { ... select ... } }</code>, making the "no livelock" guarantee visible from the control flow rather than only from the comment. Purely a readability suggestion, not a correctness issue.
+</li>
+<li>excerpt:<pre><code>func deliverDelta(sub chan Delta, delta Delta) {
+    for {
+        select {
+        case sub &lt;- delta:
+            return
+        default:
+            select {
+            case pending := &lt;-sub:
+                delta = Delta{Before: pending.Before, After: delta.After}
+            default:
+            }
+        }
+    }
+}</code></pre>
+</li>
+<li>resolution: commit <code>4ce803f6e239c73555a74ba054db7587357599f5</code> replaces the retry loop with two straight-line selects and a final send, making the bounded delivery path explicit.
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>Channel-ownership change (<code>Subscribe</code> returning <code>DeltaChan</code> instead of taking a caller-supplied channel) — traced all three call sites (<code>moonraker.go</code>, <code>pubsub/subscriber/server.go</code>, <code>statusreconciler/status.go</code>); all updated consistently and compile against the new signature.
+</li>
+<li>Delta-chaining correctness: since <code>Before</code> on the merged delta is the original pending <code>Before</code> and deltas always chain (each <code>Before</code> equals the previous <code>After</code>), coalescing preserves the invariant subscribers rely on.
+</li>
+<li>Removed the old goroutine/timeout drop path does not regress moonraker or pubsub — both already track their own last-seen config independently and don't depend on the drop behavior.
+</li>
+<li>New tests (<code>TestSetCoalescesForBusySubscriber</code>, <code>TestSetDeliversChainedDeltasWhenDrained</code>) exercise both the coalescing path and the keep-up path correctly.
+</li>
+<li>No other subscribers or <code>DeltaChan</code>/<code>Subscribe</code> usages left on the old API in the repo.
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>None — the change is small, well-contained, and the reasoning is spelled out clearly in the <code>deliverDelta</code> doc comment.
+</li></ul>
+</main></body></html>

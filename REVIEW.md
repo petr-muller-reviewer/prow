@@ -1,11 +1,35 @@
 ---
 pr: kubernetes-sigs/prow#870
 title: "statusreconciler: never drop config deltas (fix #848)"
-head_sha: ed41879ed05957591fd2e5a7bca5d2056c40c6ff
+head_sha: 4ce803f6e239c73555a74ba054db7587357599f5
 base: main
-reviewed_at: 2026-08-27T09:31:54Z
+reviewed_at: 2026-10-07T17:10:41Z
 verdict: approve
+refresh_log:
+  - old_sha: ed41879ed05957591fd2e5a7bca5d2056c40c6ff
+    new_sha: 4ce803f6e239c73555a74ba054db7587357599f5
+    summary: "Rebased the existing change onto current main, simplified delta delivery, and added concurrent and independent-subscriber coverage; resolved the deliverDelta readability nit."
+gate:
+  decision: merge
+  gated_at: 2026-10-07T17:13:20Z
+  gated_head_sha: 4ce803f6e239c73555a74ba054db7587357599f5
+  reviewed_head_sha: 4ce803f6e239c73555a74ba054db7587357599f5
 ---
+
+## Gate
+
+**Verdict: merge.**
+
+The maintainer has accepted the `pkg/config` API change: internal consumers are ported and external migration is trivial. This resolves @Prucek's compatibility concern as a merge gate. The PR head remains `4ce803f6e239c73555a74ba054db7587357599f5`; no unresolved review finding or independent risk requires a hold.
+
+### Gating list
+
+- None. @Prucek's concern about downstream compatibility is dispositioned by the maintainer's acceptance of the API break and confirmation that migration is straightforward.
+
+### Independent merge risk
+
+- **Backward-incompatible Go API:** downstream modules importing `sigs.k8s.io/prow/pkg/config` and calling `Agent.Subscribe` need a source update; existing built binaries are unaffected. This is not opt-in and has no compatibility shim or separate migration note. The maintainer accepts this break and says migration is trivial.
+- **Changed event behavior:** the single-slot buffer coalesces unread deltas, so slow subscribers receive the earliest `Before` and latest `After` rather than every intermediate config transition. Internal consumers are ported; external consumers relying on each delta as a distinct event need to adapt. The coalescing behavior is described in code comments.
 
 ## What this PR does
 
@@ -28,7 +52,19 @@ verdict: approve
 - Adds two new tests in `pkg/config/agent_test.go` covering coalescing under a busy
   subscriber and correct chaining when the subscriber keeps up.
 
-## Findings
+Since previous review:
+
+- The PR was rebased and force-pushed to `0b67715d2d0dc0287dc0395dfea2a197a74235a0` on
+  October 1. On October 7, Petr Muller added `4ce803f6e239c73555a74ba054db7587357599f5`
+  (`pkg/config/agent.go`, `pkg/config/agent_test.go`; 106 additions, 15 deletions), replacing
+  the coalescing loop with a drain-and-retry sequence and adding concurrent-receive and
+  independent-subscriber tests. This resolves the `deliverDelta` readability nit.
+- On October 1, `kubernetes-prow[bot]` reported new changes and removed the `lgtm` and
+  `do-not-merge/invalid-commit-message` labels. On October 7, Petr Muller commented `/hold
+  cancel`; the bot removed `do-not-merge/hold`. No inline review comments or submitted reviews
+  were added.
+
+## Resolved
 
 ### [nit] `deliverDelta`'s double-select could be linearized
 - where: `pkg/config/agent.go:434-451`
@@ -40,19 +76,21 @@ verdict: approve
   comment. Purely a readability suggestion, not a correctness issue.
 - excerpt: |
     func deliverDelta(sub chan Delta, delta Delta) {
-    	for {
-    		select {
-    		case sub <- delta:
-    			return
-    		default:
-    			select {
-    			case pending := <-sub:
-    				delta = Delta{Before: pending.Before, After: delta.After}
-    			default:
-    			}
-    		}
-    	}
+        for {
+            select {
+            case sub <- delta:
+                return
+            default:
+                select {
+                case pending := <-sub:
+                    delta = Delta{Before: pending.Before, After: delta.After}
+                default:
+                }
+            }
+        }
     }
+- resolution: commit `4ce803f6e239c73555a74ba054db7587357599f5` replaces the retry loop with
+  two straight-line selects and a final send, making the bounded delivery path explicit.
 
 ## Checked
 

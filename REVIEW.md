@@ -33,3 +33,7 @@ None. All three reviewer perspectives (code quality, maintainability, deployment
 ## Open questions
 
 None.
+
+## Followups
+
+No followups accepted (0 accepted, 1 skipped).

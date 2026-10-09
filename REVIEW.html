@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Review: kubernetes-sigs/prow#773</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            max-width: 1000px;
+            margin: 40px auto;
+            padding: 0 20px;
+            color: #24292e;
+        }
+        h1 { font-size: 28px; margin-bottom: 8px; }
+        h2 { font-size: 20px; margin-top: 32px; margin-bottom: 16px; border-bottom: 1px solid #e1e4e8; padding-bottom: 8px; }
+        h3 { font-size: 16px; margin-top: 24px; margin-bottom: 8px; }
+        code, pre {
+            font-family: "SF Mono", Monaco, Menlo, Consolas, monospace;
+            font-size: 13px;
+            background: #f6f8fa;
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+        pre {
+            padding: 12px;
+            overflow-x: auto;
+            line-height: 1.45;
+        }
+        .meta {
+            background: #f6f8fa;
+            border: 1px solid #e1e4e8;
+            border-radius: 6px;
+            padding: 16px;
+            margin-bottom: 24px;
+            font-size: 14px;
+        }
+        .meta strong { font-weight: 600; }
+        .verdict {
+            background: #d1f4d1;
+            border-left: 4px solid #28a745;
+            padding: 12px 16px;
+            margin-bottom: 24px;
+            border-radius: 4px;
+        }
+        .finding {
+            margin-bottom: 24px;
+            padding: 12px;
+            border: 1px solid #e1e4e8;
+            border-radius: 6px;
+        }
+        .finding-title {
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        .finding-location {
+            color: #586069;
+            font-size: 13px;
+            margin-bottom: 8px;
+        }
+        .nit { border-left: 4px solid #ffd33d; }
+        ul { padding-left: 24px; }
+        li { margin-bottom: 8px; }
+        a { color: #0366d6; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="meta">
+        <strong>PR:</strong> <a href="https://github.com/kubernetes-sigs/prow/pull/773" target="_blank">kubernetes-sigs/prow#773</a><br>
+        <strong>Title:</strong> ghproxy: support git ref paths with slash-separated branch names<br>
+        <strong>Author:</strong> valen-mascarenhas14<br>
+        <strong>Base:</strong> main<br>
+        <strong>Head SHA:</strong> <code>69b3da670e52cf3e5b6fe515eff76dc7ac27dcee</code><br>
+        <strong>Reviewed:</strong> 2026-06-30T17:47:47Z
+    </div>
+
+    <div class="verdict">
+        <strong>Verdict: Approve</strong><br>
+        This is a minimal, correct fix that follows the established VGreedy pattern already used for label paths. All three reviewer perspectives (code quality, maintainability, deployment risk) approved without identifying any blocking issues or concerns. The change correctly handles slash-containing branch names by consuming all path segments after <code>refs/heads/</code> into the <code>:ref</code> placeholder for Prometheus metrics, with comprehensive test coverage and zero deployment risk.
+    </div>
+
+    <h2>What this PR does</h2>
+    <ul>
+        <li>Fixes ghproxy's path simplifier to recognize git ref paths where branch names contain forward slashes (e.g. <code>feature/v1beta1-migrate</code>, <code>release/v2.0</code>).</li>
+        <li>Changes <code>refs/heads/:ref</code> tree node from non-greedy <code>v("ref")</code> to <code>VGreedy("ref")</code> so all remaining path segments after <code>heads/</code> are consumed and represented as <code>:ref</code>.</li>
+        <li>Follows the same pattern already used for label paths at line 40: <code>l("labels", simplifypath.VGreedy("labelId"))</code>.</li>
+        <li>Adds integration tests for both <code>/repos/:owner/:repo/...</code> and <code>/repositories/:repoId/...</code> path prefixes.</li>
+    </ul>
+
+    <h2>Findings</h2>
+
+    <p>None. All three reviewer perspectives (code quality, maintainability, deployment risk) approved without identifying any blocking issues, improvements needed, or concerns.</p>
+
+    <h2>Things I checked and was fine with</h2>
+    <ul>
+        <li><strong>Code correctness</strong>: Minimal surgical fix changing only one function call, correctly using <code>VGreedy</code> which matches all remaining path segments.</li>
+        <li><strong>Pattern consistency</strong>: Follows existing precedent for labels (line 40) which also contain slashes; <code>VGreedy</code> is unit-tested in <code>simplify_test.go:135-138</code>.</li>
+        <li><strong>Test coverage</strong>: Two new test cases covering both <code>/repos/</code> and <code>/repositories/</code> URL forms with realistic slash-containing branch names.</li>
+        <li><strong>Root cause addressed</strong>: Previous <code>v("ref")</code> matched only single segment, causing multi-slash branches to trigger "Path not handled" debug logs.</li>
+        <li><strong>Maintenance burden</strong>: LOW — one-character code change, no new abstractions, no cascading changes.</li>
+        <li><strong>Debuggability improvement</strong>: Eliminates spurious debug log noise during incident investigation.</li>
+        <li><strong>Deployment risk</strong>: LOW — purely internal metrics labeling fix, no config/API/ProwJob behavior changes.</li>
+        <li><strong>Backward compatibility</strong>: Zero-downtime upgrade, no configuration migration needed, can be rolled back safely.</li>
+        <li><strong>Metrics impact</strong>: Paths with slash-containing branches shift from <code>unmatched</code> metric series to correctly-labeled series — expected and desirable.</li>
+    </ul>
+
+    <h2>Open questions for the author</h2>
+    <p>None.</p>
+</body>
+</html>

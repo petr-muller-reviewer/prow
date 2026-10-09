@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#994</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>branchprotector: proposing changes to current setup vs. switching to branch rulesets</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/issues/994">kubernetes-sigs/prow#994</a> · main_sha <code>0edcac618455</code> · state <code>open</code> · labels <code>kind/support, area/branchprotector</code> · triaged_at <code>2026-10-09T10:40:27Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: accepted</span></div>
+<details><summary>Full metadata</summary><pre><code>issue: kubernetes-sigs/prow#994
+title: &quot;branchprotector: proposing changes to current setup vs. switching to branch rulesets&quot;
+state: open
+labels: kind/support, area/branchprotector
+main_sha: 0edcac618455b9e7716a08be480d6984ef996eb1
+triaged_at: 2026-10-09T10:40:27Z
+verdict: accepted
+advice:
+  advised_at: 2026-10-09T12:27:45Z
+  based_on_triaged_at: 2026-10-09T10:40:27Z</code></pre></details>
+<h2>Verdict</h2>
+<p><strong>accepted</strong> — This is a valid support and direction question for Prow's branchprotector. A maintainer has clarified that small config-to-API additions are acceptable while Prow eventually adopts rulesets. The broader rulesets design remains a separate effort tracked in #846.</p>
+<h2>Resolution</h2>
+<p>No implementation has merged yet. Issue #994 remains open, and PR #995 was open at head <code>5ddea54f47dbf78bbfcf31cf8c7bb6f108e34423</code> when checked on 2026-10-09.</p>
+<h2>What the issue reports</h2>
+<ul>
+<li>The reporter wants branchprotector to support GitHub's <code>require_last_push_approval</code> review protection setting.
+</li>
+<li>They ask whether Prow should continue extending classic branch protection support or move toward GitHub rulesets.
+</li>
+<li>The reporter opened PR #995 for the setting.
+</li></ul>
+<h2>Re-triage recommended</h2>
+<p>Revisit after PR #995 merges or closes, or if maintainers decide to start a rulesets design. The issue's latest activity is the maintainer response on 2026-10-07.</p>
+<h2>Findings</h2>
+<h3><span class="tag c-amber">cause</span>Current config and API models omit last-push approval</h3>
+<ul>
+<li>detail: The checked-out branchprotector policy and GitHub request/response types do not represent <code>require_last_push_approval</code>, so Prow cannot configure or reconcile it.
+</li>
+<li>evidence: <code>pkg/config/branch_protection.go:88-98</code>, <code>cmd/branchprotector/request.go:133-153</code>, <code>pkg/github/types.go:638-699</code>, <code>cmd/branchprotector/protect.go:650-663</code>.
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>Review policy is converted and reconciled through classic branch protection</h3>
+<ul>
+<li>where: <code>pkg/config/branch_protection.go:88-98</code>; <code>cmd/branchprotector/request.go:133-153</code>; <code>cmd/branchprotector/protect.go:650-663</code>.
+</li>
+<li>excerpt:<pre><code>type ReviewPolicy struct {
+    DismissStale *bool `json:&quot;dismiss_stale_reviews,omitempty&quot;`
+    RequireOwners *bool `json:&quot;require_code_owner_reviews,omitempty&quot;`
+    Approvals *int `json:&quot;required_approving_review_count,omitempty&quot;`
+    BypassRestrictions *BypassRestrictions `json:&quot;bypass_pull_request_allowances,omitempty&quot;`
+}</code></pre>
+</li></ul>
+<h3><span class="tag c-blue">related-pr</span>PR #995 adds the requested field and Apps bypass handling</h3>
+<ul>
+<li>ref: kubernetes-sigs/prow#995
+</li>
+<li>relevance: The open PR adds <code>require_last_push_approval</code> through config, request generation, state comparison, tests, and docs. Its current diff also adds Apps support for bypass pull request allowances. The current head is <code>5ddea54f47dbf78bbfcf31cf8c7bb6f108e34423</code> (8 files; 109 additions and 18 deletions).
+</li></ul>
+<h3><span class="tag c-blue">related-issue</span>Rulesets support has a separate design discussion</h3>
+<ul>
+<li>ref: kubernetes-sigs/prow#846
+</li>
+<li>relevance: This issue tracks broader rulesets support spanning branchprotector and Tide, and its maintainer discussion calls for a design discussion before implementation.
+</li></ul>
+<h3><span class="tag c-blue">related-issue</span>Maintainer answered the immediate direction question</h3>
+<ul>
+<li>ref: kubernetes-sigs/prow#994
+</li>
+<li>relevance: On 2026-10-07, maintainer Petr Muller said he is reluctant to add more branch-protection logic because rulesets are the eventual direction, but is comfortable with simple config-to-API wiring like this proposal and would review the PR. <a href="https://github.com/kubernetes-sigs/prow/issues/994#issuecomment-6037268076">Comment</a>.
+</li></ul>
+<h2>Resolved</h2>
+<ul>
+<li>The immediate question of whether a small branch-protection setting is acceptable has been answered: a maintainer supports evaluating this simple additive change while treating rulesets as the future direction.
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>Issue #994 is open with labels <code>kind/support</code> and <code>area/branchprotector</code>; its latest comment is Petr Muller's response from 2026-10-07T11:48:44Z.
+</li>
+<li>PR #995 is open at head <code>5ddea54f47dbf78bbfcf31cf8c7bb6f108e34423</code>; inspected its current diff and file summary.
+</li>
+<li>Read issue #846 and its maintainer discussion on rulesets scope and design.
+</li>
+<li>Inspected the branchprotector policy, request generation, reconciliation comparison, GitHub types, and component docs.
+</li>
+<li>Checked GitHub's <a href="https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets">ruleset management</a> and <a href="https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/converting-branch-protections-to-rulesets">branch-protection conversion</a> docs.
+</li></ul>
+<h2>Next steps</h2>
+<ul>
+<li>Review PR #995 on its merits, including both the requested field and its current Apps bypass changes.
+</li>
+<li>Keep the broader rulesets design discussion in #846; link #994 there if maintainers want a single design thread.
+</li>
+<li>After PR #995 is resolved, decide whether to close #994 as answered or retain it to track the larger rulesets question.
+</li></ul>
+<h2>Advice</h2>
+<ol>
+<li><strong>Review PR #995.</strong> It remains open and mergeable, with no review decision recorded. Its current scope includes both the requested setting and Apps support for bypass allowances.
+<pre><code>gh pr view 995 --repo kubernetes-sigs/prow --web</code></pre>
+</li>
+<li><strong>Leave the issue labels and milestone unchanged for now.</strong> <code>kind/support</code> and <code>area/branchprotector</code> are already applied; no milestone is set, and the linked PR is in flight.
+</li>
+<li><strong>After PR #995 merges, close #994 if #846 will remain the home for the broader rulesets discussion.</strong> Do not close it while the PR is still under review.
+<pre><code>gh issue close 994 --repo kubernetes-sigs/prow --comment &quot;&gt; *This was generated by AI during triage.*
+
+PR #995 addresses the immediate setting request. The broader GitHub rulesets design is tracked in #846.&quot;</code></pre>
+</li></ol>
+<h2>Open questions</h2>
+<ul>
+<li>Should #994 remain open after PR #995 is resolved, or should the remaining rulesets question be consolidated into #846?
+</li>
+<li>Is there maintainer interest in starting the broader rulesets design now, and who would own it?
+</li></ul>
+</main></body></html>

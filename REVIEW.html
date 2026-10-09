@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#1000</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>github: skip backoff after the final REST API attempt</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1000">kubernetes-sigs/prow#1000</a> · base <code>main</code> · head_sha <code>8f4ec6a50c59</code> · reviewed_at <code>2026-10-08T12:57:04Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span></div>
+<h2>Verdict</h2>
+<p>Approve. The change checks whether another retry-loop iteration remains before applying the 5xx backoff. It preserves backoff between retryable 5xx responses and returns the final response without sleeping after the last attempt. The added cases cover a single attempt, exhausted retries, and success after retries; no findings were identified.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Skips exponential backoff after the final configured REST API attempt receives a 5xx response.
+</li>
+<li>Keeps the existing backoff between 5xx responses when another attempt remains.
+</li>
+<li>Records sleep durations in the test clock so tests can assert the retry timing.
+</li>
+<li>Covers single-attempt failure, exhausted retries, and success on a later attempt.
+</li></ul>
+<h2>Findings</h2>
+<p>None.</p>
+<h2>Checked</h2>
+<ul>
+<li><code>pkg/github/client.go:1245-1249</code>: the guard permits sleeping only when <code>retries + 1</code> is less than <code>maxRetries</code>.
+</li>
+<li>The final 5xx response remains available to the caller after retries are exhausted.
+</li>
+<li>The test cases assert attempt counts, final response status and body, and sleep durations.
+</li>
+<li><code>CONTRIBUTING.md</code> contains no local code-specific rule relevant to this patch.
+</li>
+<li><code>git diff --check upstream/main...HEAD</code> passed.
+</li></ul>
+<h2>Open questions</h2>
+<p>None.</p>
+</main></body></html>

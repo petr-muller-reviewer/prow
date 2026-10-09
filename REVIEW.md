@@ -1,27 +1,39 @@
 ---
 pr: kubernetes-sigs/prow#730
 title: "Add gemini-agent Prow plugin"
-head_sha: 27bec9f35515e125802bdbd1fa5e6c5bc0f9e551
+head_sha: cdc66d39b6b0d21f5b714d4ca1caee6f9583f555
 base: main
-reviewed_at: 2026-06-29T14:50:33Z
+reviewed_at: 2026-10-09T13:58:22Z
 verdict: approve-with-suggestions
 refresh_log:
   - from_sha: 27bec9f35515e125802bdbd1fa5e6c5bc0f9e551
     to_sha: 27bec9f35515e125802bdbd1fa5e6c5bc0f9e551
     at: 2026-06-29T14:50:33Z
     summary: "No code changes. kannon92 asked about token costs (2026-06-28); ameukam replied that Community Infrastructure will be used to fund tokens (2026-06-29)."
+  - from_sha: 27bec9f35515e125802bdbd1fa5e6c5bc0f9e551
+    to_sha: cdc66d39b6b0d21f5b714d4ca1caee6f9583f555
+    at: 2026-10-09T13:58:22Z
+    summary: "Rebased onto current main with a small rate-limit error-handling change; retained open findings and recorded the missing cumulative usage cap raised in PR discussion."
 ---
+
+## What this PR does
+
+- Adds an external Prow plugin that responds to `/gemini-agent` comments on issues and pull requests by sending collected GitHub context to Gemini on Vertex AI.
+- Adds per-repository plugin configuration, deployment/server wiring, tests, and the `google.golang.org/genai` dependency.
+
+Since previous review:
+
+- The PR was rebased from `27bec9f35515e125802bdbd1fa5e6c5bc0f9e551` to `cdc66d39b6b0d21f5b714d4ca1caee6f9583f555`. The only plugin source change is the `errors.AsType` rewrite in rate-limit detection; the value-versus-pointer matching concern remains.
+- On 2026-10-07, ameukam pinged reviewers and cblecker raised concerns about prompt injection, abuse, and Vertex AI budget caps. No inline review comments or submitted reviews were added; the Prow bot reiterated the approval status.
 
 ## Findings
 
-### [should-fix] errors.As with value type may silently fail against real SDK
-- where: `cmd/external-plugins/geminiagent/plugin/gemini-agent.go:125-129`
-- concern: `var apiErr genai.APIError` (value type) as `errors.As` target. Works if SDK returns values with value `Error()` receiver. If SDK returns `*genai.APIError`, match silently fails and rate-limit retries stop working. Tests pass because fakes construct value types directly. Use `var apiErr *genai.APIError` instead.
+### [should-fix] errors.AsType with value type may silently fail against pointer SDK errors
+- where: `cmd/external-plugins/geminiagent/plugin/gemini-agent.go:125-126`
+- concern: `errors.AsType[genai.APIError]` only matches errors assignable to the value type. If the SDK returns `*genai.APIError`, the match silently fails and rate-limit retries stop working. Tests construct value errors directly, so they don't exercise the pointer case. Match the pointer type if that is what the SDK returns.
 - excerpt: |
-    var apiErr genai.APIError
-    if errors.As(err, &apiErr) {
-        return apiErr.Code == http.StatusTooManyRequests
-    }
+    apiErr, ok := errors.AsType[genai.APIError](err)
+    return ok && apiErr.Code == http.StatusTooManyRequests
 
 ### [should-fix] Empty response conflated with safety filter block
 - where: `cmd/external-plugins/geminiagent/plugin/gemini-agent.go:254-265`
@@ -91,6 +103,17 @@ refresh_log:
 ### [should-fix] Prompt injection risk from user-controlled content
 - where: `cmd/external-plugins/geminiagent/plugin/gemini-agent.go:522-523`
 - concern: Raw issue bodies, PR bodies, and comments passed directly into Gemini prompt. `isAllowed` gates who triggers the plugin, but content comes from anyone who can write on the issue. Should at minimum be documented.
+
+### [should-fix] No cumulative usage cap for Gemini requests
+- where: `cmd/external-plugins/geminiagent/plugin/gemini-agent.go:59-64,86-89`
+- concern: The process-wide limiter caps request rate at 10 per minute, but it does not cap total requests or spend over a day or billing period. Repeated authorized invocations can therefore continue consuming the shared Vertex AI budget; the PR discussion on 2026-10-07 explicitly raised this abuse and budget concern. Add an operator-configurable quota or document the external budget controls that bound usage.
+- excerpt: |
+    defaultRPM     = 10
+    maxRetries     = 3
+    initialBackoff = 2 * time.Second
+    maxBackoff     = 60 * time.Second
+    ...
+    var geminiLimiter = rate.NewLimiter(rate.Limit(float64(defaultRPM)/60.0), defaultRPM)
 
 ### [nit] rand.Int64N panic risk if backoff is zero
 - where: `cmd/external-plugins/geminiagent/plugin/gemini-agent.go:319`

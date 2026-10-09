@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Review: kubernetes-sigs/prow#776</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; line-height: 1.6; max-width: 860px; margin: 40px auto; padding: 0 20px; color: #1a1a1a; }
+  h1 { font-size: 1.4rem; margin-bottom: 0.2em; }
+  h2 { font-size: 1.1rem; border-bottom: 1px solid #ddd; padding-bottom: 4px; margin-top: 2em; }
+  h3 { font-size: 1rem; margin-bottom: 0.3em; }
+  code, pre { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; background: #f5f5f5; border-radius: 3px; }
+  code { padding: 1px 4px; font-size: 0.9em; }
+  pre { padding: 12px; overflow-x: auto; font-size: 0.85em; border: 1px solid #e0e0e0; }
+  .meta { font-size: 0.85rem; color: #555; margin-top: 0.3em; }
+  .meta a { color: #0366d6; }
+  .verdict-box { border-left: 4px solid #28a745; background: #f6fff8; padding: 10px 16px; margin: 1.2em 0; border-radius: 0 4px 4px 0; }
+  .finding { border: 1px solid #e0e0e0; border-radius: 4px; padding: 12px 16px; margin: 1em 0; }
+  .finding.nit { border-left: 4px solid #6f42c1; }
+  .finding .loc { font-size: 0.85rem; color: #555; margin: 4px 0; }
+  .tag { display: inline-block; font-size: 0.75rem; font-weight: 600; padding: 1px 6px; border-radius: 10px; vertical-align: middle; margin-right: 6px; }
+  .tag.nit { background: #ede9f6; color: #5a32a3; }
+  .converge { font-size: 0.8rem; font-weight: 600; color: #856404; background: #fff3cd; border-radius: 4px; padding: 1px 6px; margin-left: 4px; }
+  ul { padding-left: 1.4em; }
+  li { margin: 0.3em 0; }
+  .hl { background: #fff8c5; }
+</style>
+</head>
+<body>
+
+<h1>Review: kubernetes-sigs/prow#776</h1>
+<p class="meta">
+  <strong>Fix double linking bug when key is a substring of another link</strong><br>
+  <a href="https://github.com/kubernetes-sigs/prow/pull/776">github.com/kubernetes-sigs/prow/pull/776</a> &middot;
+  base: <code>main</code> &middot;
+  head: <code>b566b97b9568557e32ab5c0eaea74423d5528981</code><br>
+  Reviewed: 2026-07-01T11:57:54Z
+</p>
+
+<h2>Verdict</h2>
+<div class="verdict-box">
+  <strong>Approve with suggestions</strong>
+  <p style="margin:0.5em 0 0">All three review perspectives (code quality, maintainability, deployment risk) independently reach APPROVE with LOW risk and no breaking changes. The fix is correct, surgical, and well-documented. The one gap — no test for the suffix boundary case — was independently flagged by two reviewers and is worth a follow-up, but does not block merge.</p>
+</div>
+
+<h2>What this PR does</h2>
+<ul>
+  <li>Fixes a link-corruption bug where a shorter Jira key (e.g. <code>BC-1</code>) that is a substring of a longer one (<code>ABC-123</code>) was being matched and linked inside the already-generated <code>[ABC-123](...)</code> markdown, producing <code>[A[BC-1](url1)23](url2)</code>.</li>
+  <li>Adds a <strong>prefix alphanumeric guard</strong> to <code>replaceStringIfNeeded</code>: skips replacement when the character immediately before the match is a letter or digit.</li>
+  <li>Adds a <strong>suffix alphanumeric guard</strong>: skips replacement when the character immediately after the match is a letter or digit (e.g. prevents <code>AC-1</code> from matching inside <code>AC-1234</code>).</li>
+  <li>Extracts an <code>isAlphanumeric(byte) bool</code> helper used by both guards.</li>
+  <li>Extends the test table with an optional <code>issueNames</code> field (nil-safe fallback) and adds a multi-issue scenario reproducing the reported bug.</li>
+</ul>
+
+<h2>Findings</h2>
+
+<div class="finding nit">
+  <h3><span class="tag nit">nit</span> Suffix boundary case is untested <span class="converge">2 reviewers</span></h3>
+  <div class="loc">📄 <code>pkg/plugins/jira/jira_test.go:472</code></div>
+  <p>The updated code comment explicitly names two cases — prefix boundary (<code>BC-1</code> inside <code>ABC-123</code>) and suffix boundary (<code>AC-1</code> inside <code>AC-1234</code>) — but the new test only exercises the prefix. Every skipped replacement in the test is decided by <code>prefixOk=false</code> (the preceding <code>'A'</code> short-circuits <code>&amp;&amp;</code>); <code>suffixOk</code> is never the decisive gate. A bug in the suffix path would leave all tests green.</p>
+  <pre>// The blocked match in line 1:
+//   "BC-1" inside "[ABC-123](url)" — text[idx-1]='A' → prefixOk=false → short-circuit
+//   suffixOk (text[endIdx]='2') never evaluated as decisive
+
+// Missing: a case where prefixOk=true but suffixOk=false, e.g.:
+issueNames: []string{"AC-1", "AC-1234"},
+body:        "AC-1234 references AC-1",
+expected:    "AC-1234 references [AC-1](url)",  // AC-1 NOT linked inside AC-1234</pre>
+</div>
+
+<div class="finding nit">
+  <h3><span class="tag nit">nit</span> Prefix condition mixes two idioms</h3>
+  <div class="loc">📄 <code>pkg/plugins/jira/jira.go:264</code></div>
+  <p>The combined prefix check places the pre-existing <code>strings.Contains("[/\`-", string(text[idx-1]))</code> (byte-to-string set membership) next to the new <code>isAlphanumeric(text[idx-1])</code> (clean predicate). A <code>isSafePrefixChar(c byte) bool</code> helper that wraps both would unify them, name the concept, and make the condition a one-liner — useful if the guard character set ever expands again.</p>
+  <pre>// Current (line 264):
+prefixOk := idx == 0 || (!strings.Contains("[/`-", string(text[idx-1])) <span class="hl">&amp;&amp; !isAlphanumeric(text[idx-1])</span>)
+
+// Suggested follow-up:
+prefixOk := idx == 0 || isSafePrefixChar(text[idx-1])</pre>
+</div>
+
+<h2>Things I checked and was fine with</h2>
+<ul>
+  <li><code>startingIdx = endIdx</code> is semantically identical to the removed <code>startingIdx = idx + len(old)</code> — pure DRY refactor, no behavior change.</li>
+  <li><code>isAlphanumeric</code> on <code>byte</code> is correct: UTF-8 continuation bytes (0x80–0xBF) are outside the ASCII alphanumeric range, so multibyte characters adjacent to a match cannot false-positive.</li>
+  <li><code>strings.Contains("[/\`-", ...)</code> is NOT made redundant by <code>!isAlphanumeric</code>: <code>[</code>, <code>/</code>, <code>\`</code>, <code>-</code> are non-alphanumeric and would pass the alphanumeric check, allowing replacement without the explicit guard. Both conditions are necessary and correct.</li>
+  <li>End-of-string safety: <code>endIdx &gt;= len(text)</code> short-circuits before <code>text[endIdx]</code> is read — no out-of-bounds.</li>
+  <li>Issue-ordering independence: when <code>BC-1</code> is processed before <code>ABC-123</code>, the preceding <code>'A'</code> in the raw text still triggers <code>prefixOk=false</code>. Non-determinism from <code>referencedIssues.UnsortedList()</code> is safe.</li>
+  <li>Test helper refactor (optional <code>issueNames []string</code> field, nil fallback to the <code>issueName</code> constant) does not change semantics of any existing test case.</li>
+  <li>No config schema, API surface, CLI flags, or external dependencies changed — zero operator action needed on upgrade; rollback is safe.</li>
+</ul>
+
+<h2>Open questions for the author</h2>
+<ul>
+  <li>Would you add a follow-up test for the suffix boundary? The case <code>issueNames: []string{"AC-1", "AC-1234"}</code>, body <code>"AC-1234 references AC-1"</code>, expected <code>"AC-1234 references [AC-1](url)"</code> would close the gap and make the intent self-documenting — both halves of the fix would then have independent coverage.</li>
+  <li>Non-blocking: consider extracting <code>isSafePrefixChar(c byte) bool</code> to wrap the <code>strings.Contains</code> and <code>isAlphanumeric</code> checks together? Would make line 264 a one-liner and give the concept a name for future extension.</li>
+</ul>
+
+</body>
+</html>

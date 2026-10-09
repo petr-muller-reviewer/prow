@@ -1,130 +1,183 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>Review: kubernetes-sigs/prow#812</title>
-<style>
-  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; line-height: 1.6; max-width: 860px; margin: 2rem auto; padding: 0 1.5rem; color: #1a1a1a; }
-  code, pre { font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 0.9em; }
-  pre { background: #f5f5f5; padding: 0.75rem 1rem; border-radius: 6px; overflow-x: auto; }
-  header { border-bottom: 2px solid #333; padding-bottom: 1rem; margin-bottom: 1.5rem; }
-  header dl { display: grid; grid-template-columns: max-content 1fr; gap: 0.25rem 1rem; margin: 0.5rem 0 0; }
-  header dt { font-weight: 600; color: #555; }
-  .verdict { background: #eaf7ea; border-left: 4px solid #2e8b2e; padding: 0.75rem 1rem; border-radius: 4px; margin-bottom: 1.5rem; }
-  h2 { border-bottom: 1px solid #ddd; padding-bottom: 0.3rem; margin-top: 2rem; }
-  ul { padding-left: 1.4rem; }
-  .empty { color: #777; font-style: italic; }
-  .badge { display: inline-block; font-size: 0.75em; font-weight: 600; padding: 0.15rem 0.5rem; border-radius: 999px; margin-left: 0.5rem; vertical-align: middle; }
-  .badge-category { background: #eef0ff; color: #3a3fa0; }
-  .badge-should { background: #fff4e0; color: #9a6a00; }
-  .followup { border: 1px solid #ddd; border-radius: 6px; padding: 1rem 1.25rem; margin-bottom: 1.5rem; }
-  .followup h3 { margin-top: 0; }
-</style>
-</head>
-<body>
-
-<header>
-  <h1>Review: kubernetes-sigs/prow#812</h1>
-  <dl>
-    <dt>Title</dt><dd>chore(deps): bump the aws group across 1 directory with 4 updates</dd>
-    <dt>Head SHA</dt><dd><code>47f845d7262b749e8facd8abeb4e176efdbfcd3a</code></dd>
-    <dt>Base</dt><dd>main</dd>
-    <dt>Reviewed at</dt><dd>2026-08-08T13:23:58Z</dd>
-    <dt>Link</dt><dd><a href="https://github.com/kubernetes-sigs/prow/pull/812">github.com/kubernetes-sigs/prow/pull/812</a></dd>
-  </dl>
-</header>
-
-<div class="verdict">
-  <strong>Verdict: Approve.</strong> Dep-only Dependabot bump of the AWS SDK v2 group. All four direct bumps come from the same upstream release commit (~18 days old at review time, real tags, no CVEs/security advisories in range). The only in-tree usage &mdash; the S3 blob-storage provider &mdash; exercises API surface unchanged across this range.
-</div>
-
-<h2>What this PR does</h2>
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#812</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>chore(deps): bump the aws group across 1 directory with 4 updates</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/812">kubernetes-sigs/prow#812</a> · base <code>main</code> · head_sha <code>47f845d7262b</code> · reviewed_at <code>2026-10-09T13:27:38Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span></div>
+<details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#812
+title: &quot;chore(deps): bump the aws group across 1 directory with 4 updates&quot;
+head_sha: 47f845d7262b749e8facd8abeb4e176efdbfcd3a
+base: main
+reviewed_at: 2026-10-09T13:27:38Z
+verdict: approve
+refresh_log:
+  - old_sha: 47f845d7262b749e8facd8abeb4e176efdbfcd3a
+    new_sha: 47f845d7262b749e8facd8abeb4e176efdbfcd3a
+    summary: &quot;No code changes; recorded approval, bot notification, and merge.&quot;</code></pre></details>
+<h2>Summary</h2>
+<p>Dependabot group bump of <code>github.com/aws/aws-sdk-go-v2</code> family, dep-only (no project code changed):</p>
 <ul>
-  <li>Bumps <code>github.com/aws/aws-sdk-go-v2</code> 1.36.3 &rarr; 1.43.0 (direct)</li>
-  <li>Bumps <code>github.com/aws/aws-sdk-go-v2/config</code> 1.29.14 &rarr; 1.32.31 (direct)</li>
-  <li>Bumps <code>github.com/aws/aws-sdk-go-v2/credentials</code> 1.17.67 &rarr; 1.19.30 (direct)</li>
-  <li>Bumps <code>github.com/aws/aws-sdk-go-v2/service/s3</code> 1.66.3 &rarr; 1.106.0 (direct)</li>
-  <li>Drags along a long tail of indirect AWS SDK submodules (<code>internal/*</code>, <code>service/internal/*</code>, <code>service/sso</code>, <code>service/ssooidc</code>, <code>service/sts</code>, <code>smithy-go</code>, new <code>service/signin</code>) and a matching indirect-only bump in <code>hack/tools/go.mod</code></li>
-  <li>Only <code>go.mod</code>/<code>go.sum</code> files touched &mdash; no project code, no vendoring (module mode)</li>
-</ul>
-
+<li><code>github.com/aws/aws-sdk-go-v2</code> 1.36.3 -&gt; 1.43.0 (direct)
+</li>
+<li><code>github.com/aws/aws-sdk-go-v2/config</code> 1.29.14 -&gt; 1.32.31 (direct)
+</li>
+<li><code>github.com/aws/aws-sdk-go-v2/credentials</code> 1.17.67 -&gt; 1.19.30 (direct)
+</li>
+<li><code>github.com/aws/aws-sdk-go-v2/service/s3</code> 1.66.3 -&gt; 1.106.0 (direct)
+</li></ul>
+<p>Plus indirect submodule churn moving in lockstep (<code>aws/protocol/eventstream</code>, <code>feature/ec2/imds</code>, <code>internal/*</code>, <code>service/internal/*</code>, <code>service/sso</code>, <code>service/ssooidc</code>, <code>service/sts</code>, <code>smithy-go</code>, new <code>service/signin</code>), and a matching indirect-only bump in <code>hack/tools/go.mod</code>/<code>go.sum</code> (pulled in via the ECR credential helper tool dep). Only <code>go.mod</code>/<code>go.sum</code> files changed in both modules — no vendoring (module mode), no project source.</p>
+<p><strong>Since previous review:</strong></p>
+<ul>
+<li>No commits or diff changes: the PR head remains <code>47f845d7262b749e8facd8abeb4e176efdbfcd3a</code>.
+</li>
+<li><code>petr-muller</code> submitted an approval at 2026-08-08T16:27:52Z; <code>kubernetes-prow[bot]</code> posted the approval notification at 2026-08-08T16:28:01Z.
+</li>
+<li>The PR was merged at 2026-08-08T16:49:58Z (merge commit <code>d06078952878afaf40df8696be3199ecc85e4837</code>).
+</li></ul>
+<h2>Dependency analysis</h2>
+<ul>
+<li><strong>Freshness</strong>: new release cut 2026-07-21 (all four direct bumps land on the same upstream commit <code>4fef345</code>), ~18 days before review. Past the "too fresh" window, fine to take.
+</li>
+<li><strong>Usage</strong>: direct, single importer but broad blast radius. <code>pkg/io/providers/aws.go</code> (+ its test) is the only file importing <code>aws-sdk-go-v2/{config,credentials,service/s3,aws/transport/http}</code> — it builds the S3-compatible blob-storage client (credential loading via static creds or default chain, TLS config incl. an <code>InsecureSkipVerify</code> toggle, bucket construction). That code is reached transitively from <code>pkg/io/opener.go</code>, <code>pkg/crier/reporters/gcs/*</code>, <code>pkg/pod-utils/gcs/upload.go</code>, <code>pkg/spyglass/*</code>, <code>cmd/deck/*</code>, <code>pkg/plank/reconciler.go</code>, <code>pkg/tide/codereview.go</code> — i.e. most of Prow's artifact storage and UI paths, though only via one narrow entry point.
+</li>
+<li><strong>Changelog &amp; exposure</strong>: read <code>config</code>, <code>credentials</code>, <code>service/s3</code> submodule CHANGELOGs across the version ranges. No CVEs/security advisories in range. Notable entries, none of which change our default behavior:
+<ul>
+<li><code>credentials</code> v1.19.18: login-cache files now created with mode <code>0600</code> on Unix — not exercised (we use static creds / default chain, not login-cache).
+</li>
+<li><code>config</code> v1.32.19: opt-in <code>AWS_RESTRICT_FILE_PERMISSIONS</code> support — no-op unless set.
+</li>
+<li><code>service/s3</code> v1.106.0 (the landed version): adds an option to disable clock-skew correction — opt-in, default unchanged.
+</li>
+<li>Rest is S3 feature additions (new APIs, checksum/region support) and smithy-go perf/deserialization fixes not touching code paths <code>aws.go</code> exercises.
+</li></ul>
+</li>
+<li><strong>Take</strong>: safe to bump now.
+</li></ul>
 <h2>Findings</h2>
-
-<h3>Blocking</h3>
-<p class="empty">None.</p>
-
-<h3>Should fix</h3>
-<p class="empty">None.</p>
-
-<h3>Nits</h3>
-<p class="empty">None.</p>
-
-<h3>Questions</h3>
-<p class="empty">None.</p>
-
-<h2>Things I checked and was fine with</h2>
+<p>(none — dep-only PR, no project code to review)</p>
+<h2>Checked</h2>
 <ul>
-  <li>Diff scope: confirmed only <code>go.mod</code>/<code>go.sum</code> (root) and <code>hack/tools/go.mod</code>/<code>go.sum</code> changed; the <code>hack/tools</code> bumps are indirect-only and consistent with the root bump (same upstream versions, pulled in via the ECR credential helper tool dep).</li>
-  <li>Release freshness: all four new direct versions tagged from the same upstream commit <code>4fef345</code>, released 2026-07-21 &mdash; ~18 days old at review time. Real tags via <code>proxy.golang.org</code>, not pseudo-versions.</li>
-  <li>Usage surface is narrow: direct import only in <code>pkg/io/providers/aws.go</code> (+ its test), the S3-compatible blob-storage artifact provider. Uses <code>config.LoadDefaultConfig</code>, <code>config.WithCredentialsProvider</code>, <code>credentials.NewStaticCredentialsProvider</code>, <code>s3.NewFromConfig</code> &mdash; API unchanged across this range. Blast radius is broad (reached from <code>pkg/io/opener.go</code>, <code>pkg/crier/reporters/gcs/*</code>, <code>pkg/pod-utils/gcs/upload.go</code>, <code>pkg/spyglass/*</code>, <code>cmd/deck/*</code>, <code>pkg/plank/reconciler.go</code>, <code>pkg/tide/codereview.go</code>) but via this single entry point only.</li>
-  <li>Read the <code>config</code>, <code>credentials</code>, and <code>service/s3</code> submodule CHANGELOGs across the full version range &mdash; no CVEs/security advisories. Notable items (login-cache file permission hardening to 0600, opt-in <code>AWS_RESTRICT_FILE_PERMISSIONS</code>, opt-in clock-skew-disable option) don't touch code paths Prow exercises &mdash; no logincreds/SSO cache usage, no custom checksum or clock-skew configuration.</li>
-</ul>
-
-<h2>Open questions for the author</h2>
-<p class="empty">None.</p>
-
+<li>Diff scope: confirmed only <code>go.mod</code>/<code>go.sum</code> (root) and <code>hack/tools/go.mod</code>/<code>go.sum</code> changed; <code>hack/tools</code> bumps are indirect-only and consistent with the root bump (same upstream versions).
+</li>
+<li>Import surface: <code>grep -rln --include=&#x27;*.go&#x27; &#x27;&quot;github.com/aws/aws-sdk-go-v2&#x27; .</code> (excl. vendor) → only <code>pkg/io/providers/aws.go</code> and its test.
+</li>
+<li>Release provenance: <code>proxy.golang.org</code> <code>.info</code> for all four direct modules resolves to real tags (not pseudo-versions) on <code>github.com/aws/aws-sdk-go-v2</code> commit <code>4fef345</code>.
+</li>
+<li>Changelogs for <code>config</code>, <code>credentials</code>, <code>service/s3</code> submodules across the full version range — no security fixes, no behavioral changes affecting our usage (<code>LoadDefaultConfig</code>, static credentials provider, basic S3 client construction).
+</li></ul>
+<h2>Open questions</h2>
+<p>(none)</p>
 <h2>Dependency followups</h2>
+<p>Retained the one previously recorded followup; no additional candidates were identified on this rerun. No items were newly accepted or skipped. PR #812 merged at 2026-08-08T16:49:58Z as <code>d06078952878afaf40df8696be3199ecc85e4837</code>; carry out the handoff on the current default branch.</p>
+<h3>Scope examined</h3>
+<p>The current <code>upstream/main</code> already contains the PR, so <code>git merge-base HEAD upstream/main</code> resolves to the PR head itself. The dependency inventory therefore uses the original single-commit PR range, <code>47f845d7262b749e8facd8abeb4e176efdbfcd3a^..47f845d7262b749e8facd8abeb4e176efdbfcd3a</code>, excluding the local review-artifact commit.</p>
+<p>Read the full relevant release ranges for the SDK root, config, credentials, and S3, plus the checksum implementation exposed through the S3 changes:</p>
+<ul>
+<li><a href="https://github.com/aws/aws-sdk-go-v2/blob/v1.43.0/CHANGELOG.md">SDK root changelog</a>: v1.36.3 → v1.43.0.
+</li>
+<li><a href="https://github.com/aws/aws-sdk-go-v2/blob/v1.43.0/config/CHANGELOG.md">Config changelog</a>: v1.29.14 → v1.32.31.
+</li>
+<li><a href="https://github.com/aws/aws-sdk-go-v2/blob/v1.43.0/credentials/CHANGELOG.md">Credentials changelog</a>: v1.17.67 → v1.19.30.
+</li>
+<li><a href="https://github.com/aws/aws-sdk-go-v2/blob/v1.43.0/service/s3/CHANGELOG.md">S3 changelog</a>: v1.66.3 → v1.106.0.
+</li>
+<li><a href="https://github.com/aws/aws-sdk-go-v2/blob/v1.43.0/service/internal/checksum/CHANGELOG.md">Internal checksum changelog</a>: v1.4.4 → v1.9.24.
+</li></ul>
+<p>Only <code>pkg/io/providers/aws.go</code> and <code>aws_test.go</code> import the changed AWS modules directly. Other indirect modules below have no owned import sites and were deprioritized, rather than treated as fully reviewed changelogs. The SDK's smithy-go release notes concern document/CBOR serialization and endpoint validation; Prow has no smithy-go call sites to migrate.</p>
+<p>No additional actionable change was found: Prow does not call the deprecated <code>http.AddResponseReadTimeoutMiddleware</code>; login credential support works through the existing default credential chain; HTTP interceptors and service-option callbacks do not replace any owned implementation; and new S3 administrative APIs are outside the blob adapter's usage. The HTTP connection-limit change and checksum caching apply within the SDK without an application change.</p>
+<h3>Module inventory</h3>
+<p>| Module | Root module | Tools module | Dependency type | | --- | --- | --- | --- | | <code>github.com/aws/aws-sdk-go-v2</code> | v1.36.3 → v1.43.0 | v1.41.4 → v1.43.0 | direct in root; indirect in tools | | <code>github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream</code> | v1.6.6 → v1.7.14 | — | indirect | | <code>github.com/aws/aws-sdk-go-v2/config</code> | v1.29.14 → v1.32.31 | v1.32.12 → v1.32.31 | direct in root; indirect in tools | | <code>github.com/aws/aws-sdk-go-v2/credentials</code> | v1.17.67 → v1.19.30 | v1.19.12 → v1.19.30 | direct in root; indirect in tools | | <code>github.com/aws/aws-sdk-go-v2/feature/ec2/imds</code> | v1.16.30 → v1.18.31 | v1.18.20 → v1.18.31 | indirect | | <code>github.com/aws/aws-sdk-go-v2/internal/configsources</code> | v1.3.34 → v1.4.31 | v1.4.20 → v1.4.31 | indirect | | <code>github.com/aws/aws-sdk-go-v2/internal/endpoints/v2</code> | v2.6.34 → v2.7.31 | v2.7.20 → v2.7.31 | indirect | | <code>github.com/aws/aws-sdk-go-v2/internal/ini</code> | v1.8.3 → removed | v1.8.6 → removed | indirect | | <code>github.com/aws/aws-sdk-go-v2/internal/v4a</code> | v1.3.23 → v1.4.32 | absent → v1.4.32 | indirect | | <code>github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding</code> | v1.12.3 → v1.13.13 | v1.13.7 → v1.13.13 | indirect | | <code>github.com/aws/aws-sdk-go-v2/service/internal/checksum</code> | v1.4.4 → v1.9.24 | — | indirect | | <code>github.com/aws/aws-sdk-go-v2/service/internal/presigned-url</code> | v1.12.15 → v1.13.31 | v1.13.20 → v1.13.31 | indirect | | <code>github.com/aws/aws-sdk-go-v2/service/internal/s3shared</code> | v1.18.4 → v1.19.32 | — | indirect | | <code>github.com/aws/aws-sdk-go-v2/service/s3</code> | v1.66.3 → v1.106.0 | — | direct in root | | <code>github.com/aws/aws-sdk-go-v2/service/signin</code> | absent → v1.5.0 | v1.0.8 → v1.5.0 | indirect | | <code>github.com/aws/aws-sdk-go-v2/service/sso</code> | v1.25.3 → v1.33.0 | v1.30.13 → v1.33.0 | indirect | | <code>github.com/aws/aws-sdk-go-v2/service/ssooidc</code> | v1.30.1 → v1.38.0 | v1.35.17 → v1.38.0 | indirect | | <code>github.com/aws/aws-sdk-go-v2/service/sts</code> | v1.33.19 → v1.45.0 | v1.41.9 → v1.45.0 | indirect | | <code>github.com/aws/smithy-go</code> | v1.22.2 → v1.27.3 | v1.24.2 → v1.27.3 | indirect |</p>
+<h3>Pin S3 checksum behavior for custom/S3-compatible endpoints</h3>
+<ul>
+<li><strong>Category</strong>: default-change.
+</li>
+<li><strong>Unlocked by</strong>: <code>github.com/aws/aws-sdk-go-v2/service/s3</code> v1.66.3 → v1.106.0, crossing v1.73.0; <code>service/internal/checksum</code> v1.4.4 → v1.9.24 crosses the matching implementation change in v1.5.0. The configuration helpers already existed in the old config version; the S3 default change makes an explicit policy worth considering.
+</li>
+<li><strong>Necessity</strong>: should — preserve predictable behavior for deployments using custom S3-compatible endpoints.
+</li>
+<li><strong>Call sites</strong>: <code>pkg/io/providers/aws.go:54</code> (<code>newS3Client</code>) and <code>aws.go:47</code> (<code>s3blob.OpenBucketV2</code>); <code>pkg/io/providers/providers.go:94</code> exposes custom endpoints. Extend <code>pkg/io/providers/aws_test.go:29</code> for the chosen policy.
+</li>
+<li><strong>Changelog evidence</strong>: S3 v1.73.0 says, “S3 client behavior is updated to always calculate a checksum by default for operations that support it”. Its remaining notes describe default CRC32 request checksums and configurable response validation; v1.74.1 enables the request's checksum-validation mode by default. <a href="https://github.com/aws/aws-sdk-go-v2/blob/v1.43.0/service/s3/CHANGELOG.md#v1730-2025-01-15">Tagged changelog</a>.
+</li>
+<li><strong>Usage evidence</strong>: <code>newS3Client</code> sets neither checksum policy. The <a href="https://github.com/google/go-cloud/blob/v0.40.0/blob/s3blob/s3blob.go">Go Cloud v0.40.0 adapter</a> uses the supplied client for downloads and multipart uploads without setting checksum modes or an algorithm. A read-only check of GitHub's current default-branch <code>aws.go</code> also found no checksum policy.
+</li>
+<li><strong>Practical limit</strong>: this is a compatibility risk inferred from the SDK default change and Prow's custom-endpoint support, not a reproduced failure against a Prow deployment. Do not assert that all MinIO or Ceph versions fail.
+</li>
+<li><strong>Policy retained from the existing handoff</strong>: apply <code>WhenRequired</code> to both settings unconditionally. This reduces optional integrity checking for AWS S3 as well as custom endpoints, and explicit config options take precedence over environment/shared-config values. This rerun preserves the recorded policy; it does not establish that every deployment needs it. <a href="https://docs.aws.amazon.com/sdkref/latest/guide/feature-dataintegrity.html">AWS setting semantics</a>.
+</li></ul>
+<p>Handoff prompt:</p>
+<pre><code>In kubernetes-sigs/prow, follow up on PR #812, &quot;chore(deps): bump the aws group
+across 1 directory with 4 updates&quot;, merged as
+d06078952878afaf40df8696be3199ecc85e4837 on 2026-08-08.
 
-<div class="followup">
-  <h3>Pin S3 checksum behavior for custom/S3-compatible endpoints
-    <span class="badge badge-category">default-change</span>
-    <span class="badge badge-should">should</span>
-  </h3>
-  <p><strong>Unlocked by:</strong> <code>github.com/aws/aws-sdk-go-v2/service/s3</code> v1.66.3 &rarr; v1.106.0 (and the root <code>github.com/aws/aws-sdk-go-v2</code> module, bumped in lockstep)</p>
-  <p><strong>Call sites:</strong> <code>pkg/io/providers/aws.go:52-86</code> (<code>newS3Client</code>) &mdash; builds the <code>s3.Client</code> via <code>config.LoadDefaultConfig</code> + <code>s3.NewFromConfig</code>; the surrounding <code>S3Credentials</code> struct (<code>pkg/io/providers/providers.go</code>) exposes <code>Endpoint</code>, <code>S3ForcePathStyle</code>, and <code>Insecure</code> &mdash; this path is purpose-built to target arbitrary S3-compatible backends, not just AWS S3.</p>
-  <p><strong>What the bump crosses:</strong> <code>service/s3</code> v1.73.0 (2025-01-15) &mdash; "S3 client behavior is updated to always calculate a checksum by default for operations that support it (such as <code>PutObject</code> or <code>UploadPart</code>), or require it (such as <code>DeleteObjects</code>). The checksum algorithm used by default now becomes CRC32..." followed by v1.74.1 enabling response-checksum <em>validation</em> by default. This is the well-known AWS SDK v2 default change that has broken uploads/downloads against third-party S3-compatible object stores (older MinIO, Ceph RGW, etc.) that don't correctly implement the new default checksum trailers.</p>
-  <p><strong>Handoff prompt:</strong></p>
-  <pre>In kubernetes-sigs/prow, PR #812 bumped github.com/aws/aws-sdk-go-v2/service/s3 from
-v1.66.3 to v1.106.0 (and the root github.com/aws/aws-sdk-go-v2 module in lockstep).
-Starting at service/s3 v1.73.0, the AWS SDK v2 changed its default behavior: S3 clients
-now always calculate a request checksum (CRC32) for operations that support it (e.g.
-PutObject, UploadPart) and, since v1.74.1, validate response checksums by default too.
-This is a well-documented compatibility break for non-AWS S3-compatible object stores
-(older MinIO, Ceph RGW, etc.) that don't correctly implement the new default checksum
-trailers.
+Work in a fresh checkout/worktree of the current default branch. First check
+whether this followup has already been implemented there.
 
-pkg/io/providers/aws.go's newS3Client() builds the S3 client used by Prow's blob-storage
-artifact provider via config.LoadDefaultConfig(ctx, opts...) followed by
-s3.NewFromConfig(cfg, s3Opts...). The surrounding S3Credentials struct
-(pkg/io/providers/providers.go) exposes Endpoint (custom BaseEndpoint), S3ForcePathStyle
-(UsePathStyle), and Insecure (skip TLS verify) &mdash; i.e. this code path is explicitly built
-to target arbitrary S3-compatible backends, not just AWS S3. Neither
-RequestChecksumCalculation nor ResponseChecksumValidation is currently set anywhere, so
-this code path silently inherited the new default behavior with this bump.
+The PR bumped github.com/aws/aws-sdk-go-v2/service/s3 from v1.66.3 to v1.106.0
+and service/internal/checksum from v1.4.4 to v1.9.24. S3 v1.73.0 changed request
+checksum calculation and response validation defaults to when-supported;
+v1.74.1 enables the request&#x27;s checksum-validation mode by default.
+Source:
+https://github.com/aws/aws-sdk-go-v2/blob/v1.43.0/service/s3/CHANGELOG.md#v1730-2025-01-15
 
-Task: in newS3Client() (pkg/io/providers/aws.go), explicitly set the pre-v1.73.0 default
-behavior so existing S3-compatible deployments don't silently break:
-  opts = append(opts,
-      config.WithRequestChecksumCalculation(aws.RequestChecksumCalculationWhenRequired),
-      config.WithResponseChecksumValidation(aws.ResponseChecksumValidationWhenRequired),
-  )
-(add the github.com/aws/aws-sdk-go-v2/aws import). This restores "checksum only when the
-S3 API requires it" (e.g. DeleteObjects) instead of "always calculate/validate when
-supported", matching the SDK's pre-v1.73.0 behavior.
+Prow&#x27;s pkg/io/providers/aws.go:newS3Client constructs the client passed to
+gocloud.dev/blob/s3blob.OpenBucketV2. S3Credentials in providers.go supports
+custom endpoints. Neither checksum setting is explicit. The Go Cloud v0.40.0
+adapter uses this client for reads and uploads without choosing a checksum
+policy. Backend incompatibility is a risk; no Prow deployment failure was
+reproduced by this followup analysis.
+
+Implement the policy already recorded in the review: add the aws import and
+set these functional options before config.LoadDefaultConfig:
+  config.WithRequestChecksumCalculation(aws.RequestChecksumCalculationWhenRequired)
+  config.WithResponseChecksumValidation(aws.ResponseChecksumValidationWhenRequired)
+
+Apply both settings unconditionally, including when Endpoint is empty.
+WhenRequired limits automatic checksums; it does not disable checksums
+required by an API or explicitly requested by an operation. Document why Prow
+chooses this compatibility policy. Explicit code options override the
+corresponding environment/shared-config settings and reduce optional integrity
+checks for AWS S3 too.
 
 Acceptance criteria:
-- newS3Client() explicitly sets RequestChecksumCalculationWhenRequired and
-  ResponseChecksumValidationWhenRequired via the config LoadOptions.
-- pkg/io/providers/aws_test.go continues to pass; add/adjust a test assertion that the
-  resulting s3.Client options carry these two values.
-- `go build ./...` and `go test ./pkg/io/...` pass.
+- Client options contain both WhenRequired values for the default AWS endpoint
+  and a custom endpoint.
+- Add focused assertions to Test_newS3Client in pkg/io/providers/aws_test.go.
+  Isolate AWS config and checksum environment variables so tests are stable.
+- Existing credentials, region, endpoint, path-style, and TLS assertions pass.
+- Run go test ./pkg/io/... and go build ./...; report their outcomes.
 
-Scope guard: only touch newS3Client()'s config construction and its test. Don't touch
-credential loading, TLS/endpoint/path-style handling, or any other AWS SDK call site &mdash;
-this is the only place aws-sdk-go-v2 is imported in the project. Don't attempt to make
-this conditional on creds.Endpoint being set; apply it unconditionally for simplicity
-and predictable behavior across both AWS and S3-compatible targets.</pre>
-</div>
-
-</body>
-</html>
+Scope: change only newS3Client&#x27;s config construction and its focused tests.
+Keep credential selection, endpoint handling, region, TLS, and path-style
+behavior as they are. Do not upgrade other dependencies or claim a confirmed
+MinIO/Ceph regression without reproducing one.</code></pre>
+</main></body></html>

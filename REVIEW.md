@@ -35,3 +35,14 @@ verdict: approve
 ## Open questions
 - Would you add a follow-up test for the suffix boundary? `issueNames: []string{"AC-1", "AC-1234"}`, body `"AC-1234 references AC-1"`, expected `"AC-1234 references [AC-1](url)"` — closes the gap and makes the intent self-documenting.
 - Consider extracting `isSafePrefixChar(c byte) bool` to wrap both `strings.Contains` and `isAlphanumeric`? Non-blocking, but would make line 264 a one-liner and give the whole concept a name.
+
+## Followups
+
+### cleanup: Unify the prefix boundary predicate
+- where: `pkg/plugins/jira/jira.go:265`
+- necessity: could — a small readability cleanup that gives the existing prefix-character rules one name; it is optional and does not change behavior.
+- why followup: The prefix guard combines punctuation membership via `strings.Contains` with a separate ASCII alphanumeric check. Naming the combined classification would make the boundary rule easier to read and extend.
+
+```text
+In kubernetes-sigs/prow, following PR #776 — "Fix double linking bug when key is a substring of another link" (merge commit e07a9d60b5741461b99bb60e34505538df2575cd), update `pkg/plugins/jira/jira.go` to extract the prefix-character classification used by `replaceStringIfNeeded` into a clearly named helper. Preserve the current behavior: `[`, `/`, backtick, and `-` remain excluded by the punctuation rule, and ASCII alphanumeric bytes remain excluded by the alphanumeric rule. Keep the change limited to this readability cleanup. Acceptance criteria: the helper makes the complete boundary classification clear at the call site, and issue-link replacement behavior remains unchanged. Do not broaden the refactor to unrelated Jira code.
+```

@@ -9,9 +9,32 @@ refresh_log:
   - old_sha: 440fb4f15287c02423612c0ee21f3f5bac6ea11d
     new_sha: 440fb4f15287c02423612c0ee21f3f5bac6ea11d
     summary: "No code changes; recorded one issue comment tagging @petr-muller; no inline comments or reviews."
+gate:
+  decision: hold
+  gated_at: 2026-10-10T16:16:41Z
+  gated_head_sha: 440fb4f15287c02423612c0ee21f3f5bac6ea11d
+  reviewed_head_sha: 440fb4f15287c02423612c0ee21f3f5bac6ea11d
 ---
 
 # Review
+
+## Gate
+
+**Verdict: HOLD**
+
+The PR remains open at the exact reviewed SHA, with no code changes since review. Both `should-fix` findings remain in the current code: the lens handler can use another lens's config after a config reorder, and supported presubmit paths still map to `unmatched`. These are not backward-compatibility breaks, but the path coverage is incomplete for the stated metrics fix and the lens guard does not fully close the panic/config-mismatch risk.
+
+### Gating list
+
+- **Not addressed — verify lens identity after config reload** (`pkg/spyglass/lenses/common/common.go:118-123`, source: `REVIEW.md`). Reject an in-range index if it selects a config whose lens name differs from `opts.LensName`.
+- **Not addressed — cover existing presubmit URL forms** (`cmd/deck/main.go:277-279`, source: `REVIEW.md`). Add the supported no-org/repo path shape and trailing-slash form to the simplifier and its coverage.
+
+### Independent merge risk
+
+- No exported Go API, config schema, flags, or environment variables change.
+- The simplifier affects metric labels rather than HTTP dispatch; its variable segments keep bucket/job/build/PR values out of labels. The label changes may affect dashboards that filter on `path="unmatched"`.
+- GCS missing-resource and 401/403/404 errors now fail immediately with one warning instead of retrying. This affects Deck/Spyglass artifact listings across deployments, while transient errors retain retries; no migration is needed.
+- Invalid lens indexes now return HTTP 400 instead of panicking. No compatibility-specific repository skill applied; compatibility was checked against the full PR diff.
 
 ## Verdict
 

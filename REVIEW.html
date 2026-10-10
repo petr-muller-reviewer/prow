@@ -32,7 +32,7 @@ details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-si
 </style></head><body><main>
 <h1>deck: fix a panic and retries on GCS errors</h1>
 <div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/984">kubernetes-sigs/prow#984</a> · base <code>main</code> · head_sha <code>440fb4f15287</code> · reviewed_at <code>2026-10-09T14:46:43Z</code></div>
-<div class="badges"><span class="badge c-red">verdict: request-changes</span></div>
+<div class="badges"><span class="badge c-red">verdict: request-changes</span><span class="badge c-amber">gate: hold</span></div>
 <details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#984
 title: &quot;deck: fix a panic and retries on GCS errors&quot;
 head_sha: 440fb4f15287c02423612c0ee21f3f5bac6ea11d
@@ -42,7 +42,31 @@ verdict: request-changes
 refresh_log:
   - old_sha: 440fb4f15287c02423612c0ee21f3f5bac6ea11d
     new_sha: 440fb4f15287c02423612c0ee21f3f5bac6ea11d
-    summary: &quot;No code changes; recorded one issue comment tagging @petr-muller; no inline comments or reviews.&quot;</code></pre></details>
+    summary: &quot;No code changes; recorded one issue comment tagging @petr-muller; no inline comments or reviews.&quot;
+gate:
+  decision: hold
+  gated_at: 2026-10-10T16:16:41Z
+  gated_head_sha: 440fb4f15287c02423612c0ee21f3f5bac6ea11d
+  reviewed_head_sha: 440fb4f15287c02423612c0ee21f3f5bac6ea11d</code></pre></details>
+<h2>Gate</h2>
+<p><strong>Verdict: HOLD</strong></p>
+<p>The PR remains open at the exact reviewed SHA, with no code changes since review. Both <code>should-fix</code> findings remain in the current code: the lens handler can use another lens's config after a config reorder, and supported presubmit paths still map to <code>unmatched</code>. These are not backward-compatibility breaks, but the path coverage is incomplete for the stated metrics fix and the lens guard does not fully close the panic/config-mismatch risk.</p>
+<h3>Gating list</h3>
+<ul>
+<li><strong>Not addressed — verify lens identity after config reload</strong> (<code>pkg/spyglass/lenses/common/common.go:118-123</code>, source: <code>REVIEW.md</code>). Reject an in-range index if it selects a config whose lens name differs from <code>opts.LensName</code>.
+</li>
+<li><strong>Not addressed — cover existing presubmit URL forms</strong> (<code>cmd/deck/main.go:277-279</code>, source: <code>REVIEW.md</code>). Add the supported no-org/repo path shape and trailing-slash form to the simplifier and its coverage.
+</li></ul>
+<h3>Independent merge risk</h3>
+<ul>
+<li>No exported Go API, config schema, flags, or environment variables change.
+</li>
+<li>The simplifier affects metric labels rather than HTTP dispatch; its variable segments keep bucket/job/build/PR values out of labels. The label changes may affect dashboards that filter on <code>path=&quot;unmatched&quot;</code>.
+</li>
+<li>GCS missing-resource and 401/403/404 errors now fail immediately with one warning instead of retrying. This affects Deck/Spyglass artifact listings across deployments, while transient errors retain retries; no migration is needed.
+</li>
+<li>Invalid lens indexes now return HTTP 400 instead of panicking. No compatibility-specific repository skill applied; compatibility was checked against the full PR diff.
+</li></ul>
 <h2>Verdict</h2>
 <p>Request changes for two gaps in the fixes. The lens server still accepts an in-range index that now names a different lens after config reload, and the path simplifier leaves documented presubmit URL forms unmatched.</p>
 <h2>What this PR does</h2>

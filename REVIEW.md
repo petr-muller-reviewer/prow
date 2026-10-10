@@ -9,8 +9,32 @@ refresh_log:
   - old_sha: 443f3baf9390f3aad73a1f3b1b330e0e97f53dfa
     new_sha: 443f3baf9390f3aad73a1f3b1b330e0e97f53dfa
     summary: "No code changes; recorded the October 7 /cc comment and review-request activity."
+gate:
+  decision: merge
+  gated_at: 2026-10-10T15:39:44Z
+  gated_head_sha: 443f3baf9390f3aad73a1f3b1b330e0e97f53dfa
+  reviewed_head_sha: 443f3baf9390f3aad73a1f3b1b330e0e97f53dfa
 ---
 # Review
+
+## Gate
+
+**Decision: MERGE**
+
+The PR head is unchanged from the reviewed SHA. The only local review finding is a non-blocking test suggestion, and the external PR evidence contains no substantive review feedback or hold. The diff changes logging behavior as intended but does not change Prow's APIs, configuration, or scheduling behavior.
+
+### Findings disposition
+
+- **REVIEW.md — Keep the trace logging path covered** (`cmd/horologium/main_test.go:675-680`): not addressed, non-gating. The test only checks suppression at debug, while the implementation logs both messages at trace in `cmd/horologium/main.go:221,225`. Consider adding a trace-level assertion; this coverage improvement does not need to block merge.
+- No substantive inline review comments or submitted reviews were found. The `/cc @petr-muller` issue comment is not actionable feedback.
+
+### Gating list
+
+None.
+
+### Independent merge risk
+
+No notable merge risk. The only operator-visible behavior change is the intended reduction of per-job log detail at info/debug levels; the existing sync summary now carries aggregate counts, and trace logging retains per-job messages. `sync` is unexported within `cmd/horologium`; no external API or configuration schema changes are present.
 
 ## Verdict
 

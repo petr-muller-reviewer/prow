@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>549</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>Allow filtering jobs by owner, repo and org</h1>
+<div class="meta">base <code>main</code> · head_sha <code>3f1a6cb9f78e</code> · state <code>merged</code> · reviewed_at <code>2026-07-26T23:33:22Z</code></div>
+<div class="badges"><span class="badge c-gray">verdict: approve-with-suggestions</span><span class="badge c-green">gate: merge</span></div>
+<details><summary>Full metadata</summary><pre><code>pr: 549
+title: &quot;Allow filtering jobs by owner, repo and org&quot;
+head_sha: c8dcb67a645da3c36355bb97c8c1490198a82e18
+base: main
+head_sha: 3f1a6cb9f78ed401aea530aefa8634a91a27559e
+reviewed_at: &quot;2026-07-26T23:33:22Z&quot;
+verdict: approve-with-suggestions
+state: merged
+gate:
+  decision: merge
+  gated_at: &quot;2026-06-30T11:57:44Z&quot;
+  gated_head_sha: 3f1a6cb9f78ed401aea530aefa8634a91a27559e
+  reviewed_head_sha: c8dcb67a645da3c36355bb97c8c1490198a82e18
+refresh_log:
+  - from_sha: 3f1a6cb9f78ed401aea530aefa8634a91a27559e
+    to_sha: 3f1a6cb9f78ed401aea530aefa8634a91a27559e
+    at: &quot;2026-07-26T23:33:22Z&quot;
+    summary: &quot;No code changes. petr-muller approved (2026-06-30T12:01:25Z) and the PR merged (2026-06-30T12:34:11Z) by kubernetes-prow bot; no activity beyond the gate decision already recorded.&quot;
+  - from_sha: c8dcb67a645da3c36355bb97c8c1490198a82e18
+    to_sha: c8dcb67a645da3c36355bb97c8c1490198a82e18
+    at: &quot;2026-06-16T16:37:41Z&quot;
+    summary: &quot;No code changes; k8s-triage-robot applied lifecycle/stale on 2026-06-09&quot;
+  - from_sha: c8dcb67a645da3c36355bb97c8c1490198a82e18
+    to_sha: c8dcb67a645da3c36355bb97c8c1490198a82e18
+    at: &quot;2026-06-16T16:40:31Z&quot;
+    summary: &quot;No code changes; petr-muller removed lifecycle/stale and asked author about addressing review&quot;
+  - from_sha: c8dcb67a645da3c36355bb97c8c1490198a82e18
+    to_sha: 3f1a6cb9f78ed401aea530aefa8634a91a27559e
+    at: &quot;2026-06-25T12:52:31Z&quot;
+    summary: &quot;PR rebased on main; second commit adds ExtraRefs support and addresses review comments&quot;</code></pre></details>
+<p><strong>Status: MERGED</strong> (2026-06-30T12:34:11Z, by <code>app/kubernetes-prow</code>)</p>
+<h2>Gate</h2>
+<p><strong>Decision: MERGE</strong></p>
+<p>The two blocking-level findings from the original review (ExtraRefs handling, test style) have been addressed in <code>3f1a6cb9f</code>. The remaining open items (doc comment already added, ownerMatch closure still has shadow, no repo-only test case, stray blank line, no <code>t.Run</code> subtests) are nits that don't gate merge. No backward-incompatible API, config, or behavioral changes; the feature is purely additive and opt-in via query parameters. No merge risk to existing deployments.</p>
+<p><strong>Findings disposition:</strong></p>
+<ul>
+<li><strong>ExtraRefs handling</strong> (<code>REVIEW.md</code> converging, <code>@ivankatliarchuk</code>) — <strong>addressed</strong>. New <code>refsMatch</code> helper at <code>main.go:816-822</code> falls back to <code>ExtraRefs</code> when <code>Refs</code> is nil. Test fixtures include <code>extrarefs-org-match</code> and <code>extrarefs-different-org</code> jobs with dedicated test cases for org-only, repo-only, and org+repo ExtraRefs matching.
+</li>
+<li><strong>Test style: <code>t.Run</code>/<code>t.Fatalf</code></strong> (<code>REVIEW.md</code> converging, <code>@ivankatliarchuk</code>) — <strong>not addressed</strong>. Tests still use a bare <code>for</code> loop without <code>t.Run</code> subtests, and <code>t.Errorf</code> for setup errors instead of <code>t.Fatalf</code>. Does not gate merge — it's a style/robustness issue, not a correctness bug.
+</li>
+<li><strong><code>resp.Body.Close()</code> in loop</strong> (<code>@ivankatliarchuk</code>) — <strong>borderline</strong>. Author replaced <code>defer resp.Body.Close()</code> with an inline close-then-check pattern (<code>main_test.go:629-631</code>), but calls <code>io.ReadAll(resp.Body)</code> <em>after</em> closing the body. This reads from an already-closed body — effectively a no-op read returning empty bytes. The test still passes because <code>httptest.ResponseRecorder</code> buffers the full response, so <code>resp.Body</code> (a <code>bytes.Buffer</code>) remains readable after <code>Close()</code>. Functionally harmless in test code but logically wrong. Not a merge gate.
+</li>
+<li><strong>Doc comment</strong> (<code>REVIEW.md</code> converging, <code>@ivankatliarchuk</code>) — <strong>addressed</strong>. Comment block added at <code>main.go:785-791</code>.
+</li>
+<li><strong><code>ownerMatch</code> closure shadow</strong> (<code>REVIEW.md</code> low) — <strong>not addressed</strong>. Still takes <code>owner</code> as a parameter shadowing the outer variable. Nit, does not gate.
+</li>
+<li><strong>Repo-only test case</strong> (<code>REVIEW.md</code> low) — <strong>addressed</strong>. Test case "repo filter should match jobs with ExtraRefs" filters by <code>Repo: &quot;testinfra&quot;</code> alone.
+</li>
+<li><strong>Stray blank line</strong> (<code>REVIEW.md</code> nit) — <strong>not addressed</strong>. Still present at <code>main_test.go:~620</code>. Nit.
+</li>
+<li><strong><code>sets.New[string]</code></strong> (<code>@ivankatliarchuk</code>) — <strong>addressed</strong>. Explicit type parameter added.
+</li></ul>
+<p><strong>Merge risk (Area 2):</strong> None. The change is purely additive — new optional query parameters on an existing internal HTTP endpoint. No exported Go API changes, no config/flag changes, no CRD/schema changes, no behavioral change when no filter parameters are supplied. Existing Prow deployments are unaffected on upgrade.</p>
+<p><strong>Gating list:</strong> Empty — nothing blocks merge. All blocking/should-fix items are addressed. Remaining items are nits.</p>
+<p>---</p>
+<p><strong>Author:</strong> @rikatz | <strong>+231 / -25</strong> | <strong>size/L</strong> | <strong>Files: 2</strong></p>
+<p><strong>What it does:</strong> Adds server-side filtering to the <code>/prowjobs.js</code> Deck endpoint via <code>?org=</code>, <code>?repo=</code>, and <code>?owner=</code> query parameters. Merges the filtering and omit logic into a single loop over jobs, building a <code>finalJobs</code> slice with only matching entries.</p>
+<p><strong>Motivation:</strong> Large Prow instances return huge JSON payloads. Server-side filtering reduces response size when callers only care about a specific org, repo, or PR author.</p>
+<p><strong>Verdict: Approve with suggestions</strong></p>
+<p><strong>Since previous review (2026-04-12):</strong></p>
+<ul>
+<li>2026-06-09: <code>k8s-triage-robot</code> applied <code>lifecycle/stale</code> — 90 days of inactivity
+</li>
+<li>2026-06-16: <code>petr-muller</code> commented <code>/remove-lifecycle stale</code> and asked @rikatz to address the review
+</li>
+<li>2026-06-16: <code>rikatz</code> responded, committed to addressing comments by EOW
+</li>
+<li>2026-06-18: <code>rikatz</code> replied to inline review comments (closure simplification, docs, test style, ExtraRefs approach), pushed second commit <code>3f1a6cb9f</code> ("add extrarefs to filter, address comments"), confirmed all findings addressed
+</li>
+<li>Code: <code>c8dcb67a</code> → <code>3f1a6cb9f</code> (PR rebased on main + ExtraRefs fix; PR-specific delta is in <code>cmd/deck/main.go</code> and <code>cmd/deck/main_test.go</code>)
+</li></ul>
+<p>---</p>
+<h2>Reviewer Perspectives</h2>
+<h3>Code Quality — APPROVE</h3>
+<ul>
+<li>No critical issues — filtering logic is correct with consistent nil-safety checks on <code>Spec.Refs</code>
+</li>
+<li>Clean single-loop merge of filter + omit logic avoids a second pass
+</li>
+<li><code>ownerMatch</code> closure shadows outer <code>owner</code> variable — could simplify signature
+</li>
+<li>Test uses <code>t.Errorf</code> where existing tests use <code>t.Fatalf</code> for setup errors
+</li>
+<li><code>defer resp.Body.Close()</code> in loop accumulates until function exit
+</li>
+<li>Missing test case for repo-only filter
+</li></ul>
+<h3>Maintainability — COMMENT (Burden: LOW)</h3>
+<ul>
+<li><code>ExtraRefs</code> gap is the main concern — periodic jobs silently excluded when filtering by org/repo
+</li>
+<li>Codebase precedent exists for <code>ExtraRefs</code> fallback in <code>cmd/deck/rerun.go:171-172</code>
+</li>
+<li><code>ownerMatch</code> inline per-request is untestable in isolation
+</li>
+<li>New query parameters are undocumented
+</li>
+<li>Change is cleanly revertible, table-driven tests are idiomatic
+</li></ul>
+<h3>Deployment Risk — LOW RISK</h3>
+<ul>
+<li>Purely additive — no config, CLI, RBAC, or schema changes
+</li>
+<li>Without filters, behavior is identical to before
+</li>
+<li>No action required from operators; drop-in upgrade
+</li>
+<li>Performance neutral (same linear scan as existing omit logic)
+</li>
+<li>Comprehensive tests cover no-filter, single-filter, and combined-filter scenarios
+</li></ul>
+<p>---</p>
+<h2>Converging Concerns</h2>
+<p>Issues independently flagged by 2+ reviewers:</p>
+<ol>
+<li>~~<strong><code>ExtraRefs</code> not considered during filtering</strong>~~ — <strong>resolved in <code>3f1a6cb9f</code></strong>; verify implementation matches <code>rerun.go:171-172</code> pattern.
+</li>
+<li><strong>Tests should use <code>t.Run</code> subtests and <code>t.Fatalf</code></strong> — fixes <code>defer</code> scoping, improves failure isolation, matches existing <code>TestHandleProwJobs</code> pattern. <em>(Flagged by: Code Quality, Maintainability)</em>
+</li>
+<li><strong>New API parameters undocumented</strong> — <code>org</code>, <code>repo</code>, <code>owner</code> query params have no comments or docs. <em>(Flagged by: Maintainability, Deployment Risk)</em>
+</li></ol>
+<p>---</p>
+<h2>Detailed Findings</h2>
+<h3>[2/3 converging] Tests should use <code>t.Run</code> subtests and <code>t.Fatalf</code> — <code>main_test.go:559-610</code></h3>
+<h3>[2/3 converging] Tests should use <code>t.Run</code> subtests and <code>t.Fatalf</code> — <code>main_test.go:559-610</code></h3>
+<p>The test iterates over cases without <code>t.Run(tc.Name, ...)</code>. This causes three issues:</p>
+<ul>
+<li><code>defer resp.Body.Close()</code> accumulates — all response bodies stay open until function exit (resource leak)
+</li>
+<li>After <code>json.Unmarshal</code> fails, <code>t.Errorf</code> continues execution against a zero-value struct
+</li>
+<li>Inconsistent with the existing <code>TestHandleProwJobs</code> which uses <code>t.Run</code>
+</li></ul>
+<p>Wrapping in <code>t.Run</code> fixes all three. Use <code>t.Fatalf</code> for setup errors (request creation, unmarshal).</p>
+<p><strong>Suggested comment:</strong></p>
+<blockquote><p>Could you wrap each test case in <code>t.Run(tc.Name, func(t *testing.T) { ... })</code>? This matches the pattern in <code>TestHandleProwJobs</code> above and fixes the <code>defer</code> scoping issue. Also, setup errors (request creation, unmarshal) should use <code>t.Fatalf</code> since continuing past them produces misleading results.</p></blockquote>
+<p>---</p>
+<h3>[2/3 converging] New API parameters undocumented — <code>main.go:790-792</code></h3>
+<p>The <code>org</code>, <code>repo</code>, and <code>owner</code> query parameters are undocumented. Adding a brief comment block on the handler listing supported parameters would help future maintainers and API consumers.</p>
+<p><strong>Suggested comment:</strong></p>
+<blockquote><p>nit: Consider adding a brief comment documenting the supported query parameters for this endpoint (org, repo, owner, omit) so future maintainers and API consumers can discover them.</p></blockquote>
+<p>---</p>
+<h3><span class="tag c-gray">low</span><code>ownerMatch</code> closure: simplify or extract — <code>main.go:794-804</code></h3>
+<p>The <code>ownerMatch</code> closure takes <code>owner</code> as a parameter even though it's only ever called with the outer variable. Two options:</p>
+<ul>
+<li><strong>Simplify:</strong> remove the <code>owner</code> parameter and capture it from the closure scope
+</li>
+<li><strong>Extract:</strong> move to a package-level function (avoids per-request allocation, enables isolated testing)
+</li></ul>
+<p><strong>Suggested comment:</strong></p>
+<blockquote><p>nit: <code>ownerMatch</code> doesn't close over anything from the handler scope (the <code>owner</code> parameter shadows the outer variable). Consider either simplifying the signature to <code>func(job prowapi.ProwJob) bool</code> (capturing <code>owner</code> from the closure) or extracting it as a package-level function.</p></blockquote>
+<p>---</p>
+<h3><span class="tag c-gray">low</span>Missing test case for repo-only filter — <code>main_test.go:529-552</code></h3>
+<p>The <code>repo</code> filter is only tested in combination with <code>org</code> and <code>owner</code>. A test case with just <code>?repo=pizzacontroller</code> (no org, no owner) would verify the cross-org matching behavior and improve coverage of the independent filter paths.</p>
+<p><strong>Suggested comment:</strong></p>
+<blockquote><p>Could you add a test case for filtering by <code>repo</code> alone? It would match across all orgs, which is worth verifying is intentional and tested.</p></blockquote>
+<p>---</p>
+<h3><span class="tag c-gray">nit</span>Stray blank line after <code>for</code> statement — <code>main_test.go:~562</code></h3>
+<p>Remove the blank line immediately after <code>for _, tc := range testCases {</code>.</p>
+<p>---</p>
+<h2>Maintainer Recommendation</h2>
+<p>LGTM — approving this. The filtering logic is correct, the change is fully backward compatible, and test coverage is solid. Two suggestions worth considering: (1) use <code>t.Run</code> subtests and <code>t.Fatalf</code> for setup errors in the new test to match existing test style, and (2) consider a follow-up to handle <code>ExtraRefs</code> so periodic jobs are not silently excluded when filtering by org/repo. Neither is blocking.</p>
+<p>---</p>
+<h2>Resolved Findings</h2>
+<h3><span class="tag c-green">resolved</span><code>ExtraRefs</code> not considered in org/repo/owner filtering — <code>main.go:808-814</code></h3>
+<p>Addressed in commit <code>3f1a6cb9f</code>. Author confirmed: "filtering will also use extraRefs in case refs is null (for periodic jobs)". Implementation not re-read in this refresh — verify approach matches the <code>rerun.go:171-172</code> pattern before approving.</p>
+<p>---</p>
+<h2>Review Checklist</h2>
+<ul>
+<li>[x] <strong>[converging]</strong> <code>ExtraRefs</code> handling — addressed in <code>3f1a6cb9f</code>; verify implementation
+</li>
+<li>[ ] <strong>[converging]</strong> Tests refactored to use <code>t.Run</code> subtests with <code>t.Fatalf</code> for setup errors
+</li>
+<li>[ ] <strong>[converging]</strong> Document new <code>org</code>, <code>repo</code>, <code>owner</code> query parameters
+</li>
+<li>[ ] <code>ownerMatch</code> simplified or extracted to package level
+</li>
+<li>[ ] Test case added for repo-only filter
+</li>
+<li>[ ] Stray blank line removed
+</li>
+<li>[ ] CI passes after changes
+</li></ul>
+<p>---</p>
+<h2>Followups</h2>
+<h3>Keep combined org and repo filters on one ExtraRef</h3>
+<ul>
+<li>category: correctness
+</li>
+<li>necessity: should — combined filters can return a job that references neither requested repository.
+</li>
+<li>where: <code>cmd/deck/main.go:813-829</code>, <code>cmd/deck/main_test.go:433-660</code>
+<pre><code>In kubernetes-sigs/prow, following merged PR #549, &quot;Allow filtering jobs by owner, repo and org&quot; (merge commit 9b693893bd3b8507630f030c157fb23a1a9a8c5f), fix the /prowjobs.js org and repo filters in cmd/deck/main.go so both supplied values must match the same Refs entry. The current independent refsMatch calls can match org from one Spec.ExtraRefs entry and repo from another: a periodic job with ExtraRefs alpha/one and beta/two incorrectly matches ?org=alpha&amp;repo=two.
+
+Add a regression case to TestHandleProwJobsWithFilter in cmd/deck/main_test.go with at least two ExtraRefs that rejects that cross-entry combination and accepts a real org/repo pair. Preserve the existing primary Spec.Refs behavior, single-filter matches, owner filtering, and unfiltered responses. The task is complete when the new negative and positive cases pass with go test ./cmd/deck -run TestHandleProwJobsWithFilter -count=1 and the combined filter cannot assemble a match from different refs. Keep the change scoped to matching semantics and the relevant tests.</code></pre>
+</li></ul>
+<h3>Make filter test cases fail reliably</h3>
+<ul>
+<li>category: tests
+</li>
+<li>necessity: should — the test closes the response body before reading it and continues after errors that invalidate a case.
+</li>
+<li>where: <code>cmd/deck/main_test.go:606-660</code>
+<pre><code>In kubernetes-sigs/prow, following merged PR #549, &quot;Allow filtering jobs by owner, repo and org&quot; (merge commit 9b693893bd3b8507630f030c157fb23a1a9a8c5f), clean up TestHandleProwJobsWithFilter in cmd/deck/main_test.go. Run each table case under t.Run(tc.Name, ...), read resp.Body before closing it, and close the body within that case. Use t.Fatalf for request creation, unexpected HTTP status, body read, and JSON decode failures so a broken case stops before comparing zero-value results; keep t.Errorf for a valid but incorrect job list.
+
+The task is complete when each case reports its own name, no response body is read after Close, fatal setup/decode errors cannot fall through to the comparison, and go test ./cmd/deck -run TestHandleProwJobsWithFilter -count=1 passes. Keep this followup limited to test structure and error handling; do not change production filtering behavior.</code></pre>
+</li></ul>
+</main></body></html>

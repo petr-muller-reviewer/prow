@@ -1,181 +1,164 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>Triage: kubernetes-sigs/prow#784</title>
-<style>
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-    line-height: 1.6;
-    color: #1a1a1a;
-    max-width: 860px;
-    margin: 2rem auto;
-    padding: 0 1.5rem;
-    background: #fdfdfd;
-  }
-  h1, h2, h3 { line-height: 1.3; }
-  h1 { font-size: 1.5rem; border-bottom: 2px solid #333; padding-bottom: 0.4rem; }
-  h2 { font-size: 1.2rem; margin-top: 2.2rem; border-bottom: 1px solid #ccc; padding-bottom: 0.3rem; }
-  h3 { font-size: 1.02rem; margin-top: 1.4rem; }
-  code, pre {
-    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
-    background: #f2f2f2;
-    border-radius: 4px;
-  }
-  code { padding: 0.1em 0.35em; font-size: 0.92em; }
-  pre {
-    padding: 0.8em 1em;
-    overflow-x: auto;
-    font-size: 0.85em;
-    border-left: 3px solid #888;
-  }
-  .meta {
-    background: #f5f5f5;
-    border: 1px solid #ddd;
-    border-radius: 6px;
-    padding: 1rem 1.2rem;
-    font-size: 0.92rem;
-  }
-  .meta table { border-collapse: collapse; width: 100%; }
-  .meta td { padding: 0.15rem 0.5rem 0.15rem 0; vertical-align: top; }
-  .meta td.k { color: #666; white-space: nowrap; width: 1%; }
-  .verdict {
-    font-size: 1.1rem;
-    font-weight: 600;
-    padding: 0.8rem 1rem;
-    border-radius: 6px;
-    background: #eaf6ea;
-    border: 1px solid #b7dfb7;
-    display: inline-block;
-  }
-  ul { padding-left: 1.4rem; }
-  li { margin-bottom: 0.35rem; }
-  .finding { border-left: 3px solid #6a8caf; padding-left: 1rem; margin-bottom: 1.2rem; }
-  .tag {
-    display: inline-block;
-    font-size: 0.72rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-    background: #6a8caf;
-    color: #fff;
-    border-radius: 3px;
-    padding: 0.1em 0.5em;
-    margin-right: 0.5em;
-  }
-  a { color: #2255aa; }
-</style>
-</head>
-<body>
-
-<h1>Triage: kubernetes-sigs/prow#784</h1>
-
-<div class="meta">
-<table>
-<tr><td class="k">Issue</td><td><a href="https://github.com/kubernetes-sigs/prow/issues/784">kubernetes-sigs/prow#784</a></td></tr>
-<tr><td class="k">Title</td><td>Add advisory_approvers field to OWNERS files</td></tr>
-<tr><td class="k">State</td><td>open</td></tr>
-<tr><td class="k">Labels</td><td><em>(none)</em></td></tr>
-<tr><td class="k">Triaged at</td><td>2026-07-27T00:29:48Z</td></tr>
-<tr><td class="k">Main SHA</td><td><code>e601a1ffafd7d8d3a781238a4c5f4233d6248f68</code></td></tr>
-<tr><td class="k">Verdict</td><td>accepted</td></tr>
-</table>
-</div>
-
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#784</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>Add advisory_approvers field to OWNERS files</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/issues/784">kubernetes-sigs/prow#784</a> · main_sha <code>e601a1ffafd7</code> · state <code>open</code> · triaged_at <code>2026-10-10T16:24:59Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: resolved</span></div>
+<details><summary>Full metadata</summary><pre><code>issue: kubernetes-sigs/prow#784
+title: &quot;Add advisory_approvers field to OWNERS files&quot;
+state: open
+labels:
+main_sha: e601a1ffafd7d8d3a781238a4c5f4233d6248f68
+triaged_at: 2026-10-10T16:24:59Z
+verdict: resolved
+legitimacy: LEGITIMATE
+effort: 2
+recommended_labels: [kind/feature, area/repoowners]
+refresh_log:
+  - at: 2026-10-10T16:24:59Z
+    since: 2026-07-27T00:29:48Z
+    summary: &quot;Recorded PR #783 as a sufficient resolution; it merged on 2026-10-01.&quot;
+advice:
+  advised_at: 2026-10-10T16:25:32Z
+  based_on_triaged_at: 2026-10-10T16:24:59Z</code></pre></details>
 <h2>Verdict</h2>
-
-<p><span class="verdict">ACCEPTED — legitimate, scoped feature request</span></p>
-
-<p>The request to add an <code>advisory_approvers</code> OWNERS field is a legitimate, well-specified feature request that maps cleanly onto <code>pkg/repoowners</code>'s existing leaf-vs-full accessor split. It has a directly analogous precedent already in the codebase (<code>RequiredReviewers</code>), is already self-assigned by the author, and carries no architectural risk — recommend keeping it open, labeling it, and letting the author proceed after confirming the field name.</p>
-
+<p>Resolved. PR #783 implements the requested advisory approver behavior and merged on 2026-10-01. Issue #784 remains open on GitHub, with no labels.</p>
+<h2>Resolution</h2>
+<p><a href="https://github.com/kubernetes-sigs/prow/pull/783">kubernetes-sigs/prow#783</a>, “repoowners: add advisory_approvers OWNERS field,” merged on 2026-10-01. Classification: <strong>sufficient</strong>.</p>
+<ul>
+<li><code>pkg/repoowners/repoowners.go</code> adds <code>AdvisoryApprovers</code> and a separate <code>advisoryApprovers</code> map, adds advisory users to the full approver set, and removes them from <code>LeafApprovers()</code>.
+</li>
+<li>Tests cover advisory approvers in simple and filtered OWNERS configs, <code>/approve</code> recognition, exclusion from auto-assignment, and continued reviewer eligibility when also listed as a reviewer.
+</li>
+<li><code>pkg/plugins/verify-owners/verify-owners.go</code> includes advisory approvers in OWNERS validation.
+</li></ul>
+<p>This matches the prior recommendation to use a separate advisory map, include it in full approver authorization, and keep it out of leaf-only assignment.</p>
 <h2>What the issue reports</h2>
-
 <ul>
-<li>Wants a new <code>advisory_approvers</code> OWNERS field for people (e.g. senior/emeritus maintainers) who should keep <code>/approve</code> authority.</li>
-<li>These people should never be auto-suggested as reviewers/approvers by blunderbuss (excluded from <code>LeafApprovers()</code>).</li>
-<li>If also listed under <code>reviewers</code>, they should remain normally selectable as a reviewer.</li>
-<li>Currently the only workarounds are full <code>approvers</code> membership (gets auto-assigned) or removal/emeritus status (loses approve power) — neither satisfies the need.</li>
-<li>Split out from <a href="https://github.com/kubernetes-sigs/prow/issues/780">#780</a> (same author, smg247) which proposes smarter blunderbuss reviewer selection.</li>
-</ul>
-
-<h2>Analysis</h2>
-
-<h3>Current model</h3>
-<p><code>Config</code> holds <code>Approvers</code>, <code>Reviewers</code>, <code>RequiredReviewers</code>, <code>Labels</code>. Each is copied by <code>applyConfigToPath</code> into its own <code>map[path]map[*regexp.Regexp]sets.Set[string]</code> field on <code>RepoOwners</code>.</p>
-
-<h3>Why a single new field isn't enough</h3>
-<p><code>entriesForFile(path, people, leafOnly)</code> is the shared walk: with <code>leafOnly=true</code> it stops at the first directory with a match (backing <code>LeafApprovers</code>/<code>LeafReviewers</code>, consumed by blunderbuss auto-assignment); with <code>leafOnly=false</code> it accumulates the whole path (backing <code>Approvers</code>/<code>AllApprovers</code>, consumed by <code>/approve</code> authorization). Crucially, <code>LeafApprovers</code> and <code>Approvers</code> both read the <em>same</em> <code>o.approvers</code> map — so today a user can't be in the "full" set without also being in the "leaf" set. A naive addition of advisory approvers to that map would make them show up in <code>LeafApprovers</code> too, breaking the "never auto-assigned" requirement.</p>
-
-<h3>Recommended approach</h3>
+<li>Add <code>advisory_approvers</code> to OWNERS so listed maintainers keep <code>/approve</code> authority without being automatically assigned; if also listed as reviewers, they remain eligible for reviewer selection.
+</li></ul>
+<p>Since previous triage:</p>
 <ul>
-<li>Add <code>AdvisoryApprovers []string</code> to <code>Config</code>, parsed like <code>Approvers</code>.</li>
-<li>Populate a new, separate <code>o.advisoryApprovers</code> map in <code>applyConfigToPath</code> (same shape as <code>o.approvers</code>).</li>
-<li><code>Approvers()</code>/<code>AllApprovers()</code> union <code>o.approvers</code> and <code>o.advisoryApprovers</code> — so <code>/approve</code> recognizes them.</li>
-<li><code>LeafApprovers()</code> stays scoped to <code>o.approvers</code> only — advisory approvers are structurally excluded from auto-assignment, no extra filtering needed.</li>
-<li><code>Reviewers</code>/<code>LeafReviewers</code> untouched — an advisory approver also listed under <code>reviewers</code> is unaffected.</li>
-</ul>
-<p>This is directly precedented by how <code>RequiredReviewers</code> was added (fully separate field/map/accessor triple), so the implementation shape is well understood, not novel.</p>
-
-<h3>Related code</h3>
-
-<div class="finding">
-<code>pkg/repoowners/repoowners.go:52-59</code> — <code>Config</code> struct
-<pre>type Config struct {
-    Approvers         []string `json:"approvers,omitempty"`
-    Reviewers         []string `json:"reviewers,omitempty"`
-    RequiredReviewers []string `json:"required_reviewers,omitempty"`
-    Labels            []string `json:"labels,omitempty"`
-}</pre>
-</div>
-
-<div class="finding">
-<code>pkg/repoowners/repoowners.go:731-753</code> — <code>applyConfigToPath</code>, where each field is copied into its per-path map (the pattern to replicate for <code>AdvisoryApprovers</code>).
-</div>
-
-<div class="finding">
-<code>pkg/repoowners/repoowners.go:844-916</code> — <code>entriesForFile</code> and the leaf/full accessors (<code>LeafApprovers</code>, <code>Approvers</code>, <code>LeafReviewers</code>, <code>Reviewers</code>, <code>AllApprovers</code>, <code>AllReviewers</code>).
-</div>
-
-<div class="finding">
-<code>pkg/plugins/approve/approvers/owners.go:78,476</code> — <code>/approve</code> authorization calls <code>repo.Approvers(toApprove).Set()</code>; must include advisory approvers.
-</div>
-
-<div class="finding">
-<code>pkg/plugins/blunderbuss/blunderbuss.go:100-123</code> — auto-assignment calls <code>LeafReviewers</code>/<code>LeafApprovers</code>; must exclude advisory approvers.
-</div>
-
-<div class="finding">
-<code>pkg/repoowners/repoowners.go:58,270,489,746-750,909-915</code> — <code>RequiredReviewers</code>, the direct structural precedent for a new independent field/map/accessor.
-</div>
-
-<h3>Related issues / PRs</h3>
+<li>PR #783, authored by smg247 and cross-referenced before the prior triage, merged on 2026-10-01 with the implementation described above.
+</li>
+<li>Issue #784 remains open and unlabeled. There are no issue comments after the prior triage timestamp and no PR comments or reviews after the merge.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-blue">related-code</span>Config struct declares approver/reviewer fields</h3>
 <ul>
-<li><a href="https://github.com/kubernetes-sigs/prow/issues/780">kubernetes-sigs/prow#780</a> — "Smart blunderbuss reviewer selection using git blame data", same author; #784 was split out of it.</li>
-</ul>
-
-<h3>Effort assessment</h3>
-<p><strong>Level 2 (moderate)</strong> — single component, well-precedented, but touches both branches of the leaf/full layering logic plus two downstream plugin test suites (<code>pkg/plugins/approve/approvers</code>, <code>pkg/plugins/blunderbuss</code>). No formal OWNERS JSON schema exists in-repo, so no schema-regeneration step is needed. Suitable for a contributor already comfortable with <code>pkg/repoowners</code>'s layered-set model — already self-assigned.</p>
-
-<h2>What I checked</h2>
+<li>where: <code>pkg/repoowners/repoowners.go:52-59</code>
+</li>
+<li>excerpt:<pre><code>type Config struct {
+    Approvers         []string `json:&quot;approvers,omitempty&quot;`
+    Reviewers         []string `json:&quot;reviewers,omitempty&quot;`
+    RequiredReviewers []string `json:&quot;required_reviewers,omitempty&quot;`
+    Labels            []string `json:&quot;labels,omitempty&quot;`
+}</code></pre>
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>applyConfigToPath copies config into per-path maps</h3>
 <ul>
-<li>No existing <code>emeritus_approvers</code>-style field anywhere in the repo (only unrelated prose in <code>reward-owners.go</code>) — nothing to build on or conflict with.</li>
-<li><code>/approve</code> authorization and blunderbuss auto-assignment read different accessor methods that are nonetheless backed by the same underlying map today — the crux of the design problem.</li>
-<li>No OWNERS JSON schema or generated docs to update; <code>required_reviewers</code> isn't documented in any schema file either.</li>
-<li>Issue is well-specified (semantics, example, motivation) and already self-assigned.</li>
-</ul>
-
-<h2>Recommended next steps</h2>
+<li>where: <code>pkg/repoowners/repoowners.go:731-753</code>
+</li>
+<li>excerpt:<pre><code>if len(config.Approvers) &gt; 0 {
+    if o.approvers[path] == nil {
+        o.approvers[path] = make(map[*regexp.Regexp]sets.Set[string])
+    }
+    o.approvers[path][re] = o.ExpandAliases(NormLogins(config.Approvers))
+}
+...
+if len(config.RequiredReviewers) &gt; 0 {
+    if o.requiredReviewers[path] == nil {
+        o.requiredReviewers[path] = make(map[*regexp.Regexp]sets.Set[string])
+    }
+    o.requiredReviewers[path][re] = o.ExpandAliases(NormLogins(config.RequiredReviewers))
+}</code></pre>
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>entriesForFile: leaf vs. full accessors share one map</h3>
 <ul>
-<li>Confirm with the author whether the field name <code>advisory_approvers</code> is final, or whether an alternative should be considered.</li>
-<li>Point the author at the <code>RequiredReviewers</code> code paths as the structural template (field → map → <code>applyConfigToPath</code> → accessor union → tests).</li>
-<li>Apply <code>kind/feature</code> and <code>area/repoowners</code> labels.</li>
-</ul>
-
+<li>where: <code>pkg/repoowners/repoowners.go:844-916</code>
+</li>
+<li>detail: <code>entriesForFile(path, people, leafOnly)</code> walks from a file's directory to root. <code>leafOnly=true</code> stops at the first directory with a match (<code>LeafApprovers</code>, <code>LeafReviewers</code>); <code>leafOnly=false</code> accumulates the whole path (<code>Approvers</code>, <code>Reviewers</code>, <code>AllApprovers</code>, <code>AllReviewers</code>). <code>LeafApprovers</code> and <code>Approvers</code> both read <code>o.approvers</code> — the same map — so a user can't be in the "full" set without also being in the "leaf" set today. This is why advisory approvers need a second, parallel map rather than a new entry in the existing one.
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>/approve authorization consumes the "full" Approvers set</h3>
+<ul>
+<li>where: <code>pkg/plugins/approve/approvers/owners.go:78,476</code>
+</li>
+<li>detail: <code>repo.Approvers(toApprove).Set()</code> is used both to compute available approvers and to check if current approvers satisfy the requirement — this is the layered (non-leaf) accessor, so advisory approvers must be included here.
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>Blunderbuss auto-assignment consumes the leaf-only accessors</h3>
+<ul>
+<li>where: <code>pkg/plugins/blunderbuss/blunderbuss.go:100-123</code>
+</li>
+<li>detail: <code>LeafReviewers</code>/<code>LeafApprovers</code> (via <code>fallbackReviewersClient.LeafReviewers</code> which itself calls <code>LeafApprovers</code>) drive auto-assignment suggestions. Advisory approvers must be excluded here — the two-map design achieves this structurally, without new filtering logic at this call site.
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>RequiredReviewers is the direct structural precedent</h3>
+<ul>
+<li>where: <code>pkg/repoowners/repoowners.go:58,270,489,746-750,909-915</code>
+</li>
+<li>detail: <code>RequiredReviewers</code> was added as a fully independent field + map + <code>applyConfigToPath</code> block + accessor, the exact shape needed for <code>AdvisoryApprovers</code>. A contributor can follow this end-to-end as a template.
+</li></ul>
+<h3><span class="tag c-blue">related-issue</span>kubernetes-sigs/prow#780</h3>
+<ul>
+<li>ref: kubernetes-sigs/prow#780
+</li>
+<li>relevance: "Smart blunderbuss reviewer selection using git blame data" — same author (smg247), #784 was explicitly split out of it.
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>Searched for any existing <code>emeritus_approvers</code>-style field in this repo (<code>grep -ri emeritus</code>) — only unrelated prose in <code>pkg/plugins/reward-owners/reward-owners.go</code>; no dead/existing implementation to build on or conflict with.
+</li>
+<li>Confirmed <code>/approve</code> authorization and blunderbuss auto-assignment read from different accessor methods (<code>Approvers</code> vs. <code>LeafApprovers</code>) that are nonetheless backed by the <em>same</em> underlying map today — the crux of why a naive single-field addition can't satisfy both "recognized by /approve" and "never auto-assigned" simultaneously.
+</li>
+<li>Checked for an OWNERS JSON schema or generated docs needing updates — none exist; <code>required_reviewers</code> (closest analog) isn't documented in any schema file either, only in code comments, so no schema-regeneration step is required.
+</li>
+<li>Confirmed the request is well-specified (exact semantics, example OWNERS snippet, clear motivation) and already self-assigned by the author.
+</li></ul>
+<h2>Next steps</h2>
+<ul>
+<li>No implementation work remains; PR #783 supplies the requested behavior. The issue is still open and unlabeled, so a maintainer can close it and apply the suggested labels if that is the project's process.
+</li></ul>
+<h2>Advice</h2>
+<ul>
+<li><strong>Close #784 as resolved by PR #783.</strong> The PR merged on 2026-10-01 and issue #784 is still open. No labels or comments have changed since the refreshed triage.
+<pre><code>gh issue close 784 --repo kubernetes-sigs/prow --comment $&#x27;&gt; *This was generated by AI during triage.*\n\nResolved by #783, merged 2026-10-01. It adds `advisory_approvers` with `/approve` authority while excluding advisory approvers from `LeafApprovers()` auto-assignment.&#x27;</code></pre>
+</li></ul>
 <h2>Open questions</h2>
 <ul>
-<li>Should advisory approvers be visible in any tooling/UI that lists approvers (e.g. <code>AllApprovers</code>), or only recognized for <code>/approve</code> authorization specifically?</li>
-<li>Any interaction expected with <code>no_parent_owners</code> or nested-OWNERS layering beyond the default "same as <code>approvers</code>" behavior?</li>
-</ul>
-
-</body>
-</html>
+<li>Should advisory approvers be visible in any tooling/UI that lists approvers (e.g. <code>AllApprovers</code>), or only recognized for <code>/approve</code> authorization specifically?
+</li>
+<li>Any interaction expected with <code>no_parent_owners</code> or nested-OWNERS layering beyond the default "same as <code>approvers</code>" behavior?
+</li></ul>
+<h2>Briefing Completed</h2>
+<p>Briefed maintainer on: 2026-07-27</p>
+<p>Key questions asked: none — maintainer confirmed through all 7 slides without requesting elaboration.</p>
+<p>Maintainer decision: Keep issue open, apply <code>kind/feature</code> / <code>area/repoowners</code> labels, let the already-self-assigned author (smg247) proceed with the two-map (<code>o.approvers</code> / <code>o.advisoryApprovers</code>) design; confirm the <code>advisory_approvers</code> field name with the author before implementation locks in.</p>
+</main></body></html>

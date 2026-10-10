@@ -72,4 +72,22 @@ details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-si
 <ul>
 <li>Would you be willing to wait a few more days for v1.34.0 to complete a two-week soak before merging?
 </li></ul>
+<h2>Dependency followups</h2>
+<p>Accepted: 1; skipped: 0.</p>
+<h3>Simplify Cloud Build listing with <code>BuildIterator.All()</code></h3>
+<ul>
+<li>category: simplification
+</li>
+<li>dependency: <code>cloud.google.com/go/cloudbuild</code> v1.33.0 → v1.34.0
+</li>
+<li>where: <code>pkg/googlecloudbuild/client/client.go:132-151</code>
+</li>
+<li>necessity: could — this is a local reduction in pagination boilerplate; the current code is not deprecated.
+</li>
+<li>changelog: v1.34.0's release notes say “Update supported go versions”; its <code>apiv1/v2</code> source adds <code>BuildIterator.All()</code>, returning an <code>iter.Seq2</code> over builds and errors.
+</li>
+<li>accepted
+</li>
+<li>handoff prompt:<pre><code>In `kubernetes-sigs/prow`, on the merged default branch at or after merge commit `2832178b8146c3b26d75c4f780260ba00e2b2598`, follow up on PR #992, “chore(deps): bump cloud.google.com/go/cloudbuild from 1.33.0 to 1.34.0”. In `pkg/googlecloudbuild/client/client.go`, simplify `Client.ListBuildsByTag` by ranging over the Cloud Build v1.34.0 `BuildIterator.All()` API (`iter.Seq2[*cloudbuildpb.Build, error]`) instead of using `iterator.NewPager` and `NextPage`. Preserve the request page size of 50, build ordering, collection of all pages, and error propagation. Update or add focused tests if needed to verify those behaviors. Keep the change limited to this adapter&#x27;s listing loop; do not change filter semantics or other Cloud Build operations.</code></pre>
+</li></ul>
 </main></body></html>

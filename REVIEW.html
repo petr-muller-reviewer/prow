@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#992</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>chore(deps): bump cloud.google.com/go/cloudbuild from 1.33.0 to 1.34.0</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/992">kubernetes-sigs/prow#992</a> · base <code>main</code> · head_sha <code>692f1816cba1</code> · reviewed_at <code>2026-10-05T22:35:36Z</code></div>
+<div class="badges"><span class="badge c-amber">verdict: needs-discussion</span></div>
+<h2>Verdict</h2>
+<p>Needs discussion: the dependency change appears low risk, but I recommend waiting a few more days before merging because v1.34.0 is only 11 days old and contains no security fix that calls for early adoption.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Updates the direct Go dependency <code>cloud.google.com/go/cloudbuild</code> from v1.33.0 to v1.34.0 in <code>go.mod</code> and refreshes its checksums in <code>go.sum</code>.
+</li>
+<li>The release raises the module's Go directive from 1.25 to 1.26; Prow's <code>go 1.26.4</code> directive is compatible.
+</li>
+<li>The release adds <code>All()</code> iterator helpers. Prow's adapter uses <code>NextPage</code>, so it does not exercise the new helper.
+</li>
+<li>The dependency's gRPC and <code>golang.org/x/*</code> requirements move, but Prow already selects equal or newer versions; this bump does not change those effective versions.
+</li>
+<li>The PR changes only dependency metadata and checksums; it makes no project source changes.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-blue">question</span>Let the release soak a little longer</h3>
+<ul>
+<li>where: <code>go.mod:7</code>
+</li>
+<li>concern: The Go module proxy dates v1.34.0 to 2026-09-24, 11 days before this review. The upstream release notes report Go-version support updates and no security fix, so I recommend waiting until it has at least two weeks of soak.
+</li>
+<li>excerpt:<pre><code>cloud.google.com/go/cloudbuild v1.34.0</code></pre>
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>Confirmed the PR is dep-only and the module is a direct dependency; <code>go mod why</code> traces it to <code>pkg/googlecloudbuild/client</code>.
+</li>
+<li>The SDK is imported in three Go files: the adapter implementation, its fake, and its tests. The adapter creates an authenticated Cloud Build client and wraps get, list, create, and cancel operations; no other in-repo call site was found.
+</li>
+<li>OSV reports no advisories for either v1.33.0 or v1.34.0.
+</li>
+<li>Full <code>govulncheck ./...</code> scans at base and head completed with no Cloud Build findings and the same findings at both revisions. Unrelated findings were <code>GO-2023-1901</code> with called traces and <code>GO-2026-5932</code> as imported-only.
+</li>
+<li>Compared the dependency's v1.33.0 and v1.34.0 source trees and release notes. The new iterator helper is not used by this adapter.
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>Would you be willing to wait a few more days for v1.34.0 to complete a two-week soak before merging?
+</li></ul>
+</main></body></html>

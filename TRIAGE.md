@@ -1,5 +1,5 @@
 ---
-issue: 650
+issue: kubernetes-sigs/prow#650
 title: "tide: obsolete batch ProwJobs not aborted when a new batch supersedes them"
 repo: kubernetes-sigs/prow
 reporter: "@Prucek"
@@ -8,16 +8,19 @@ category: Feature request (reclassified from bug)
 component: "Tide — pkg/tide/"
 verdict: LEGITIMATE
 effort: "Level 2 — Moderate"
-labels:
-  - area/tide
-  - kind/feature
-  - lifecycle/rotten
-triaged_at: 2026-07-26T23:18:05Z
+state: open
+labels: area/tide, kind/feature, lifecycle/rotten
+triaged_at: 2026-10-10T15:20:21Z
 refresh_log:
   - previous: "2026-06-09"
     summary: "k8s-triage-robot applied lifecycle/stale; help-wanted removed. No substantive new information."
   - previous: "2026-06-09T15:13:53Z"
     summary: "k8s-triage-robot applied lifecycle/rotten (30 days after stale, no response). Still open, no substantive new information."
+  - previous: "2026-07-26T23:18:05Z"
+    summary: "Issue remains open with unchanged labels and no comments. Open PR #744 proposes the previously recommended superseded-batch abort; a separate OpenShift release cross-reference is unrelated."
+advice:
+  advised_at: 2026-10-10T15:21:21Z
+  based_on_triaged_at: 2026-10-10T15:20:21Z
 ---
 
 # Triage: Issue #650
@@ -42,6 +45,11 @@ refresh_log:
 **Since previous triage (2026-06-09T15:13:53Z):**
 - `k8s-triage-robot` applied `lifecycle/rotten` at 2026-07-09T14:33:28Z (30 days of inactivity since `lifecycle/stale`). Per the bot's stale/rotten/close policy, the issue will be auto-closed after another 30 days of inactivity unless someone comments `/remove-lifecycle rotten`.
 - No substantive comments, no linked PRs, no cross-references. Issue remains open.
+
+**Since previous triage (2026-07-26T23:18:05Z):**
+- Issue remains open with the same labels (`area/tide`, `kind/feature`, `lifecycle/rotten`); no new issue comments were posted.
+- Open [kubernetes-sigs/prow#744](https://github.com/kubernetes-sigs/prow/pull/744), authored by @carterpewpew and updated 2026-09-18, says `Fixes #650`. It lists Tide-created batch ProwJobs for the same org/repo/branch regardless of base SHA and aborts stale ones before selecting a new batch, matching the recommended Approach 3. It adds an opt-out config and coverage for aborting old while retaining current-base jobs.
+- A 2026-09-22 cross-reference by `coderabbitai[bot]` points to merged [openshift/release#85675](https://github.com/openshift/release/pull/85675), which only changes OpenShift `oc-mirror` Tide configuration and is unrelated to this issue.
 
 When the base branch SHA advances (merge, manual or via Tide), Tide starts a new batch without aborting ProwJobs from the previous batch. The old ProwJobs continue running to completion even though their results are no longer relevant, wasting CI resources. The reporter provided a real-world example from Azure/ARO-HCP where a manual merge caused a third parallel batch to start.
 
@@ -164,3 +172,32 @@ Prow already has a well-established pattern for aborting superseded jobs: `pjuti
 - The `TerminateOlderJobs` batch exclusion at `abort.go:64` was intentional. Investigate before removing.
 - Consider abort-on-every-sync vs. abort-only-before-new-batch. Every-sync is more aggressive but prevents orphans when no new batch is needed.
 - Some deployments may want stale batches to complete (artifacts beyond merge gating). Config option could address this.
+
+## Findings
+
+### [related-pr] Proposed fix for superseded batches is in flight
+- ref: kubernetes-sigs/prow#744
+- relevance: The open PR adds a base-SHA-independent query for Tide batch ProwJobs on the same branch and aborts stale jobs before triggering a replacement batch, matching the previously recommended approach; review/track it for correctness and merge progress.
+
+## Next steps
+
+- Review and track [kubernetes-sigs/prow#744](https://github.com/kubernetes-sigs/prow/pull/744), which directly addresses the diagnosed cause and includes tests for old versus current-base batches.
+
+## Advice
+
+### Mark the issue active while the fix is in flight
+
+The issue still has `lifecycle/rotten`, which denotes inactivity and risks auto-close, while linked PR #744 remains open with a fix for this issue. Replace it with the repository's existing `lifecycle/active` label.
+
+```sh
+gh issue edit 650 --repo kubernetes-sigs/prow --remove-label lifecycle/rotten --add-label lifecycle/active
+```
+
+### Review and track PR #744
+
+PR #744 remains open and its change follows the previously recommended approach. Its mergeability is currently unknown, so review its diff and follow its checks before deciding whether more work is needed.
+
+```sh
+gh pr view 744 --repo kubernetes-sigs/prow
+gh pr diff 744 --repo kubernetes-sigs/prow
+```

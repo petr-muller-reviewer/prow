@@ -94,3 +94,62 @@ Answered by the author on 2026-10-08, who linked `kubernetes/k8s.io#10034`. That
 - Duplicate keys fail config loading, and reload errors retain the last successfully loaded configuration.
 - The new tests cover `milestone_applier` merging and scope classification.
 - No tests were run as part of this review.
+
+## Followups
+
+Accepted: 3. Skipped: 1 (align the PR title with the implemented field).
+
+PR #993 is still open at `8992755740f1e716a5f4090faf94731f0244bfed`; no merge commit exists yet. Carry out these followups on the default branch after the PR lands. Deployment wiring already has separate open PRs, `kubernetes/k8s.io#10034` and `kubernetes/test-infra#37968`.
+
+### Share the duplicate-key map merge logic
+
+- Category: cleanup.
+- Necessity: could.
+- Where: `pkg/plugins/config.go:2394-2425` and `pkg/plugins/config_test.go:2271-2411`.
+- Why followup: the new milestone map merge repeats the external-plugin map merge. Both implementations work; extracting their shared behavior can keep future changes consistent without delaying this feature.
+
+```text
+In kubernetes-sigs/prow, following PR #993 — "Plugins: Support milestone_applier and repo_milestone in supplemental configs" (currently open at 8992755740f1e716a5f4090faf94731f0244bfed), work on the default branch after it lands.
+
+Refactor mergeExternalPluginsFrom and mergeMilestoneApplierFrom in pkg/plugins/config.go to share one private typed map merge helper. Preserve nil and empty map behavior, whole-key duplicate rejection, existing destination values, insertion of nonconflicting keys, aggregation of duplicate errors, and the exact external-plugins and milestone_applier error prefixes.
+
+Acceptance: both callers use the helper; focused tests cover these preserved behaviors; go test ./pkg/plugins -run '^TestMergeFrom$' passes along with any focused tests added.
+
+Scope: these two merge paths only; no changes to Plugins/Bugzilla merging, scope classification, supported fields, or deployment configuration. Prepare local changes without publishing.
+```
+
+### Document supplemental plugin configuration
+
+- Category: docs.
+- Necessity: should.
+- Where: `site/content/en/docs/components/plugins/_index.md:10`, with behavior in `pkg/plugins/config.go`, `pkg/plugins/plugins.go`, and `pkg/flagutil/plugins/plugins.go`.
+- Why followup: the guide still says all plugin configuration lives in `plugins.yaml`. A supplemental-config example and the actual merge rules help teams adopt sharding; documentation can land independently of the working feature.
+
+```text
+In kubernetes-sigs/prow, following PR #993 — "Plugins: Support milestone_applier and repo_milestone in supplemental configs" (currently open at 8992755740f1e716a5f4090faf94731f0244bfed), work on the default branch after it lands.
+
+Update site/content/en/docs/components/plugins/_index.md to explain supplemental plugin configuration and qualify the existing statement that all configuration is stored in plugins.yaml. Verify behavior in pkg/plugins/config.go, pkg/plugins/plugins.go, and pkg/flagutil/plugins/plugins.go.
+
+Document --supplemental-plugin-config-dir, the default _pluginconfig.yaml suffix and its override flag, the actual supported fields/subfields, and a realistic repository-scoped milestone_applier example. Explain whole-repository duplicate rejection across main and supplemental files, including disjoint branch maps; move the complete mapping when migrating. Describe delivery to Hook's mounted directory, retain separate plugin-enablement guidance, and link to existing config-updater documentation.
+
+Acceptance: examples match the loader and merge behavior; readers can identify the supported subset and migrate a repository without duplicate keys; no claim that repo_milestone is supported.
+
+Scope: documentation only; no implementation, deployment, or external-repository changes. Prepare local changes without publishing.
+```
+
+### Test milestone file loading and failed-reload recovery
+
+- Category: tests.
+- Necessity: should.
+- Where: `pkg/plugins/plugins_test.go:230` and `pkg/plugins/plugins.go:297-375`.
+- Why followup: the PR tests merging and scope classification separately, while the loader tests only cover supplemental plugin lists. File-based regression coverage can protect milestone updates and retention of the last valid configuration without changing the already working loader.
+
+```text
+In kubernetes-sigs/prow, following PR #993 — "Plugins: Support milestone_applier and repo_milestone in supplemental configs" (currently open at 8992755740f1e716a5f4090faf94731f0244bfed), work on the default branch after it lands.
+
+Extend pkg/plugins/plugins_test.go with file-based coverage of ConfigAgent.Load from pkg/plugins/plugins.go. Load valid main and _pluginconfig.yaml files containing repository-scoped milestone_applier mappings and assert the published branch mappings. Then change a mapping and introduce a second supplemental file with the same repository key but a disjoint branch map. Assert that loading fails, the error identifies the conflicting file and milestone_applier repository key, and the entire previously published configuration remains unchanged. Remove or correct the conflicting file and assert a subsequent successful load publishes the updated mappings.
+
+Acceptance: success, rejection, unchanged configuration after failure, and recovery are verified through the public loader; run go test ./pkg/plugins -run '^TestLoad' including the new tests.
+
+Scope: focused tests using temporary files and synchronous Load calls; no Kubernetes cluster, polling waits, production refactor, or deployment changes. Prepare local changes without publishing.
+```

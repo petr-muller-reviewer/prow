@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#1001</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>docs: generate the metrics reference from Go declarations</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1001">kubernetes-sigs/prow#1001</a> · base <code>main</code> · head_sha <code>7a209d855110</code> · reviewed_at <code>2026-10-09T15:27:50Z</code></div>
+<div class="badges"><span class="badge c-red">verdict: request-changes</span></div>
+<h2>Verdict</h2>
+<p>Request changes. Code Quality and Maintainability reviewers independently confirmed that the generator accepts missing metric help and emits blank descriptions for two rows, contrary to the PR's stated requirement. Deployment risk is low because the change affects documentation tooling and generated docs, not deployed Prow behavior.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Parses Prometheus declarations under <code>cmd/</code> and <code>pkg/</code> to build a metrics reference.
+</li>
+<li>Resolves static names, labels, and help values, then sorts and links rows to their source definitions.
+</li>
+<li>Preserves surrounding guidance and documents HTTP helper and exporter metrics separately.
+</li>
+<li>Adds the metrics page to code generation and verification.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-red">blocking</span>Require help text for every generated metric row</h3>
+<ul>
+<li>where: <code>hack/gen-prow-documented/metrics.go:298-312</code>
+</li>
+<li>concern: When <code>Help</code> is absent, the parser assigns an empty string to the row and only rejects an empty <code>Name</code>. The generated descriptions for <code>jira_request_duration_seconds</code> and <code>prow_job_runtime_seconds</code> are blank. Add help to those source declarations and reject missing or empty help in the generator so future declarations cannot silently produce incomplete documentation.
+</li>
+<li>excerpt:<pre><code>for _, field := range []string{&quot;Namespace&quot;, &quot;Subsystem&quot;, &quot;Name&quot;, &quot;Help&quot;} {
+    value := &quot;&quot;
+    if expression, ok := fields[field]; ok {
+        value, err = stringValue(expression, definitions, map[ast.Expr]bool{})
+        if err != nil {
+            return row, fmt.Errorf(&quot;%s: %w&quot;, field, err)
+        }
+    }
+    if field == &quot;Help&quot; {
+        row.help = value
+    } else if value != &quot;&quot; {
+        parts = append(parts, value)
+    }
+    if field == &quot;Name&quot; &amp;&amp; value == &quot;&quot; {
+        return row, fmt.Errorf(&quot;empty metric name&quot;)
+    }</code></pre>
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>The code quality and maintainability reviewers independently confirmed the missing-help issue; the code and generated rows were checked directly.
+</li>
+<li>Static aliases, constructor variants, runtime HTTP helper exclusions, sorting, source links, and codegen check integration were reviewed.
+</li>
+<li>Tests cover aliases, dynamic definitions, escaping, markers, and idempotent generation; tests were not run during this review.
+</li>
+<li>Deployment review found no runtime, configuration, dependency, or resource changes; deployment risk is low.
+</li>
+<li>No repository-specific code standards were found in <code>CONTRIBUTING.md</code>.
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>Should the extractor's supported static declaration forms be documented so maintainers know how to extend it when new metric declaration patterns appear?
+</li></ul>
+</main></body></html>

@@ -5,9 +5,28 @@ head_sha: 7a209d855110d9c9a13b66c418a93d2cdd29c75e
 base: main
 reviewed_at: 2026-10-09T15:27:50Z
 verdict: request-changes
+gate:
+  decision: do-not-merge
+  gated_at: 2026-10-10T16:13:29Z
+  gated_head_sha: 7a209d855110d9c9a13b66c418a93d2cdd29c75e
+  reviewed_head_sha: 7a209d855110d9c9a13b66c418a93d2cdd29c75e
 ---
 
 # Review
+
+## Gate
+
+**Decision: do-not-merge**
+
+The prior blocking finding remains unresolved at the current PR head, which is unchanged from the reviewed head. The generator still accepts absent `Help` fields, and the generated descriptions for two metrics are blank. No submitted reviews or substantive inline comments were found; issue comments were bot notifications. The PR remains open.
+
+### Gating list
+
+- **Not addressed — REVIEW.md, “Require help text for every generated metric row”** (`hack/gen-prow-documented/metrics.go:298-312`): The parser assigns an empty description when `Help` is absent and only rejects an empty metric name. `jira_request_duration_seconds` and `prow_job_runtime_seconds` still have no `Help` in their declarations. Do not merge until both descriptions are supplied and the generator rejects absent or empty help.
+
+### Independent merge risk
+
+No notable merge risk. The five changed paths are limited to the metrics generator, its tests, the codegen verifier, and documentation. No exported runtime API, Prow configuration, or deployed behavior changes; the blast radius is limited to documentation generation and verification, so no operator migration or release note is needed.
 
 ## Verdict
 

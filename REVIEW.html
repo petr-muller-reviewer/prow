@@ -32,7 +32,27 @@ details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-si
 </style></head><body><main>
 <h1>docs: generate the metrics reference from Go declarations</h1>
 <div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1001">kubernetes-sigs/prow#1001</a> · base <code>main</code> · head_sha <code>7a209d855110</code> · reviewed_at <code>2026-10-09T15:27:50Z</code></div>
-<div class="badges"><span class="badge c-red">verdict: request-changes</span></div>
+<div class="badges"><span class="badge c-red">verdict: request-changes</span><span class="badge c-red">gate: do-not-merge</span></div>
+<details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#1001
+title: &quot;docs: generate the metrics reference from Go declarations&quot;
+head_sha: 7a209d855110d9c9a13b66c418a93d2cdd29c75e
+base: main
+reviewed_at: 2026-10-09T15:27:50Z
+verdict: request-changes
+gate:
+  decision: do-not-merge
+  gated_at: 2026-10-10T16:13:29Z
+  gated_head_sha: 7a209d855110d9c9a13b66c418a93d2cdd29c75e
+  reviewed_head_sha: 7a209d855110d9c9a13b66c418a93d2cdd29c75e</code></pre></details>
+<h2>Gate</h2>
+<p><strong>Decision: do-not-merge</strong></p>
+<p>The prior blocking finding remains unresolved at the current PR head, which is unchanged from the reviewed head. The generator still accepts absent <code>Help</code> fields, and the generated descriptions for two metrics are blank. No submitted reviews or substantive inline comments were found; issue comments were bot notifications. The PR remains open.</p>
+<h3>Gating list</h3>
+<ul>
+<li><strong>Not addressed — REVIEW.md, “Require help text for every generated metric row”</strong> (<code>hack/gen-prow-documented/metrics.go:298-312</code>): The parser assigns an empty description when <code>Help</code> is absent and only rejects an empty metric name. <code>jira_request_duration_seconds</code> and <code>prow_job_runtime_seconds</code> still have no <code>Help</code> in their declarations. Do not merge until both descriptions are supplied and the generator rejects absent or empty help.
+</li></ul>
+<h3>Independent merge risk</h3>
+<p>No notable merge risk. The five changed paths are limited to the metrics generator, its tests, the codegen verifier, and documentation. No exported runtime API, Prow configuration, or deployed behavior changes; the blast radius is limited to documentation generation and verification, so no operator migration or release note is needed.</p>
 <h2>Verdict</h2>
 <p>Request changes. Code Quality and Maintainability reviewers independently confirmed that the generator accepts missing metric help and emits blank descriptions for two rows, contrary to the PR's stated requirement. Deployment risk is low because the change affects documentation tooling and generated docs, not deployed Prow behavior.</p>
 <h2>What this PR does</h2>

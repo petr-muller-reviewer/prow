@@ -12,7 +12,7 @@ refresh_log:
     summary: "Reviewed targeted collector rewrite and component registration; resolved scope and attribution documentation, retained missing coverage."
 gate:
   decision: do-not-merge
-  gated_at: 2026-10-09T13:17:07Z
+  gated_at: 2026-10-10T17:53:52Z
   gated_head_sha: 49a050829080b79ce689eecfa225affd142b1085
   reviewed_head_sha: 49a050829080b79ce689eecfa225affd142b1085
 ---
@@ -21,19 +21,20 @@ gate:
 
 ## Gate
 
-Do not merge. Current head `49a050829080b79ce689eecfa225affd142b1085` matches the refreshed review. The sole active blocking finding is missing coverage of the collector's public behavior; the PR still contains no test additions. Naming, attribution documentation, and agent ownership are addressed.
+Do not merge. Current head `49a050829080b79ce689eecfa225affd142b1085` matches the refreshed review. The blocking test finding remains, and the new publication wiring should be made coherent within this PR. Naming, attribution documentation, and agent ownership are addressed.
 
 - **Not addressed; blocks merge — REVIEW.md, “Cover the published metric's values and refresh behavior” (`pkg/config/agent.go:69-81`):** Collect emits three cached values after a configuration is loaded, but no tests verify the counts, startup absence, zero-count replacement, or independent agent state. Add focused registry-based coverage through Set and SetWithoutBroadcast to unblock the gate.
+- **Not addressed; also gates merge — REVIEW.md, “Integrate collector publication in one place” (`cmd/exporter/main.go:109-116`, `pkg/metrics/metrics.go:38-88`):** This PR adds registration beside `ExposeMetrics` in 12 standard components and registers exporter in both a custom and the default registry because serving and pushing use different gatherers. Make the publication path explicit in the metrics API or another single integration point, remove the new double-registration workaround, and verify both scrape and Pushgateway paths before merging.
 
 Prior GitHub feedback from @petr-muller on 2026-10-05 requested the name prow_config_static_job_definition and raised singleton/attribution concerns. Current code adopts that name, implements an agent-owned collector, and documents scrape-target attribution; these items are addressed. No other substantive GitHub feedback is unresolved.
 
-Independent merge risk: The full PR changes 15 files with 93 additions and 4 deletions, adding an explicitly registered collector to 13 component entry points. Describe and Collect are additive exported methods; no existing exported signature, configuration schema, flag, default, job execution path, or wire format is removed or changed. The metric contributes three series per registered agent, and exporter includes it in both its custom scrape registry and the default Pushgateway registry. Existing deployments need no migration or coordinated rollout. No notable compatibility risk was identified; documentation covers static scope and avoiding sums across replicas. The assessment used direct code inspection; no applicable repository compatibility skill was available, and no test execution at this head is claimed.
+Independent merge risk: The full PR changes 15 files with 93 additions and 4 deletions, adding an explicitly registered collector to 13 component entry points. Describe and Collect are additive exported methods; no existing exported signature, configuration schema, flag, default, job execution path, or wire format is removed or changed. The metric contributes three series per registered agent. Existing deployments need no migration or coordinated rollout. The new publication wiring is a maintainability and coverage risk: the custom scrape and default Pushgateway registries can silently diverge if a collector is registered in only one. Documentation covers static scope and avoiding sums across replicas. The assessment used direct code inspection; no applicable repository compatibility skill was available, and no test execution at this head is claimed.
 
 ## Verdict
 
 Request changes.
 
-The updated implementation binds cached static counts to each config agent and explicitly registers the agent as a collector in each emitting component. The metric name and documentation now explain static snapshot scope, replica attribution through scrape-target labels, and the exclusion of in-repo jobs, resolving the contract finding. Request changes remains solely for missing regression coverage of values, refresh behavior, and the collector lifecycle.
+The updated implementation binds cached static counts to each config agent. The metric name and documentation explain static snapshot scope, replica attribution through scrape-target labels, and the exclusion of in-repo jobs, resolving the contract finding. Request changes remains for missing regression coverage and for publication wiring introduced by this PR: the exporter must currently register one collector twice because its serving and pushing paths use different registries.
 
 ## What this PR does
 
@@ -65,6 +66,16 @@ Since previous review:
     ch <- prometheus.MustNewConstMetric(configStaticJobDefinitions, prometheus.GaugeValue, float64(counts.presubmits), "presubmit")
     ch <- prometheus.MustNewConstMetric(configStaticJobDefinitions, prometheus.GaugeValue, float64(counts.postsubmits), "postsubmit")
 - concern: The collector rewrite still adds no tests for this public metric. Register an agent in a fresh registry and verify no samples before loading, unequal counts across multiple repositories after Set, and replacement with zero counts after SetWithoutBroadcast. Verify separate agents in separate registries retain independent values.
+
+### [should-fix] Integrate collector publication in one place
+- where: `cmd/exporter/main.go:109-116`
+- excerpt: |
+    registry.MustRegister(configAgent)
+    // Pushgateway collection uses the default registry.
+    prometheus.MustRegister(configAgent)
+    registry.MustRegister(prowjobs.NewProwJobLifecycleHistogramVec(informerFactory.Prow().V1().ProwJobs().Informer()))
+    metrics.ExposeMetricsWithRegistry("exporter", cfg().PushGateway, o.instrumentationOptions.MetricsPort, registry, nil)
+- concern: The PR adds registration beside `ExposeMetrics` in 12 other components and must register exporter twice because `ExposeMetricsWithRegistry` serves the supplied registry but pushes the default one. This makes a new metric depend on two manually synchronized publication paths; missing one registration would silently omit it from one destination. Choose a single integration point for this collector within this PR, with explicit scrape and Pushgateway behavior, and test both paths rather than leaving the double-registration workaround for later cleanup.
 
 ## Resolved
 
@@ -105,9 +116,8 @@ Since previous review:
 - No requirement to count dynamically fetched in-repo definitions or instrument consumer execution for the static inventory objective.
 - No samples are emitted before the first snapshot; an accepted empty config emits three zeros.
 - Collector state belongs to each Agent, removing cross-agent overwrites. Distinct agents would still require distinct registries or distinguishing registration labels if exported together.
-- Exporter registers the agent in both its custom serving registry and the default registry used by Pushgateway collection.
 - PR remains OPEN. No new inline comments or submitted reviews; the only new issue comment is an automated approval-notifier message on 2026-10-08 at 13:39:56 UTC.
 
 ## Open questions
 
-None beyond the active request for regression coverage; source attribution and agent ownership are addressed by the new implementation and documentation.
+- Can the metrics publication API accept the agent collector and make its scrape and Pushgateway registries explicit, so exporter does not need two manual registrations?

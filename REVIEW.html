@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#747</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>Update base container images to v20260512-1f34ef0df3</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/747">kubernetes-sigs/prow#747</a> · base <code>main</code> · head_sha <code>6312f82b3a02</code> · reviewed_at <code>2026-06-12T10:05:36Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span></div>
+<h2>Summary</h2>
+<p>Routine bump of all <code>gcr.io/k8s-staging-test-infra/{alpine,git,git-custom-k8s-auth}</code> base images in <code>.ko.yaml</code> from <code>v20251206-8481528a19</code> to <code>v20260512-1f34ef0df3</code>. Single file, no logic changes. Three independent reviewers (code quality, maintainability, deployment risk) all returned APPROVE with no critical issues.</p>
+<h2>Findings</h2>
+<h3><span class="tag c-gray">nit</span>No PR description</h3>
+<ul>
+<li>where: <code>.ko.yaml</code> (PR metadata)
+</li>
+<li>concern: PR body is empty. A one-liner referencing the upstream image promotion run or commit would make provenance auditable without extra investigation.
+</li>
+<li>excerpt:<pre><code>(no PR body)</code></pre>
+</li></ul>
+<h3><span class="tag c-blue">question</span>Image pullability pre-merge check</h3>
+<ul>
+<li>where: <code>gcr.io/k8s-staging-test-infra</code> registry
+</li>
+<li>concern: Deployment risk reviewer flagged that the new tags should be confirmed pullable before merge to avoid a broken release build. This is a staging registry; availability is not guaranteed.
+</li>
+<li>excerpt:<pre><code>gcr.io/k8s-staging-test-infra/alpine:v20260512-1f34ef0df3
+gcr.io/k8s-staging-test-infra/git:v20260512-1f34ef0df3
+gcr.io/k8s-staging-test-infra/git-custom-k8s-auth:v20260512-1f34ef0df3</code></pre>
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>All 35 <code>gcr.io/k8s-staging-test-infra</code> entries consistently bumped; no entries missed.
+</li>
+<li>Image-to-base-type assignments (alpine / git / git-custom-k8s-auth) are unchanged — no component accidentally received a different image class.
+</li>
+<li><code>webhook-server</code> (<code>gcr.io/distroless/static:nonroot@sha256:…</code>) left untouched — correct, digest-pinned separately.
+</li>
+<li><code>fakepubsub</code> (<code>google/cloud-sdk:389.0.0</code>) left untouched — correct, versioned separately.
+</li>
+<li>New tag <code>v20260512-1f34ef0df3</code> follows the established <code>v&lt;YYYYMMDD&gt;-&lt;sha&gt;</code> convention.
+</li>
+<li>~5 month cadence (Dec 2025 → May 2026) is normal for this type of bump.
+</li>
+<li>No configuration schema, API, ProwJob spec, or operator-facing behavior altered.
+</li>
+<li>No version skew: all three image families advance to the same tag atomically.
+</li>
+<li>Change is consistent with prior bump pattern (<code>da4351c35</code>).
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>Can you confirm the new image tags are pullable from <code>gcr.io/k8s-staging-test-infra</code> before this merges?
+</li>
+<li>Is there an upstream image promotion PR or release link that could be added to the PR description for traceability?
+</li></ul>
+<h2>Followups</h2>
+<p>No followup opportunities identified for PR #747.</p>
+</main></body></html>

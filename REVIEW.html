@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Review: prow#805</title>
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+    max-width: 860px;
+    margin: 2rem auto;
+    padding: 0 1.5rem;
+    color: #1a1a1a;
+    background: #fdfdfd;
+  }
+  code, pre {
+    font-family: "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 0.9em;
+  }
+  pre {
+    background: #f4f4f4;
+    padding: 0.75rem 1rem;
+    border-radius: 6px;
+    overflow-x: auto;
+    border: 1px solid #e0e0e0;
+  }
+  code.inline {
+    background: #f0f0f0;
+    padding: 0.1em 0.35em;
+    border-radius: 4px;
+  }
+  header {
+    border-bottom: 2px solid #ddd;
+    padding-bottom: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  header dl {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 0.25rem 1rem;
+    margin: 0.5rem 0;
+  }
+  header dt { font-weight: 600; color: #555; }
+  header dt::after { content: ":"; }
+  h1 { font-size: 1.4rem; margin-bottom: 0.25rem; }
+  h2 {
+    font-size: 1.15rem;
+    margin-top: 2rem;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 0.3rem;
+  }
+  .verdict {
+    display: inline-block;
+    padding: 0.3em 0.8em;
+    border-radius: 6px;
+    font-weight: 700;
+    background: #dff5df;
+    color: #1e5e1e;
+  }
+  .finding {
+    border: 1px solid #e5e5e5;
+    border-left: 4px solid #999;
+    border-radius: 6px;
+    padding: 0.9rem 1.1rem;
+    margin: 1rem 0;
+  }
+  .finding.should-fix { border-left-color: #d99a1b; }
+  .finding.nit { border-left-color: #8a8a8a; }
+  .finding.question { border-left-color: #3b7dd8; }
+  .finding h3 { margin: 0 0 0.5rem 0; font-size: 1.02rem; }
+  .badge {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding: 0.15em 0.5em;
+    border-radius: 4px;
+    margin-right: 0.5em;
+    color: #fff;
+    background: #999;
+  }
+  .badge.should-fix { background: #d99a1b; }
+  .badge.nit { background: #8a8a8a; }
+  .badge.question { background: #3b7dd8; }
+  ul { padding-left: 1.3rem; }
+  li { margin-bottom: 0.4rem; }
+  a { color: #1a5fb4; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Review: kubernetes-sigs/prow#805</h1>
+  <p><a href="https://github.com/kubernetes-sigs/prow/pull/805">testfreeze: allow kind/bug PRs during code freeze with release team notification</a></p>
+  <dl>
+    <dt>Head SHA</dt><dd><code>205f2dd87803a53223210e39ba3ff99f45d024f4</code></dd>
+    <dt>Base</dt><dd><code>main</code></dd>
+    <dt>Reviewed at</dt><dd>2026-07-25T21:25:12Z</dd>
+  </dl>
+</header>
+
+<h2>Verdict</h2>
+<p><span class="verdict">Approve</span></p>
+<p>Small, well-scoped, well-tested change. It does exactly what the description says. The only real concern &mdash; that the plugin only evaluates labels at PR-open time and so misses the common case of <code class="inline">kind/bug</code> being applied later during triage &mdash; is a pre-existing limitation of the plugin's event handling, not a defect introduced by this PR, so it shouldn't block merge but is worth raising.</p>
+
+<h2>What this PR does</h2>
+<ul>
+  <li>Adds a <code class="inline">kind/bug</code> label check to the <code class="inline">testfreeze</code> plugin.</li>
+  <li>During code freeze, <code class="inline">kind/bug</code> PRs now get a softer message ("may be included", tag <code class="inline">@kubernetes/sig-release-leads</code> on the PR) instead of the "strictly prohibited" message.</li>
+  <li>Non-bug PRs during code freeze keep the strict message, but it now also asks to tag the release-leads team on GitHub, not just ping Slack.</li>
+  <li>Threads a new <code class="inline">labels []string</code> parameter through <code class="inline">handlePullRequestEvent</code> &rarr; <code class="inline">handler.handle</code>, built from <code class="inline">e.PullRequest.Labels</code>.</li>
+  <li>Adds one new test case for the bug-fix path; updates an existing test to assert the new tagging text.</li>
+</ul>
+
+<h2>Findings</h2>
+
+<div class="finding should-fix">
+  <h3><span class="badge should-fix">Should fix</span>Label-added-after-open never gets the softer message</h3>
+  <p><code>pkg/plugins/testfreeze/testfreeze.go:139-143</code></p>
+  <pre>if action != github.PullRequestActionOpened &&
+    action != github.PullRequestActionReopened {
+    log.Debugf("Skipping pull request action %s", action)
+    return nil
+}</pre>
+  <p>The plugin only fires on <code class="inline">opened</code>/<code class="inline">reopened</code> actions and reads labels from that single event payload. If <code class="inline">kind/bug</code> is applied during triage after the PR is opened (the common case), the strict comment was already posted and never updates. This is a pre-existing single-shot limitation, not introduced here, but it undercuts this PR's stated goal since most <code class="inline">kind/bug</code> labeling happens post-open.</p>
+</div>
+
+<div class="finding nit">
+  <h3><span class="badge nit">Nit</span>Missing explicit assertion for the strict-message path</h3>
+  <p><code>pkg/plugins/testfreeze/testfreeze_test.go:65-70</code></p>
+  <pre>assert.Contains(t, comment, "Technical review")
+assert.Contains(t, comment, "Inclusion in release")
+assert.Contains(t, comment, "#sig-release Slack channel")
+assert.Contains(t, comment, "@kubernetes/sig-release-leads")</pre>
+  <p>This existing test case (no labels set) checks for the new tagging text but doesn't assert <code class="inline">"strictly prohibited"</code> is still present, unlike the new bug-fix test which explicitly asserts it's absent. Adding the positive assertion would make the two tests symmetric regression guards.</p>
+</div>
+
+<div class="finding nit">
+  <h3><span class="badge nit">Dense template end-tags</span></h3>
+  <p><code>pkg/plugins/testfreeze/testfreeze.go:48</code></p>
+  <pre>{{ end }}{{ end }}</pre>
+  <p>Closing both the <code class="inline">IsBugFix</code> and <code class="inline">InCodeFreeze</code> conditionals on one line is correct but harder to scan than the rest of the template. Purely stylistic.</p>
+</div>
+
+<div class="finding nit">
+  <h3><span class="badge nit">Nit</span><code class="inline">kind/bug</code> label name duplicated between constant and template text</h3>
+  <p><code>pkg/plugins/testfreeze/testfreeze.go:39,42</code></p>
+  <pre>labelKindBug                = "kind/bug"
+...
+{{ if .IsBugFix }}This PR is labeled `kind/bug`, so it **may** be included...</pre>
+  <p><code class="inline">labelKindBug</code> is used for matching, but the template also hardcodes the literal string in the rendered message. If the constant value ever changes, the displayed text silently drifts out of sync with the actual match condition.</p>
+</div>
+
+<div class="finding nit">
+  <h3><span class="badge nit">Nit</span>New test doesn't assert the positive bug-fix wording</h3>
+  <p><code>pkg/plugins/testfreeze/testfreeze_test.go:97-121</code></p>
+  <pre>assert.Contains(t, comment, "kind/bug")
+assert.Contains(t, comment, "@kubernetes/sig-release-leads")
+assert.NotContains(t, comment, "strictly prohibited")</pre>
+  <p>The new <code class="inline">kind/bug</code> test case asserts absence of the strict wording but never asserts the unique positive wording of the new branch (e.g. <code class="inline">"may be included"</code>). A refactor that accidentally swapped which branch renders for which label state would not be caught.</p>
+</div>
+
+<div class="finding nit">
+  <h3><span class="badge nit">Nit</span>No debug log for the isBugFix branch decision</h3>
+  <p><code>pkg/plugins/testfreeze/testfreeze.go:162</code></p>
+  <pre>isBugFix := slices.Contains(labels, labelKindBug)</pre>
+  <p>This now drives a policy-relevant fork (strict vs. permissive message) but is never logged. A <code class="inline">log.WithField("isBugFix", isBugFix)</code> would make "why did this PR get message X" answerable from logs.</p>
+</div>
+
+<div class="finding question">
+  <h3><span class="badge question">Question</span>Missing test for kind/bug + test-freeze-only (no code freeze)</h3>
+  <p><code>pkg/plugins/testfreeze/testfreeze_test.go</code></p>
+  <pre>{{ if .InCodeFreeze }}...{{ if .IsBugFix }}...{{ end }}{{ end }}</pre>
+  <p><code class="inline">IsBugFix</code> is only ever consumed nested inside the <code class="inline">InCodeFreeze</code> branch, and only that one combination is tested. Low risk today, but no scaffolding exists if bug-fix messaging is later extended to test-freeze-only.</p>
+</div>
+
+<h2>Things I checked and was fine with</h2>
+<ul>
+  <li>Template logic: <code class="inline">IsBugFix</code> branch correctly nested inside <code class="inline">InCodeFreeze</code>; both branches close correctly (traced brace pairs).</li>
+  <li><code class="inline">slices.Contains(labels, labelKindBug)</code> &mdash; straightforward, case-sensitive match against literal <code class="inline">"kind/bug"</code>, consistent with standard k8s label casing.</li>
+  <li>Anonymous struct embedding <code class="inline">*checker.Result</code> + <code class="inline">IsBugFix</code> for template data &mdash; valid Go, exposes both via dot notation in the template.</li>
+  <li>Test wiring: <code class="inline">sut.handle(...)</code> call sites updated for the new <code class="inline">labels</code> parameter; counterfeiter fake usage unchanged.</li>
+  <li>No changes to the <code class="inline">checker</code> package or other callers of <code class="inline">handle</code>/<code class="inline">handlePullRequestEvent</code>.</li>
+</ul>
+
+<h2>Open questions for the author</h2>
+<ul>
+  <li>Should <code class="inline">kind/bug</code> labeling after PR open (not just at open/reopen time) also trigger the softer message, e.g. via a <code class="inline">labeled</code> event handler? Given this is the more common triage flow, does the current scope actually cover the intended case?</li>
+  <li>Should the bug-fix messaging ever apply outside <code class="inline">InCodeFreeze</code> (e.g. during test-freeze-only), or is nesting it exclusively there intentional and permanent?</li>
+</ul>
+
+<h2>Multi-perspective review (2026-07-25)</h2>
+<p>Three independent specialist passes (code quality, maintainability, deployment risk) all returned APPROVE with only minor/non-blocking findings, folded into the Findings section above. Deployment risk assessed LOW &mdash; plugin is hardcoded to <code class="inline">kubernetes/kubernetes</code>@<code class="inline">master</code> only, no config/schema/API surface touched, no breaking changes, safe backward-compatible default (<code class="inline">isBugFix</code> defaults false on nil/empty labels). Converging concern across code-quality and maintainability reviewers: template readability / test-assertion-symmetry gap. Converging concern across maintainability and deployment-risk reviewers: label-read timing gap (see "label-added-after-open" finding above).</p>
+
+</body>
+</html>

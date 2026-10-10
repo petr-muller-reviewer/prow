@@ -32,7 +32,41 @@ details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-si
 </style></head><body><main>
 <h1>branchprotector: add <code>require_last_push_approval</code> and <code>bypass_pull_request_allowances.apps</code></h1>
 <div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/995">kubernetes-sigs/prow#995</a> · base <code>main</code> · head_sha <code>5ddea54f47db</code> · reviewed_at <code>2026-10-09T10:40:23Z</code></div>
-<div class="badges"><span class="badge c-green">verdict: approve</span></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span><span class="badge c-amber">gate: hold</span></div>
+<details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#995
+title: &quot;branchprotector: add `require_last_push_approval` and `bypass_pull_request_allowances.apps`&quot;
+head_sha: 5ddea54f47dbf78bbfcf31cf8c7bb6f108e34423
+base: main
+reviewed_at: 2026-10-09T10:40:23Z
+verdict: approve
+gate:
+  decision: hold
+  gated_at: 2026-10-10T15:22:53Z
+  gated_head_sha: 5ddea54f47dbf78bbfcf31cf8c7bb6f108e34423
+  reviewed_head_sha: 5ddea54f47dbf78bbfcf31cf8c7bb6f108e34423</code></pre></details>
+<h2>Gate</h2>
+<p><strong>Decision: HOLD</strong></p>
+<p>The PR head is unchanged since the review. The unresolved question about omitted app bypass allowances affects existing deployments that configure user or team bypasses in Prow while managing app allowances elsewhere. Hold for the author to confirm the intended behavior; if omission clears existing allowances, document the migration so operators can configure them before rollout.</p>
+<h3>Findings disposition</h3>
+<ul>
+<li><strong>Can't tell — omitted app allowances</strong> (<code>REVIEW.md</code>, <code>cmd/branchprotector/request.go:97-103</code>): the current code always sends <code>apps: []</code> when the config omits <code>apps</code>; <code>equalBypassRestrictions</code> detects existing app allowances as a mismatch and triggers reconciliation. Whether GitHub clears that app list and whether omission is intended to clear it need confirmation. Recommended disposition: preserve omitted allowances, or document that Prow takes ownership of the full list and require operators to migrate existing values.
+</li>
+<li>The policy merge test suggestion remains non-gating.
+</li>
+<li>No submitted reviews or inline review comments were found. The author's October 8 issue comment asks whether adding the app field to this PR is acceptable; no maintainer response is present.
+</li></ul>
+<h3>Independent merge risk</h3>
+<ul>
+<li><strong>App bypass config</strong> (<code>cmd/branchprotector/request.go:97-103</code>): existing branches with <code>bypass_pull_request_allowances</code> configured for users or teams and app allowances maintained outside Prow may have those app allowances removed on reconciliation. This affects each such branchprotector-managed branch; the API documents replacement for user/team arrays but does not directly spell out the app-array case. The PR adds a config example but no upgrade note.
+</li>
+<li><strong>Last-push approval default</strong> (<code>cmd/branchprotector/request.go:147</code>, <code>cmd/branchprotector/protect.go:658</code>): an omitted setting becomes <code>false</code> and is now compared against GitHub state. Branches with review policy managed by Prow and <code>require_last_push_approval</code> enabled outside Prow will be reset to false on reconciliation. Operators must set it to true in Prow config to retain it; the documented YAML shows the default but gives no upgrade guidance.
+</li>
+<li>Both new config fields are optional, so existing config files continue to parse. No removed or renamed API fields or new credential requirements were found.
+</li></ul>
+<h3>Gating list</h3>
+<ul>
+<li>Confirm whether omitting <code>bypass_pull_request_allowances.apps</code> should preserve or clear existing GitHub app allowances. If clearing is intentional, document the migration and release impact before merge.
+</li></ul>
 <h2>Verdict</h2>
 <p>Approve with suggestions. The new policy fields are wired through configuration, merging, GitHub request/response types, comparisons, and documentation. Please clarify whether omitting <code>apps</code> should preserve existing app bypass allowances; the code sends an empty list, but the replacement behavior for apps is not directly stated in the API docs.</p>
 <h2>What this PR does</h2>

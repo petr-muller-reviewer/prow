@@ -5,8 +5,35 @@ head_sha: 5ddea54f47dbf78bbfcf31cf8c7bb6f108e34423
 base: main
 reviewed_at: 2026-10-09T10:40:23Z
 verdict: approve
+gate:
+  decision: hold
+  gated_at: 2026-10-10T15:22:53Z
+  gated_head_sha: 5ddea54f47dbf78bbfcf31cf8c7bb6f108e34423
+  reviewed_head_sha: 5ddea54f47dbf78bbfcf31cf8c7bb6f108e34423
 ---
 # Review
+
+## Gate
+
+**Decision: HOLD**
+
+The PR head is unchanged since the review. The unresolved question about omitted app bypass allowances affects existing deployments that configure user or team bypasses in Prow while managing app allowances elsewhere. Hold for the author to confirm the intended behavior; if omission clears existing allowances, document the migration so operators can configure them before rollout.
+
+### Findings disposition
+
+- **Can't tell — omitted app allowances** (`REVIEW.md`, `cmd/branchprotector/request.go:97-103`): the current code always sends `apps: []` when the config omits `apps`; `equalBypassRestrictions` detects existing app allowances as a mismatch and triggers reconciliation. Whether GitHub clears that app list and whether omission is intended to clear it need confirmation. Recommended disposition: preserve omitted allowances, or document that Prow takes ownership of the full list and require operators to migrate existing values.
+- The policy merge test suggestion remains non-gating.
+- No submitted reviews or inline review comments were found. The author's October 8 issue comment asks whether adding the app field to this PR is acceptable; no maintainer response is present.
+
+### Independent merge risk
+
+- **App bypass config** (`cmd/branchprotector/request.go:97-103`): existing branches with `bypass_pull_request_allowances` configured for users or teams and app allowances maintained outside Prow may have those app allowances removed on reconciliation. This affects each such branchprotector-managed branch; the API documents replacement for user/team arrays but does not directly spell out the app-array case. The PR adds a config example but no upgrade note.
+- **Last-push approval default** (`cmd/branchprotector/request.go:147`, `cmd/branchprotector/protect.go:658`): an omitted setting becomes `false` and is now compared against GitHub state. Branches with review policy managed by Prow and `require_last_push_approval` enabled outside Prow will be reset to false on reconciliation. Operators must set it to true in Prow config to retain it; the documented YAML shows the default but gives no upgrade guidance.
+- Both new config fields are optional, so existing config files continue to parse. No removed or renamed API fields or new credential requirements were found.
+
+### Gating list
+
+- Confirm whether omitting `bypass_pull_request_allowances.apps` should preserve or clear existing GitHub app allowances. If clearing is intentional, document the migration and release impact before merge.
 
 ## Verdict
 

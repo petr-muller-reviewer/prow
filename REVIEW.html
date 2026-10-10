@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#991</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>chore(deps): bump google.golang.org/api from 0.297.0 to 0.299.0</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/991">kubernetes-sigs/prow#991</a> · base <code>main</code> · head_sha <code>2a8d71793659</code> · reviewed_at <code>2026-10-05T23:15:10Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span></div>
+<h2>Verdict</h2>
+<p>Approve for Prow's current configuration. The bump is dep-only, and the API/auth changes fit Prow's existing Google Cloud usage. The gRPC update brings in OSV advisory GO-2026-6443, but its panic condition requires xDS routing; Gangway creates a plain gRPC server and the scoped head scan found no call to the xDS route handler. Reassess if Prow enables xDS routing.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Raises <code>google.golang.org/api</code> from <code>v0.297.0</code> to <code>v0.299.0</code>.
+</li>
+<li>Updates direct Google auth and gRPC requirements to the versions required by the new API module.
+</li>
+<li>Refreshes five indirect Google transport, retry, and protocol modules; there are no Prow source changes.
+</li></ul>
+<h2>Findings</h2>
+<p>None for Prow's current configuration. The conditional gRPC advisory and reachability evidence are recorded under Checked.</p>
+<h2>Checked</h2>
+<ul>
+<li><strong>Classification:</strong> dep-only. The merge-base diff contains only <code>go.mod</code> and <code>go.sum</code>.
+</li>
+<li><strong>Versions, freshness, and OSV:</strong> queried the Go module proxy and OSV for old and new versions. All old versions and all new versions below have no OSV advisories; <code>grpc v1.84.0</code> is the exception. | Module | Change | Kind | New version date and age at review | OSV | |---|---|---|---|---| | <code>google.golang.org/api</code> | <code>v0.297.0 → v0.299.0</code> | Direct | 2026-09-21, 14 days | None | | <code>cloud.google.com/go/auth</code> | <code>v0.23.2 → v0.23.3</code> | Direct | 2026-09-17, 18 days | None | | <code>google.golang.org/grpc</code> | <code>v1.83.2 → v1.84.0</code> | Direct | 2026-09-17, 18 days | GO-2026-6443 on new version | | <code>cloud.google.com/go/compute/metadata</code> | <code>v0.9.0 → v0.9.1</code> | Indirect | 2026-09-17, 18 days | None | | <code>github.com/google/s2a-go</code> | <code>v0.1.9 → v0.1.10</code> | Indirect | GitHub published 2026-09-17, 18 days; proxy reports 2025-09-29 commit time | None | | <code>github.com/googleapis/enterprise-certificate-proxy</code> | <code>v0.3.21 → v0.3.22</code> | Indirect | 2026-09-09, 26 days | None | | <code>github.com/googleapis/gax-go/v2</code> | <code>v2.24.0 → v2.24.1</code> | Indirect | 2026-09-03, 32 days | None | | <code>google.golang.org/genproto/googleapis/rpc</code> | <code>v0.0.0-20260825221802-da73d73af1c5 → v0.0.0-20260921155816-b14227669459</code> | Indirect pseudo-version | 2026-09-21, 14 days | None |
+</li>
+<li><strong>API usage and exposure:</strong> Prow directly imports <code>google.golang.org/api</code> in 9 Go files (6 production files in <code>pkg/io</code>, <code>pkg/googlecloudbuild/client</code>, and <code>cmd/webhook-server/secretmanager</code>; 3 tests). It provides client options, pagination, and API error types. Prow uses it on GCS, Cloud Build, and Secret Manager paths. The shared credentials helper loads operator-provided Google credentials in [pkg/io/credentials.go](/workspace/pkg/io/credentials.go:31), so this is a meaningful auth and cloud API surface.
+</li>
+<li><strong>API changelog:</strong> <a href="https://github.com/googleapis/google-api-go-client/releases/tag/v0.298.0">v0.298.0</a> and <a href="https://github.com/googleapis/google-api-go-client/releases/tag/v0.299.0">v0.299.0</a> regenerate discovery clients. The generated Storage API adds <code>ExtendedDataTypeUrl</code>. The API module also now cancels the completed context in its resumable-upload helper. Prow's GCS opener uses the HTTP Storage client and writes objects, so the cleanup change can apply to Prow uploads; it does not alter upload results or API signatures.
+</li>
+<li><strong>Auth and indirect changelogs:</strong> <a href="https://github.com/googleapis/google-cloud-go/releases/tag/auth/v0.23.3">Cloud Auth v0.23.3</a> handles secureconnect helper failures more gracefully. <code>compute/metadata v0.9.1</code> adds a timeout to the initial metadata subscriber request, relevant to Google credential discovery. S2A adjusts TLS identity handling; the certificate proxy release updates its version; <code>gax v2.24.1</code> changes ProtoJSON stream selection for Go 1.27+; genproto refreshes generated definitions. No material behavior change was found in Prow's direct call sites for these indirect updates.
+</li>
+<li><strong>gRPC changelog and vulnerability:</strong> <a href="https://github.com/grpc/grpc-go/releases/tag/v1.84.0">gRPC v1.84.0</a> includes client fixes and credential/metadata validation, plus STS redirect protection against token leakage. OSV <a href="https://osv.dev/vulnerability/GO-2026-6443">GO-2026-6443</a> is absent from <code>v1.83.2</code> and present in <code>v1.84.0</code>; it describes a server panic when xDS routing handles requests missing both authority and Host headers. OSV lists a development commit as fixed; <code>v1.84.0</code> was the latest stable gRPC release at review time.
+</li>
+<li><strong>Reachability:</strong> full <code>govulncheck ./...</code> completed at the base and did not report GO-2026-6443. The full head scan was killed by OOM (exit 137), so the relevant package was checked separately. Scoped <code>govulncheck ./cmd/gangway</code> completed at base without the advisory; at head it found <code>grpc/internal/transport.HandleStreams</code> reachable through Gangway's server. The xDS server package was import-only and there was no call trace to its route handler. Gangway constructs a plain <code>grpc.NewServer</code> at [cmd/gangway/main.go](/workspace/cmd/gangway/main.go:198), without xDS routing configuration. The advisory's required route path is therefore not reached by the reviewed configuration.
+</li>
+<li><strong>Dependency relationship:</strong> <code>google.golang.org/api v0.299.0</code> itself requires <code>cloud.google.com/go/auth v0.23.3</code> and <code>google.golang.org/grpc v1.84.0</code>. gRPC is used in 11 Go files, including Gangway's server and Prow's gRPC clients; this is a network-sensitive dependency, but the advisory's xDS-specific condition is not enabled here.
+</li></ul>
+<h2>Open questions</h2>
+<p>None.</p>
+<h2>Dependency followups</h2>
+<h3><span class="tag c-gray">new-feature</span>Add actionable Google client failure logging</h3>
+<ul>
+<li>module: <code>github.com/googleapis/gax-go/v2</code> <code>v2.24.0 → v2.26.2</code>, unlocked by open PR #991, “chore(deps): bump google.golang.org/api from 0.297.0 to 0.300.0”
+</li>
+<li>where: <code>pkg/googlecloudbuild/client/client.go:92-103,122-197</code>; <code>cmd/webhook-server/secretmanager/secretmanager.go:48-55,58-173</code>
+</li>
+<li>necessity: could — optional structured diagnostics for terminal Google API failures.
+</li>
+<li>changelog: GAX v2.26.0 adds “ClientLogging configuration,” “WithClientLogging CallOption,” and “actionable error logging in Invoke.” The warning includes RPC method and error/retry metadata on terminal failure.
+</li>
+<li>outcome: accepted
+</li>
+<li>handoff prompt:
+<pre><code>In kubernetes-sigs/prow, now that open PR #991, “chore(deps): bump google.golang.org/api from 0.297.0 to 0.300.0,” upgrades github.com/googleapis/gax-go/v2 from v2.24.0 to v2.26.2, evaluate and add GAX actionable failure logging to the Google client wrappers in pkg/googlecloudbuild/client/client.go and cmd/webhook-server/secretmanager/secretmanager.go. GAX v2.26.0 added ClientLogging configuration, a WithClientLogging CallOption, and actionable error logging in Invoke. Confirm the generated Cloud Build and Secret Manager clients accept and execute this option; if so, create one logging configuration per client and route warning events through Prow’s structured logger. Log only method, retry, status, and error metadata; never log request payloads or secret values. Add focused tests for failure-only logging and sensitive-data exclusion. If these clients cannot support the option cleanly, document why and leave source unchanged. Keep the work limited to these wrappers and GAX logging; do not change dependency versions or expand into general observability work.</code></pre>
+</li></ul>
+</main></body></html>

@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Triage: kubernetes-sigs/prow#624</title>
+  <style>
+    body { font-family: sans-serif; line-height: 1.55; color: #1f2937; margin: 2rem auto; max-width: 900px; padding: 0 1rem; }
+    header, section { margin-bottom: 2rem; } code, pre { font-family: monospace; } pre { background: #f3f4f6; padding: 1rem; overflow-x: auto; } .meta { color: #4b5563; } .verdict { font-weight: 700; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Issue #624: Tide + GitHub Rulesets</h1>
+    <p><a href="https://github.com/kubernetes-sigs/prow/issues/624">kubernetes-sigs/prow#624</a></p>
+    <div class="meta">
+      <div>State: closed</div><div>Labels: kind/feature, lifecycle/rotten, area/tide</div>
+      <div>Main SHA: <code>d91e0f84e0f2050b41390b28b69a05f5284ba4a2</code></div>
+      <div>Triaged: 2026-09-14T22:28:28Z</div><div>Verdict: wontfix</div>
+    </div>
+  </header>
+  <section>
+    <h2>Verdict</h2>
+    <p class="verdict">wontfix — the feature gap remains, but the issue was automatically closed as Not Planned on 2026-09-09 after no maintainer or author follow-up.</p>
+    <p>Tide has branch-protection inference but no Rulesets API client or context-policy option. No linked implementation or decision reopens that work.</p>
+  </section>
+  <section>
+    <h2>What the issue reports</h2>
+    <ul><li>Tide can infer required contexts with <code>tide.context_options.from-branch-protection</code>.</li><li>GitHub Rulesets can also make contexts required, but Tide does not consume them.</li><li>The reporter asks for Rulesets support because GitHub promotes Rulesets.</li></ul>
+  </section>
+  <section>
+    <h2>Analysis</h2>
+    <h3>Reproducibility / observed behavior</h3>
+    <p>Current <code>TideContextPolicy</code> has <code>FromBranchProtection</code> but no Rulesets equivalent. <code>GetTideContextPolicy</code> only augments required contexts from <code>GetBranchProtection</code> (<code>pkg/config/tide.go:179-194, 941-971</code>).</p>
+    <h3>Probable cause</h3>
+    <p><code>RepositoryClient</code> declares branch-protection operations, and the concrete client requests <code>/repos/%s/%s/branches/%s/protection</code>; no branch Rulesets endpoint is represented in the interface (<code>pkg/github/client.go:174-188, 2839-2864</code>).</p>
+    <h3>Related code</h3>
+    <pre>if options.FromBranchProtection != nil &amp;&amp; *options.FromBranchProtection {
+    bp, err := c.GetBranchProtection(org, repo, branch, presubmits)
+    ...
+    required.Insert(bp.RequiredStatusChecks.Contexts...)
+}</pre>
+    <p>This existing path at <code>pkg/config/tide.go:960-971</code> would need a separately configurable Rulesets path and an explicit coexistence policy. Tide's messages at <code>pkg/tide/github.go:633</code> and <code>pkg/tide/status.go:265</code> mention Rulesets only as a possible GitHub-side block; they do not infer required contexts.</p>
+    <h3>Related issues / PRs</h3>
+    <p>No linked PR or cross-reference was found. On 2026-09-09T14:23:18Z <code>k8s-triage-robot</code> issued <code>/close not-planned</code>; <code>kubernetes-prow</code> closed the issue at 2026-09-09T14:23:27Z.</p>
+  </section>
+  <section><h2>What I checked</h2><ul><li>Current issue state, labels, comments, and events through 2026-09-14T22:28:28Z.</li><li>Current upstream <code>main</code> at <code>d91e0f84e0f2050b41390b28b69a05f5284ba4a2</code> for Tide context-policy fields and GitHub client coverage.</li><li>Ruleset-related strings in Tide; they are diagnostic text, not API support.</li></ul></section>
+  <section><h2>Recommended next steps</h2><ul><li>Leave closed unless a contributor intends to implement and maintain Rulesets support.</li><li>If revived, reopen the issue and propose an opt-in context-policy field, Rulesets API types/client method, tests, and documented union behavior with branch protection.</li></ul></section>
+  <section><h2>Open questions</h2><ul><li>Is there a maintainer or contributor prepared to own a Rulesets API integration and its authentication/compatibility behavior?</li><li>If reopened, should Rulesets-derived contexts be unioned with branch-protection contexts when both are enabled?</li></ul></section>
+</body>
+</html>

@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#1007</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>WIP: Require rationale for /retest and /override</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1007">kubernetes-sigs/prow#1007</a> · base <code>main</code> · head_sha <code>803a824aa919</code> · reviewed_at <code>2026-10-10T14:14:36Z</code></div>
+<div class="badges"><span class="badge c-red">verdict: request-changes</span><span class="badge c-red">gate: do-not-merge</span></div>
+<details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#1007
+title: &quot;WIP: Require rationale for /retest and /override&quot;
+head_sha: 803a824aa9190d4b04e88c7885f7ef4756405c51
+base: main
+reviewed_at: 2026-10-10T14:14:36Z
+verdict: request-changes
+gate:
+  decision: do-not-merge
+  gated_at: 2026-10-10T14:18:44Z
+  gated_head_sha: 803a824aa9190d4b04e88c7885f7ef4756405c51
+  reviewed_head_sha: 803a824aa9190d4b04e88c7885f7ef4756405c51</code></pre></details>
+<h2>Gate</h2>
+<p><strong>Verdict: do-not-merge</strong> — the blocking rationale-bypass finding remains unchanged at the current PR head.</p>
+<p>The PR is still open at <code>803a824aa9190d4b04e88c7885f7ef4756405c51</code>, the same SHA covered by the review, with no commits since review. No submitted GitHub reviews, inline comments, or substantive human issue comments add or resolve findings. The local blocking finding is confirmed in the current code: the preflight validates the first <code>/override</code> rationale, while the native handler processes every match. Do not merge until repeated commands are rejected or each invocation is validated before side effects.</p>
+<h3>Gating list</h3>
+<ul>
+<li><code>REVIEW.md</code> <code>[blocking]</code> — repeated <code>/override</code> invocations bypass rationale validation for later commands (<code>pkg/plugins/override/override.go:324</code>, <code>pkg/plugins/rationale.go:119-140</code>, <code>pkg/plugins/override/override.go:489-506</code>). Fix by rejecting repeats or validating every occurrence before status or check-run mutations.
+</li></ul>
+<h3>Area 2 — Independent merge risk</h3>
+<ul>
+<li><strong>Configuration and behavior:</strong> <code>require_rationale</code> is an additive optional field, and enforcement is exact-repository opt-in. Existing configurations and unconfigured repositories retain their prior behavior. Invalid new policies or duplicate exact repository entries across global and supplemental config can fail validation/merge, affecting only installations enabling this feature. The new docs describe the policy and rollout.
+</li>
+<li><strong>Operational dependency:</strong> <code>Emergency: true</code> triggers GitHub team membership lookups; lookup failures block that command, and each configured team lookup adds API traffic. This is limited to opted-in commands/comments using the emergency field.
+</li>
+<li><strong>Possible Go source-compatibility change:</strong> The PR adds exported <code>PluginConfig</code> to exported <code>trigger.Client</code> (<code>pkg/plugins/trigger/trigger.go:202-209</code>). Downstream packages using unkeyed composite literals of this type would fail to compile; no such use was found in this repository, and the package exposes no constructor or handler using this type. Confirm whether this type is considered a supported external API before treating the field addition as harmless.
+</li>
+<li><strong>No other notable compatibility risk found:</strong> the other new exported configuration and rationale fields/types are additive; no existing default changes for users without a policy were found.
+</li></ul>
+<h2>Verdict</h2>
+<p>Request changes. Two independent maintainer perspectives confirmed that the <code>/override</code> rationale check validates only the first invocation, while the native handler processes every match. A valid first rationale can therefore allow additional overrides without separate rationale; reject repeated commands or validate each invocation before processing any override.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Adds opt-in rationale policies scoped to exact repositories and the <code>/retest</code> and <code>/override</code> commands.
+</li>
+<li>Parses <code>Reason:</code> and optional <code>Emergency:</code> fields and checks a configurable minimum of non-whitespace Unicode code points.
+</li>
+<li>Adds a team-based emergency length bypass, config and handler coverage, and user documentation.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-red">blocking</span>Validate or reject every <code>/override</code> invocation</h3>
+<ul>
+<li>where: <code>pkg/plugins/override/override.go:324-342</code>; <code>pkg/plugins/rationale.go:119-140</code>; <code>pkg/plugins/override/override.go:489-506</code>
+</li>
+<li>concern: The preflight calls rationale validation once, and the parser selects the first matching command block. The native handler then processes every <code>/override</code> match, so a valid first reason can authorize subsequent overrides with no rationale. Reject repeated invocations or validate each before any status or check-run mutation.
+</li>
+<li>excerpt:<pre><code>if settings, required := pluginConfig.RequireRationaleFor(org, repo, &quot;override&quot;); required &amp;&amp; len(overrideRe.FindAllStringSubmatch(e.Body, -1)) &gt; 0 {
+    context := plugins.RationaleContext{
+        Command:     &quot;/override&quot;,
+        Actor:       e.User.Login,
+        Org:         org,
+        Repo:        repo,
+        PullRequest: e.Number,
+    }
+    if _, err := plugins.ValidateRationale(e.Body, context, settings, oc, logger); err != nil {</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">nit</span>Keep rationale and native command matchers aligned</h3>
+<ul>
+<li>where: <code>pkg/plugins/rationale.go:36-45</code>
+</li>
+<li>concern: The rationale parser duplicates the <code>/retest</code> and <code>/override</code> matchers and relies on comments to keep them synchronized with the native handlers. Consider sharing the matchers or adding tests that catch syntax drift.
+</li>
+<li>excerpt:<pre><code>var rationaleCommands = map[string]rationaleCommand{
+    &quot;retest&quot;: {
+        // Keep this syntax in sync with pjutil.RetestRe.
+        matcher: regexp.MustCompile(`^/retest\s*$`),
+    },
+    &quot;override&quot;: {
+        // Keep this syntax in sync with override.overrideRe.
+        matcher: regexp.MustCompile(`(?i)^/override( ([^\r\n]+))?[\r\n]?$`),
+    },
+}</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">nit</span>Reduce duplicated rationale rejection flow</h3>
+<ul>
+<li>where: <code>pkg/plugins/trigger/generic-comment.go:83-91</code>; <code>pkg/plugins/override/override.go:332-342</code>
+</li>
+<li>concern: Both integrations repeat the validation failure log, response construction, and comment creation. Consider extracting the shared rejection flow if more protected commands are added. This is a judgment-call smell, not a documented repository-standard violation.
+</li>
+<li>excerpt:<pre><code>if _, err := plugins.ValidateRationale(body, context, settings, teamClient, logger); err != nil {
+    logger.WithError(err).WithFields(...).Warn(&quot;Blocking command because rationale validation failed&quot;)
+    response := plugins.RationaleErrorComment(context.Command, noAction, settings, err)
+    return createComment(plugins.FormatResponseRaw(body, htmlURL, actor, response))
+}</code></pre>
+</li></ul>
+<h3><span class="tag c-blue">question</span>Should emergency reasons be copied into logs?</h3>
+<ul>
+<li>where: <code>pkg/plugins/rationale.go:221-230</code>
+</li>
+<li>concern: The emergency path logs the entire user-provided rationale. Please confirm that Prow log access and retention are appropriate for arbitrary PR comment text, or consider logging the bypass event without the full reason.
+</li>
+<li>excerpt:<pre><code>logger.WithFields(logrus.Fields{
+    &quot;event&quot;:        &quot;rationale_emergency_bypass&quot;,
+    &quot;actor&quot;:        rationaleContext.Actor,
+    &quot;repo&quot;:         rationaleContext.Org + &quot;/&quot; + rationaleContext.Repo,
+    &quot;pull_request&quot;: rationaleContext.PullRequest,
+    &quot;command&quot;:      rationaleContext.Command,
+    &quot;reason&quot;:       rationale.Reason,
+    &quot;team_matched&quot;: team,
+}).Info(&quot;Emergency rationale bypass used&quot;)</code></pre>
+</li></ul>
+<h3><span class="tag c-blue">question</span>Can emergency lookups avoid unnecessary API load?</h3>
+<ul>
+<li>where: <code>pkg/plugins/rationale.go:196-220</code>; <code>pkg/plugins/trigger/generic-comment.go:74-83</code>
+</li>
+<li>concern: An <code>Emergency: true</code> comment triggers team-membership lookups before the existing trust or command-authorization checks. Consider checking existing authorization first or using a direct membership check to reduce API work; lookup errors currently block the command.
+</li>
+<li>excerpt:<pre><code>if rationale.Emergency {
+    team, authorized, err := authorizedRationaleBypassTeam(teamClient, rationaleContext, settings.EmergencyBypass)
+    if err != nil {
+        return Rationale{}, &amp;RationaleValidationError{Kind: RationaleErrorValidation, Cause: err}
+    }
+    if !authorized {
+        return Rationale{}, &amp;RationaleValidationError{Kind: RationaleErrorEmergencyBypassDenied}
+    }
+}</code></pre>
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>The policy is opt-in and scoped to exact repositories; unconfigured repositories preserve existing behavior.
+</li>
+<li>Emergency membership bypasses rationale length only; existing <code>/override</code> authorization and <code>/retest</code> trust checks remain in place.
+</li>
+<li>Team lookup and rationale validation errors fail closed.
+</li>
+<li>There are no breaking changes for existing repositories unless they enable a policy. Duplicate exact repository entries across global and supplemental config cause the merge to fail.
+</li>
+<li>Reviewers found test coverage for parser edge cases, Unicode counting, and team lookup failures. Tests were not run during this review.
+</li>
+<li>The review helper for fetching referenced issues was absent, so the PR description was used as the spec source.
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>Should emergency bypass logs retain the full free-text reason, and what log access or retention expectations should operators follow?
+</li>
+<li>Can team membership checks run after existing trust and command-authorization checks, or use a more targeted API call?
+</li></ul>
+</main></body></html>

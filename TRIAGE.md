@@ -9,6 +9,9 @@ verdict: accepted
 refresh_log:
   - previous_triaged_at: 2026-05-30T13:33:41Z
     summary: Contributor volunteered to implement; another commenter suggested a companion --ignore-private-repos flag to avoid leaking private repo names via --ignore-repos values.
+advice:
+  advised_at: 2026-10-10T15:31:57Z
+  based_on_triaged_at: 2026-07-21T23:36:29Z
 ---
 
 ## Findings
@@ -79,6 +82,20 @@ refresh_log:
 - Comment on issue: welcome SaaiAravindhRaja's offer to implement; ask them to clarify the edge case — if a repo appears in both the YAML `want` map and `--ignore-repos`, should it be skipped entirely (no add/update) or only protected from removal? Also ask whether they intend to scope in the `--ignore-private-repos` companion flag StarMiner99 suggested, or leave it for a follow-up.
 - When PR arrives: verify recursive child-team call propagates the ignore set and that `TestConfigureTeamRepos` includes cases for ignore-only, want+ignore, and child-team propagation.
 - Note as non-goal for v1: YAML-level `ignore_repos` config (per-team granularity) — valid future evolution but out of scope for initial PR.
+
+## Advice
+
+1. **Review/track PR #802 instead of duplicating the implementation.** It is open and directly addresses the requested flag, including case-insensitive matching, child-team propagation, and tests. Its implementation also chooses to skip ignored repos entirely and adds `--ignore-private-repos` and `--ignore-internal-repos`, so review whether that expanded scope is appropriate. No review decision is recorded.
+
+   ```sh
+   gh pr diff 802 --repo kubernetes-sigs/prow
+   ```
+
+2. **Add the missing feature and component labels.** The issue currently has no labels; `kind/feature` and `area/peribolos` are available. `help wanted` is available too, but the existing contributor PR is already in flight, so it is not needed to solicit work.
+
+   ```sh
+   gh issue edit 737 --repo kubernetes-sigs/prow --add-label "kind/feature" --add-label "area/peribolos"
+   ```
 
 ## Open questions
 

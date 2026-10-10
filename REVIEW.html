@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#1006</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>plank: persist pod revival count before deleting the pod</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1006">kubernetes-sigs/prow#1006</a> · base <code>main</code> · head_sha <code>357b80eb511d</code> · reviewed_at <code>2026-10-10T14:07:32Z</code></div>
+<div class="badges"><span class="badge c-red">verdict: request-changes</span><span class="badge c-red">gate: do-not-merge</span></div>
+<details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#1006
+title: &quot;plank: persist pod revival count before deleting the pod&quot;
+head_sha: 357b80eb511d6b0f932e5e77edc23cf0e56e74a1
+base: main
+reviewed_at: 2026-10-10T14:07:32Z
+verdict: request-changes
+gate:
+  decision: do-not-merge
+  gated_at: 2026-10-10T14:09:38Z
+  gated_head_sha: 357b80eb511d6b0f932e5e77edc23cf0e56e74a1
+  reviewed_head_sha: 357b80eb511d6b0f932e5e77edc23cf0e56e74a1</code></pre></details>
+<h2>Gate</h2>
+<p><strong>Decision: do-not-merge</strong></p>
+<p>The PR head is unchanged since the review, so the confirmed blocking finding remains. The retry count can still be incremented more than once for the same stopped pod when no build ID can be recovered.</p>
+<p><strong>Gating list</strong></p>
+<ul>
+<li><code>REVIEW.md</code> blocking finding (<code>pkg/plank/reconciler.go:483-515</code>): <code>revivalAlreadyCounted</code> is always false for an empty build ID. The current code still writes an empty annotation, allowing repeated stale or terminating observations to consume multiple revival attempts. Add a stable fallback identity and test that path before merging.
+</li>
+<li>No substantive GitHub review submissions or inline comments add other gating findings.
+</li></ul>
+<p><strong>Independent merge risk</strong></p>
+<ul>
+<li><strong>API/configuration:</strong> The diff adds an exported constant and a ProwJob annotation. This is an additive Go API change; there are no removed or changed exported APIs, CRD schema changes, configuration changes, RBAC changes, or migration requirements.
+</li>
+<li><strong>Behavior:</strong> Every Prow installation running plank will now persist unexpected-stop counts and enforce its existing <code>max_revivals</code> setting. This applies by default to jobs with unexpected pod stops and requires no operator action; the PR does not include a release note. The empty-build-ID case can make affected jobs hit the limit early, which is the unresolved blocker above.
+</li></ul>
+<h2>Verdict</h2>
+<p>Request changes. The revival count is persisted before pod deletion, but the per-pod deduplication fails when <code>getPodBuildID</code> returns an empty string. Code Quality and Deployment Risk independently identified this confirmed edge case; Maintainability found no concerns.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Persists a ProwJob's revival count before deleting an unexpectedly stopped pod.
+</li>
+<li>Records the counted pod's build ID in a ProwJob annotation to deduplicate repeated observations.
+</li>
+<li>Guards <code>getPodBuildID</code> when the pod has no containers.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-red">blocking</span>Empty build IDs bypass pod deduplication</h3>
+<ul>
+<li>where: <code>pkg/plank/reconciler.go:483-515</code>
+</li>
+<li>concern: If <code>getPodBuildID</code> returns an empty string, <code>revivalAlreadyCounted</code> remains false and the annotation is written as empty. Repeated observations of the same terminating or stale pod can therefore increment <code>PodRevivalCount</code> repeatedly and reach <code>max_revivals</code> early. Use a stable fallback identity such as the pod UID and cover the empty-ID case in a test.
+</li>
+<li>excerpt:<pre><code>revivalAlreadyCounted := podBuildID != &quot;&quot; &amp;&amp; pj.Annotations[kube.RevivedBuildIDAnnotation] == podBuildID
+...
+pj.Annotations[kube.RevivedBuildIDAnnotation] = podBuildID</code></pre>
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>The count and annotation are patched before finalizer removal and pod deletion.
+</li>
+<li>The ProwJob CRD has no status subresource, so the ordinary object patch can persist status and metadata together.
+</li>
+<li>The change adds no configuration, RBAC, or CRD migration requirements.
+</li>
+<li>Maintainability review found the logic localized and documented; tests cover known-build-ID deduplication and the max-revival case.
+</li>
+<li>No tests were run during this review.
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>Can plank use a stable pod identity, such as the pod UID, when no build ID is available?
+</li></ul>
+</main></body></html>

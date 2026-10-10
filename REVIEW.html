@@ -41,7 +41,7 @@ reviewed_at: 2026-10-05T21:46:19Z
 verdict: approve
 gate:
   decision: hold
-  gated_at: 2026-10-05T21:47:38Z
+  gated_at: 2026-10-10T16:47:11Z
   gated_head_sha: 6a29c95931c3a76f016723bca5ee84eac2377bb6
   reviewed_head_sha: 6a29c95931c3a76f016723bca5ee84eac2377bb6
 refresh_log:
@@ -64,7 +64,7 @@ refresh_log:
     to_sha: 6a29c95931c3a76f016723bca5ee84eac2377bb6
     summary: No code changes. Prucek approved on 2026-10-01; the approval notifier reported that a pkg/plugins approver is still required.</code></pre></details>
 <h2>Gate</h2>
-<p><strong>Decision: hold.</strong> The head is still the reviewed <code>6a29c9593</code>; Prucek approved on 2026-10-01 after the config scope, generated docs, and duplicated lookup concerns were fixed. The local <code>should-fix</code> on API call ordering remains: configured repositories fetch every PR commit before checking whether any OWNERS labels apply. The call is paginated, so it can use multiple requests and can fail on a path that otherwise returns without further API work. Move it below the no-label return, or accept that cost and failure behavior explicitly, before merging.</p>
+<p><strong>Decision: hold.</strong> Rechecked on 2026-10-10: the head remains <code>6a29c9593</code>, with no code or discussion changes since the previous gate. Prucek approved on 2026-10-01 after the config scope, generated docs, and duplicated lookup concerns were fixed. The local <code>should-fix</code> on API call ordering remains: configured repositories fetch every PR commit before checking whether any OWNERS labels apply. The call is paginated, so it can use multiple requests and can fail on a path that otherwise returns without further API work. Move it below the no-label return, or accept that cost and failure behavior explicitly, before merging.</p>
 <h3>Gating list</h3>
 <ul>
 <li><strong>Not addressed — <code>REVIEW.md</code>, <code>pkg/plugins/owners-label/owners-label.go:77-101</code>:</strong> <code>ListPullRequestCommits</code> still runs before the <code>neededLabels.Len() == 0</code> early return. This is the sole substantive gate; move the call after that return or explicitly accept the added paginated requests and possible API error for PRs needing no labels.

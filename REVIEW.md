@@ -7,7 +7,7 @@ reviewed_at: 2026-10-05T21:46:19Z
 verdict: approve
 gate:
   decision: hold
-  gated_at: 2026-10-05T21:47:38Z
+  gated_at: 2026-10-10T16:47:11Z
   gated_head_sha: 6a29c95931c3a76f016723bca5ee84eac2377bb6
   reviewed_head_sha: 6a29c95931c3a76f016723bca5ee84eac2377bb6
 refresh_log:
@@ -33,7 +33,7 @@ refresh_log:
 
 ## Gate
 
-**Decision: hold.** The head is still the reviewed `6a29c9593`; Prucek approved on 2026-10-01 after the config scope, generated docs, and duplicated lookup concerns were fixed. The local `should-fix` on API call ordering remains: configured repositories fetch every PR commit before checking whether any OWNERS labels apply. The call is paginated, so it can use multiple requests and can fail on a path that otherwise returns without further API work. Move it below the no-label return, or accept that cost and failure behavior explicitly, before merging.
+**Decision: hold.** Rechecked on 2026-10-10: the head remains `6a29c9593`, with no code or discussion changes since the previous gate. Prucek approved on 2026-10-01 after the config scope, generated docs, and duplicated lookup concerns were fixed. The local `should-fix` on API call ordering remains: configured repositories fetch every PR commit before checking whether any OWNERS labels apply. The call is paginated, so it can use multiple requests and can fail on a path that otherwise returns without further API work. Move it below the no-label return, or accept that cost and failure behavior explicitly, before merging.
 
 ### Gating list
 

@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#938</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>tide: report excluded PRs on their tide status context</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/938">kubernetes-sigs/prow#938</a> · base <code>main</code> · head_sha <code>aac8df64b828</code> · reviewed_at <code>2026-10-07T16:23:52Z</code></div>
+<div class="badges"><span class="badge c-red">verdict: request-changes</span></div>
+<details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#938
+title: &quot;tide: report excluded PRs on their tide status context&quot;
+head_sha: aac8df64b8281e8830abf8a0e31339c6600f0c09
+base: main
+reviewed_at: 2026-10-07T16:23:52Z
+verdict: request-changes
+refresh_log:
+  - old_sha: aac8df64b8281e8830abf8a0e31339c6600f0c09
+    new_sha: aac8df64b8281e8830abf8a0e31339c6600f0c09
+    summary: &quot;No code changes; incorporated the author&#x27;s request for review after tests were green.&quot;</code></pre></details>
+<h2>What this PR does</h2>
+<ul>
+<li>Isolates per-PR merge-requirement failures instead of dropping an entire Tide subpool.
+</li>
+<li>Carries exclusion reasons to Tide status reporting so affected PRs get an explanatory error context.
+</li>
+<li>Since previous review: the author requested review after tests were green; no commits, inline comments, or submitted reviews were added.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-red">blocking</span>Preserve the GetPresubmits exclusion reason</h3>
+<ul>
+<li>where: <code>pkg/tide/tide.go:1717-1720</code>
+</li>
+<li>concern: A per-PR <code>GetPresubmits</code> error still removes the PR from the subpool without calling <code>excludePR</code>. The status controller subsequently rebuilds the context policy, which may invoke <code>GetPresubmits</code> again and fail before setting the promised explanatory <code>tide</code> status. Record the reason in <code>sp.excluded</code> and cover the complete status-reporting path with a test.
+</li>
+<li>excerpt:<pre><code>presubmitsForPull, err := c.provider.GetPresubmits(...)
+if err != nil {
+    log.WithError(err).Debug(&quot;Failed to get presubmits for PR, excluding from subpool&quot;)
+    continue
+}</code></pre>
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>Context-policy failures are isolated to the affected PR, leaving valid sibling PRs in the subpool.
+</li>
+<li>Exclusion state is collected from raw subpools, so an all-excluded subpool still reaches status reporting.
+</li>
+<li>Exclusion handling precedes context-checker construction in <code>expectedStatus</code>; merge-conflict status remains higher priority.
+</li>
+<li>The change adds no configuration schema, migration, permission, or external-dependency change.
+</li>
+<li>New unit tests cover changed-file failures, context-policy failures, dropped subpools, and conflict precedence.
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>Could <code>GetPresubmits</code> failures be recorded through <code>excludePR</code> alongside changed-files and context-policy failures, with a status assertion that exercises the full <code>Sync()</code> handoff?
+</li></ul>
+</main></body></html>

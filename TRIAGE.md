@@ -9,6 +9,9 @@ verdict: wontfix
 refresh_log:
   - previous_triaged_at: 2026-07-27T00:19:19Z
     summary: "Incorporated VannTen's September 17 clarification that GitHub stacked PRs do not support fork-plus-PR workflows."
+advice:
+  advised_at: 2026-10-10T17:05:57Z
+  based_on_triaged_at: 2026-09-23T14:18:55Z
 ---
 
 ## What the issue reports
@@ -62,6 +65,16 @@ Since previous triage:
 - No change to the `wontfix` verdict is warranted by the clarification alone; the issue remains closed.
 - Optional: apply `wontfix` label for tracker hygiene (currently only has `kind/feature`).
 - If fork-based stacked PRs need Prow support, file a new, narrowly-scoped design issue that specifies persistence, dependency topology, and reconciliation requirements.
+
+## Advice
+
+No external action is needed. The issue remains closed, has no linked PRs or post-triage comments, and its current `kind/feature` label matches the recorded state. The repository does not currently expose a `wontfix` label, so do not attempt the optional label cleanup recorded above.
+
+If a renewed request needs Prow support for fork-based stacks, open a new scoped design issue rather than reopening #797:
+
+```bash
+gh issue create --repo kubernetes-sigs/prow --title "Support PR dependencies for fork-based stacked workflows" --body "Describe the supported dependency topology, storage/ownership model, reconciliation strategy, API budget, lifecycle semantics for closed or merged prerequisites, and failure-recovery guarantees."
+```
 
 ## Open questions
 - None for #797; any renewed proposal should answer the scoped design questions above.

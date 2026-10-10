@@ -9,7 +9,24 @@ refresh_log:
   - old_sha: aac8df64b8281e8830abf8a0e31339c6600f0c09
     new_sha: aac8df64b8281e8830abf8a0e31339c6600f0c09
     summary: "No code changes; incorporated the author's request for review after tests were green."
+gate:
+  decision: do-not-merge
+  gated_at: 2026-10-10T15:11:34Z
+  gated_head_sha: aac8df64b8281e8830abf8a0e31339c6600f0c09
+  reviewed_head_sha: aac8df64b8281e8830abf8a0e31339c6600f0c09
 ---
+
+## Gate
+
+**Verdict: do-not-merge.** The blocking finding “Preserve the GetPresubmits exclusion reason” remains unchanged at the current PR head. When `GetPresubmits` fails for a PR, `presubmitsByPull` drops it without adding an exclusion reason, so status reporting can repeat the same failure instead of publishing the explanatory Tide status this PR is intended to provide.
+
+### Gating list
+
+- **`REVIEW.md` — Preserve the GetPresubmits exclusion reason (`pkg/tide/tide.go:1717-1720`):** still not addressed at head `aac8df64b8281e8830abf8a0e31339c6600f0c09`. Record the failure through `excludePR` and test the status path before merging.
+
+### Independent merge risk
+
+- No exported API, configuration schema, flags, or storage formats change. Internal Tide status handling changes for affected PRs: merge-requirement/context-policy failures now produce an error status, which can affect automation that gates on the `tide` context. This is intentional and limited to PRs encountering these failures; no migration or coordinated rollout is required.
 
 ## What this PR does
 

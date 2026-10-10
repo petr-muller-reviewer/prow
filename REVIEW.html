@@ -32,7 +32,7 @@ details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-si
 </style></head><body><main>
 <h1>tide: report excluded PRs on their tide status context</h1>
 <div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/938">kubernetes-sigs/prow#938</a> · base <code>main</code> · head_sha <code>aac8df64b828</code> · reviewed_at <code>2026-10-07T16:23:52Z</code></div>
-<div class="badges"><span class="badge c-red">verdict: request-changes</span></div>
+<div class="badges"><span class="badge c-red">verdict: request-changes</span><span class="badge c-red">gate: do-not-merge</span></div>
 <details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#938
 title: &quot;tide: report excluded PRs on their tide status context&quot;
 head_sha: aac8df64b8281e8830abf8a0e31339c6600f0c09
@@ -42,7 +42,22 @@ verdict: request-changes
 refresh_log:
   - old_sha: aac8df64b8281e8830abf8a0e31339c6600f0c09
     new_sha: aac8df64b8281e8830abf8a0e31339c6600f0c09
-    summary: &quot;No code changes; incorporated the author&#x27;s request for review after tests were green.&quot;</code></pre></details>
+    summary: &quot;No code changes; incorporated the author&#x27;s request for review after tests were green.&quot;
+gate:
+  decision: do-not-merge
+  gated_at: 2026-10-10T15:11:34Z
+  gated_head_sha: aac8df64b8281e8830abf8a0e31339c6600f0c09
+  reviewed_head_sha: aac8df64b8281e8830abf8a0e31339c6600f0c09</code></pre></details>
+<h2>Gate</h2>
+<p><strong>Verdict: do-not-merge.</strong> The blocking finding “Preserve the GetPresubmits exclusion reason” remains unchanged at the current PR head. When <code>GetPresubmits</code> fails for a PR, <code>presubmitsByPull</code> drops it without adding an exclusion reason, so status reporting can repeat the same failure instead of publishing the explanatory Tide status this PR is intended to provide.</p>
+<h3>Gating list</h3>
+<ul>
+<li><strong><code>REVIEW.md</code> — Preserve the GetPresubmits exclusion reason (<code>pkg/tide/tide.go:1717-1720</code>):</strong> still not addressed at head <code>aac8df64b8281e8830abf8a0e31339c6600f0c09</code>. Record the failure through <code>excludePR</code> and test the status path before merging.
+</li></ul>
+<h3>Independent merge risk</h3>
+<ul>
+<li>No exported API, configuration schema, flags, or storage formats change. Internal Tide status handling changes for affected PRs: merge-requirement/context-policy failures now produce an error status, which can affect automation that gates on the <code>tide</code> context. This is intentional and limited to PRs encountering these failures; no migration or coordinated rollout is required.
+</li></ul>
 <h2>What this PR does</h2>
 <ul>
 <li>Isolates per-PR merge-requirement failures instead of dropping an entire Tide subpool.

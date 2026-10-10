@@ -78,48 +78,89 @@ Merged — no longer applicable. The two should-fix findings were accepted as-is
 
 ## Followups
 
-### tests: Add TestConfigureBranches coverage for applySeparateRequests
+Selection: 4 accepted, 1 skipped (signed-commit configuration documentation).
+These are post-merge followups to PR #771, merged as `2b5fea27a177c767160452ba75dba978a88d8d63`. Work on the current default branch and check whether subsequent changes already address each task.
+
+### error-handling: Skip signature changes after a main protection update fails
+- category: error-handling
+- necessity: should
+- where: `cmd/branchprotector/protect.go:204-210`, `cmd/branchprotector/protect_test.go`
+- why followup: The should-fix finding merged as-is. The signature operation currently proceeds after the main update fails, allowing a partial policy change and potentially redundant errors.
+
+```text
+In kubernetes-sigs/prow, following PR #771 — "branchprotector: add require_signed_commits config" (merge commit 2b5fea27a177c767160452ba75dba978a88d8d63), skip signature changes after a failed main protection update.
+
+Work on the current default branch. First check whether subsequent changes already address this task.
+
+In cmd/branchprotector/protect.go, configureBranches currently records an UpdateBranchProtection error and then calls applySeparateRequests. Stop processing that branch's signature operations when the main update fails, retaining the error and continuing with later queued branches. A successful main update must still permit signature changes.
+
+Add a focused regression test in protect_test.go. Make the main update fail independently of the signature endpoints, record signature calls, and assert that neither enable nor disable is called after that failure. Cover both desired signature values, verify the retained main-update error, and verify that the next queued branch is still processed. Do not rely solely on the fake's existing branch == "error" behavior, which fails multiple operations together.
+
+Acceptance criteria: go test ./cmd/branchprotector/... passes. A failed main update records its error without invoking either signature endpoint; later branches continue normally.
+
+Scope: Limit changes to cmd/branchprotector/protect.go and protect_test.go. Preserve removal behavior and successful updates. Do not change policy configuration or GitHub client methods.
+```
+
+### tests: Exercise signature operations through configureBranches
 - category: tests
 - necessity: should
 - where: `cmd/branchprotector/protect_test.go:205-303`
-- prompt: |
-    ```
-    In kubernetes-sigs/prow, following PR #771 ("branchprotector: add require_signed_commits config"), add missing test coverage for the `applySeparateRequests` path in `TestConfigureBranches`.
+- why followup: The should-fix finding merged as-is. Existing tests inspect emitted requirements and equality, but do not exercise signature calls or their errors through configureBranches.
 
-    Context: PR #771 added a `separateRequests` struct and `applySeparateRequests` method to `configureBranches()` in `cmd/branchprotector/protect.go`. The existing `TestConfigureBranches` (protect_test.go:205-303) exercises the `configureBranches()` goroutine by sending `requirements` through a channel and checking `fc.deleted` and `fc.updated` — but no test case includes `Separate` in its requirements, and assertions don't check `fc.signedCommitsEnabled`. The enable/disable calls and error accumulation from `applySeparateRequests` have zero direct test coverage.
+```text
+In kubernetes-sigs/prow, following PR #771 — "branchprotector: add require_signed_commits config" (merge commit 2b5fea27a177c767160452ba75dba978a88d8d63), add execution-path coverage for signature operations in TestConfigureBranches, in cmd/branchprotector/protect_test.go.
 
-    Task:
-    1. Add a test case to `TestConfigureBranches` that sends a `requirements` with `Separate: &separateRequests{RequireSignedCommits: &yes}` and a valid branch, then asserts `fc.signedCommitsEnabled` contains the expected key set to `true`.
-    2. Add a test case that sends a `requirements` with `Separate: &separateRequests{RequireSignedCommits: &yes}` and `Branch: "error"`, then asserts `errors` count is 2 (one for UpdateBranchProtection, one for EnableCommitSignProtection — the fakeClient returns errors for branch "error").
-    3. Add a test case with `RequireSignedCommits: &no` (false) to verify DisableCommitSignProtection is called.
-    4. Extend the test assertions block (around line 295-301) to also compare `fc.signedCommitsEnabled` against expected values for cases that set `Separate`.
+Work on the current default branch. First check whether subsequent changes already provide this coverage.
 
-    Acceptance criteria: `go test ./cmd/branchprotector/...` passes with the new cases. The new cases exercise both the enable and disable paths and the error path of `applySeparateRequests`.
+Add cases with successful main protection updates followed by RequireSignedCommits true and false, asserting that the expected enable and disable calls occur. Add cases with Separate nil and RequireSignedCommits nil, asserting that neither signature endpoint is called. Cover protection removal with a Separate value present and verify that removal skips signature operations.
 
-    Out of scope: Do not modify `configureBranches()` itself, do not change `applySeparateRequests`, do not add tests for `equalSeparateRequests` (already covered). Do not touch files outside `cmd/branchprotector/protect_test.go`.
-    ```
+Extend the fake client so enable and disable can fail independently while the main update succeeds. Assert that each signature error is retained and subsequent queued branches are still processed. Record and compare the signature operations as well as existing main update/removal results.
 
-### efficiency: Avoid redundant API calls when only one component changed
+A separate accepted followup skips signature operations after a main-update failure. Keep these tests compatible with that behavior: isolate signature failures instead of requiring the previous two-error cascade from branch == "error". Give requests for normal signature-operation cases a non-nil main Request under the existing queue semantics, where Request == nil means removal.
+
+Acceptance criteria: go test ./cmd/branchprotector/... passes. Tests exercise enable, disable, unspecified settings, removal, and independently injected signature errors through configureBranches.
+
+Scope: Change only cmd/branchprotector/protect_test.go. Preserve production behavior. Do not duplicate the existing equalSeparateRequests tests or the focused main-update failure regression test from the error-handling followup.
+```
+
+### test-diagnostics: Include Separate in TestProtect mismatch output
+- category: test-diagnostics
+- necessity: could
+- where: `cmd/branchprotector/protect_test.go:1660`
+- why followup: The nit merged as-is. TestProtect compares complete requirements values but reports differences only in Request, obscuring mismatches in Separate.
+
+```text
+In kubernetes-sigs/prow, following PR #771 — "branchprotector: add require_signed_commits config" (merge commit 2b5fea27a177c767160452ba75dba978a88d8d63), improve TestProtect's mismatch diagnostic in cmd/branchprotector/protect_test.go.
+
+Work on the current default branch. First check whether the diagnostic has already been corrected.
+
+After the existing fixup calls, the test compares complete requirements values, but its failure message diffs only a.Request and e.Request. Update that diagnostic to diff the complete normalized requirements values, including Separate and RequireSignedCommits, using an existing repository diff helper. Preserve matching, normalization, and pass/fail behavior.
+
+Acceptance criteria: go test ./cmd/branchprotector/... passes. The failure diagnostic includes Separate when actual and expected signature settings differ.
+
+Scope: Change only cmd/branchprotector/protect_test.go. Do not alter production code, test matching, or expected behavior. Do not add a separate diagnostic test harness.
+```
+
+### efficiency: Avoid redundant API calls while preserving protection removal
 - category: efficiency
 - necessity: could
-- where: `cmd/branchprotector/protect.go:204-210,543`
-- prompt: |
-    ```
-    In kubernetes-sigs/prow, following PR #771 ("branchprotector: add require_signed_commits config"), eliminate redundant API calls when only one of {main branch protection, separate requests} has changed.
+- where: `cmd/branchprotector/protect.go:196-210,535-555`, `cmd/branchprotector/protect_test.go`
+- why followup: The new independent signature endpoint makes it useful to reconcile each component separately. The previous handoff treated a nil Request as an unchanged main policy, but configureBranches currently interprets it as removal; that ambiguity must be resolved first.
 
-    Context: In `cmd/branchprotector/protect.go`, `UpdateBranch()` (around line 543) uses a combined equality check: `equalBranchProtections(currentBP, req) && equalSeparateRequests(currentBP, sep)`. When either component differs, the entire `requirements` struct (containing both `Request` and `Separate`) is sent through the channel. `configureBranches()` (lines 204-210) then unconditionally calls both `UpdateBranchProtection` and `applySeparateRequests`. This means:
-    - If only `require_signed_commits` changed, `UpdateBranchProtection` is called with unchanged settings (no-op PUT).
-    - If only main protection changed, `applySeparateRequests` makes a no-op POST/DELETE.
-    Both are idempotent but waste GitHub API quota.
+```text
+In kubernetes-sigs/prow, following PR #771 — "branchprotector: add require_signed_commits config" (merge commit 2b5fea27a177c767160452ba75dba978a88d8d63), avoid redundant main-protection and signature API calls when only one component changes.
 
-    Task:
-    1. Split the equality check in `UpdateBranch()` so each component is evaluated independently.
-    2. Only populate `Request` in the `requirements` struct when `equalBranchProtections` is false; only populate `Separate` when `equalSeparateRequests` is false. Handle the case where both are nil (skip entirely, as before).
-    3. In `configureBranches()`, gate `UpdateBranchProtection` on `u.Request != nil` (it already does this for the remove-protection path, but not for the update path — currently `Request` is always non-nil when `*bp.Protect` is true). Gate `applySeparateRequests` on `u.Separate != nil` (already done).
-    4. Update `TestConfigureBranches` to cover the case where only `Separate` is set (no `Request`) — verify only enable/disable is called, not `UpdateBranchProtection`.
-    5. Update `TestProtect` to cover the case where main protection matches but `require_signed_commits` differs — verify the emitted `requirements` has `Request` nil and `Separate` non-nil.
+Work on the current default branch. First check whether subsequent changes already implement this optimization.
 
-    Acceptance criteria: `go test ./cmd/branchprotector/...` passes. When only signed commits state differs, no PUT to the main branch protection endpoint. When only main protection differs, no POST/DELETE to the signatures endpoint.
+UpdateBranch currently combines equalBranchProtections and equalSeparateRequests; a difference in either queues both components. Before splitting those checks, make the queued requirements distinguish keeping, updating, and removing main protection. Today configureBranches treats Request == nil as removal: simply setting Request nil for an unchanged main policy would delete protection and skip the signature change. Choose a small explicit representation that avoids that ambiguity.
 
-    Out of scope: Do not change the GitHub client methods, do not modify `pkg/config/`, do not change `pkg/github/types.go`. Keep changes within `cmd/branchprotector/`.
-    ```
+Queue and execute only the operations required by the detected differences. Preserve protect: false removal, creation of main protection before enabling signatures, and skipping signature operations when a required main update fails. An unchanged main policy with a changed signature setting must perform only the signature operation and must never remove protection. When neither component differs, queue nothing.
+
+Confirm from the GitHub API contract that updating main protection preserves the signature setting before skipping an unchanged signature request; if it does not, retain the necessary signature request and document why.
+
+Add or update TestProtect and TestConfigureBranches cases for main-only changes, signature-only changes, both components changed, neither changed, creation, and removal. Assert intended calls and the absence of unintended calls, including removal. Integrate with the separate accepted error-handling and execution-test followups rather than restoring the prior error cascade.
+
+Acceptance criteria: go test ./cmd/branchprotector/... passes. A signature-only change makes no main PUT or protection DELETE. Main-only changes avoid a signature call where the API contract permits it. Combined changes, creation, removal, and failure ordering retain their intended behavior.
+
+Scope: Keep implementation and tests within cmd/branchprotector/. Do not change GitHub client methods, public config fields, or pkg/github/types.go.
+```

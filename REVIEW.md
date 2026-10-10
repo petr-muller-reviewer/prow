@@ -82,3 +82,16 @@ verdict: approve
 
 ## Multi-perspective review (2026-07-25)
 Three independent specialist passes (code quality, maintainability, deployment risk) all returned APPROVE with only minor/non-blocking findings, folded into Findings above. Deployment risk assessed LOW — plugin is hardcoded to `kubernetes/kubernetes`@`master` only, no config/schema/API surface touched, no breaking changes, safe backward-compatible default (`isBugFix` defaults false on nil/empty labels). Converging concern across code-quality and maintainability reviewers: template readability/test-assertion-symmetry gap (see nits above). Converging concern across maintainability and deployment-risk reviewers: label-read timing gap (see should-fix above).
+
+## Followups
+
+Post-merge followup assessment for PR #805, merged at `e601a1ffafd7d8d3a781238a4c5f4233d6248f68` on 2026-07-25. The plugin files at the merge commit match the reviewed PR head.
+
+Accepted: 0. Skipped: 4. No handoff prompts were accepted.
+
+- Skipped: refresh freeze guidance when `kind/bug` is added or removed after opening a PR, with safe updates to the plugin's own comment.
+- Skipped: strengthen positive bug-fix wording assertions and add a `kind/bug` test-freeze-only case.
+- Skipped: reuse the label constant in the displayed message and clarify the template's nested conditional boundaries.
+- Skipped: add a structured debug log of the bug-fix and freeze flags used to select guidance.
+
+Cross-check correction: the saved finding “missing explicit assertion for strict-message path” is not supported by the merged code. Both existing strict-message cases already assert “Adding the milestone to this PR is strictly prohibited” in `pkg/plugins/testfreeze/testfreeze_test.go:65` and `pkg/plugins/testfreeze/testfreeze_test.go:95`. It was excluded from the candidates. The GitHub discussions contained no deferred work, and the PR introduced no TODOs.

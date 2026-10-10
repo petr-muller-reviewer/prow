@@ -1,31 +1,89 @@
 <!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <title>Review: kubernetes-sigs/prow#965</title>
-  <style>
-    body { font-family: system-ui, sans-serif; line-height: 1.55; margin: 2rem auto; max-width: 58rem; padding: 0 1rem; color: #1f2328; }
-    code, pre { background: #f6f8fa; border-radius: 3px; } code { padding: .1em .25em; } pre { padding: 1rem; overflow-x: auto; } .meta { color: #57606a; } .blocking { color: #b42318; }
-  </style>
-</head>
-<body>
-  <h1>Review: <a href="https://github.com/kubernetes-sigs/prow/pull/965">kubernetes-sigs/prow#965</a></h1>
-  <p class="meta">config: reject partial job config directory walks<br>head: <code>c5a30d39221c6adec51b9ba153425a01f78a457d</code> · base: <code>main</code> · reviewed: 2026-09-23T09:38:18Z</p>
-  <h2>Verdict</h2>
-  <p><strong>Request changes.</strong> Making every directory-walk callback error fatal means a transient checkout/config-map race can make a component fail its initial config load and exit. Prow binaries conventionally treat failure to start the config agent as fatal, so this breaks (or crash-loops) a deployment instead of retaining the existing availability behavior.</p>
-  <h2>What this PR does</h2>
-  <ul><li>Makes <code>ReadJobConfig</code> delegate to an injectable directory walker.</li><li>Collects walk callback errors instead of only logging and discarding them.</li><li>Returns an error rather than a partially populated configuration.</li><li>Tests a valid job file followed by a simulated disappearing checkout entry.</li></ul>
-  <h2>Findings</h2>
-  <h3 class="blocking">Blocking: Do not make a transient walk race fatal at initial startup</h3>
-  <p><code>pkg/config/config.go:1731-1736</code></p>
-  <pre>if err != nil {
-    errs = append(errs, fmt.Errorf("walking path %q: %w", path, err))
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#965</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>config: reject partial job config directory walks</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/965">kubernetes-sigs/prow#965</a> · base <code>main</code> · head_sha <code>c5a30d39221c</code> · reviewed_at <code>2026-09-23T09:38:18Z</code></div>
+<div class="badges"><span class="badge c-red">verdict: request-changes</span></div>
+<h2>Verdict</h2>
+<p>Request changes. Making every directory-walk callback error fatal means a transient checkout/config-map race can make a component fail its initial config load and exit. Prow binaries conventionally treat failure to start the config agent as fatal, so this breaks (or crash-loops) a deployment instead of retaining the existing availability behavior.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Makes <code>ReadJobConfig</code> delegate to an injectable directory walker.
+</li>
+<li>Collects errors supplied to the walk callback instead of only logging and discarding them.
+</li>
+<li>Returns the aggregated error after walking, rather than a partially populated configuration.
+</li>
+<li>Adds a regression test for a valid job file followed by a simulated disappearing checkout entry.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-red">blocking</span>Do not make a transient walk race fatal at initial startup</h3>
+<ul>
+<li>where: <code>pkg/config/config.go:1731-1736</code>
+</li>
+<li>concern: <code>filepath.Walk</code> reports an entry disappearing during a git-sync/config-map update through this callback. The new aggregate makes <code>Agent.Start</code> return that error (<code>pkg/config/agent.go:346-348</code>); consumers such as sinker immediately call <code>Fatal</code> on it (<code>cmd/sinker/main.go:114-116</code>). A restart during the update therefore cannot start until a later restart, turning a normally transient filesystem race into deployment downtime/crash-looping. Preserve an availability-safe retry/last-known-good startup path, or restrict rejection to errors that prove the configured job config is invalid rather than temporarily inconsistent.
+</li>
+<li>excerpt:<pre><code>if err != nil {
+    errs = append(errs, fmt.Errorf(&quot;walking path %q: %w&quot;, path, err))
     return nil
-}</pre>
-  <p><code>filepath.Walk</code> reports an entry disappearing during a git-sync/config-map update through this callback. The new aggregate makes <code>Agent.Start</code> return that error (<code>pkg/config/agent.go:346-348</code>); consumers such as sinker immediately call <code>Fatal</code> on it (<code>cmd/sinker/main.go:114-116</code>). A restart during the update therefore cannot start until a later restart, turning a normally transient filesystem race into deployment downtime/crash-looping. Preserve an availability-safe retry/last-known-good startup path, or restrict rejection to errors that prove the configured job config is invalid rather than temporarily inconsistent.</p>
-  <h2>Things I checked and were fine</h2>
-  <ul><li><code>pkg/config/config.go:1731-1784</code>: callback errors are now included with the walk return value in <code>utilerrors.NewAggregate</code>.</li><li><code>pkg/config/agent.go:346-348</code>: an initial load error is returned before the agent has stored configuration.</li><li><code>pkg/flagutil/config/config.go:94-95</code> and <code>cmd/sinker/main.go:114-116</code>: callers propagate that error to a fatal process exit.</li><li><code>pkg/config/config_test.go:3692-3713</code>: the test models precisely the disappearing-entry race that now prevents startup.</li><li><code>git diff --check</code>: clean.</li></ul>
-  <h2>Open questions for the author</h2>
-  <p>Is the intended operational policy really to require a pod restart after a git-sync/config-map update races its first config load? If so, it needs an explicit startup retry mechanism before this behavior can be safe.</p>
-</body>
-</html>
+}</code></pre>
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li><code>pkg/config/config.go:1731-1784</code>: callback errors are now wrapped, retained, and included with the walk return value in <code>utilerrors.NewAggregate</code>.
+</li>
+<li><code>pkg/config/agent.go:346-348</code>: an initial <code>Load</code> error is returned before the agent has a stored configuration.
+</li>
+<li><code>pkg/flagutil/config/config.go:94-95</code> and <code>cmd/sinker/main.go:114-116</code>: callers propagate that initial load error to a fatal process exit.
+</li>
+<li><code>pkg/config/config_test.go:3692-3713</code>: the added test models precisely the disappearing-entry race that now prevents startup.
+</li>
+<li><code>git diff --check</code>: clean.
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>Is the intended operational policy really to require a pod restart after a git-sync/config-map update races its first config load? If so, it needs an explicit startup retry mechanism before this behavior can be safe.
+</li></ul>
+<h2>Followups</h2>
+<h3>Initial config-load resilience</h3>
+<pre><code>In kubernetes-sigs/prow, following merged PR #965 (&quot;config: reject partial job config directory walks&quot;, merge commit 820f8d138e2a667cf610600c5590612ec25695ff), make the initial configuration load resilient to transient job-config directory-walk failures.
+
+The relevant paths are pkg/config/agent.go (Agent.Start), pkg/config/config.go (ReadJobConfig), and pkg/config/config_test.go. Preserve PR #965&#x27;s safety property: a failed reload must not replace a valid active configuration with a partial one. Add a bounded retry/backoff path for the first load, or an equivalently safe startup mechanism, so a temporary git-sync/config-map update race (such as an entry disappearing during filepath.Walk) does not cause callers of ConfigAgent to exit and crash-loop. Ensure permanent failures still surface clearly after the retry policy is exhausted.
+
+Acceptance criteria:
+- A transient walk error during initial startup is retried and can start the agent without an external pod restart once the config becomes readable.
+- A reload failure retains the existing last-known-good configuration and does not publish a partial config.
+- A persistent initial failure returns a diagnosable error after the documented bounded retry policy.
+- Focused tests cover transient initial failure, persistent failure, and the existing no-partial-config behavior.
+
+Scope guard: do not change job-config parsing/validation semantics beyond startup retry behavior, and do not redesign the config watcher architecture in this followup.</code></pre>
+</main></body></html>

@@ -40,3 +40,21 @@ Request changes. Making every directory-walk callback error fatal means a transi
 ## Open questions
 
 - Is the intended operational policy really to require a pod restart after a git-sync/config-map update races its first config load? If so, it needs an explicit startup retry mechanism before this behavior can be safe.
+
+## Followups
+
+### Initial config-load resilience
+
+```text
+In kubernetes-sigs/prow, following merged PR #965 ("config: reject partial job config directory walks", merge commit 820f8d138e2a667cf610600c5590612ec25695ff), make the initial configuration load resilient to transient job-config directory-walk failures.
+
+The relevant paths are pkg/config/agent.go (Agent.Start), pkg/config/config.go (ReadJobConfig), and pkg/config/config_test.go. Preserve PR #965's safety property: a failed reload must not replace a valid active configuration with a partial one. Add a bounded retry/backoff path for the first load, or an equivalently safe startup mechanism, so a temporary git-sync/config-map update race (such as an entry disappearing during filepath.Walk) does not cause callers of ConfigAgent to exit and crash-loop. Ensure permanent failures still surface clearly after the retry policy is exhausted.
+
+Acceptance criteria:
+- A transient walk error during initial startup is retried and can start the agent without an external pod restart once the config becomes readable.
+- A reload failure retains the existing last-known-good configuration and does not publish a partial config.
+- A persistent initial failure returns a diagnosable error after the documented bounded retry policy.
+- Focused tests cover transient initial failure, persistent failure, and the existing no-partial-config behavior.
+
+Scope guard: do not change job-config parsing/validation semantics beyond startup retry behavior, and do not redesign the config watcher architecture in this followup.
+```

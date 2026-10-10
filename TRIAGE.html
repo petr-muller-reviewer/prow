@@ -1,333 +1,175 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Triage: Issue #686 — Auto-assign approvers on LGTM</title>
-<style>
-  :root {
-    --bg: #0d1117;
-    --surface: #161b22;
-    --border: #30363d;
-    --text: #e6edf3;
-    --text-muted: #8b949e;
-    --accent: #db61a2;
-    --accent-dim: #2d1a27;
-    --green: #3fb950;
-    --green-dim: #1a2e1f;
-    --yellow: #d29922;
-    --yellow-dim: #2e2510;
-    --blue: #58a6ff;
-    --blue-dim: #131d2e;
-    --code-bg: #1c2128;
-    --link: #58a6ff;
-  }
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Noto Sans, Helvetica, Arial, sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    line-height: 1.6;
-    max-width: 960px;
-    margin: 0 auto;
-    padding: 2rem 1.5rem;
-  }
-  a { color: var(--link); text-decoration: none; }
-  a:hover { text-decoration: underline; }
-  h1 { font-size: 1.75rem; font-weight: 600; margin-bottom: 0.25rem; }
-  .subtitle { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 2rem; }
-  .badge {
-    display: inline-block; padding: 0.15rem 0.6rem; border-radius: 2rem;
-    font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em;
-  }
-  .badge-legitimate { background: var(--green-dim); color: var(--green); border: 1px solid var(--green); }
-  .badge-feature { background: var(--blue-dim); color: var(--blue); border: 1px solid var(--blue); }
-  .badge-level2 { background: var(--yellow-dim); color: var(--yellow); border: 1px solid var(--yellow); }
-  .badge-help { background: var(--accent-dim); color: var(--accent); border: 1px solid var(--accent); }
-  .meta-row { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; margin-bottom: 1.5rem; }
-  section {
-    background: var(--surface); border: 1px solid var(--border); border-radius: 6px;
-    padding: 1.25rem 1.5rem; margin-bottom: 1rem;
-  }
-  section h2 { font-size: 1.1rem; font-weight: 600; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem; }
-  section h3 { font-size: 0.95rem; font-weight: 600; margin: 1rem 0 0.4rem; }
-  section p, section li { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.4rem; }
-  section ul { padding-left: 1.25rem; }
-  section li { margin-bottom: 0.3rem; }
-  section li strong { color: var(--text); }
-  code {
-    background: var(--code-bg); padding: 0.15rem 0.4rem; border-radius: 4px;
-    font-size: 0.82rem; font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
-    color: var(--accent);
-  }
-  pre {
-    background: var(--code-bg); border: 1px solid var(--border); border-radius: 6px;
-    padding: 1rem; overflow-x: auto; font-size: 0.82rem;
-    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
-    color: var(--text-muted); line-height: 1.5; margin: 0.75rem 0;
-  }
-  .flow {
-    display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;
-    margin: 0.75rem 0; font-size: 0.85rem;
-  }
-  .flow-step {
-    background: var(--code-bg); border: 1px solid var(--border); border-radius: 4px;
-    padding: 0.3rem 0.6rem; color: var(--text-muted);
-  }
-  .flow-arrow { color: var(--text-muted); font-size: 0.8rem; }
-  .flow-gap {
-    background: var(--accent-dim); border: 1px dashed var(--accent); border-radius: 4px;
-    padding: 0.3rem 0.6rem; color: var(--accent); font-weight: 600;
-  }
-  .approaches { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.75rem; margin-top: 0.75rem; }
-  @media (max-width: 700px) { .approaches { grid-template-columns: 1fr; } }
-  .approach-card {
-    background: var(--code-bg); border: 1px solid var(--border); border-radius: 6px; padding: 1rem;
-  }
-  .approach-card.recommended { border-color: var(--green); background: var(--green-dim); }
-  .approach-card h4 { font-size: 0.85rem; font-weight: 600; margin-bottom: 0.5rem; }
-  .approach-card p { font-size: 0.8rem; margin-bottom: 0.3rem; }
-  .tag {
-    display: inline-block; font-size: 0.7rem; padding: 0.1rem 0.4rem;
-    border-radius: 3px; margin-top: 0.4rem;
-  }
-  .tag-pro { background: var(--green-dim); color: var(--green); }
-  .tag-con { background: #2d1a1a; color: #f85149; }
-  .tag-rec { background: var(--green-dim); color: var(--green); border: 1px solid var(--green); }
-  .factor-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-top: 0.75rem; }
-  @media (max-width: 600px) { .factor-grid { grid-template-columns: 1fr; } }
-  .factor {
-    background: var(--code-bg); border: 1px solid var(--border); border-radius: 4px;
-    padding: 0.6rem 0.8rem;
-  }
-  .factor-name {
-    font-size: 0.78rem; color: var(--text-muted); text-transform: uppercase;
-    letter-spacing: 0.04em; margin-bottom: 0.2rem;
-  }
-  .factor-value { font-size: 0.9rem; font-weight: 600; }
-  .factor-value.low { color: var(--green); }
-  .factor-value.med { color: var(--yellow); }
-  .comment-preview {
-    background: var(--code-bg); border: 1px solid var(--border); border-radius: 6px;
-    padding: 1.25rem; margin-top: 0.75rem; font-size: 0.85rem;
-    color: var(--text-muted); line-height: 1.65;
-  }
-  .comment-preview em { color: var(--text-muted); font-style: italic; }
-  .comment-preview strong { color: var(--text); }
-  .comment-preview .cmd {
-    display: block; margin-top: 0.75rem; color: var(--green);
-    font-family: 'SFMono-Regular', Consolas, monospace; font-size: 0.82rem;
-  }
-  .steps-list { counter-reset: step; list-style: none; padding-left: 0; }
-  .steps-list li {
-    counter-increment: step; padding-left: 2rem; position: relative; margin-bottom: 0.5rem;
-  }
-  .steps-list li::before {
-    content: counter(step); position: absolute; left: 0;
-    width: 1.4rem; height: 1.4rem; background: var(--accent-dim);
-    color: var(--accent); border: 1px solid var(--accent); border-radius: 50%;
-    font-size: 0.7rem; font-weight: 700; display: flex;
-    align-items: center; justify-content: center; top: 0.15rem;
-  }
-  .design-decisions { margin-top: 0.75rem; }
-  .design-decisions dt { font-size: 0.85rem; font-weight: 600; color: var(--text); margin-top: 0.6rem; }
-  .design-decisions dd { font-size: 0.85rem; color: var(--text-muted); margin-left: 0; margin-bottom: 0.3rem; }
-    footer {
-    text-align: center; color: var(--text-muted); font-size: 0.78rem;
-    margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--border);
-  }
-</style>
-</head>
-<body>
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#686</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>blunderbuss: Auto-assign approvers when PR receives LGTM label</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/issues/686">kubernetes-sigs/prow#686</a> · main_sha <code>3e578e4f0ad1</code> · state <code>open</code> · labels <code>[]</code> · triaged_at <code>2026-07-26T23:35:44Z</code></div>
+<div class="badges"><span class="badge c-gray">verdict: legitimate</span></div>
+<details><summary>Full metadata</summary><pre><code>issue: kubernetes-sigs/prow#686
+title: &quot;blunderbuss: Auto-assign approvers when PR receives LGTM label&quot;
+original_title: &quot;Assigning Approvers after PR receives LGTM&quot;
+state: open
+labels: []
+verdict: legitimate
+category: feature
+effort: 2
+triaged_at: &quot;2026-07-26T23:35:44Z&quot;
+main_sha: 3e578e4f0ad16bb4435dcbf4c52434d9ec34667b
+refresh_log:
+  - timestamp: &quot;2026-04-20T00:00:00Z&quot;
+    summary: &quot;Initial triage&quot;
+  - timestamp: &quot;2026-05-14T17:20:26Z&quot;
+    summary: &quot;Maintainer BenTheElder responded: considers existing approve plugin instructions sufficient&quot;
+  - timestamp: &quot;2026-07-26T23:35:44Z&quot;
+    summary: &quot;Reporter asked BenTheElder to reconsider; BenTheElder pushed back further, citing reviewer-time (not author-time) as the real bottleneck and flagging spurious/premature LGTMs as a risk of auto-assignment&quot;
+advice:
+  advised_at: &quot;2026-10-10T17:01:53Z&quot;
+  based_on_triaged_at: &quot;2026-07-26T23:35:44Z&quot;</code></pre></details>
+<p>Reported by <a href="https://github.com/NiJuFirenzia">NiJuFirenzia</a> on 2026-04-17. <a href="https://github.com/kubernetes-sigs/prow/issues/686">View on GitHub</a> | <a href="https://github.com/petr-muller/prow/blob/issue-triage-686/ISSUE-TRIAGE.md">Full triage document</a></p>
+<p><strong>Legitimate</strong> | <strong>Feature Request</strong> | <strong>Level 2 -- Moderate</strong> | <strong>help-wanted</strong></p>
+<h2>What the issue reports</h2>
+<p>When a new PR is opened, the <strong>blunderbuss</strong> plugin automatically assigns reviewers from OWNERS files. Once a reviewer gives LGTM, there is no equivalent mechanism to automatically assign <strong>approvers</strong>. Approvers must manually discover LGTM'd PRs, adding friction to the merge workflow.</p>
+<h3>Since previous triage:</h3>
+<ul>
+<li><strong>Maintainer response</strong> (2026-05-12): <a href="https://github.com/BenTheElder">BenTheElder</a> commented that the approve plugin already posts clear instructions for the PR author to assign an approver themselves, with a <a href="https://github.com/kubernetes-sigs/prow/pull/716#issuecomment-4421792093">screenshot example from PR #716</a>. This signals the maintainer considers the current advisory-text approach sufficient and may not see a need for automatic assignment.
+</li>
+<li><strong>Reporter follow-up</strong> (2026-06-16): <a href="https://github.com/NiJuFirenzia">NiJuFirenzia</a> asked BenTheElder to reconsider, arguing automation would let the PR author be "more hands off" and save reviewer time.
+</li>
+<li><strong>Maintainer pushback, reinforced</strong> (2026-06-17): BenTheElder <a href="https://github.com/kubernetes-sigs/prow/issues/686">replied</a> that reviewer time, not PR-author time, is the actual bottleneck, and questioned whether "making it easier to put no effort into PRs" is net-helpful. He also raised a new concrete concern: "occasionally people just randomly LGTM out of nowhere" -- i.e. an automatic-assignment trigger on the <code>lgtm</code> label risks firing on spurious/premature LGTMs, not just genuine review sign-off. This strengthens (rather than reverses) the maintainer's prior skepticism and adds a design risk not previously captured under Open Design Decisions.
+</li></ul>
+<h2>The Gap</h2>
+<p>The <strong>approve</strong> plugin already computes the optimal set of approvers for every PR via <code>GetCCs()</code> and <code>GetSuggestedApprovers()</code>. It even renders advisory text:</p>
+<blockquote><p>"Once this PR has been reviewed and has the lgtm label, please assign [suggested_approvers] for approval."</p></blockquote>
+<p>All the selection logic exists -- it just isn't wired to an automatic action.</p>
+<h3>Current Data Flow</h3>
+<pre><code>PR opened → Blunderbuss assigns reviewers → Reviewer comments /lgtm → LGTM label added → ??? nothing assigns approvers → Approver self-discovers PR</code></pre>
+<h2>Affected Components</h2>
+<ul>
+<li><strong>Blunderbuss</strong> -- <code>pkg/plugins/blunderbuss/blunderbuss.go</code> -- auto-assigns reviewers; recommended extension point
+</li>
+<li><strong>Approve/Owners</strong> -- <code>pkg/plugins/approve/approvers/owners.go</code> -- <code>GetCCs()</code> set-cover algorithm for approver selection
+</li>
+<li><strong>LGTM</strong> -- <code>pkg/plugins/lgtm/lgtm.go:348</code> -- adds the <code>lgtm</code> label, fires <code>PullRequestActionLabeled</code>
+</li>
+<li><strong>RepoOwners</strong> -- <code>pkg/repoowners/repoowners.go</code> -- parses OWNERS files, separates reviewers vs approvers
+</li></ul>
+<p>The <code>PullRequestActionLabeled</code> event type already exists (<code>github/types.go:185</code>) but no plugin currently uses it for assignment.</p>
+<h2>Solution Approaches</h2>
+<h3>1. New Plugin</h3>
+<p>Standalone "approver-assigner" plugin listening for labeled events.</p>
+<ul>
+<li>Pro: Clean separation of concerns
+</li>
+<li>Con: Duplicates approver selection logic from approve plugin
+</li></ul>
+<h3>2. Extend Blunderbuss (Recommended)</h3>
+<p>Add opt-in config to blunderbuss to handle <code>lgtm</code> label events and assign approvers.</p>
+<ul>
+<li>Pro: Reuses existing infrastructure
+</li>
+<li>Pro: Natural fit -- blunderbuss is already the "auto-assign" plugin
+</li></ul>
+<h3>3. Extend LGTM</h3>
+<p>Add approver assignment directly in LGTM plugin after label addition.</p>
+<ul>
+<li>Pro: Direct trigger point
+</li>
+<li>Con: Mixes LGTM concern with approver assignment concern
+</li></ul>
+<h3>Why Blunderbuss?</h3>
+<ul>
+<li>Already the "auto-assign" plugin with multiple trigger events (PR open, status, <code>/auto-cc</code>)
+</li>
+<li><code>fallbackReviewersClient</code> already maps approver lists to the reviewer selection interface
+</li>
+<li>Existing infrastructure for OWNERS loading, user selection, and <code>RequestReview()</code>
+</li>
+<li>Adding <code>PullRequestActionLabeled</code> handling follows the <code>WaitForStatus</code> pattern
+</li></ul>
+<h2>Implementation Sketch</h2>
+<ol>
+<li><strong>Add config field</strong> -- <code>AssignApproversOnLGTM bool</code> in <code>Blunderbuss</code> struct (<code>pkg/plugins/config.go</code>)
+</li>
+<li><strong>Handle labeled events</strong> -- Extend <code>handlePullRequest()</code> to fire on <code>PullRequestActionLabeled</code> when label is <code>lgtm</code>
+</li>
+<li><strong>Select approvers</strong> -- Load OWNERS via existing infrastructure, select approvers for changed files
+</li>
+<li><strong>Assign</strong> -- Call <code>RequestReview()</code> with selected approvers
+</li>
+<li><strong>Test</strong> -- Follow existing patterns in <code>blunderbuss_test.go</code> (fake clients, fake OWNERS)
+</li></ol>
+<h3>Open Design Decisions</h3>
+<ol>
+<li><strong>Assignment mechanism</strong>: <code>RequestReview()</code> (review requests, more visible in GitHub UI) vs <code>AssignIssue()</code> (assignees)
+</li>
+<li><strong>Selection algorithm</strong>: Blunderbuss layered random selection vs approve plugin's set-cover algorithm (<code>GetSuggestedApprovers</code>)
+</li>
+<li><strong>Review-based LGTM</strong>: Should this also trigger when LGTM is added via GitHub review approval (<code>ReviewActsAsLgtm</code>)?
+</li>
+<li><strong>Spurious/premature LGTM</strong> (raised by BenTheElder, 2026-06-17): the <code>lgtm</code> label can be applied outside a genuine "ready to merge" review sign-off. Auto-assigning approvers on every label event could page an approver prematurely; any implementation should consider debouncing, requiring label persistence, or another guard against noisy triggers.
+</li></ol>
+<h2>Effort Assessment</h2>
+<p>| Factor | Rating | Detail | |---|---|---| | Scope | Moderate | 3-5 files, ~150-300 LOC | | Complexity | Moderate | edge cases need handling | | Expertise | Moderate | plugin system + OWNERS | | Clarity | Well-defined | clear approach | | Testing | Moderate | existing patterns apply | | Backwards Compat | Fully compatible | opt-in only | | Architecture Fit | Good | natural extension | | External Deps | Well-supported | standard GitHub API |</p>
+<h2>Proposed Augmentation Comment</h2>
+<p>Proposed title: <strong>blunderbuss: Auto-assign approvers when PR receives LGTM label</strong></p>
+<pre><code>/retitle blunderbuss: Auto-assign approvers when PR receives LGTM label
 
-<h1>Issue #686: Assigning Approvers after PR receives LGTM</h1>
-<p class="subtitle">
-  Reported by <a href="https://github.com/NiJuFirenzia">NiJuFirenzia</a> on 2026-04-17 &middot;
-  <a href="https://github.com/kubernetes-sigs/prow/issues/686">View on GitHub</a> &middot;
-  <a href="https://github.com/petr-muller/prow/blob/issue-triage-686/ISSUE-TRIAGE.md">Full triage document</a>
-</p>
+The approve plugin already computes suggested approvers for each PR using a set-cover algorithm in `pkg/plugins/approve/approvers/owners.go` (`GetCCs()` and `GetSuggestedApprovers()`). It displays these suggestions in its notification comment with the text _&quot;Once this PR has been reviewed and has the lgtm label, please assign [approvers] for approval.&quot;_ However, this is currently manual guidance — no automatic assignment happens.
 
-<div class="meta-row">
-  <span class="badge badge-legitimate">Legitimate</span>
-  <span class="badge badge-feature">Feature Request</span>
-  <span class="badge badge-level2">Level 2 &mdash; Moderate</span>
-  <span class="badge badge-help">help-wanted</span>
-</div>
+The most natural place to implement this feature is in the **blunderbuss plugin** (`pkg/plugins/blunderbuss/`), which already handles auto-assignment of reviewers when a PR is opened. Blunderbuss already has infrastructure for loading OWNERS files, selecting users based on changed files, and calling `RequestReview()`. Adding an opt-in config option (e.g., `assign_approvers_on_lgtm: true`) to handle `PullRequestActionLabeled` events when the `lgtm` label is added would follow the existing pattern. The plugin&#x27;s `fallbackReviewersClient` already maps approver lists to the reviewer selection interface, making the plumbing straightforward.
 
-<section>
-  <h2>Overview</h2>
-  <p>When a new PR is opened, the <strong>blunderbuss</strong> plugin automatically assigns reviewers from OWNERS files. Once a reviewer gives LGTM, there is no equivalent mechanism to automatically assign <strong>approvers</strong>. Approvers must manually discover LGTM'd PRs, adding friction to the merge workflow.</p>
+Key design decisions for the implementation: (1) whether to use `RequestReview()` (GitHub review requests, more visible) or `AssignIssue()` (GitHub assignees); (2) whether to reuse blunderbuss&#x27;s layered random selection or the approve plugin&#x27;s set-cover algorithm for choosing approvers; (3) whether this should also trigger on GitHub review approvals that act as LGTM (when `ReviewActsAsLgtm` is enabled), not just on the label event.
 
-  <h3>Since previous triage</h3>
-  <p><strong><a href="https://github.com/BenTheElder">BenTheElder</a></strong> (maintainer, 2026-05-12) responded that the approve plugin already posts clear instructions for the PR author to assign an approver, with a <a href="https://github.com/kubernetes-sigs/prow/pull/716#issuecomment-4421792093">screenshot example from PR #716</a>.</p>
-  <p><strong><a href="https://github.com/NiJuFirenzia">NiJuFirenzia</a></strong> (reporter, 2026-06-16) asked BenTheElder to reconsider, arguing automation would let the PR author be more hands-off and save reviewer time.</p>
-  <p>BenTheElder (2026-06-17) pushed back further: reviewer time, not author time, is the actual bottleneck, and it's unclear that "making it easier to put no effort into PRs" is net-helpful. He also flagged a new risk: <em>"occasionally people just randomly LGTM out of nowhere"</em> &mdash; i.e. auto-assignment on the <code>lgtm</code> label could fire on spurious/premature LGTMs. This reinforces the maintainer's skepticism and adds a design risk not previously captured.</p>
-</section>
-
-<section>
-  <h2>The Gap</h2>
-  <p>The <strong>approve</strong> plugin already computes the optimal set of approvers for every PR via <code>GetCCs()</code> and <code>GetSuggestedApprovers()</code>. It even renders advisory text:</p>
-  <pre>"Once this PR has been reviewed and has the lgtm label,
- please assign [suggested_approvers] for approval."</pre>
-  <p>All the selection logic exists &mdash; it just isn't wired to an automatic action.</p>
-
-  <h3>Current Data Flow</h3>
-  <div class="flow">
-    <span class="flow-step">PR opened</span>
-    <span class="flow-arrow">&rarr;</span>
-    <span class="flow-step">Blunderbuss assigns reviewers</span>
-    <span class="flow-arrow">&rarr;</span>
-    <span class="flow-step">Reviewer comments /lgtm</span>
-    <span class="flow-arrow">&rarr;</span>
-    <span class="flow-step">LGTM label added</span>
-    <span class="flow-arrow">&rarr;</span>
-    <span class="flow-gap">??? nothing assigns approvers</span>
-    <span class="flow-arrow">&rarr;</span>
-    <span class="flow-step">Approver self-discovers PR</span>
-  </div>
-</section>
-
-<section>
-  <h2>Affected Components</h2>
-  <ul>
-    <li><strong>Blunderbuss</strong> &mdash; <code>pkg/plugins/blunderbuss/blunderbuss.go</code> &mdash; auto-assigns reviewers; recommended extension point</li>
-    <li><strong>Approve/Owners</strong> &mdash; <code>pkg/plugins/approve/approvers/owners.go</code> &mdash; <code>GetCCs()</code> set-cover algorithm for approver selection</li>
-    <li><strong>LGTM</strong> &mdash; <code>pkg/plugins/lgtm/lgtm.go:348</code> &mdash; adds the <code>lgtm</code> label, fires <code>PullRequestActionLabeled</code></li>
-    <li><strong>RepoOwners</strong> &mdash; <code>pkg/repoowners/repoowners.go</code> &mdash; parses OWNERS files, separates reviewers vs approvers</li>
-  </ul>
-  <p style="margin-top:0.5rem;">The <code>PullRequestActionLabeled</code> event type already exists (<code>github/types.go:185</code>) but no plugin currently uses it for assignment.</p>
-</section>
-
-<section>
-  <h2>Solution Approaches</h2>
-  <div class="approaches">
-    <div class="approach-card">
-      <h4>1. New Plugin</h4>
-      <p>Standalone "approver-assigner" plugin listening for labeled events.</p>
-      <span class="tag tag-pro">Clean separation</span>
-      <span class="tag tag-con">Duplicates logic</span>
-    </div>
-    <div class="approach-card recommended">
-      <h4>2. Extend Blunderbuss</h4>
-      <p>Add opt-in config to blunderbuss to handle <code>lgtm</code> label events and assign approvers.</p>
-      <span class="tag tag-pro">Reuses infra</span>
-      <span class="tag tag-pro">Natural fit</span>
-      <span class="tag tag-rec">Recommended</span>
-    </div>
-    <div class="approach-card">
-      <h4>3. Extend LGTM</h4>
-      <p>Add approver assignment directly in LGTM plugin after label addition.</p>
-      <span class="tag tag-pro">Direct trigger</span>
-      <span class="tag tag-con">Mixes concerns</span>
-    </div>
-  </div>
-
-  <h3>Why Blunderbuss?</h3>
-  <ul>
-    <li>Already the "auto-assign" plugin with multiple trigger events (PR open, status, <code>/auto-cc</code>)</li>
-    <li><code>fallbackReviewersClient</code> already maps approver lists to the reviewer selection interface</li>
-    <li>Existing infrastructure for OWNERS loading, user selection, and <code>RequestReview()</code></li>
-    <li>Adding <code>PullRequestActionLabeled</code> handling follows the <code>WaitForStatus</code> pattern</li>
-  </ul>
-</section>
-
-<section>
-  <h2>Implementation Sketch</h2>
-  <ol class="steps-list">
-    <li><strong>Add config field</strong> &mdash; <code>AssignApproversOnLGTM bool</code> in <code>Blunderbuss</code> struct (<code>pkg/plugins/config.go</code>)</li>
-    <li><strong>Handle labeled events</strong> &mdash; Extend <code>handlePullRequest()</code> to fire on <code>PullRequestActionLabeled</code> when label is <code>lgtm</code></li>
-    <li><strong>Select approvers</strong> &mdash; Load OWNERS via existing infrastructure, select approvers for changed files</li>
-    <li><strong>Assign</strong> &mdash; Call <code>RequestReview()</code> with selected approvers</li>
-    <li><strong>Test</strong> &mdash; Follow existing patterns in <code>blunderbuss_test.go</code> (fake clients, fake OWNERS)</li>
-  </ol>
-
-  <h3>Open Design Decisions</h3>
-  <dl class="design-decisions">
-    <dt>1. Assignment mechanism</dt>
-    <dd><code>RequestReview()</code> (review requests, more visible in GitHub UI) vs <code>AssignIssue()</code> (assignees)</dd>
-    <dt>2. Selection algorithm</dt>
-    <dd>Blunderbuss layered random selection vs approve plugin's set-cover algorithm (<code>GetSuggestedApprovers</code>)</dd>
-    <dt>3. Review-based LGTM</dt>
-    <dd>Should this also trigger when LGTM is added via GitHub review approval (<code>ReviewActsAsLgtm</code>)?</dd>
-    <dt>4. Spurious/premature LGTM</dt>
-    <dd>Raised by BenTheElder (2026-06-17): the <code>lgtm</code> label can be applied outside a genuine ready-to-merge sign-off. Any implementation should consider debouncing or another guard against noisy triggers.</dd>
-  </dl>
-</section>
-
-<section>
-  <h2>Effort Assessment</h2>
-  <div class="factor-grid">
-    <div class="factor">
-      <div class="factor-name">Scope</div>
-      <div class="factor-value med">Moderate &mdash; 3-5 files, ~150-300 LOC</div>
-    </div>
-    <div class="factor">
-      <div class="factor-name">Complexity</div>
-      <div class="factor-value med">Moderate &mdash; edge cases need handling</div>
-    </div>
-    <div class="factor">
-      <div class="factor-name">Expertise</div>
-      <div class="factor-value med">Moderate &mdash; plugin system + OWNERS</div>
-    </div>
-    <div class="factor">
-      <div class="factor-name">Clarity</div>
-      <div class="factor-value low">Well-defined &mdash; clear approach</div>
-    </div>
-    <div class="factor">
-      <div class="factor-name">Testing</div>
-      <div class="factor-value low">Moderate &mdash; existing patterns apply</div>
-    </div>
-    <div class="factor">
-      <div class="factor-name">Backwards Compat</div>
-      <div class="factor-value low">Fully compatible &mdash; opt-in only</div>
-    </div>
-    <div class="factor">
-      <div class="factor-name">Architecture Fit</div>
-      <div class="factor-value low">Good &mdash; natural extension</div>
-    </div>
-    <div class="factor">
-      <div class="factor-name">External Deps</div>
-      <div class="factor-value low">Well-supported &mdash; standard GitHub API</div>
-    </div>
-  </div>
-</section>
-
-<section>
-  <h2>Proposed Augmentation Comment</h2>
-  <p>Proposed title: <strong>blunderbuss: Auto-assign approvers when PR receives LGTM label</strong></p>
-  <div class="comment-preview">
-    <span class="cmd">/retitle blunderbuss: Auto-assign approvers when PR receives LGTM label</span>
-    <p style="margin-top:0.75rem;">The approve plugin already computes suggested approvers for each PR using a set-cover algorithm in <code>pkg/plugins/approve/approvers/owners.go</code> (<code>GetCCs()</code> and <code>GetSuggestedApprovers()</code>). It displays these suggestions in its notification comment with the text <em>"Once this PR has been reviewed and has the lgtm label, please assign [approvers] for approval."</em> However, this is currently manual guidance &mdash; no automatic assignment happens.</p>
-    <p>The most natural place to implement this feature is in the <strong>blunderbuss plugin</strong> (<code>pkg/plugins/blunderbuss/</code>), which already handles auto-assignment of reviewers when a PR is opened. Blunderbuss already has infrastructure for loading OWNERS files, selecting users based on changed files, and calling <code>RequestReview()</code>. Adding an opt-in config option (e.g., <code>assign_approvers_on_lgtm: true</code>) to handle <code>PullRequestActionLabeled</code> events when the <code>lgtm</code> label is added would follow the existing pattern.</p>
-    <p>Key design decisions for the implementation: (1) whether to use <code>RequestReview()</code> or <code>AssignIssue()</code>; (2) whether to reuse blunderbuss's layered random selection or the approve plugin's set-cover algorithm; (3) whether this should also trigger on GitHub review approvals that act as LGTM.</p>
-    <span class="cmd">/area plugins</span>
-    <span class="cmd">/kind feature</span>
-    <span class="cmd">/help-wanted</span>
-  </div>
-</section>
-
-<section>
-  <h2>Recommended Labels</h2>
-  <ul>
-    <li><code>/area plugins</code> &mdash; plugin feature, blunderbuss/approve interaction</li>
-    <li><code>/kind feature</code> &mdash; new functionality</li>
-    <li><code>/help-wanted</code> &mdash; Level 2: well-scoped, suitable for skilled contributors</li>
-  </ul>
-</section>
-
-<section>
-  <h2>Recommended Next Steps</h2>
-  <ol class="steps-list">
-    <li>BenTheElder has now pushed back twice (2026-05-12, 2026-06-17), the second time with a substantive objection (reviewer time is the real bottleneck, not author time) plus a concrete technical risk (spurious/premature <code>lgtm</code> labels). Posting the augmentation comment as currently drafted is not recommended.</li>
-    <li>If pursuing this further, address the spurious-LGTM concern explicitly (e.g. propose a guard/debounce) rather than re-treading the original pitch.</li>
-    <li>Given two rounds of maintainer skepticism and no third-party support, the likely outcome is the issue stays open without traction, or is closed as wontfix. Weigh this before investing further triage effort.</li>
-  </ol>
-</section>
-
-<footer>
-  Triage completed 2026-04-20 &middot; Refreshed 2026-05-14, 2026-07-26 &middot; Comment not yet posted &middot; Maintainer pushed back twice &middot;
-  <a href="https://github.com/petr-muller/prow/blob/issue-triage-686/ISSUE-TRIAGE.md">Full triage document</a>
-</footer>
-
-</body>
-</html>
+/area plugins
+/kind feature
+/help-wanted</code></pre>
+<h2>Recommended Labels</h2>
+<ul>
+<li><code>/area plugins</code> -- plugin feature, blunderbuss/approve interaction
+</li>
+<li><code>/kind feature</code> -- new functionality
+</li>
+<li><code>/help-wanted</code> -- Level 2: well-scoped, suitable for skilled contributors
+</li></ul>
+<h2>Recommended next steps</h2>
+<ol>
+<li>BenTheElder has now pushed back twice (2026-05-12, 2026-06-17), the second time with a substantive objection (reviewer time is the real bottleneck, not author time) plus a concrete technical risk (spurious/premature <code>lgtm</code> labels triggering assignment). This is stronger signal than the initial response that the maintainer does not want this feature built as proposed -- posting the augmentation comment as currently drafted is not recommended.
+</li>
+<li>If pursuing this further, any comment or PR should explicitly address the spurious-LGTM concern (e.g. propose a guard/debounce) rather than just reiterate the original pitch -- otherwise it re-treads ground BenTheElder has already objected to.
+</li>
+<li>Given two rounds of maintainer skepticism and no third-party support, the more likely outcome is this issue stays open as <code>help-wanted</code> without traction, or is closed as wontfix if BenTheElder chooses to. Consider this when deciding whether to invest further triage effort here.
+</li></ol>
+<h2>Advice</h2>
+<p>No change since triage: the issue remains open with no labels, assignees, milestone, or linked PR, and there are no new comments or cross-references. The existing next steps still advise against posting the augmentation comment as written, given the maintainer's objections about reviewer time and spurious or premature LGTMs.</p>
+<p>If keeping the feature request open for contributors, apply the saved recommended labels. None are currently present; the repository label list confirms these names:</p>
+<pre><code>gh issue edit 686 --repo kubernetes-sigs/prow --add-label &quot;area/plugins,kind/feature,help wanted&quot;</code></pre>
+<p>There is no linked PR to review and no milestone to assign. If the request is pursued further, revise the proposal to address the concerns captured under <strong>Recommended next steps</strong> before posting a comment.</p>
+</main></body></html>

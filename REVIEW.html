@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#966</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>config: expose loaded job definition counts</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/966">kubernetes-sigs/prow#966</a> · base <code>main</code> · head_sha <code>49a050829080</code> · reviewed_at <code>2026-10-09T12:46:33Z</code></div>
+<div class="badges"><span class="badge c-red">verdict: request-changes</span><span class="badge c-red">gate: do-not-merge</span></div>
+<details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#966
+title: &quot;config: expose loaded job definition counts&quot;
+head_sha: 49a050829080b79ce689eecfa225affd142b1085
+base: main
+reviewed_at: 2026-10-09T12:46:33Z
+verdict: request-changes
+refresh_log:
+  - at: 2026-10-09T12:46:33Z
+    old_sha: 8823ecb279c05df966ffe4e999c18d70a069e9df
+    new_sha: 49a050829080b79ce689eecfa225affd142b1085
+    summary: &quot;Reviewed targeted collector rewrite and component registration; resolved scope and attribution documentation, retained missing coverage.&quot;
+gate:
+  decision: do-not-merge
+  gated_at: 2026-10-09T13:17:07Z
+  gated_head_sha: 49a050829080b79ce689eecfa225affd142b1085
+  reviewed_head_sha: 49a050829080b79ce689eecfa225affd142b1085</code></pre></details>
+<h2>Gate</h2>
+<p>Do not merge. Current head <code>49a050829080b79ce689eecfa225affd142b1085</code> matches the refreshed review. The sole active blocking finding is missing coverage of the collector's public behavior; the PR still contains no test additions. Naming, attribution documentation, and agent ownership are addressed.</p>
+<ul>
+<li><strong>Not addressed; blocks merge — REVIEW.md, “Cover the published metric's values and refresh behavior” (<code>pkg/config/agent.go:69-81</code>):</strong> Collect emits three cached values after a configuration is loaded, but no tests verify the counts, startup absence, zero-count replacement, or independent agent state. Add focused registry-based coverage through Set and SetWithoutBroadcast to unblock the gate.
+</li></ul>
+<p>Prior GitHub feedback from @petr-muller on 2026-10-05 requested the name prow_config_static_job_definition and raised singleton/attribution concerns. Current code adopts that name, implements an agent-owned collector, and documents scrape-target attribution; these items are addressed. No other substantive GitHub feedback is unresolved.</p>
+<p>Independent merge risk: The full PR changes 15 files with 93 additions and 4 deletions, adding an explicitly registered collector to 13 component entry points. Describe and Collect are additive exported methods; no existing exported signature, configuration schema, flag, default, job execution path, or wire format is removed or changed. The metric contributes three series per registered agent, and exporter includes it in both its custom scrape registry and the default Pushgateway registry. Existing deployments need no migration or coordinated rollout. No notable compatibility risk was identified; documentation covers static scope and avoiding sums across replicas. The assessment used direct code inspection; no applicable repository compatibility skill was available, and no test execution at this head is claimed.</p>
+<h2>Verdict</h2>
+<p>Request changes.</p>
+<p>The updated implementation binds cached static counts to each config agent and explicitly registers the agent as a collector in each emitting component. The metric name and documentation now explain static snapshot scope, replica attribution through scrape-target labels, and the exclusion of in-repo jobs, resolving the contract finding. Request changes remains solely for missing regression coverage of values, refresh behavior, and the collector lifecycle.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Exposes <code>prow_config_static_job_definition</code> through an explicitly registered config-agent collector with a bounded <code>type</code> label.
+</li>
+<li>Emits counts for periodic, static presubmit, and static postsubmit definitions.
+</li>
+<li>Caches counts under the agent lock when either configuration update path accepts a snapshot; scrapes read one coherent counts snapshot.
+</li>
+<li>Registers the collector in 13 component entry points, including exporter's serving and Pushgateway registries.
+</li>
+<li>Documents static scope and component/instance attribution in the metrics catalog.
+</li></ul>
+<p>Since previous review:</p>
+<ul>
+<li>Prucek replaced the PR commit on 2026-10-08 at 13:39:15 UTC; the old SHA is not an ancestor of the current head. The targeted delta is 81 additions and 18 deletions across 15 existing files, suitable for an in-place refresh.
+</li>
+<li>Replaced the global gauge with an agent-owned collector, renamed the metric, and added explicit registration in each component.
+</li>
+<li>Added 13 lines of metrics documentation; no tests or substantive new reviewer comments were added.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-red">blocking</span>Cover the published metric's values and refresh behavior</h3>
+<ul>
+<li>where: <code>pkg/config/agent.go:69-81</code>
+</li>
+<li>excerpt:<pre><code>ca.mut.RLock()
+counts := ca.jobDefinitions
+loaded := ca.c != nil
+ca.mut.RUnlock()
+if !loaded {
+    return
+}
+ch &lt;- prometheus.MustNewConstMetric(configStaticJobDefinitions, prometheus.GaugeValue, float64(counts.periodics), &quot;periodic&quot;)
+ch &lt;- prometheus.MustNewConstMetric(configStaticJobDefinitions, prometheus.GaugeValue, float64(counts.presubmits), &quot;presubmit&quot;)
+ch &lt;- prometheus.MustNewConstMetric(configStaticJobDefinitions, prometheus.GaugeValue, float64(counts.postsubmits), &quot;postsubmit&quot;)</code></pre>
+</li>
+<li>concern: The collector rewrite still adds no tests for this public metric. Register an agent in a fresh registry and verify no samples before loading, unequal counts across multiple repositories after Set, and replacement with zero counts after SetWithoutBroadcast. Verify separate agents in separate registries retain independent values.
+</li></ul>
+<h2>Resolved</h2>
+<h3><span class="tag c-amber">should-fix</span>Define the metric's attribution and scope for operators</h3>
+<ul>
+<li>where: <code>pkg/config/agent.go:34-40</code>
+</li>
+<li>excerpt:<pre><code>var configJobDefinitions = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+    Name: &quot;config_job_definitions&quot;,
+    Help: &quot;Number of job definitions in the accepted configuration, by job type.&quot;,
+}, []string{&quot;type&quot;})</code></pre>
+</li>
+<li>concern: Resolved in 49a050829080b79ce689eecfa225affd142b1085. The metric is now named prow_config_static_job_definition, its help explicitly says static definitions in accepted configuration, and site/content/en/docs/metrics/_index.md:66-76 documents the job types, exclusion of in-repo jobs, zero counts, attribution through scrape-target labels, and duplicate counts across replicas. The excerpt above preserves the original reviewed implementation.
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>Say when the counts are measured</h3>
+<ul>
+<li>where: <code>pkg/config/agent.go:413-448</code>
+</li>
+<li>excerpt:<pre><code>ca.c = c
+recordJobDefinitionMetrics(c)</code></pre>
+</li>
+<li>concern: Dispositioned by the design discussion: the objective is observing configured static definitions a component sees. Recording the accepted snapshot is the appropriate measurement point, including for types the component does not consume. The documentation requirement is retained in the active scope finding.
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>Name and include the in-repo job population</h3>
+<ul>
+<li>where: <code>pkg/config/agent.go:34-38</code>
+</li>
+<li>excerpt:<pre><code>var configJobDefinitions = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+    Name: &quot;config_job_definitions&quot;,
+    Help: &quot;Number of job definitions in the accepted configuration, by job type.&quot;,
+}, []string{&quot;type&quot;})</code></pre>
+</li>
+<li>concern: Withdrawn as a scope expansion: this metric can be complete for static inventory without including dynamically fetched in-repo definitions. Their revision-dependent cache population is a separate measurement. Clarifying static scope remains an active finding; additional in-repo instrumentation is not a merge requirement.
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>The refreshed head was inspected directly from git objects for <code>49a050829080b79ce689eecfa225affd142b1085</code>; the working checkout was not reset or updated. No test execution at the new head is claimed.
+</li>
+<li>The count helper sums all static jobs across repository keys and does not introduce repository-level cardinality.
+</li>
+<li>Both Set and SetWithoutBroadcast cache counts under the agent lock after installing the snapshot. Collect copies all counts and the loaded state under a read lock, then emits metrics after releasing the lock.
+</li>
+<li>No configuration schema, job execution behavior, migration requirement, or permission boundary changes.
+</li>
+<li>The fixed <code>type</code> vocabulary bounds the metric to three series per process.
+</li>
+<li>Package-level collectors registered in init are established conventions in pkg/config/cache.go, pkg/config/inrepoconfig.go, pkg/kube/metrics.go, and pkg/tide/tide.go. This instrumentation style is not itself a finding.
+</li>
+<li>pkg/metrics/prowjobs provides informer-driven lifecycle histograms; cmd/exporter contains a custom scrape-time collector. These are alternative patterns, not required architecture for this PR.
+</li>
+<li>No requirement to count dynamically fetched in-repo definitions or instrument consumer execution for the static inventory objective.
+</li>
+<li>No samples are emitted before the first snapshot; an accepted empty config emits three zeros.
+</li>
+<li>Collector state belongs to each Agent, removing cross-agent overwrites. Distinct agents would still require distinct registries or distinguishing registration labels if exported together.
+</li>
+<li>Exporter registers the agent in both its custom serving registry and the default registry used by Pushgateway collection.
+</li>
+<li>PR remains OPEN. No new inline comments or submitted reviews; the only new issue comment is an automated approval-notifier message on 2026-10-08 at 13:39:56 UTC.
+</li></ul>
+<h2>Open questions</h2>
+<p>None beyond the active request for regression coverage; source attribution and agent ownership are addressed by the new implementation and documentation.</p>
+</main></body></html>

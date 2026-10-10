@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#772</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>git: add SSH commit signing support to the git client factory</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/772">kubernetes-sigs/prow#772</a> · base <code>main</code> · head_sha <code>6ac6774906e8</code> · reviewed_at <code>2026-07-26T23:32:33Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span><span class="badge c-gray">gate: merged</span></div>
+<details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#772
+title: &quot;git: add SSH commit signing support to the git client factory&quot;
+head_sha: 6ac6774906e85c753c3903ceb98e8d3a691449ce
+base: main
+reviewed_at: 2026-07-26T23:32:33Z
+verdict: approve
+gate:
+  decision: merged
+  gated_at: 2026-06-29T15:22:12Z
+  gated_head_sha: 6ac6774906e85c753c3903ceb98e8d3a691449ce
+  reviewed_head_sha: 6ac6774906e85c753c3903ceb98e8d3a691449ce
+refresh_log:
+  - from_head_sha: 6ac6774906e85c753c3903ceb98e8d3a691449ce
+    to_head_sha: 6ac6774906e85c753c3903ceb98e8d3a691449ce
+    at: 2026-07-26T23:32:33Z
+    summary: No code changes. petr-muller approved (satisfying pkg/OWNERS), cancelled the hold, and the PR merged 2026-07-01T15:32:14Z.</code></pre></details>
+<h2>Gate</h2>
+<p><strong>Decision: merged</strong> — resolved since the previous gate check. <code>petr-muller</code> (an approver per <code>pkg/OWNERS</code>) reviewed, left two clarifying comments (resolved inline — the <code>SigningKeyPath</code> flag's placement on <code>GitHubOptions</code> is because git clients are built from that struct via <code>GitClientFactory</code>), and <code>/approve</code>d on 2026-06-29T15:45:23Z, which satisfied the <code>pkg/OWNERS</code> approval requirement (<code>approved</code> label applied). <code>petr-muller</code> then ran <code>/hold cancel</code> on 2026-07-01T14:59:38Z ("I consider the opportunity as given :D"), and the PR merged at 2026-07-01T15:32:14Z.</p>
+<p>Previously this section noted <code>droslean</code> as the required approver who hadn't re-engaged — <code>petr-muller</code> also satisfies the <code>pkg/OWNERS</code> requirement and did approve, resolving the hold.</p>
+<h3>Prior findings disposition</h3>
+<p>All review findings from REVIEW.md are <strong>not addressed</strong> in the current head (no commits since review):</p>
+<ul>
+<li><strong>[should-fix] ClientFromDir bypasses signing</strong> (<code>client_factory.go:435-438</code>) — still returns <code>c.bootstrapClients(...)</code> without signing config. Latent gap, no production callers. Does not gate merge on its own.
+</li>
+<li><strong>[should-fix] Generic error message</strong> (<code>client_factory.go:504</code>) — still wraps all three config calls with the same message. Polish, does not gate merge.
+</li>
+<li><strong>[nit] No startup validation, no log line, placement debt</strong> — unchanged. None gate merge.
+</li></ul>
+<p>droslean's hold concern (move signing from cherrypicker into git client factory) — <strong>addressed</strong> by the current architecture. <code>jmguzik</code> confirmed with <code>/lgtm</code> + <code>/unhold</code>.</p>
+<h3>Merge risk (Area 2)</h3>
+<p>No notable merge risk. All changes are additive and opt-in:</p>
+<ul>
+<li><code>NewLocalClientFactory</code> signature adds <code>...ClientFactoryOpt</code> — backwards compatible (variadic).
+</li>
+<li>New exported <code>SigningKeyPath</code> field on <code>GitHubOptions</code> and <code>ClientFactoryOpts</code> — additive, no json/yaml tags.
+</li>
+<li>New exported <code>WithSigningKeyPath</code> func — additive.
+</li>
+<li>Feature is opt-in via <code>--git-signing-key-path</code>, empty default preserves current behavior.
+</li></ul>
+<h3>Gating list</h3>
+<ol>
+<li>~~Missing <code>approved</code> label~~ — <strong>resolved</strong>: <code>petr-muller</code> <code>/approve</code>d 2026-06-29T15:45:23Z, satisfying <code>pkg/OWNERS</code>.
+</li></ol>
+<h3>Resolved since previous gate check</h3>
+<ul>
+<li><code>petr-muller</code> approved and cancelled the hold; PR merged 2026-07-01T15:32:14Z with all <code>should-fix</code>/<code>nit</code> findings still outstanding in the merged code (none were blocking).
+</li></ul>
+<h2>Summary</h2>
+<p>Adds <code>--git-signing-key-path</code> flag to <code>GitHubOptions</code>. When set, every repo cloned via <code>ClientForWithRepoOpts</code> gets <code>gpg.format=ssh</code>, <code>user.signingkey</code>, and <code>commit.gpgsign=true</code>. Primary consumer is cherrypicker (<code>git am</code> path). Opt-in, no behavioral change without the flag. Three independent reviewer perspectives (code quality, maintainability, deployment risk) all converge on approve.</p>
+<p><strong>Since previous review:</strong> No code changes (head SHA unchanged).</p>
+<ul>
+<li><code>petr-muller</code> approved the PR (2026-06-29), satisfying the <code>pkg/OWNERS</code> approval requirement.
+</li>
+<li>Hold was cancelled by <code>petr-muller</code> (2026-07-01).
+</li>
+<li>PR merged 2026-07-01T15:32:14Z.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-amber">should-fix</span>ClientFromDir does not apply signing configuration</h3>
+<ul>
+<li>where: <code>pkg/git/v2/client_factory.go:435-438</code>
+</li>
+<li>concern: <code>ClientFromDir</code> is part of the public <code>ClientFactory</code> interface but does not apply signing config, unlike <code>ClientForWithRepoOpts</code>. No production callers today, but a future caller expecting signed commits will silently get unsigned ones.
+</li>
+<li>excerpt:<pre><code>func (c *clientFactory) ClientFromDir(org, repo, dir string) (RepoClient, error) {
+    return c.bootstrapClients(org, repo, dir)
+}</code></pre>
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>Generic error message for three distinct git config calls</h3>
+<ul>
+<li>where: <code>pkg/git/v2/client_factory.go:497-506</code>
+</li>
+<li>concern: All three config calls (<code>gpg.format</code>, <code>user.signingkey</code>, <code>commit.gpgsign</code>) wrap errors with the same message <code>&quot;failed to configure commit signing&quot;</code>. Include the config key: <code>fmt.Errorf(&quot;failed to configure commit signing (%s): %%w&quot;, args[0], err)</code>. Flagged independently by code quality and maintainability reviewers.
+</li>
+<li>excerpt:<pre><code>if err := repoClient.Config(args...); err != nil {
+    return nil, fmt.Errorf(&quot;failed to configure commit signing: %w&quot;, err)
+}</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">nit</span>No early validation of signing key path</h3>
+<ul>
+<li>where: <code>pkg/flagutil/github.go:151</code>
+</li>
+<li>concern: <code>SigningKeyPath</code> is not checked in <code>Validate()</code>. A typo lets the component start but fail at commit time with a cryptic git error. An <code>os.Stat</code> check would surface misconfiguration at startup. Consistent with how <code>AppPrivateKeyPath</code> is handled (also no stat), so not blocking. Flagged by all three reviewers.
+</li>
+<li>excerpt:<pre><code>fs.StringVar(&amp;o.SigningKeyPath, &quot;git-signing-key-path&quot;, &quot;&quot;, &quot;Path to an SSH private key for signing git commits.&quot;)</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">nit</span>No log line when signing is enabled</h3>
+<ul>
+<li>where: <code>pkg/git/v2/client_factory.go:494</code>
+</li>
+<li>concern: Other factory-level configurations produce log output. A debug-level log when <code>signingKeyPath</code> is non-empty would help operators confirm signing is active without inspecting individual repo configs.
+</li></ul>
+<h3><span class="tag c-gray">nit</span>Signing support deepens existing GitClientFactory placement debt</h3>
+<ul>
+<li>where: <code>pkg/flagutil/github.go:51</code>
+</li>
+<li>concern: Existing <code>TODO(chaodaiG)</code> at line 338 acknowledges <code>GitClientFactory</code> belongs outside <code>github.go</code>. Gerrit adapter instantiates empty <code>GitHubOptions{}</code> just for git client access. Adding <code>SigningKeyPath</code> here is pragmatic but further entangles git concerns with GitHub-specific types. Not blocking; noting for the eventual refactor.
+</li></ul>
+<h3><span class="tag c-blue">question</span>Should ClientFromDir also apply signing config?</h3>
+<ul>
+<li>where: <code>pkg/git/v2/client_factory.go:435</code>
+</li>
+<li>concern: Is <code>ClientFromDir</code> intentionally a "raw" client that skips factory-level config, or should it apply signing for interface completeness?
+</li></ul>
+<h3><span class="tag c-blue">question</span>Key format validation</h3>
+<ul>
+<li>where: <code>pkg/git/v2/client_factory.go:499</code>
+</li>
+<li>concern: Passing a GPG key path while <code>gpg.format=ssh</code> is hardcoded would fail at commit time with a confusing error. Worth a doc note or comment?
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li><code>NewLocalClientFactory</code> signature change is backwards-compatible (variadic opts, existing callers unaffected)
+</li>
+<li><code>ClientFor</code> delegates to <code>ClientForWithRepoOpts</code>, so signing config applies for both entry points
+</li>
+<li><code>Apply</code> method handles <code>SigningKeyPath</code> consistently with other string fields (<code>Host</code>, <code>CookieFilePath</code>)
+</li>
+<li>Flag naming (<code>--git-signing-key-path</code>) is appropriate; distinguished from <code>--github-*</code> flags since this is a git concern
+</li>
+<li>Test correctly exercises <code>git am</code> path matching cherrypicker's production usage
+</li>
+<li>Signing config applied to secondary clone only (correct; cache is bare/mirror for fetching)
+</li>
+<li>No interface breakage from <code>NewLocalClientFactory</code> signature change
+</li>
+<li>Feature is entirely opt-in, zero behavioral change without the flag
+</li>
+<li>Per-clone config, no global git config side effects
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>Should <code>ClientFromDir</code> also apply signing config for interface completeness, or is it intentionally a "raw" client?
+</li>
+<li>Would an <code>os.Stat</code> check on the key path at <code>Validate()</code> time be welcome, or is deferred validation preferred here?
+</li>
+<li>Is a GPG-vs-SSH key format mismatch worth guarding against or documenting?
+</li></ul>
+<h2>Followups</h2>
+<p>Accepted 5 followups; skipped 1 (logging signing configuration).</p>
+<h3>Apply signing configuration in <code>ClientFromDir</code></h3>
+<pre><code>In kubernetes-sigs/prow, following PR #772 — &quot;git: add SSH commit signing support to the git client factory&quot; (merge commit 444074c659e1d2626895fbc542f7cc6ccfb19e16), update `pkg/git/v2/client_factory.go` so `ClientFromDir` applies the factory&#x27;s configured signing settings to the existing repository directory, consistently with clients returned by `ClientForWithRepoOpts`.
+
+Acceptance criteria:
+- With a signing key configured, a client returned by `ClientFromDir` has `gpg.format=ssh`, the configured `user.signingkey`, and `commit.gpgsign=true`.
+- With no signing key configured, existing behavior is unchanged.
+- Add focused coverage for the configured and unconfigured behavior, and preserve useful error context if setting Git config fails.
+
+Keep the change limited to factory signing behavior and its coverage; do not refactor unrelated client creation paths.</code></pre>
+<h3>Identify the failing signing configuration key</h3>
+<pre><code>In kubernetes-sigs/prow, following PR #772 — &quot;git: add SSH commit signing support to the git client factory&quot; (merge commit 444074c659e1d2626895fbc542f7cc6ccfb19e16), improve errors from the signing configuration loop in `pkg/git/v2/client_factory.go`.
+
+Acceptance criteria:
+- Errors identify which of `gpg.format`, `user.signingkey`, or `commit.gpgsign` failed, while wrapping the underlying error.
+- Add focused coverage for the error message.
+
+Do not change signing behavior or broaden the error-handling refactor beyond these configuration calls.</code></pre>
+<h3>Validate a configured signing key path</h3>
+<pre><code>In kubernetes-sigs/prow, following PR #772 — &quot;git: add SSH commit signing support to the git client factory&quot; (merge commit 444074c659e1d2626895fbc542f7cc6ccfb19e16), validate non-empty `GitHubOptions.SigningKeyPath` in `pkg/flagutil/github.go` during `GitHubOptions.Validate`.
+
+Acceptance criteria:
+- An empty path remains valid and disables signing.
+- A configured path that cannot be used as a key file fails validation with an actionable error.
+- Add tests for the empty, valid-path, and missing-path cases.
+- Validation does not read or log key contents.
+
+Keep validation limited to the configured signing path; do not change validation policy for other GitHub credentials.</code></pre>
+<h3>Move git factory construction out of <code>GitHubOptions</code></h3>
+<pre><code>In kubernetes-sigs/prow, following PR #772 — &quot;git: add SSH commit signing support to the git client factory&quot; (merge commit 444074c659e1d2626895fbc542f7cc6ccfb19e16), address the TODO at `pkg/flagutil/github.go:338` by moving `GitClientFactory` construction and git-specific options into an appropriate git-focused options type or package. Migrate callers, including Gerrit&#x27;s construction through an empty `GitHubOptions`.
+
+Acceptance criteria:
+- Git factory creation no longer requires `GitHubOptions` solely to configure git.
+- Existing behavior for GitHub authentication, Gerrit cookies, cache paths, dry-run, persistence, and signing flags is preserved.
+- Update affected callers and tests, and remove the TODO once the boundary is moved.
+
+Keep the work focused on the git factory/options boundary; do not redesign unrelated GitHub client options.</code></pre>
+<h3>Clarify signing scope and intentional local opt-outs</h3>
+<pre><code>In kubernetes-sigs/prow, following PR #772 — &quot;git: add SSH commit signing support to the git client factory&quot; (merge commit 444074c659e1d2626895fbc542f7cc6ccfb19e16), clarify the scope of `--git-signing-key-path`. Its help text says all git-client commits are signed, while `pkg/config/inrepoconfig.go`, `pkg/tide/tide.go`, and `pkg/plugins/verify-owners/verify-owners.go` explicitly set `commit.gpgsign=false` for temporary merge or inspection commits.
+
+Acceptance criteria:
+- Update the flag help and relevant comments to explain that signing is configured by default for factory-created clones and callers can override it; document why the listed temporary local commits opt out.
+- Preserve the existing opt-outs and signing behavior for commits intended for publication.
+
+Keep the change to accurate help text and comments; do not remove the local opt-outs or change which commits are published.</code></pre>
+</main></body></html>

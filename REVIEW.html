@@ -31,8 +31,18 @@ ul, ol { padding-left:1.5rem; }
 details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
 </style></head><body><main>
 <h1>Allowed Including Label Presets In Presets</h1>
-<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/998">kubernetes-sigs/prow#998</a> · base <code>main</code> · head_sha <code>2d952766c57d</code> · reviewed_at <code>2026-10-09T13:16:35Z</code></div>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/998">kubernetes-sigs/prow#998</a> · base <code>main</code> · head_sha <code>de9d6191eabd</code> · reviewed_at <code>2026-10-10T15:57:29Z</code></div>
 <div class="badges"><span class="badge c-red">verdict: request-changes</span></div>
+<details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#998
+title: &quot;Allowed Including Label Presets In Presets&quot;
+head_sha: de9d6191eabd6f4f35292ade58acf011a74b38f4
+base: main
+reviewed_at: 2026-10-10T15:57:29Z
+verdict: request-changes
+refresh_log:
+  - old_sha: 2d952766c57dedbe59a8b9d7e9bcba5a3cfb42fc
+    new_sha: de9d6191eabd6f4f35292ade58acf011a74b38f4
+    summary: Removed the unused mergePreset wrapper; the ambiguous selector finding remains.</code></pre></details>
 <h2>Verdict</h2>
 <p>Request changes to prevent includes from silently selecting the wrong preset when global and repo-local presets share a label:value selector. Code Quality found no critical Go issues; Maintainability and Deployment Risk independently confirmed this selector ambiguity.</p>
 <h2>What this PR does</h2>
@@ -44,6 +54,10 @@ details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-si
 <li>Sorts includes and reports missing references and cycles.
 </li>
 <li>Deep-copies the new map and adds coverage for the main include cases.
+</li></ul>
+<p>Since previous review:</p>
+<ul>
+<li>Commit <code>de9d6191e</code> removed the unused <code>mergePreset</code> wrapper in <code>pkg/config/jobs.go</code> (7 lines deleted), resolving the corresponding cleanup finding.
 </li></ul>
 <h2>Findings</h2>
 <h3><span class="tag c-amber">should-fix</span>Reject ambiguous include selectors across global and repo presets</h3>
@@ -61,19 +75,6 @@ details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-si
 	return Preset{}, false
 }</code></pre>
 </li></ul>
-<h3><span class="tag c-gray">nit</span>Remove the unused <code>mergePreset</code> wrapper</h3>
-<ul>
-<li>where: <code>pkg/config/jobs.go:69-74</code>
-</li>
-<li>concern: The new resolution path calls <code>presetMatches</code> and <code>applyPresetWithIncludes</code> directly, and no Go call sites use <code>mergePreset</code>. Removing it avoids retaining a dead alternate path.
-</li>
-<li>excerpt:<pre><code>func mergePreset(preset Preset, labels map[string]string, podSpec *v1.PodSpec) error {
-	if !presetMatches(preset, labels) {
-		return nil
-	}
-	return applyPreset(preset, podSpec)
-}</code></pre>
-</li></ul>
 <h3><span class="tag c-gray">nit</span>Include more context in missing-reference errors</h3>
 <ul>
 <li>where: <code>pkg/config/config.go:2994-2996</code>
@@ -85,6 +86,13 @@ if !ok {
 	return fmt.Errorf(&quot;included preset with label %q not found&quot;, pair)
 }</code></pre>
 </li></ul>
+<h2>Resolved</h2>
+<h3>Remove the unused <code>mergePreset</code> wrapper</h3>
+<ul>
+<li>where: <code>pkg/config/jobs.go:69-74</code>
+</li>
+<li>resolved: Commit <code>de9d6191e</code> removed the unused helper.
+</li></ul>
 <h2>Checked</h2>
 <ul>
 <li>Include expansion starts only from a job-matching preset and recursively applies included presets without matching their labels against the job.
@@ -93,7 +101,7 @@ if !ok {
 </li>
 <li>Existing configs without <code>includePresets</code> retain their behavior. Config parsing disallows unknown fields, so config readers must be upgraded before the new field is used.
 </li>
-<li>Missing references and cycles return errors from job defaulting. Read the added tests; tests and <code>go vet</code> were not run.
+<li>Missing references and cycles return errors from job defaulting. The added tests were read; tests and <code>go vet</code> were not run.
 </li></ul>
 <h2>Open questions</h2>
 <ul>

@@ -1,137 +1,184 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<title>Triage: kubernetes-sigs/prow#585 — Remove unneeded prow plugins/cmds</title>
-<style>
-  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; line-height: 1.6; color: #24292e; max-width: 52em; margin: 2em auto; padding: 0 1em; }
-  h1 { font-size: 1.5em; border-bottom: 1px solid #e1e4e8; padding-bottom: 0.3em; }
-  h2 { font-size: 1.25em; border-bottom: 1px solid #e1e4e8; padding-bottom: 0.2em; margin-top: 1.5em; }
-  h3 { font-size: 1.05em; margin-top: 1.2em; }
-  code, pre { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; font-size: 0.9em; }
-  code { background: #f6f8fa; padding: 0.15em 0.3em; border-radius: 3px; }
-  pre { background: #f6f8fa; padding: 1em; border-radius: 6px; overflow-x: auto; }
-  table { border-collapse: collapse; width: 100%; margin: 1em 0; }
-  th, td { border: 1px solid #d0d7de; padding: 0.4em 0.8em; text-align: left; }
-  th { background: #f6f8fa; }
-  .header-block { background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 6px; padding: 1em 1.2em; margin-bottom: 1.5em; }
-  .header-block dt { font-weight: 600; display: inline; }
-  .header-block dt::after { content: ": "; }
-  .header-block dd { display: inline; margin: 0; }
-  .header-block .row { margin-bottom: 0.3em; }
-  .verdict-box { background: #dafbe1; border-left: 4px solid #2da44e; padding: 0.8em 1em; margin: 1em 0; border-radius: 0 6px 6px 0; }
-  ul { padding-left: 1.5em; }
-  li { margin-bottom: 0.3em; }
-  a { color: #0969da; text-decoration: none; }
-  a:hover { text-decoration: underline; }
-</style>
-</head>
-<body>
-
-<h1>Triage: kubernetes-sigs/prow#585</h1>
-
-<div class="header-block">
-  <div class="row"><dt>Issue</dt><dd><a href="https://github.com/kubernetes-sigs/prow/issues/585">kubernetes-sigs/prow#585</a></dd></div>
-  <div class="row"><dt>Title</dt><dd>Remove unneeded prow plugins/cmds</dd></div>
-  <div class="row"><dt>State</dt><dd>open</dd></div>
-  <div class="row"><dt>Labels</dt><dd>lifecycle/rotten</dd></div>
-  <div class="row"><dt>Triaged at</dt><dd>2026-07-26T00:00:00Z</dd></div>
-  <div class="row"><dt>Main SHA</dt><dd><code>351e8cfd58915657bd36a50e7e86bbe972bc0739</code></dd></div>
-  <div class="row"><dt>Verdict</dt><dd><strong>accepted</strong></dd></div>
-</div>
-
-<h2>Verdict</h2>
-
-<div class="verdict-box">
-  <strong>Accepted.</strong> Valid cleanup proposal to remove four obsolete plugins/commands with deprecated or unmaintained dependencies.
-</div>
-
-<p>This is a legitimate tech debt cleanup issue filed by a project member (upodroid). It targets four components that are either deprecated, superseded by GitHub-native features, or no longer used by any known Prow deployment. All four exist in the codebase. The issue has active maintainer discussion (petr-muller, BenTheElder) about the deprecation and removal process, but no PRs yet. The primary blocker is maintainer alignment on phased deprecation vs. immediate removal for the simpler components.</p>
-
-<h2>What the issue reports</h2>
-
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#585</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>Remove unneeded prow plugins/cmds</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/issues/585">kubernetes-sigs/prow#585</a> · main_sha <code>351e8cfd5891</code> · state <code>open</code> · labels <code>lifecycle/rotten</code> · triaged_at <code>2026-07-26T00:00:00Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: accepted</span></div>
+<details><summary>Full metadata</summary><pre><code>issue: kubernetes-sigs/prow#585
+title: &quot;Remove unneeded prow plugins/cmds&quot;
+state: open
+labels: lifecycle/rotten
+main_sha: 351e8cfd58915657bd36a50e7e86bbe972bc0739
+triaged_at: 2026-07-26T00:00:00Z
+verdict: accepted
+advice:
+  advised_at: 2026-10-10T15:11:04Z
+  based_on_triaged_at: 2026-07-26T00:00:00Z
+legitimacy: LEGITIMATE
+effort: 3
+recommended_labels: [kind/cleanup, area/plugins, help-wanted]
+refresh_log:
+  - previous_triaged_at: 2026-06-16T15:48:18Z
+    summary: &quot;k8s-triage-robot escalated lifecycle/stale to lifecycle/rotten (2026-07-11) after continued inactivity; no other issue activity, no linked PRs, no relevant code movement on main.&quot;</code></pre></details>
+<h2>Findings</h2>
+<h3><span class="tag c-amber">cause</span>Four plugins/commands are obsolete</h3>
 <ul>
-  <li>Prow carries plugins and commands that are no longer needed or have been superseded by GitHub-native features.</li>
-  <li>The <strong>golint</strong> plugin uses <code>golang.org/x/lint</code>, which is deprecated; repos should run <code>golangci-lint</code> as a CI job instead.</li>
-  <li>The <strong>dco</strong> plugin checks for <code>Signed-off-by</code> trailers, but GitHub now offers native DCO enforcement as a repository setting.</li>
-  <li>The <strong>jenkins-operator</strong> bridges ProwJobs to Jenkins, which is no longer used by the Prow community.</li>
-  <li>The <strong>buildifier</strong> plugin formats Bazel files, but Prow no longer uses Bazel; it pulls an unmaintained dependency pinned to a 2020 commit.</li>
-</ul>
-
-<p><strong>Since previous triage (2026-06-16):</strong> k8s-triage-robot escalated the issue from <code>lifecycle/stale</code> to <code>lifecycle/rotten</code> on 2026-07-11 due to continued inactivity. No human comments, no linked PRs, and no relevant upstream code changes since the prior triage.</p>
-
-<h2>Analysis</h2>
-
-<h3>Per-component breakdown</h3>
-
-<table>
-  <tr><th>Component</th><th>Effort</th><th>Coupling</th><th>Key blocker</th></tr>
-  <tr><td>buildifier</td><td>Level 1</td><td>None</td><td>Straightforward removal</td></tr>
-  <tr><td>golint</td><td>Level 2</td><td><code>AddedLines()</code> used by verify-owners</td><td>Relocate utility first</td></tr>
-  <tr><td>dco</td><td>Level 2</td><td><code>MarkdownSHAList()</code> used by invalidcommitmsg</td><td>Relocate utility; resolve feature-parity question</td></tr>
-  <tr><td>jenkins-operator</td><td>Level 3</td><td>Config schema, ProwJob API types</td><td>API type deprecation, Deck log routing</td></tr>
-</table>
-
-<h3>buildifier (<code>pkg/plugins/buildifier/</code>)</h3>
-<p>Standalone plugin, zero coupling. Uses <code>github.com/bazelbuild/buildtools v0.0.0-20200922170545-10384511ce98</code> (unmaintained, 2020 commit). Registered via blank import in <code>cmd/hook/plugin-imports/plugin-imports.go:28</code> and <code>pkg/hook/plugin-imports/plugin-imports.go:28</code>. Removal is purely mechanical: delete the package, remove imports, clean up go.mod.</p>
-
-<h3>golint (<code>pkg/plugins/golint/</code>)</h3>
-<p>Uses deprecated <code>golang.org/x/lint v0.0.0-20241112194109-818c5a804067</code>. Runs at Prow's Go version, not the target repo's &mdash; fundamentally broken for a linter. The <code>AddedLines()</code> function at <code>pkg/plugins/golint/golint.go:340-377</code> is a general-purpose diff parser imported by <code>pkg/plugins/verify-owners/verify-owners.go:39,221</code>. This must be relocated (e.g., to a shared utility package or inlined into verify-owners) before golint can be deleted.</p>
-
-<h3>dco (<code>pkg/plugins/dco/</code>)</h3>
-<p>GitHub now offers native DCO enforcement. However, the native setting enforces at push time (<code>--signoff</code> required), while the plugin retroactively checks all commits in a PR. This functional difference was raised by valen-mascarenhas14 in the issue. <code>MarkdownSHAList()</code> is used by <code>pkg/plugins/invalidcommitmsg/invalidcommitmsg.go:32,158,166</code> and must be relocated or inlined before removal.</p>
-
-<h3>jenkins-operator (<code>cmd/jenkins-operator/</code>, <code>pkg/jenkins/</code>)</h3>
-<p>~1600 lines of code bridging ProwJobs to Jenkins. Wired into:</p>
+<li>detail: golint uses deprecated <code>golang.org/x/lint</code>. buildifier uses unmaintained <code>bazelbuild/buildtools</code> pinned to 2020; Prow no longer uses Bazel. dco is superseded by GitHub-native DCO enforcement. jenkins-operator has no active users.
+</li>
+<li>evidence: go.mod deps, issue discussion by upodroid, BenTheElder, petr-muller.
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>golint AddedLines() coupling</h3>
 <ul>
-  <li><code>pkg/config/config.go:177</code> &mdash; <code>JenkinsOperators []JenkinsOperator</code> config field, validation at <code>config.go:2563-2576</code></li>
-  <li><code>pkg/apis/prowjobs/v1/types.go:91</code> &mdash; <code>JenkinsAgent = "jenkins"</code> agent type, <code>JenkinsSpec</code> at <code>types.go:192</code>, <code>JenkinsBuildID</code> at <code>types.go:1141</code></li>
-  <li>Deck log routing references jenkins-operator's HTTP endpoint</li>
-</ul>
-<p>Despite the wiring, integration is shallow: only <code>cmd/jenkins-operator/</code> imports <code>pkg/jenkins/</code>. No other operator depends on it.</p>
-
-<h3>Deprecation mechanisms available</h3>
+<li>where: <code>pkg/plugins/golint/golint.go:340-377</code>
+</li>
+<li>excerpt:<pre><code>func AddedLines(patch string) (map[int]int, error) {</code></pre>
+</li>
+<li>detail: General-purpose unified diff parser. Imported by <code>pkg/plugins/verify-owners/verify-owners.go:39,221</code>. Must relocate before removing golint.
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>dco MarkdownSHAList() coupling</h3>
 <ul>
-  <li><strong>Announcements page</strong>: <code>site/content/en/docs/announcements.md</code> documents breaking changes. Precedent: <code>requiresig</code> removed, <code>docs-no-retest</code> deprecated Jan 2020 / removed April 2020.</li>
-  <li><strong>Runtime warnings</strong>: <code>pkg/logrusutil/logrusutil.go:127-128</code> provides <code>ThrottledWarnf()</code>.</li>
-  <li><strong>Config warnings</strong>: <code>pkg/plugins/config.go</code> has patterns for deprecated config fields (e.g., <code>TrustedOrg</code> at line 564).</li>
-  <li><strong>checkconfig</strong>: <code>cmd/checkconfig/main.go:79-420</code> has <code>--warnings</code>/<code>--exclude-warning</code>/<code>--strict</code> flags, but no plugin-specific deprecation checks yet.</li>
-</ul>
-
-<h3>Maintainer discussion</h3>
-<p>petr-muller proposed phased deprecation: announce with a date, add runtime warnings, then remove. Prefers graceful degradation on removal (<code>checkconfig</code> rejects but <code>hook</code> still starts). BenTheElder agrees linters should just be ripped out immediately &mdash; nobody is using them and the design is broken. Prefers hard failure so operators notice. Both agree on using <code>announcements.md</code> as a starting point.</p>
-
-<h2>What I checked</h2>
-
+<li>where: <code>pkg/plugins/dco/dco.go</code>
+</li>
+<li>excerpt:<pre><code>func MarkdownSHAList(...)</code></pre>
+</li>
+<li>detail: Formats commit SHA lists as markdown. Imported by <code>pkg/plugins/invalidcommitmsg/invalidcommitmsg.go:32,158,166</code>. Must relocate or inline before removing dco.
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>golint plugin registration</h3>
 <ul>
-  <li>All four components confirmed present in the codebase at HEAD (<code>351e8cfd5</code>).</li>
-  <li>No existing PRs address any of the four removals.</li>
-  <li>No sub-issues exist for individual components.</li>
-  <li><code>checkconfig</code> has a warning framework but no plugin-specific deprecation checks.</li>
-  <li>Precedent for plugin removal exists (requiresig, docs-no-retest, autobump documented in announcements.md).</li>
-  <li>Confirmed <code>AddedLines()</code> coupling: golint &rarr; verify-owners.</li>
-  <li>Confirmed <code>MarkdownSHAList()</code> coupling: dco &rarr; invalidcommitmsg.</li>
-  <li>Confirmed jenkins-operator is only imported by its own <code>cmd/</code> entry point.</li>
-</ul>
-
-<h2>Recommended next steps</h2>
-
+<li>where: <code>cmd/hook/plugin-imports/plugin-imports.go:35</code>, <code>pkg/hook/plugin-imports/plugin-imports.go:35</code>
+</li>
+<li>detail: Blank import registers golint handler. Config struct <code>Golint</code> in <code>pkg/plugins/config.go:80,153-158</code>.
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>dco plugin registration</h3>
 <ul>
-  <li>Remove <code>/lifecycle rotten</code> (escalated from <code>lifecycle/stale</code> by k8s-triage-robot on 2026-07-11) &mdash; this issue is valid and actionable, and will auto-close ~30d after rotten (around 2026-08-10) if left untouched.</li>
-  <li>Post a comment summarizing the per-component plan and asking for maintainer alignment on the deprecation process (phased for all four vs. immediate for linters).</li>
-  <li>Consider creating separate sub-issues per component to make them independently assignable.</li>
-  <li>Unblock buildifier removal immediately &mdash; zero coupling, no controversy, good first-contributor task.</li>
-  <li>Apply labels: <code>kind/cleanup</code>, <code>area/plugins</code>, <code>help-wanted</code>.</li>
-</ul>
+<li>where: <code>cmd/hook/plugin-imports/plugin-imports.go:33</code>, <code>pkg/hook/plugin-imports/plugin-imports.go:33</code>
+</li>
+<li>detail: Blank import registers dco handler. Config struct <code>Dco</code> in <code>pkg/plugins/config.go</code>.
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>buildifier plugin registration</h3>
+<ul>
+<li>where: <code>cmd/hook/plugin-imports/plugin-imports.go:28</code>, <code>pkg/hook/plugin-imports/plugin-imports.go:28</code>
+</li>
+<li>detail: Blank import registers buildifier handler. No config struct. No other code depends on it.
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>jenkins-operator config integration</h3>
+<ul>
+<li>where: <code>pkg/config/config.go:177,2563-2576</code>
+</li>
+<li>excerpt:<pre><code>JenkinsOperators []JenkinsOperator</code></pre>
+</li>
+<li>detail: Config field and validation for jenkins-operator. Must be deprecated/removed.
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>jenkins ProwJob API types</h3>
+<ul>
+<li>where: <code>pkg/apis/prowjobs/v1/types.go:91,192,1141</code>
+</li>
+<li>excerpt:<pre><code>JenkinsAgent ProwJobAgent = &quot;jenkins&quot;
+JenkinsSpec  *JenkinsSpec
+JenkinsBuildID string</code></pre>
+</li>
+<li>detail: Agent type enum, spec struct, build ID field. API type changes need careful deprecation.
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>deprecation announcements page</h3>
+<ul>
+<li>where: <code>site/content/en/docs/announcements.md</code>
+</li>
+<li>detail: Established pattern for documenting breaking changes with deprecation timelines. Precedent: requiresig, docs-no-retest (deprecated Jan 2020, removed April 2020), autobump.
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>runtime deprecation warning utility</h3>
+<ul>
+<li>where: <code>pkg/logrusutil/logrusutil.go:127-128</code>
+</li>
+<li>detail: <code>ThrottledWarnf()</code> provides throttled warning logging, used by existing config deprecation warnings.
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>checkconfig warning framework</h3>
+<ul>
+<li>where: <code>cmd/checkconfig/main.go:79-420</code>
+</li>
+<li>detail: Has <code>--warnings</code>/<code>--exclude-warning</code>/<code>--strict</code> flags. No plugin-specific deprecation checks yet, but the framework supports adding them.
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>All four components confirmed present in codebase at HEAD (351e8cfd5)
+</li>
+<li>No existing PRs address any of the four removals
+</li>
+<li>No sub-issues exist for individual components
+</li>
+<li>checkconfig has a warning framework but no plugin-specific deprecation checks
+</li>
+<li>Precedent for plugin removal exists (requiresig, docs-no-retest, autobump in announcements.md)
+</li>
+<li>Confirmed AddedLines() coupling: golint -&gt; verify-owners
+</li>
+<li>Confirmed MarkdownSHAList() coupling: dco -&gt; invalidcommitmsg
+</li>
+<li>jenkins-operator only imported by its own cmd/ entry point
+</li></ul>
+<h2>Next steps</h2>
+<ul>
+<li>Remove <code>/lifecycle rotten</code> (escalated from <code>lifecycle/stale</code> by k8s-triage-robot on 2026-07-11) -- issue is valid and actionable, and will auto-close ~30d after rotten (i.e. around 2026-08-10) if left untouched
+</li>
+<li>Post comment summarizing per-component plan, ask for maintainer alignment on deprecation process
+</li>
+<li>Consider creating separate sub-issues per component for independent assignment
+</li>
+<li>Unblock buildifier removal immediately -- zero coupling, no controversy
+</li>
+<li>Apply labels: kind/cleanup, area/plugins, help-wanted
+</li></ul>
+<h2>Since previous triage (2026-06-16)</h2>
+<ul>
+<li>k8s-triage-robot escalated the issue from <code>lifecycle/stale</code> to <code>lifecycle/rotten</code> on 2026-07-11 due to continued inactivity; no human comments, no linked PRs, and no relevant upstream code changes since the prior triage.
+</li></ul>
+<h2>Advice</h2>
+<ol>
+<li><strong>Remove the rotten label and make the issue discoverable.</strong> The issue is still open and unassigned with only <code>lifecycle/rotten</code>; <code>kind/cleanup</code> and <code>help wanted</code> exist in this repository, while <code>area/plugins</code> does not.
+<pre><code>gh issue edit 585 --repo kubernetes-sigs/prow --remove-label lifecycle/rotten --add-label kind/cleanup --add-label &quot;help wanted&quot;</code></pre>
+</li>
+<li><strong>Ask maintainers to confirm scope and deprecation expectations before splitting implementation.</strong> No fix is in flight. PR #586 proposed removing DCO but was closed without merging on 2026-06-08; the findings also identify helper/API coupling for golint and DCO, while buildifier has no known coupling.
+<pre><code>gh issue comment 585 --repo kubernetes-sigs/prow --body &#x27;&gt; *This was generated by AI during triage.*
 
+Is removal of all four components still wanted, and what deprecation window should cover plugin configuration and API types? PR #586 proposed removing DCO but closed without merging. If the scope is confirmed, should the work be split by component, starting with buildifier, which has no known coupling?&#x27;</code></pre>
+</li></ol>
+<p>No milestone or assignee is set. Defer assigning one until maintainers confirm the scope and deprecation approach.</p>
 <h2>Open questions</h2>
-
 <ul>
-  <li>Should linters (buildifier, golint) skip the phased deprecation and be removed immediately, as BenTheElder suggests?</li>
-  <li>Should <code>hook</code> gracefully ignore removed plugin config (petr-muller's preference) or hard-fail (BenTheElder's preference)?</li>
-  <li>Is GitHub's native DCO enforcement sufficient to replace the dco plugin for all use cases, given the retroactive-check difference?</li>
-  <li>Is rajibmitra (who volunteered in January) still interested in contributing?</li>
-</ul>
-
-</body>
-</html>
+<li>Should linters (buildifier, golint) skip phased deprecation and be removed immediately (BenTheElder's position)?
+</li>
+<li>Should hook gracefully ignore removed plugin config (petr-muller) or hard-fail (BenTheElder)?
+</li>
+<li>Is GitHub native DCO enforcement sufficient to replace the dco plugin, given the retroactive-check difference?
+</li>
+<li>Is rajibmitra (volunteered January 2026) still interested in contributing?
+</li></ul>
+</main></body></html>

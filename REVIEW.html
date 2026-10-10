@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#996</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>chore(deps): bump the kubernetes group across 2 directories with 5 updates</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/996">kubernetes-sigs/prow#996</a> · base <code>main</code> · head_sha <code>7c6d3c97f8a8</code> · reviewed_at <code>2026-10-10T13:50:50Z</code></div>
+<div class="badges"><span class="badge c-amber">verdict: needs-discussion</span></div>
+<h2>Verdict</h2>
+<p>Needs discussion: the bump has no PR-specific vulnerability or source-code regression, but <code>sigs.k8s.io/controller-runtime v0.25.2</code> is about 9–10 days old, and the branch retains reachable vulnerabilities in unchanged dependencies.</p>
+<p>The Kubernetes module releases are older than two weeks and their tag changes do not alter package source. Decide whether the usual two-week soak applies to controller-runtime; track the reachable <code>x/net</code> and Tekton findings separately because this PR does not address them.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Updates Kubernetes module versions in the main module and tools module.
+</li>
+<li>Updates <code>sigs.k8s.io/controller-runtime</code> from <code>v0.25.1</code> to <code>v0.25.2</code>.
+</li>
+<li>Changes only <code>go.mod</code> and <code>go.sum</code> files; no project source or generated files changed.
+</li></ul>
+<h2>Findings</h2>
+<p>None specific to this dep-only PR.</p>
+<h2>Resolved</h2>
+<p>None.</p>
+<h2>Checked</h2>
+<ul>
+<li><strong>Classification and manifests:</strong> <code>go.mod</code>, <code>go.sum</code>, <code>hack/tools/go.mod</code>, and <code>hack/tools/go.sum</code> are the only changed files. Six unique modules are updated:
+<ul>
+<li><code>k8s.io/api v0.37.0 → v0.37.1</code> — direct in the main module, indirect in tools; imported by 52 Go files (26 excluding tests), for Kubernetes API types.
+</li>
+<li><code>k8s.io/apimachinery v0.37.0 → v0.37.1</code> — direct in the main module, indirect in tools; imported by 281 files (160 excluding tests), including API machinery, serialization, and metadata paths.
+</li>
+<li><code>k8s.io/client-go v0.37.0 → v0.37.1</code> — direct; imported by 76 files (59 excluding tests) for Kubernetes clients, kubeconfig, authentication, watches, and informers.
+</li>
+<li><code>k8s.io/streaming v0.37.0 → v0.37.1</code> — indirect; no direct Prow imports found. <code>go mod why</code> traces it through <code>client-go/tools/remotecommand</code> from integration tests.
+</li>
+<li><code>sigs.k8s.io/controller-runtime v0.25.1 → v0.25.2</code> — direct; imported by 55 files (30 excluding tests), across controllers, caches, and clients.
+</li>
+<li><code>k8s.io/code-generator v0.37.0 → v0.37.1</code> — direct in <code>hack/tools</code>; used by the tools harness, not production code.
+</li></ul>
+</li>
+<li><strong>Freshness:</strong> the <code>api</code>, <code>apimachinery</code>, <code>client-go</code>, and <code>code-generator</code> tags were cut September 23, 2026 (about 17 days old); <code>streaming</code> was cut August 9 (about 62 days old). <code>controller-runtime</code> was cut September 30 and published October 1 (about 9–10 days old). None is under five days old; controller-runtime is the only one still within the usual two-week soak window. All new versions are tagged releases, not pseudo-versions. Sources: <a href="https://proxy.golang.org/k8s.io/api/@v/v0.37.1.info">Kubernetes module proxy metadata</a>, <a href="https://proxy.golang.org/k8s.io/streaming/@v/v0.37.1.info">streaming module proxy metadata</a>, <a href="https://proxy.golang.org/sigs.k8s.io/controller-runtime/@v/v0.25.2.info">controller-runtime module proxy metadata</a>.
+</li>
+<li><strong>Kubernetes module changes:</strong> tag comparisons for <a href="https://github.com/kubernetes/api/compare/v0.37.0...v0.37.1">api</a>, <a href="https://github.com/kubernetes/apimachinery/compare/v0.37.0...v0.37.1">apimachinery</a>, <a href="https://github.com/kubernetes/client-go/compare/v0.37.0...v0.37.1">client-go</a>, and <a href="https://github.com/kubernetes/code-generator/compare/v0.37.0...v0.37.1">code-generator</a> show dependency metadata/tag alignment rather than package source changes; <code>streaming</code> has no source delta between the tags. Prow uses the Kubernetes API and client libraries heavily, including kubeconfig and network client paths in <code>pkg/kube</code> and <code>pkg/flagutil</code>, but these tag changes do not alter those source paths.
+</li>
+<li><strong>controller-runtime changes and exposure:</strong> <a href="https://github.com/kubernetes-sigs/controller-runtime/releases/tag/v0.25.2">v0.25.2 release notes</a> list a fix to <code>SubResourceCreateOptions.ApplyToSubResourceCreate</code>, new metrics-handler options, a ReadYourWrite caveat for multiple namespaces, and a ReadYourWrite wait-duration metric. Prow imports controller-runtime broadly, but no call to the fixed subresource helper or configuration enabling ReadYourWrite consistency was found. Production manager configurations set metrics <code>BindAddress</code> to <code>0</code> (for example, <code>cmd/tide/main.go:169</code>), so the new handler options are not enabled. No listed change is a security fix.
+</li>
+<li><strong>OSV for bumped modules:</strong> queries for old and new versions returned no advisories for all six modules.
+</li>
+<li><strong>Repository-level govulncheck:</strong> <code>govulncheck -format json ./...</code> exited successfully on both base and head. Both runs reported the same seven advisory IDs; the bump introduced or fixed none. Called traces were reported for <code>GO-2023-1901</code> in <code>github.com/tektoncd/pipeline v1.16.0</code> (32 traces) and five HTTP/2 advisories in <code>golang.org/x/net v0.59.0</code> (201 traces total). The x/net advisories are <a href="https://osv.dev/vulnerability/GO-2026-6603">GO-2026-6603</a>, <a href="https://osv.dev/vulnerability/GO-2026-6610">GO-2026-6610</a>, <a href="https://osv.dev/vulnerability/GO-2026-6611">GO-2026-6611</a>, <a href="https://osv.dev/vulnerability/GO-2026-6612">GO-2026-6612</a>, and <a href="https://osv.dev/vulnerability/GO-2026-6617">GO-2026-6617</a>; OSV lists <code>golang.org/x/net v0.60.0</code> as fixed. <code>GO-2026-5932</code> in <code>golang.org/x/crypto v0.57.0</code> was imported-only. These findings are unchanged by this PR.
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>Is the roughly 9–10 day age of <code>controller-runtime v0.25.2</code> acceptable, or should this grouped bump wait until it has two weeks of soak?
+</li>
+<li>Are the reachable <code>x/net</code> and Tekton advisories tracked for a separate dependency update? This PR leaves them unchanged.
+</li></ul>
+<h2>Dependency followups</h2>
+<p>No actionable opportunities were identified. Examined <code>k8s.io/api</code>, <code>k8s.io/apimachinery</code>, <code>k8s.io/client-go</code>, <code>k8s.io/streaming</code>, and <code>k8s.io/code-generator</code> from <code>v0.37.0</code> to <code>v0.37.1</code>, plus <code>sigs.k8s.io/controller-runtime</code> from <code>v0.25.1</code> to <code>v0.25.2</code>. The Kubernetes module tag changes align dependency metadata without changing package source. Controller-runtime’s new metrics options and ReadYourWrite metric have no enabled Prow call site; its subresource create-options fix is not called by Prow. The changelog therefore exposes no concrete migration, replacement, or feature adoption for Prow-owned code.</p>
+</main></body></html>

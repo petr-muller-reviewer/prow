@@ -110,6 +110,17 @@ Since previous refresh (2026-06-02T23:41:37Z):
 
 ## Followups
 
+Followup pass (2026-10-10T16:31:16Z): retained the four previously accepted
+handoff prompts below. Accepted no additional followups; skipped three:
+
+- Additional helper edge-case tests and clarification of the regression-test name.
+- Investigation of validation for `Auxiliary` on primary `Refs`; retain the documentation clarification.
+- GCS reporter boundary tests for auxiliary refs and absent primary refs.
+
+The PR description confirms that an empty version when all refs are auxiliary
+is intentional: it allows TestGrid to use the tester-provided metadata version.
+The retained started.json tests should preserve that behavior.
+
 ### docs: Clarify that Auxiliary is a no-op on primary Refs
 - category: docs
 - necessity: should
@@ -117,7 +128,8 @@ Since previous refresh (2026-06-02T23:41:37Z):
 - prompt:
 
 ```
-In kubernetes-sigs/prow, following PR #733 ("auxiliary extra_refs"), the new
+In kubernetes-sigs/prow, following merged PR #733 ("auxiliary extra_refs",
+merge commit 351e8cfd58915657bd36a50e7e86bbe972bc0739), the new
 `Auxiliary` bool field on the `Refs` struct has a doc comment that says "the
 first repository where Auxiliary is false or unset is considered the main
 repository and determines the version." This is misleading: `mainRefs()` in
@@ -148,7 +160,8 @@ refs, adding tests, changing behavior.
 - prompt:
 
 ```
-In kubernetes-sigs/prow, following PR #733 ("auxiliary extra_refs"), a new
+In kubernetes-sigs/prow, following merged PR #733 ("auxiliary extra_refs",
+merge commit 351e8cfd58915657bd36a50e7e86bbe972bc0739), a new
 `auxiliary: true` field can be set on `extra_refs` entries to tell Prow that
 the repo is only providing tooling/helper files and should be skipped when
 determining the version for started.json. The job configuration guide at

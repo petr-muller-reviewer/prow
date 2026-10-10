@@ -163,6 +163,15 @@ return nil</code></pre>
 <li>Should <code>Auxiliary: true</code> on <code>ProwJobSpec.Refs</code> be explicitly rejected at config validation time, or is a doc comment clarification sufficient?
 </li></ul>
 <h2>Followups</h2>
+<p>Followup pass (2026-10-10T16:31:16Z): retained the four previously accepted handoff prompts below. Accepted no additional followups; skipped three:</p>
+<ul>
+<li>Additional helper edge-case tests and clarification of the regression-test name.
+</li>
+<li>Investigation of validation for <code>Auxiliary</code> on primary <code>Refs</code>; retain the documentation clarification.
+</li>
+<li>GCS reporter boundary tests for auxiliary refs and absent primary refs.
+</li></ul>
+<p>The PR description confirms that an empty version when all refs are auxiliary is intentional: it allows TestGrid to use the tester-provided metadata version. The retained started.json tests should preserve that behavior.</p>
 <h3>docs: Clarify that Auxiliary is a no-op on primary Refs</h3>
 <ul>
 <li>category: docs
@@ -172,7 +181,8 @@ return nil</code></pre>
 <li>where: <code>pkg/apis/prowjobs/v1/types.go:1225-1236</code>, CRD YAML (two locations)
 </li>
 <li>prompt:
-<pre><code>In kubernetes-sigs/prow, following PR #733 (&quot;auxiliary extra_refs&quot;), the new
+<pre><code>In kubernetes-sigs/prow, following merged PR #733 (&quot;auxiliary extra_refs&quot;,
+merge commit 351e8cfd58915657bd36a50e7e86bbe972bc0739), the new
 `Auxiliary` bool field on the `Refs` struct has a doc comment that says &quot;the
 first repository where Auxiliary is false or unset is considered the main
 repository and determines the version.&quot; This is misleading: `mainRefs()` in
@@ -204,7 +214,8 @@ refs, adding tests, changing behavior.</code></pre>
 <li>where: <code>site/content/en/docs/jobs.md:48</code>
 </li>
 <li>prompt:
-<pre><code>In kubernetes-sigs/prow, following PR #733 (&quot;auxiliary extra_refs&quot;), a new
+<pre><code>In kubernetes-sigs/prow, following merged PR #733 (&quot;auxiliary extra_refs&quot;,
+merge commit 351e8cfd58915657bd36a50e7e86bbe972bc0739), a new
 `auxiliary: true` field can be set on `extra_refs` entries to tell Prow that
 the repo is only providing tooling/helper files and should be skipped when
 determining the version for started.json. The job configuration guide at

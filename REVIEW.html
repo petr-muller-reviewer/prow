@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#984</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>deck: fix a panic and retries on GCS errors</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/984">kubernetes-sigs/prow#984</a> · base <code>main</code> · head_sha <code>440fb4f15287</code> · reviewed_at <code>2026-10-09T14:46:43Z</code></div>
+<div class="badges"><span class="badge c-red">verdict: request-changes</span></div>
+<details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#984
+title: &quot;deck: fix a panic and retries on GCS errors&quot;
+head_sha: 440fb4f15287c02423612c0ee21f3f5bac6ea11d
+base: main
+reviewed_at: 2026-10-09T14:46:43Z
+verdict: request-changes
+refresh_log:
+  - old_sha: 440fb4f15287c02423612c0ee21f3f5bac6ea11d
+    new_sha: 440fb4f15287c02423612c0ee21f3f5bac6ea11d
+    summary: &quot;No code changes; recorded one issue comment tagging @petr-muller; no inline comments or reviews.&quot;</code></pre></details>
+<h2>Verdict</h2>
+<p>Request changes for two gaps in the fixes. The lens server still accepts an in-range index that now names a different lens after config reload, and the path simplifier leaves documented presubmit URL forms unmatched.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Validates the lens index in Deck and the lens server.
+</li>
+<li>Extends Deck's request path labels for common job and history routes.
+</li>
+<li>Stops retrying permanent GCS listing failures while retaining retries for transient errors.
+</li></ul>
+<p>Since previous review:</p>
+<ul>
+<li>No commits or code changes; PR head remains <code>440fb4f</code>.
+</li>
+<li><code>upodroid</code> added an issue comment on 2026-10-07 containing <code>/cc @petr-muller</code>; no inline review comments or submitted reviews were added.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-amber">should-fix</span>Verify the lens identity after config reload</h3>
+<ul>
+<li>where: <code>pkg/spyglass/lenses/common/common.go:118-123</code>
+</li>
+<li>concern: The new guard rejects indexes that are out of range, but an in-range index can point to a different lens after the config is reordered or replaced. The handler then renders this lens with the other lens's config, so the backend check does not fully protect the config reload race described in the PR; compare the selected config's name with <code>opts.LensName</code> as Deck does.
+</li>
+<li>excerpt:<pre><code>lenses := opts.ConfigGetter().Deck.Spyglass.Lenses
+if request.LensIndex &lt; 0 || request.LensIndex &gt;= len(lenses) {
+    writeHTTPError(w, fmt.Errorf(&quot;invalid lens index %d, %d lenses are configured&quot;, request.LensIndex, len(lenses)), http.StatusBadRequest)
+    return
+}
+lensConfig := lenses[request.LensIndex].Lens.Config</code></pre>
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>Cover existing presubmit URL forms in the path labels</h3>
+<ul>
+<li>where: <code>cmd/deck/main.go:277-279</code>
+</li>
+<li>concern: This only matches pull paths with an <code>&lt;org_repo&gt;</code> segment and no trailing slash. The repository documents <code>/view/gcs/kubernetes-jenkins/pr-logs/pull/93714/pull-kubernetes-node-e2e/1291409525907132416/</code>, and existing Spyglass cases support the form without an org or repo segment. Those requests still resolve to <code>unmatched</code>, so the path metrics fix is incomplete for supported presubmit links.
+</li>
+<li>excerpt:<pre><code>l(&quot;pr-logs&quot;,
+    l(&quot;pull&quot;, v(&quot;org_repo&quot;, v(&quot;pr&quot;, v(&quot;job&quot;, v(&quot;build&quot;))))),
+    l(&quot;directory&quot;, v(&quot;job&quot;, v(&quot;build&quot;)))),</code></pre>
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>Deck rejects negative, out-of-range, and mismatched lens indexes before proxying.
+</li>
+<li>The GCS classifier covers missing buckets and objects, plus API 401, 403, and 404 responses; other errors retain the retry path.
+</li>
+<li>The simplifier tests cover the newly added route shapes without trailing slashes.
+</li>
+<li>Standards review found no applicable local style violations or clear baseline smells.
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>None.
+</li></ul>
+</main></body></html>

@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Triage: kubernetes-sigs/prow#589</title>
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+    color: #1a1a1a;
+    max-width: 860px;
+    margin: 2rem auto;
+    padding: 0 1.5rem;
+    background: #fdfdfd;
+  }
+  code, pre {
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 0.92em;
+  }
+  pre {
+    background: #f4f4f4;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 0.8rem 1rem;
+    overflow-x: auto;
+  }
+  code {
+    background: #f0f0f0;
+    padding: 0.1em 0.35em;
+    border-radius: 3px;
+  }
+  pre code {
+    background: none;
+    padding: 0;
+  }
+  h1, h2, h3 {
+    line-height: 1.3;
+  }
+  h1 {
+    font-size: 1.5rem;
+    margin-bottom: 0.3rem;
+  }
+  h2 {
+    font-size: 1.15rem;
+    border-bottom: 1px solid #e0e0e0;
+    padding-bottom: 0.3rem;
+    margin-top: 2.2rem;
+  }
+  h3 {
+    font-size: 1rem;
+    margin-top: 1.4rem;
+  }
+  header {
+    background: #f4f4f4;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 1rem 1.2rem;
+    margin-bottom: 1.5rem;
+  }
+  header dl {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 0.25rem 1rem;
+    margin: 0;
+  }
+  header dt {
+    font-weight: 600;
+    color: #555;
+  }
+  header dd {
+    margin: 0;
+  }
+  .verdict {
+    display: inline-block;
+    font-weight: 600;
+    background: #e6f4ea;
+    color: #1e7e34;
+    border: 1px solid #b7dfc0;
+    border-radius: 4px;
+    padding: 0.2rem 0.7rem;
+    font-size: 0.95rem;
+  }
+  ul {
+    padding-left: 1.4rem;
+  }
+  li {
+    margin-bottom: 0.3rem;
+  }
+  .meta {
+    color: #666;
+    font-size: 0.9em;
+  }
+  a {
+    color: #0b5fc0;
+  }
+</style>
+</head>
+<body>
+
+<header>
+<dl>
+  <dt>Issue</dt><dd><a href="https://github.com/kubernetes-sigs/prow/issues/589">kubernetes-sigs/prow#589</a></dd>
+  <dt>Title</dt><dd>TODO (listx): Combine HTTPS, HTTP, and SSH schemes into a single enum.</dd>
+  <dt>State</dt><dd>open</dd>
+  <dt>Labels</dt><dd><code>lifecycle/stale</code></dd>
+  <dt>Main SHA</dt><dd><code>0633879af8026d056e1a5dbe1e29f5a98f6acec3</code></dd>
+  <dt>Triaged at</dt><dd>2026-07-23T10:26:35Z</dd>
+</dl>
+</header>
+
+<h2>Verdict</h2>
+<p><span class="verdict">accepted</span></p>
+<p>Legitimate, maintainer-approved refactoring request addressing a documented TODO. The proposed enum replacement is well-scoped and, per a full caller-inventory check, the "breaking API change" concern has negligible real impact: exactly one non-production caller in the whole repo needs updating.</p>
+
+<h2>What the issue reports</h2>
+<ul>
+  <li>The git v2 client factory uses two independent booleans (<code>UseInsecureHTTP</code>, <code>UseSSH</code>) to select among three mutually exclusive remote schemes (HTTPS/HTTP/SSH).</li>
+  <li>A TODO comment in the code already calls for combining these into a single enum.</li>
+  <li>Author proposes a <code>SchemeType</code> enum and offers to implement it.</li>
+  <li>Two maintainers responded favorably in January, with no specific constraints given.</li>
+  <li>Author self-assigned the issue on 2026-01-12; no PR has appeared since.</li>
+</ul>
+
+<h2>Analysis</h2>
+
+<h3>Probable cause / design issue</h3>
+<p>Classic tri-state-boolean anti-pattern: two independent <code>*bool</code> fields represent three mutually exclusive states. The doc comment claims <code>UseInsecureHTTP</code> is "overridden" by SSH, but this precedence is never validated in code — if both are true, SSH silently wins and <code>UseInsecureHTTP</code> is never even read.</p>
+
+<h3>Related code</h3>
+
+<p><code>pkg/git/v2/client_factory.go:105-110</code> — the TODO and the two boolean fields:</p>
+<pre><code>// TODO (listx): Combine HTTPS, HTTP, and SSH schemes into a single enum.
+UseInsecureHTTP *bool
+// UseSSH, defaults to false
+UseSSH *bool</code></pre>
+
+<p><code>pkg/git/v2/client_factory.go:314-329</code> — scheme selection logic (SSH check makes the <code>UseInsecureHTTP</code> read at line 325 unreachable whenever <code>UseSSH</code> is also true):</p>
+<pre><code>if o.UseSSH != nil &amp;&amp; *o.UseSSH {
+    remote = &amp;sshRemoteResolverFactory{host: o.Host, username: o.Username}
+} else if o.CookieFilePath != "" {
+    remote = &amp;gerritResolverFactory{}
+} else {
+    remote = &amp;httpResolverFactory{host: o.Host, http: o.UseInsecureHTTP != nil &amp;&amp; *o.UseInsecureHTTP, username: o.Username, token: o.Token}
+}</code></pre>
+
+<p><code>pkg/git/v2/remote.go:132-137</code> — scheme resolved lazily at URL-build time:</p>
+<pre><code>func (f *httpResolverFactory) resolve(org, repo string) (string, error) {
+    scheme := "https"
+    if f.http {
+        scheme = "http"
+    }</code></pre>
+
+<p><code>pkg/flagutil/github.go:339-360</code> — the only production caller of <code>NewClientFactory</code>/<code>Apply</code>. It never sets <code>UseSSH</code> or <code>UseInsecureHTTP</code>, so removing those fields is a no-op change here.</p>
+
+<p><code>test/integration/test/moonraker_test.go:148,382</code> — the <em>only other</em> place in the entire repository (grep-confirmed) that sets <code>UseInsecureHTTP</code>:</p>
+<pre><code>o.UseInsecureHTTP = &amp;trueVal</code></pre>
+
+<h3>Test coverage</h3>
+<p>Every existing test in <code>pkg/git/v2/remote_test.go</code> leaves <code>httpResolverFactory.http</code> at its zero value, so the <code>"http"</code> branch is never exercised. <code>pkg/git/v2/client_factory_test.go</code> does not exist — <code>NewClientFactory</code>'s scheme-selection logic has zero direct unit test coverage today.</p>
+
+<h3>Related issues / PRs</h3>
+<ul>
+  <li>No linked PR exists yet for this issue.</li>
+  <li>Maintainers <code>matthyx</code> (2026-01-12) and <code>petr-muller</code> (2026-01-16) both gave the author a green light in the issue comments — no competing direction on record.</li>
+</ul>
+
+<h2>What I checked</h2>
+<ul>
+  <li>Confirmed the TODO comment and struct fields are unchanged in current upstream <code>main</code> (<code>0633879af</code>) versus filing time.</li>
+  <li>Repo-wide grep for <code>UseInsecureHTTP</code>, <code>UseSSH</code>, <code>WithInsecureHTTP</code>, <code>WithSSH</code>, and <code>.Apply(</code> on <code>ClientFactoryOpts</code> — only 3 files reference these at all.</li>
+  <li>Read <code>NewClientFactory</code>, <code>httpResolverFactory</code>, <code>sshRemoteResolverFactory</code>, <code>gerritResolverFactory</code> in full.</li>
+  <li>Read <code>pkg/git/v2/remote_test.go</code> in full to assess existing coverage.</li>
+  <li>Searched nearby packages for an existing enum pattern to mirror — none found.</li>
+  <li>Reviewed the full issue comment/timeline history, including both <code>lifecycle/stale</code> applications and the intervening <code>/remove-lifecycle stale</code>.</li>
+</ul>
+
+<h2>Recommended next steps</h2>
+<ul>
+  <li>Post an augmentation comment adding root-cause framing, the caller-inventory scope check, and an implementation sketch (drafted; not yet posted per maintainer decision).</li>
+  <li>Apply labels: <code>/area git</code>, <code>/kind cleanup</code>, <code>/help-wanted</code>.</li>
+  <li>Separately decide whether to check in with assignee <code>tsj-30</code> — self-assigned 2026-01-12, no PR six-plus months later, issue currently <code>lifecycle/stale</code> (reapplied 2026-07-16).</li>
+</ul>
+
+<h2>Open questions</h2>
+<ul>
+  <li>@tsj-30 are you still planning to work on this, or should the assignment be opened back up?</li>
+  <li>Given only one in-repo caller sets these fields today, is a straight breaking change (no deprecation shim) acceptable, or would maintainers prefer a transition period regardless of the small blast radius?</li>
+</ul>
+
+<p class="meta">Generated by an experimental triage assistant. Full ISSUE-TRIAGE.md working document available on branch <code>issue-triage-589</code>.</p>
+
+</body>
+</html>

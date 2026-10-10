@@ -6,8 +6,8 @@ base: main
 reviewed_at: 2026-10-08T11:20:06Z
 verdict: needs-discussion
 gate:
-  decision: hold
-  gated_at: 2026-10-07T11:37:54Z
+  decision: merge
+  gated_at: 2026-10-10T14:47:15Z
   gated_head_sha: 8992755740f1e716a5f4090faf94731f0244bfed
   reviewed_head_sha: 8992755740f1e716a5f4090faf94731f0244bfed
 refresh_log:
@@ -22,20 +22,20 @@ refresh_log:
 
 ## Gate
 
-**Verdict: HOLD (recorded 2026-10-07)**
+**Verdict: MERGE**
 
-The prior scoped-config validation finding is resolved in the current head. The deployment wiring question has since been answered with tracked follow-up PRs: `kubernetes/k8s.io#10034` adds the supplemental-config flag, and `kubernetes/test-infra#37968` moves Kueue's config into a supplemental file. Both follow-up PRs remain open; this refresh records the new evidence but does not re-run the gate decision.
+The prior scoped-config finding is resolved in the current head, and the deployment question is acceptably dispositioned: the author linked `kubernetes/k8s.io#10034`, which adds the Hook flag and states `/etc/plugins` is already mounted, plus `kubernetes/test-infra#37968` for the Kueue supplemental config. Both follow-up PRs remain open. This Prow change is safe to merge independently because it is opt-in; deploy the Prow support before enabling the supplemental Kueue file so older binaries do not reject `milestone_applier`.
 
 ### Gating list
 
-- **@mimowo inline comment, 2026-10-07** (`pkg/plugins/config.go:2356`): asks whether the Hook deployment mounts the supplemental directory and passes `--supplemental-plugin-config-dir=/etc/plugins`. On 2026-10-08 the author linked `kubernetes/k8s.io#10034`; its description says `/etc/plugins` is already mounted and its diff adds the flag. The question is answered and the deployment work is tracked, though feature rollout depends on those follow-ups.
+- None for merging `kubernetes-sigs/prow#993`. Before activating the feature, sequence rollout so a Prow build containing this merge support is deployed before the supplemental Kueue config is loaded.
 
 ### Area 2 — Independent merge risk
 
-- No exported API, config schema, flag, or default is removed or changed. `milestone_applier` supplemental support is opt-in through the existing `--supplemental-plugin-config-dir` flag; installations that do not pass it are unaffected.
-- When enabled, a supplemental `milestone_applier` entry changes plugin behavior for the configured org/repo, and duplicate keys fail configuration loading. This is scoped to deployments adding the new supplemental entries.
-- No migration is required for existing configurations. The linked deployment/config follow-ups must land for the intended Kueue rollout.
-- The `repo_milestone` title mismatch is non-gating: the PR body and author example specify `milestone_applier` only; the title should be narrowed.
+- No exported API, config field, flag, or default is removed or changed. The existing `--supplemental-plugin-config-dir` flag opts deployments into loading supplemental configs; installations that do not pass it are unaffected.
+- Supplemental `milestone_applier` entries change plugin behavior only for configured orgs/repos. Duplicate keys fail config loading, so avoid duplicating a repo entry across main and supplemental files.
+- No migration is required. Rollout sequencing is the operational caveat: if the new Kueue supplemental file is loaded by a Prow binary before this support is deployed, config loading will reject the unsupported field.
+- The title still names `repo_milestone`, while the body and author example specify `milestone_applier`; this is a non-gating title mismatch.
 
 ## What this PR does
 

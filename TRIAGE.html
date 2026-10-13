@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Triage: Issue #658 — Deck: Surface Debugging Hints</title>
+<style>
+  :root {
+    --bg: #1a1a2e;
+    --surface: #16213e;
+    --card: #0f3460;
+    --accent: #e94560;
+    --accent2: #533483;
+    --text: #eee;
+    --text-muted: #a0a0b8;
+    --green: #4ecca3;
+    --yellow: #f0c040;
+    --blue: #4da6ff;
+    --border: #2a2a4a;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    padding: 2rem;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+  h1 { font-size: 1.6rem; margin-bottom: 0.25rem; }
+  h2 {
+    font-size: 1.2rem;
+    color: var(--accent);
+    border-bottom: 2px solid var(--accent);
+    padding-bottom: 0.3rem;
+    margin: 2rem 0 1rem;
+  }
+  h3 { font-size: 1rem; color: var(--blue); margin: 1.2rem 0 0.5rem; }
+  h4 { font-size: 0.9rem; color: var(--text-muted); margin: 0.8rem 0 0.3rem; }
+  .header-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .header-bar .subtitle { color: var(--text-muted); font-size: 0.85rem; }
+  .badge {
+    display: inline-block;
+    padding: 0.2rem 0.7rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .badge-green { background: var(--green); color: #111; }
+  .badge-yellow { background: var(--yellow); color: #111; }
+  .badge-blue { background: var(--blue); color: #111; }
+  .badge-accent { background: var(--accent); color: #fff; }
+  .badge-purple { background: var(--accent2); color: #fff; }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.2rem 1.4rem;
+    margin-bottom: 1rem;
+  }
+  .card-highlight { border-left: 4px solid var(--accent); }
+  .card-green { border-left: 4px solid var(--green); }
+  .card-blue { border-left: 4px solid var(--blue); }
+  .card-yellow { border-left: 4px solid var(--yellow); }
+  ul, ol { padding-left: 1.4rem; margin: 0.4rem 0; }
+  li { margin: 0.25rem 0; }
+  code {
+    background: var(--card);
+    padding: 0.15rem 0.4rem;
+    border-radius: 4px;
+    font-size: 0.85em;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  }
+  pre {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1rem;
+    overflow-x: auto;
+    font-size: 0.82rem;
+    line-height: 1.5;
+    margin: 0.6rem 0;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0.6rem 0;
+    font-size: 0.88rem;
+  }
+  th, td {
+    padding: 0.5rem 0.8rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  th { color: var(--text-muted); font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  @media (max-width: 700px) { .grid-2 { grid-template-columns: 1fr; } }
+  .pro { color: var(--green); }
+  .con { color: var(--accent); }
+  .label-tag {
+    display: inline-block;
+    padding: 0.15rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    margin: 0.15rem 0.2rem;
+  }
+  .label-area { background: #0052cc33; border: 1px solid #0052cc; color: #6db3f2; }
+  .label-kind { background: #e9456033; border: 1px solid #e94560; color: #f08090; }
+  .label-help { background: #4ecca333; border: 1px solid #4ecca3; color: #4ecca3; }
+  details { margin: 0.5rem 0; }
+  summary { cursor: pointer; color: var(--blue); font-weight: 500; }
+  summary:hover { text-decoration: underline; }
+  .comment-box {
+    background: #0d1117;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    padding: 1.2rem 1.4rem;
+    margin: 0.8rem 0;
+    font-size: 0.88rem;
+    line-height: 1.7;
+    white-space: pre-wrap;
+  }
+  .divider { border: none; border-top: 1px solid var(--border); margin: 1.5rem 0; }
+  a { color: var(--blue); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  strong { color: #fff; }
+</style>
+</head>
+<body>
+
+<div class="header-bar">
+  <div>
+    <h1>Triage: Issue #658</h1>
+    <div class="subtitle"><code>deck</code> feature request: a way to surface debugging hints</div>
+  </div>
+  <div>
+    <span class="badge badge-green">LEGITIMATE</span>
+    <span class="badge badge-yellow">LEVEL 2</span>
+    <span class="badge badge-blue">FEATURE</span>
+  </div>
+</div>
+
+<div class="card">
+  <table>
+    <tr><th style="width:140px">Issue</th><td><a href="https://github.com/kubernetes-sigs/prow/issues/658">#658</a></td></tr>
+    <tr><th>Author</th><td>BenTheElder (Benjamin Elder) &mdash; SIG Testing</td></tr>
+    <tr><th>Filed</th><td>2026-03-16</td></tr>
+    <tr><th>State</th><td>OPEN, no labels</td></tr>
+    <tr><th>Component</th><td>Deck / Spyglass</td></tr>
+    <tr><th>Category</th><td>Feature Request</td></tr>
+  </table>
+</div>
+
+<!-- ─── OVERVIEW ─── -->
+<h2>Overview</h2>
+
+<div class="card card-highlight">
+  <p>Request to render a <code>$ARTIFACTS/DEBUGGING.md</code> file as a semi-collapsed viewer near the top of Spyglass test results pages. Goal: help contributors (especially new ones) discover useful debug artifacts beyond raw build logs.</p>
+  <p style="margin-top:0.6rem; color:var(--text-muted)">The "artifacts" link is one of many on the page and doesn't stand out. Useful debug info (apiserver logs, metrics) is buried and requires tribal knowledge to find.</p>
+</div>
+
+<h3>Since Previous Triage (2026-04-14)</h3>
+<div class="card card-yellow">
+  <ul>
+    <li><strong>2026-06-14</strong>: <code>k8s-triage-robot</code> applied <code>lifecycle/stale</code> (90 days of inactivity trigger).</li>
+    <li><strong>2026-06-15</strong>: <code>pohly</code> ran <code>/remove-lifecycle stale</code>, keeping the issue active.</li>
+    <li>No new substantive comments, no linked PRs, no state change. Analysis unchanged.</li>
+  </ul>
+</div>
+
+<h3>Discussion Highlights</h3>
+<ul>
+  <li><strong>pohly</strong>: Worried about burden on job maintainers &mdash; they already don't do optional improvements. Something automatic for all jobs would be more realistic.</li>
+  <li><strong>BenTheElder</strong>: Imagines tools like kubetest2 deployers emitting DEBUGGING.md alongside artifacts. Automatic per-deployer, not per-job.</li>
+  <li><strong>petr-muller</strong>: OpenShift already uses the existing <code>html</code> lens for this &mdash; surfacing HTML files dropped into collected artifacts.</li>
+</ul>
+
+<!-- ─── ARCHITECTURE ─── -->
+<h2>Spyglass Lens Architecture</h2>
+
+<div class="card card-blue">
+  <h3 style="margin-top:0">How Lenses Work</h3>
+  <p>Spyglass uses a <strong>plugin-based lens system</strong>. Each lens is a Go package implementing <code>Header()</code>, <code>Body()</code>, <code>Callback()</code>. Lenses register via <code>init()</code> and are imported as side-effect imports in <code>cmd/deck/main.go</code>. Config maps artifact filename regex patterns to lenses.</p>
+</div>
+
+<h3>Key Code Paths</h3>
+<table>
+  <tr><th>What</th><th>Where</th></tr>
+  <tr><td>Lens interface</td><td><code>pkg/spyglass/lenses/lenses.go:54-77</code></td></tr>
+  <tr><td>Lens registration</td><td><code>pkg/spyglass/lenses/lenses.go:85-98</code></td></tr>
+  <tr><td>Artifact matching</td><td><code>cmd/deck/main.go:1031-1057</code></td></tr>
+  <tr><td>Lens ordering (priority)</td><td><code>pkg/spyglass/spyglass.go:106-142</code></td></tr>
+  <tr><td>Lens HTTP handler</td><td><code>pkg/spyglass/lenses/common/common.go:102-155</code></td></tr>
+  <tr><td>Config structs</td><td><code>pkg/config/config.go:1116-1159</code></td></tr>
+  <tr><td>Frontend (iframes)</td><td><code>cmd/deck/static/spyglass/spyglass.ts</code></td></tr>
+</table>
+
+<h3>Existing Lenses</h3>
+<table>
+  <tr><th>Lens</th><th>Priority</th><th>What it does</th></tr>
+  <tr><td><code>buildlog</code></td><td>10</td><td>Plain text log rendering with error highlighting</td></tr>
+  <tr><td><code>html</code></td><td>3</td><td>Renders HTML artifacts in sandboxed iframe</td></tr>
+  <tr><td><code>junit</code></td><td>&mdash;</td><td>JUnit XML test results</td></tr>
+  <tr><td><code>metadata</code></td><td>0</td><td>Structured JSON (started.json, finished.json)</td></tr>
+  <tr><td><code>links</code>, <code>podinfo</code>, <code>coverage</code>, <code>restcoverage</code></td><td>&mdash;</td><td>Specialized viewers</td></tr>
+</table>
+
+<div class="card" style="margin-top:1rem">
+  <h4>Artifact Matching Config</h4>
+  <p><code>RequiredFiles</code> &mdash; all regexes must match &ge;1 artifact (AND)<br>
+     <code>OptionalFiles</code> &mdash; any regex can match (OR)</p>
+  <p style="margin-top:0.4rem"><strong>Markdown infrastructure:</strong> Only <code>pkg/markdown/code_block.go</code> (strips code blocks). No markdown-to-HTML renderer exists in the codebase.</p>
+</div>
+
+<!-- ─── FEATURE GAP ─── -->
+<h2>Root Cause: Feature Gap</h2>
+
+<div class="card card-yellow">
+  <ul>
+    <li>Spyglass treats all artifacts equally &mdash; no mechanism to "promote" certain artifacts</li>
+    <li>No markdown rendering lens exists</li>
+    <li>Lens system requires explicit per-deployment config &mdash; jobs can't self-declare their lenses</li>
+  </ul>
+</div>
+
+<!-- ─── SOLUTIONS ─── -->
+<h2>Proposed Solutions</h2>
+
+<div class="grid-2">
+  <div class="card card-green">
+    <h3 style="margin-top:0">Approach 2: Generic Markdown Lens <span class="badge badge-green">RECOMMENDED</span></h3>
+    <p>General-purpose markdown rendering lens (<code>pkg/spyglass/lenses/markdown/</code>) configurable to match any <code>.md</code> artifact. DEBUGGING.md becomes one configuration.</p>
+    <ul>
+      <li class="pro">+ Versatile &mdash; any .md artifact</li>
+      <li class="pro">+ Markdown simpler for maintainers than HTML</li>
+      <li class="pro">+ Follows established lens patterns</li>
+      <li class="pro">+ Fully backwards compatible</li>
+      <li class="con">&minus; Adds goldmark dependency</li>
+      <li class="con">&minus; Less opinionated UX</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">Approach 1: Dedicated Debugging Lens</h3>
+    <p>Purpose-built lens matching <code>DEBUGGING.md</code> specifically.</p>
+    <ul>
+      <li class="pro">+ Matches issue request exactly</li>
+      <li class="pro">+ Built-in collapsible display</li>
+      <li class="con">&minus; Less versatile (single use case)</li>
+      <li class="con">&minus; Same dependency cost</li>
+    </ul>
+  </div>
+</div>
+
+<div class="card" style="margin-top:0">
+  <h3 style="margin-top:0">Approach 3: Leverage Existing HTML Lens</h3>
+  <p>Jobs emit <code>DEBUGGING.html</code> instead. Zero Prow changes. OpenShift already does this.</p>
+  <ul>
+    <li class="pro">+ Works today, proven in production</li>
+    <li class="con">&minus; HTML harder for maintainers to produce</li>
+    <li class="con">&minus; Low priority (3), HideTitle=true &mdash; not prominent</li>
+    <li class="con">&minus; Doesn't address discoverability</li>
+  </ul>
+</div>
+
+<!-- ─── EFFORT ─── -->
+<h2>Effort Assessment</h2>
+
+<div class="card card-highlight">
+  <div style="display:flex; align-items:center; gap:1rem; margin-bottom:0.8rem">
+    <span class="badge badge-yellow" style="font-size:0.9rem; padding:0.3rem 1rem">LEVEL 2 &mdash; MODERATE</span>
+    <span class="badge badge-help" style="background:var(--green); color:#111">help-wanted</span>
+  </div>
+  <p>Well-patterned task with clear reference implementations, but spans multiple files and requires markdown library + HTML sanitization.</p>
+</div>
+
+<table>
+  <tr><th>Factor</th><th>Assessment</th><th>Level</th></tr>
+  <tr><td>Scope</td><td>~5-8 files, ~200-400 LOC</td><td>2-3</td></tr>
+  <tr><td>Complexity</td><td>Simple interface, main challenge is markdown lib + sanitization</td><td>2</td></tr>
+  <tr><td>Required Expertise</td><td>Go templates, lens API, HTML sanitization (learnable)</td><td>2</td></tr>
+  <tr><td>Clarity</td><td>Core feature clear; open questions on link handling, markdown features</td><td>2-3</td></tr>
+  <tr><td>Testing</td><td>Follow existing lens test patterns</td><td>2</td></tr>
+  <tr><td>Backwards Compat</td><td>Fully compatible &mdash; purely additive, opt-in</td><td>1</td></tr>
+  <tr><td>Arch Alignment</td><td>Perfect fit &mdash; lens system designed for this</td><td>1</td></tr>
+  <tr><td>External Deps</td><td>goldmark (mature, MIT)</td><td>1-2</td></tr>
+</table>
+
+<!-- ─── LABELS ─── -->
+<h2>Recommended Labels</h2>
+
+<div class="card">
+  <span class="label-tag label-area">area/spyglass</span>
+  <span class="label-tag label-kind">kind/feature</span>
+  <span class="label-tag label-help">help-wanted</span>
+  <p style="margin-top:0.8rem; font-size:0.85rem; color:var(--text-muted)">
+    No <code>good-first-issue</code> &mdash; requires understanding multiple components and HTML sanitization.<br>
+    No priority label &mdash; enhancement, not urgent.<br>
+    No retitle &mdash; current title is clear.
+  </p>
+</div>
+
+<!-- ─── PROPOSED COMMENT ─── -->
+<h2>Proposed Comment (not posted)</h2>
+
+<div class="comment-box">Spyglass already has the infrastructure to support this well. The lens plugin system (<code>pkg/spyglass/lenses/</code>) allows creating artifact viewers that match files by regex pattern &mdash; a new lens matching <code>DEBUGGING.md</code> (or any <code>.md</code>) would automatically render when that artifact is present. Existing lenses like <code>html</code> (<code>pkg/spyglass/lenses/html/</code>) and <code>metadata</code> provide clear implementation patterns to follow: implement <code>Header()</code>, <code>Body()</code>, <code>Callback()</code>, register via <code>init()</code>, and configure artifact matching in the Spyglass config.
+
+A general-purpose <strong>markdown lens</strong> (rather than debugging-specific) would be the most versatile approach &mdash; it could render any <code>.md</code> artifact, with the DEBUGGING.md use case being one configuration. This would need a Go markdown library (e.g., goldmark) for server-side rendering with HTML sanitization. Lens priority controls placement, so a DEBUGGING.md config could be set to appear prominently near the top of the Spyglass view. As @petr-muller noted, OpenShift already uses the existing <code>html</code> lens to surface similar content &mdash; that works today as a workaround if jobs emit HTML instead of markdown, though markdown is simpler for job maintainers to produce (addressing @pohly's concern about burden).
+
+<span style="color:var(--text-muted)">/area spyglass
+/kind feature
+/help-wanted</span></div>
+
+<hr class="divider">
+
+<div style="text-align:center; color:var(--text-muted); font-size:0.8rem; padding:1rem 0">
+  Refreshed 2026-06-15 (initial triage 2026-04-12&ndash;2026-04-14) &bull;
+  <a href="https://github.com/petr-muller/prow/blob/issue-triage-658/ISSUE-TRIAGE.md">Full triage document</a> &bull;
+  <a href="https://github.com/kubernetes-sigs/prow/issues/658">Issue #658</a>
+</div>
+
+</body>
+</html>

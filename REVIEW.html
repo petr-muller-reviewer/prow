@@ -31,18 +31,21 @@ ul, ol { padding-left:1.5rem; }
 details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
 </style></head><body><main>
 <h1>statusreconciler: never drop config deltas (fix #848)</h1>
-<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/870">kubernetes-sigs/prow#870</a> · base <code>main</code> · head_sha <code>4ce803f6e239</code> · reviewed_at <code>2026-10-07T17:10:41Z</code></div>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/870">kubernetes-sigs/prow#870</a> · base <code>main</code> · head_sha <code>f546617672b2</code> · reviewed_at <code>2026-10-13T10:33:08Z</code></div>
 <div class="badges"><span class="badge c-green">verdict: approve</span><span class="badge c-green">gate: merge</span></div>
 <details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#870
 title: &quot;statusreconciler: never drop config deltas (fix #848)&quot;
-head_sha: 4ce803f6e239c73555a74ba054db7587357599f5
+head_sha: f546617672b2e50bea2d8626706f407a53f4d715
 base: main
-reviewed_at: 2026-10-07T17:10:41Z
+reviewed_at: 2026-10-13T10:33:08Z
 verdict: approve
 refresh_log:
   - old_sha: ed41879ed05957591fd2e5a7bca5d2056c40c6ff
     new_sha: 4ce803f6e239c73555a74ba054db7587357599f5
     summary: &quot;Rebased the existing change onto current main, simplified delta delivery, and added concurrent and independent-subscriber coverage; resolved the deliverDelta readability nit.&quot;
+  - old_sha: 4ce803f6e239c73555a74ba054db7587357599f5
+    new_sha: f546617672b2e50bea2d8626706f407a53f4d715
+    summary: &quot;Rebased to resolve conflicts, migrated the newly added prow-controller-manager caller after CI exposed a compile failure, and recorded Prucek&#x27;s approval and the merge.&quot;
 gate:
   decision: merge
   gated_at: 2026-10-07T17:13:20Z
@@ -50,7 +53,7 @@ gate:
   reviewed_head_sha: 4ce803f6e239c73555a74ba054db7587357599f5</code></pre></details>
 <h2>Gate</h2>
 <p><strong>Verdict: merge.</strong></p>
-<p>The maintainer has accepted the <code>pkg/config</code> API change: internal consumers are ported and external migration is trivial. This resolves @Prucek's compatibility concern as a merge gate. The PR head remains <code>4ce803f6e239c73555a74ba054db7587357599f5</code>; no unresolved review finding or independent risk requires a hold.</p>
+<p>The maintainer accepted the <code>pkg/config</code> API change: internal consumers are ported and external migration is trivial. This gate was recorded at <code>4ce803f6e239c73555a74ba054db7587357599f5</code>. After CI exposed a stale caller, the PR migrated it at <code>f546617672b2e50bea2d8626706f407a53f4d715</code>; that head was approved by Prucek and merged as <code>b4d923a1a60cedd794f9461c529df11ebd8e1abc</code> on October 13.</p>
 <h3>Gating list</h3>
 <ul>
 <li>None. @Prucek's concern about downstream compatibility is dispositioned by the maintainer's acceptance of the API break and confirmation that migration is straightforward.
@@ -71,9 +74,9 @@ gate:
 </li>
 <li>Removes the per-send goroutine and one-minute timer entirely; fixes the bug for every subscriber, not just status-reconciler.
 </li>
-<li>Updates all three call sites (<code>moonraker</code>, <code>pubsub/subscriber</code>, <code>statusreconciler</code>) to the new ownership model — they no longer allocate their own channel and just take back what <code>Subscribe()</code> returns.
+<li>Updates all four call sites (<code>moonraker</code>, <code>pubsub/subscriber</code>, <code>statusreconciler</code>, and <code>prow-controller-manager</code>) to the new ownership model — they no longer allocate their own channel and just take back what <code>Subscribe()</code> returns.
 </li>
-<li>Adds two new tests in <code>pkg/config/agent_test.go</code> covering coalescing under a busy subscriber and correct chaining when the subscriber keeps up.
+<li>Adds tests in <code>pkg/config/agent_test.go</code> covering coalescing under a busy subscriber, chained delivery, concurrent receives, and independent subscriber coalescing.
 </li></ul>
 <p>Since previous review:</p>
 <ul>
@@ -81,7 +84,24 @@ gate:
 </li>
 <li>On October 1, <code>kubernetes-prow[bot]</code> reported new changes and removed the <code>lgtm</code> and <code>do-not-merge/invalid-commit-message</code> labels. On October 7, Petr Muller commented `/hold cancel<code>; the bot removed </code>do-not-merge/hold`. No inline review comments or submitted reviews were added.
 </li></ul>
+<p>Since previous review (October 12–13):</p>
+<ul>
+<li>Petr Muller rebased and force-pushed the PR to resolve conflicts. The old head is no longer reachable; GitHub's current PR diff is six paths (+199/−37), including <code>cmd/prow-controller-manager/main.go</code> (+1/−2). The raw tip-to-tip diff spans 44 files due to base advancement; the PR's feature scope remains the config-delta change.
+</li>
+<li>CI on the intermediate head <code>1796e845aa24e5702d2a0462fd6a0769c1524d95</code> failed compilation because <code>cmd/prow-controller-manager/main.go:135</code> still passed a channel to the new no-argument <code>Subscribe()</code>. Head <code>f546617672b2e50bea2d8626706f407a53f4d715</code> fixes it with <code>configChanges := configAgent.Subscribe()</code>. Prucek approved that head at 08:31:14 UTC on October 13, and the PR merged as <code>b4d923a1a60cedd794f9461c529df11ebd8e1abc</code> at 08:32:21 UTC.
+</li></ul>
 <h2>Resolved</h2>
+<h3><span class="tag c-red">blocking</span><code>prow-controller-manager</code> used the old <code>Subscribe</code> signature</h3>
+<ul>
+<li>where: <code>cmd/prow-controller-manager/main.go:135</code> on intermediate head <code>1796e845aa24e5702d2a0462fd6a0769c1524d95</code>
+</li>
+<li>concern: the call passed a caller-allocated channel to <code>Subscribe</code>, but the PR changed the method to take no arguments and return a receive-only channel. CI reported a compile failure in the Prow unit-test, integration, and image-build jobs.
+</li>
+<li>excerpt:<pre><code>configChanges := make(chan config.Delta, 1)
+configAgent.Subscribe(configChanges)</code></pre>
+</li>
+<li>resolution: head <code>f546617672b2e50bea2d8626706f407a53f4d715</code> changes the call to <code>configChanges := configAgent.Subscribe()</code>, matching the new API and the watcher's receive-only channel field.
+</li></ul>
 <h3><span class="tag c-gray">nit</span><code>deliverDelta</code>'s double-select could be linearized</h3>
 <ul>
 <li>where: <code>pkg/config/agent.go:434-451</code>

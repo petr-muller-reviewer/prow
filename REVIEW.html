@@ -1,136 +1,215 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>Review: prow#862</title>
-<style>
-  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; line-height: 1.6; color: #1a1a1a; max-width: 900px; margin: 2rem auto; padding: 0 1.5rem; background: #fff; }
-  code, pre { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; }
-  header { border-bottom: 2px solid #333; padding-bottom: 1rem; margin-bottom: 1.5rem; }
-  header dl { display: grid; grid-template-columns: max-content 1fr; gap: 0.25rem 1rem; margin: 0.5rem 0; }
-  header dt { font-weight: 600; color: #555; }
-  h1 { font-size: 1.4rem; margin: 0 0 0.3rem; }
-  h2 { font-size: 1.15rem; margin-top: 2rem; border-bottom: 1px solid #ddd; padding-bottom: 0.3rem; }
-  h3.sevhead { font-size: 1rem; margin: 1.5rem 0 0.5rem; color: #333; }
-  .verdict { font-size: 1.1rem; font-weight: 600; padding: 0.75rem 1rem; border-radius: 6px; background: #e8f5e9; border-left: 4px solid #43a047; }
-  .finding { border: 1px solid #e0e0e0; border-radius: 6px; padding: 1rem; margin: 1rem 0; }
-  .finding h4 { margin: 0 0 0.5rem; font-size: 1rem; }
-  .sev { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; margin-right: 0.5rem; }
-  .sev-should-fix { background: #fde3cf; color: #9a4a00; }
-  .sev-nit { background: #e3e8fc; color: #2a3d99; }
-  .sev-question { background: #eee; color: #444; }
-  .loc { font-size: 0.85rem; color: #666; margin-bottom: 0.5rem; }
-  pre { background: #f6f8fa; padding: 0.75rem; border-radius: 6px; overflow-x: auto; font-size: 0.85rem; }
-  ul { padding-left: 1.3rem; }
-  a { color: #0969da; }
-</style>
-</head>
-<body>
-
-<header>
-  <h1>fix(githuboauth): fall back to fresh session on undecodable cookie</h1>
-  <dl>
-    <dt>PR</dt><dd><a href="https://github.com/kubernetes-sigs/prow/pull/862">kubernetes-sigs/prow#862</a></dd>
-    <dt>Head SHA</dt><dd><code>92a43670c34520975735e794c651e1ce7114ca35</code></dd>
-    <dt>Base</dt><dd><code>main</code></dd>
-    <dt>Reviewed at</dt><dd>2026-08-25T23:18:31Z</dd>
-  </dl>
-</header>
-
-<div class="verdict">
-  Approve — small, well-tested fix. All three maintainer-review perspectives (code quality, maintainability,
-  deployment risk) independently confirmed the security-critical CSRF state-cookie path stays fail-closed and
-  is explicitly regression-tested. Remaining feedback is minor polish, not blocking.
-</div>
-
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#862</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>fix(githuboauth): fall back to fresh session on undecodable cookie</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/862">kubernetes-sigs/prow#862</a> · base <code>main</code> · head_sha <code>92a43670c345</code> · reviewed_at <code>2026-10-13T12:47:09Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span><span class="badge c-green">gate: merge</span></div>
+<details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#862
+title: &quot;fix(githuboauth): fall back to fresh session on undecodable cookie&quot;
+head_sha: 92a43670c34520975735e794c651e1ce7114ca35
+base: main
+reviewed_at: 2026-10-13T12:47:09Z
+verdict: approve
+refresh_log:
+  - from: 0be13d0bf259ef5239d32f6701cad0815074eff3
+    to: 92a43670c34520975735e794c651e1ce7114ca35
+    summary: &quot;Author addressed review-comment thread on line 160/185: added explanatory comments at the three fallback sites, and made GetLogin return the original decode error again instead of falling through.&quot;
+gate:
+  decision: merge
+  gated_at: 2026-10-13T12:49:46Z
+  gated_head_sha: 92a43670c34520975735e794c651e1ce7114ca35
+  reviewed_head_sha: 92a43670c34520975735e794c651e1ce7114ca35</code></pre></details>
+<h2>Gate</h2>
+<p>Merge — prior substantive feedback is addressed, and the stale-cookie recovery introduces no unacceptable deployment risk.</p>
+<p>Gated PR #862 at <code>92a43670c34520975735e794c651e1ce7114ca35</code>, unchanged from the saved review; the PR remains open. Read all submitted reviews, inline comment threads, and issue comments. Both GitHub reviews are COMMENTED; neither requests changes. The two substantive threads are addressed in the current code. The local review has no active findings, and its reassessed store-misconfiguration concern is acceptably dispositioned because cookie-save errors still return HTTP 500. The existing successful package test result applies to this unchanged head.</p>
+<p>Findings disposition: no unaddressed or borderline substantive concerns. Direct stale-cookie logout test coverage remains an optional improvement, not a merge condition.</p>
+<p>Gating list:</p>
+<ul>
+<li>Addressed: @petr-muller's request to explain continuing after decode errors is documented at <code>pkg/githuboauth/githuboauth.go:159,202,290</code> (<a href="https://github.com/kubernetes-sigs/prow/pull/862#discussion_r3815055144">review thread</a>).
+</li>
+<li>Addressed: @petr-muller's concern about replacing <code>GetLogin</code>'s decode error with a generic missing-token error is resolved by the early return at <code>pkg/githuboauth/githuboauth.go:183</code>; @psalajova acknowledged the concern on 2026-08-20 (<a href="https://github.com/kubernetes-sigs/prow/pull/862#discussion_r3815078074">review thread</a>).
+</li>
+<li>Acceptably dispositioned: the historical <code>REVIEW.md</code> store-misconfiguration concern is not a blocker. Save failures still invoke <code>serverErrorAndPrint</code> at <code>pkg/githuboauth/githuboauth.go:166,208,296</code>, and Deck rejects an empty signing secret at <code>cmd/deck/main.go:629-630</code>.
+</li>
+<li>Security boundary preserved: callback state-cookie decoding still fails closed at <code>pkg/githuboauth/githuboauth.go:245-248</code>; state validation still precedes token exchange. No blockers remain.
+</li></ul>
+<p>Independent merge risk:</p>
+<ul>
+<li>API/configuration compatibility: the complete PR touches only the OAuth implementation and its tests (183 insertions, 6 deletions). No exported signature, configuration field, flag, default, Kubernetes schema, or dependency changes; no coordinated rollout or migration is required.
+</li>
+<li>Behavior: deployments using these GitHub OAuth handlers automatically recover from stale client cookies during login, token replacement, and logout instead of returning HTTP 500 for the decode error. Valid sessions and cookie wire formats remain compatible. Callback state validation and <code>GetLogin</code>'s authentication failure behavior remain unchanged. This is the intended fix, documented in the PR description, and is not opt-in.
+</li>
+<li>Operations: stale-cookie failures now emit warnings at <code>pkg/githuboauth/githuboauth.go:160,182,203,291</code>. Operators may see warnings after signing-key rotation while stale-cookie HTTP 500s decrease; persistent save failures still emit errors and return HTTP 500. An operator-facing release note would be useful, but is not required to merge.
+</li>
+<li>Assessment: low risk. No relevant compatibility-specific repository skill was available in the session catalog; the API, configuration, and behavior pass was performed directly.
+</li></ul>
+<h2>Verdict</h2>
+<p>Approve. No actionable defects found.</p>
+<p>Reviewed the complete PR diff against merge base <code>e78b8229bbcd26293b8303fc20fe0c054e903a30</code>, the surrounding handlers, Deck's callers, and the pinned session/cookie implementations. The fallback allows stale cookies to be replaced without weakening callback state validation or suppressing cookie-save failures. Package tests passed. Direct coverage of stale-cookie logout remains a test gap.</p>
 <h2>What this PR does</h2>
 <ul>
-  <li>Changes four cookie-decode failure paths in <code>pkg/githuboauth/githuboauth.go</code> (<code>HandleLogin</code>, <code>GetLogin</code>, <code>HandleLogout</code>, <code>HandleRedirect</code>) from hard-erroring (500 response) to logging a Warning and continuing with the empty/fresh session gorilla/sessions returns.</li>
-  <li>Rationale: an undecodable cookie is expected to happen benignly whenever the CookieStore's signing keys are rotated — previously this broke login/logout for every affected user until their stale cookie expired.</li>
-  <li>Leaves the <code>oauthSessionCookie</code> state-validation decode in <code>HandleRedirect</code> (line 242) as a hard error, since that cookie is short-lived (10 min) and CSRF-relevant — losing it mid-flow is a genuine failure, not routine rotation.</li>
-  <li>Adds three new tests exercising the stale-cookie fallback behavior for <code>HandleLogin</code> and both <code>HandleRedirect</code> cookie paths, including one that locks in the still-fail-closed state-cookie behavior.</li>
-  <li>No config/schema/CLI/RBAC changes; no overlap with the concurrently open PR #843 (gorilla/csrf removal in Deck), which touches unrelated files and explicitly retains gorilla/sessions.</li>
-</ul>
-
-<h2>Since previous review</h2>
-<ul>
-  <li>Addressed review thread from petr-muller (2026-08-19T16:57:41Z, line 160): asked for an explicit comment documenting the "New/Get always returns a session" assumption. Author added a one-line comment at all three remaining fallback sites (<code>HandleLogin</code>, <code>HandleLogout</code>, <code>HandleRedirect</code>).</li>
-  <li>Addressed review thread from petr-muller (2026-08-19T17:01:01Z, line 185): pointed out <code>GetLogin</code> would fail the <code>Values[tokenKey]</code> type assertion on an empty session anyway, just returning a more generic error. Author agreed ("ah, you are right", psalajova, 2026-08-20T11:19:31Z) and added <code>return "", err</code> back into <code>GetLogin</code>, restoring its pre-PR behavior on decode failure.</li>
-  <li>Net diff: <code>pkg/githuboauth/githuboauth.go</code> +4 lines only (3 comments, 1 <code>return</code>). No test changes.</li>
-</ul>
-
+<li>Lets <code>HandleLogin</code> replace an undecodable <code>oauth-session</code> cookie and begin a new OAuth flow.
+</li>
+<li>Lets <code>HandleRedirect</code> replace an undecodable <code>access-token-session</code> cookie after validating OAuth state and exchanging the authorization code.
+</li>
+<li>Lets <code>HandleLogout</code> expire an undecodable token cookie; adds warning logs for decode failures, including <code>GetLogin</code>, which still returns the original error.
+</li>
+<li>Adds three regression tests covering stale token replacement, login with a stale state cookie, and rejection of a stale state cookie on callback.
+</li></ul>
+<p>The PR changes two files: <code>pkg/githuboauth/githuboauth.go</code> and <code>pkg/githuboauth/githuboauth_test.go</code>, with 183 insertions and 6 deletions. This review covers PR head <code>92a43670c34520975735e794c651e1ce7114ca35</code>; checkout HEAD <code>d034cf6e07f1ba7c73262d5a3cf2ab99a107460f</code> adds only the previously saved review artifacts.</p>
 <h2>Findings</h2>
-
-<h3 class="sevhead">Should fix</h3>
-<div class="finding">
-  <h4><span class="sev sev-should-fix">Should fix</span>Decode-failure fallback conflates benign key rotation with persistent misconfiguration</h4>
-  <div class="loc"><code>pkg/githuboauth/githuboauth.go:159, 181, 200, 287</code></div>
-  <p>All four sites now log a Warning and silently continue on any decode error, whether the cause is a benign stale/rotated-key client cookie or a persistent server-side CookieStore misconfiguration — gorilla/sessions returns the same error for both. Previously these were Error-level + HTTP 500 via <code>serverErrorAndPrint</code>. If the store is ever broken store-wide, this now degrades silently instead of tripping error-rate/500 alerting. Confirmed independently by two of the three maintainer-review passes as a real (non-blocking) tradeoff.</p>
-  <pre>if err != nil {
-    ga.logger.WithError(err).Warning("Failed to decode existing OAuth session cookie, using new session.")
-}</pre>
-</div>
-
-<h3 class="sevhead">Nits</h3>
-<div class="finding">
-  <h4><span class="sev sev-nit">Nit</span>Fallback pattern duplicated across 4 call sites</h4>
-  <div class="loc"><code>pkg/githuboauth/githuboauth.go:159, 181, 200, 287</code></div>
-  <p>The "log warning, fall through to already-returned empty session" pattern repeats near-verbatim at all four sites with only the message text varying. The file already centralizes the analogous log+respond pattern in <code>serverErrorAndPrint</code>/<code>serverError</code>; a future policy change here needs 4 lockstep edits.</p>
-</div>
-
-<div class="finding">
-  <h4><span class="sev sev-nit">Nit</span>Log message wording inconsistent across the four sites</h4>
-  <div class="loc"><code>pkg/githuboauth/githuboauth.go:159, 181, 200, 287</code></div>
-  <p><code>HandleLogin</code>/<code>HandleRedirect</code> say "using new session" (accurate — they call <code>New</code>); <code>GetLogin</code>/<code>HandleLogout</code> omit that qualifier despite the same fallback behavior via <code>Get</code>. Cosmetic, flagged independently by two reviewers.</p>
-</div>
-
-<div class="finding">
-  <h4><span class="sev sev-nit">Nit</span>Test-fixture duplication across 3 new tests</h4>
-  <div class="loc"><code>pkg/githuboauth/githuboauth_test.go:373</code></div>
-  <p><code>TestHandleRedirectWithStaleCookie</code>, <code>TestHandleLoginWithStaleCookie</code>, and <code>TestHandleRedirectWithStaleOAuthSessionCookie</code> each hand-roll ~15 identical lines building a stale-cookie fixture (old/new <code>CookieStore</code>, save with old key, extract <code>Set-Cookie</code>) instead of sharing one helper.</p>
-</div>
-
-<h3 class="sevhead">Questions</h3>
-<div class="finding">
-  <h4><span class="sev sev-question">Question</span>Alerting impact of removing the 500 path</h4>
-  <div class="loc"><code>pkg/githuboauth/githuboauth.go</code></div>
-  <p>Is there a metric/log-based alert on this handler that depended on the previous 500 responses to catch a persistent CookieStore misconfiguration? Also: expect a short-lived burst of new Warning logs across active sessions right after any cookie-secret rotation — worth a release-note mention if log-volume alerting exists.</p>
-</div>
-
+<p>No findings.</p>
 <h2>Resolved</h2>
-<div class="finding">
-  <h4><span class="sev sev-nit">Nit</span>Undocumented reliance on gorilla/sessions non-nil-session invariant — resolved 2026-08-25</h4>
-  <div class="loc"><code>pkg/githuboauth/githuboauth.go:159, 181, 203, 290</code></div>
-  <p>Author added a one-line comment at each of the three remaining fallback sites (<code>HandleLogin</code>, <code>HandleLogout</code>, <code>HandleRedirect</code>) documenting that <code>New</code>/<code>Get</code> always return a usable session and a decode error just means the existing cookie is invalid, e.g. <code>// New always returns a session; a decode error only means the existing cookie is invalid (e.g. stale signing key). Continue with this empty session so we can overwrite it.</code> Prompted by petr-muller's review comment on line 160.</p>
-</div>
-
-<div class="finding">
-  <h4><span class="sev sev-nit">Nit</span>GetLogin's differing observable behavior is untested — resolved 2026-08-25</h4>
-  <div class="loc"><code>pkg/githuboauth/githuboauth.go:178-187</code></div>
-  <p>Not just tested — the underlying behavior difference is gone. <code>GetLogin</code> now does <code>if err != nil { ...; return "", err }</code>, restoring the exact pre-PR early return. Prompted by petr-muller's review comment noting the type assertion would fail on an empty session anyway, just surfacing a more generic error; author agreed. <code>GetLogin</code>'s read path never touches <code>session.Values</code> after a decode error again.</p>
-</div>
-
-<div class="finding">
-  <h4><span class="sev sev-question">Question</span>Downstream string-matching on GetLogin's error text — resolved 2026-08-25</h4>
-  <div class="loc"><code>pkg/githuboauth/githuboauth.go:178-187</code></div>
-  <p>Moot — <code>GetLogin</code> returns the original securecookie decode error again on a decode failure, identical to pre-PR, so no downstream string changes.</p>
-</div>
-
-<h2>Things I checked and was fine with</h2>
+<h3><span class="tag c-amber">should-fix</span>Decode-failure fallback conflates benign key rotation with persistent misconfiguration — reassessed 2026-10-13</h3>
 <ul>
-  <li>Nil-deref / wrong-session-reuse risk: refuted — gorilla/sessions v1.2.0 guarantees <code>Get</code>/<code>New</code> always return a valid, non-nil <code>*Session</code> even on decode error.</li>
-  <li><code>HandleRedirect</code>'s <code>oauthSessionCookie</code> state-validation decode (line 242-246) intentionally still hard-errors (CSRF-relevant, short-lived 10 min cookie) and is exercised by <code>TestHandleRedirectWithStaleOAuthSessionCookie</code>; correctly left unchanged, independently confirmed by all three maintainer-review perspectives.</li>
-  <li>No config/schema/CLI/RBAC changes; deployment risk assessed LOW, no breaking changes, safe to roll forward/back.</li>
-  <li>No overlap or conflict with PR #843 (cblecker, open, "replace gorilla/csrf with net/http.CrossOriginProtection") — unrelated CSRF middleware, explicitly retains gorilla/sessions/securecookie, touches no files in <code>pkg/githuboauth/</code>.</li>
-  <li>Adjacent pre-existing bug noted but out of scope: <code>HandleLogin</code>'s <code>client.WithFinalRedirectURL</code> error path logs but doesn't <code>return</code>, leaving <code>newClient</code> nil for the next line — a latent panic, not introduced by this PR.</li>
-  <li>No project CLAUDE.md guidance applies to this path. No efficiency concerns found.</li>
-</ul>
-
-<h2>Open questions for the author</h2>
+<li>where: <code>pkg/githuboauth/githuboauth.go:158-168,201-212,289-301</code>
+</li>
+<li>resolution: the earlier claim that persistent store misconfiguration degrades silently is not supported by these paths. All three fallback handlers still check <code>Save</code> and call <code>serverErrorAndPrint</code> on encoding failure. In securecookie v1.1.2, missing signing keys or a stored codec initialization error also make encoding fail. Deck rejects an empty signing secret before constructing the store. <code>GetLogin</code> still returns its decode error. No introduced defect was demonstrated.
+</li></ul>
+<h3><span class="tag c-gray">nit</span>Fallback pattern duplicated across 4 call sites instead of centralized — reassessed 2026-10-13</h3>
 <ul>
-  <li>Is there a metric/log-based alert on this handler that would need updating to still catch a persistent CookieStore misconfiguration now that decode failures no longer surface as 500s?</li>
-  <li>Would it be worth a small helper (e.g. <code>ga.logStaleCookie(name, err)</code>) to keep the four fallback sites in lockstep, given the file already has <code>serverErrorAndPrint</code>/<code>serverError</code> as precedent?</li>
-</ul>
+<li>where: <code>pkg/githuboauth/githuboauth.go:158-161,181-184,201-204,289-292</code>
+</li>
+<li>resolution: there are three fallback handlers; <code>GetLogin</code> only logs and returns. A helper is an optional refactoring, and the current explicit branches do not introduce a meaningful maintainability defect.
+</li></ul>
+<h3><span class="tag c-gray">nit</span>Log message wording inconsistent across the four sites — reassessed 2026-10-13</h3>
+<ul>
+<li>where: <code>pkg/githuboauth/githuboauth.go:160,182,203,291</code>
+</li>
+<li>resolution: the messages distinguish new-session creation, login lookup failure, and logout. The prior claim that all four paths continue with an empty session was incorrect because <code>GetLogin</code> returns early. No actionable defect remains.
+</li></ul>
+<h3><span class="tag c-gray">nit</span>Test-fixture duplication across 3 new tests — reassessed 2026-10-13</h3>
+<ul>
+<li>where: <code>pkg/githuboauth/githuboauth_test.go:373-548</code>
+</li>
+<li>resolution: a fixture helper could reduce repetition, but the duplicated setup does not obscure these tests or demonstrate a regression. Retained as historical context rather than an active finding.
+</li></ul>
+<h3><span class="tag c-blue">question</span>Alerting impact of removing the 500 path — reassessed 2026-10-13</h3>
+<ul>
+<li>where: <code>pkg/githuboauth/githuboauth.go:158-168,201-212,289-301</code>
+</li>
+<li>resolution: stale client cookies now produce warnings and recover, which is the intended behavior. Cookie-save failures still produce error logs and HTTP 500. No affected alert was identified, so this is not an actionable finding.
+</li></ul>
+<h3><span class="tag c-gray">nit</span>Undocumented reliance on gorilla/sessions non-nil-session invariant — resolved 2026-08-25</h3>
+<ul>
+<li>where: <code>pkg/githuboauth/githuboauth.go:159,181,203,290</code> (line numbers shifted after the fix)
+</li>
+<li>resolution: author added a one-line comment at each of the three remaining fallback sites (<code>HandleLogin</code>, <code>HandleLogout</code>, <code>HandleRedirect</code>) documenting that <code>New</code>/<code>Get</code> always return a usable session and a decode error just means the existing cookie is invalid, e.g. <code>// New always returns a session; a decode error only means the existing cookie is invalid (e.g. stale signing key). Continue with this empty session so we can overwrite it.</code> Prompted by petr-muller's review comment on line 160.
+</li></ul>
+<h3><span class="tag c-gray">nit</span>GetLogin's differing observable behavior is untested — resolved 2026-08-25</h3>
+<ul>
+<li>where: <code>pkg/githuboauth/githuboauth.go:178-187</code>
+</li>
+<li>resolution: not just tested — the underlying behavior difference is gone. <code>GetLogin</code> now does <code>if err != nil { ...; return &quot;&quot;, err }</code>, restoring the exact pre-PR early return. Prompted by petr-muller's review comment noting the type assertion would fail on an empty session anyway, just surfacing a more generic error; author agreed. <code>GetLogin</code>'s read path never touches <code>session.Values</code> after a decode error again, closing the corresponding [question] below.
+</li></ul>
+<h3><span class="tag c-blue">question</span>Downstream string-matching on GetLogin's error text — resolved 2026-08-25</h3>
+<ul>
+<li>where: <code>pkg/githuboauth/githuboauth.go:178-187</code>
+</li>
+<li>resolution: moot — <code>GetLogin</code> returns the original securecookie decode error again on a decode failure, identical to pre-PR, so no downstream string changes.
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>gorilla/sessions v1.2.0 <code>CookieStore.New</code> creates a non-nil session, initializes its values and copies store options before decoding. <code>CookieStore.Get</code> returns that session through the registry for the constant, valid cookie names used here.
+</li>
+<li>gorilla/securecookie v1.1.2 verifies the cookie MAC before deserializing values, so a cookie signed with the old key cannot supply trusted session contents. The login and redirect paths explicitly set the new state or token before saving.
+</li>
+<li><code>HandleRedirect</code> still returns immediately when the OAuth state cookie cannot be decoded, when its state value is missing, or when state comparison fails. The new stale-state callback test expects HTTP 500.
+</li>
+<li><code>GetLogin</code> still returns its decode error before reading token values or consulting the user identifier. Deck's <code>isAllowedToRerun</code> maps that error to HTTP 401.
+</li>
+<li>The three fallback handlers still check <code>Save</code> and return HTTP 500 on failure. The fallback does not hide encoding failures.
+</li>
+<li><code>go test -mod=readonly ./pkg/githuboauth</code> passed on the reviewed source tree.
+</li>
+<li>Earlier observations about missing returns in unrelated redirect-error paths are pre-existing and outside this PR.
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>Could you add a stale-cookie logout test that checks the token cookie is expired and the handler redirects? Existing logout tests do not exercise the newly changed decode-error branch; this is non-blocking.
+</li></ul>
+<h2>Followups</h2>
+<p>PR #862 is still open at <code>92a43670c34520975735e794c651e1ce7114ca35</code>; there is no merge commit yet. All three candidates were accepted by the maintainer. Implement these followups against the default branch after the PR lands.</p>
+<p>Accepted: 3. Skipped: 0.</p>
+<h3>Cover remaining stale-cookie recovery paths</h3>
+<ul>
+<li>category: tests
+</li>
+<li>necessity: should
+</li>
+<li>why followup: The changed logout error branch lacks direct coverage, and stale-cookie login currently asserts only HTTP 302. This extends regression coverage without changing the approved behavior.
+<pre><code>In kubernetes-sigs/prow, following PR #862 — &quot;fix(githuboauth): fall back to fresh session on undecodable cookie&quot; — extend recovery-path tests in pkg/githuboauth/githuboauth_test.go. The PR was still open when this followup was recorded, at head 92a43670c34520975735e794c651e1ce7114ca35; implement against the default branch after it lands.
 
-</body>
-</html>
+Add tests using real gorilla CookieStore instances and the existing OAuth mocks:
+- Supply a token-session cookie signed with an old key to HandleLogout. Assert HTTP 302 and that the returned access-token-session cookie expires the browser cookie. Include the existing login cookie and assert its expiration as well.
+- Strengthen TestHandleLoginWithStaleCookie: decode the replacement oauth-session cookie with the current signing key, validate its state token, and assert that its state matches the state parameter in the authorization redirect.
+- Exercise a deterministic CookieStore encoding failure after entering a decode-error fallback. Assert HTTP 500 and no successful redirect, preserving the distinction between recoverable stale cookies and failure to save the replacement session.
+
+Acceptance criteria: these assertions exercise the intended error paths, existing tests retain their coverage, and `go test -mod=readonly ./pkg/githuboauth` passes.
+
+Scope: tests only; preserve production behavior and dependencies. Do not add unrelated OAuth changes or a new testing framework.</code></pre>
+</li></ul>
+<h3>Stop login after redirect URL parsing fails</h3>
+<ul>
+<li>category: bug fix
+</li>
+<li>necessity: should
+</li>
+<li>why followup: A neighbouring pre-existing error path writes HTTP 500 but falls through to a nil-client call. It is separate from the stale-cookie change.
+<pre><code>In kubernetes-sigs/prow, following PR #862 — &quot;fix(githuboauth): fall back to fresh session on undecodable cookie&quot; — fix the pre-existing error fallthrough in Agent.HandleLogin in pkg/githuboauth/githuboauth.go:169-173. The PR was still open when this followup was recorded, at head 92a43670c34520975735e794c651e1ce7114ca35; implement against the default branch after it lands.
+
+When client.WithFinalRedirectURL(destPage) returns an error, HandleLogin calls serverErrorAndPrint but continues to newClient.AuthCodeURL. The concrete OAuth client returns nil on redirect URL parsing failure, so this causes a panic. Deck&#x27;s configuration check only requires a nonempty redirect URL.
+
+Return immediately after reporting the WithFinalRedirectURL error. Add a regression test in pkg/githuboauth/githuboauth_test.go using a malformed configured redirect URL or an OAuthClient that returns nil and an error. Assert HTTP 500, no panic, and no authorization redirect; if using a mock, ensure AuthCodeURL is never called.
+
+Acceptance criteria: the regression test exercises the original failure path, successful login behavior remains covered, and `go test -mod=readonly ./pkg/githuboauth` passes.
+
+Scope: this HandleLogin error branch and its test only. Preserve configuration validation, other handlers, dependencies, and successful OAuth behavior.</code></pre>
+</li></ul>
+<h3>Share the stale-cookie test fixture</h3>
+<ul>
+<li>category: cleanup
+</li>
+<li>necessity: could
+</li>
+<li>why followup: Three tests repeat store setup, cookie serialization, and extraction. A small helper will make the accepted coverage extension easier to maintain.
+<pre><code>In kubernetes-sigs/prow, following PR #862 — &quot;fix(githuboauth): fall back to fresh session on undecodable cookie&quot; — extract the repeated stale-cookie fixture setup in pkg/githuboauth/githuboauth_test.go:373-548. The PR was still open when this followup was recorded, at head 92a43670c34520975735e794c651e1ce7114ca35; implement against the default branch after it lands.
+
+Add a private test helper that calls t.Helper(), constructs stores with distinct old/current signing keys, creates a session with a supplied cookie name and values, saves it using the old store, checks all setup errors, and returns the resulting cookie and the current-key store needed by the caller.
+
+Use it in TestHandleRedirectWithStaleCookie, TestHandleLoginWithStaleCookie, and TestHandleRedirectWithStaleOAuthSessionCookie. Reuse it in any related recovery tests already present, but do not require another followup to be implemented first. Keep handler setup and scenario assertions explicit in each test.
+
+Acceptance criteria: the helper produces a real old-key cookie that cannot be decoded by the current store; all existing assertions, including replacement-cookie decoding and callback state rejection, remain intact; and `go test -mod=readonly ./pkg/githuboauth` passes.
+
+Scope: test fixtures only. Preserve production code and dependencies, and avoid a general fixture framework.</code></pre>
+</li></ul>
+</main></body></html>

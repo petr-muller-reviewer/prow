@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#851</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>chore(deps): bump golang.org/x/text from 0.40.0 to 0.41.0 in the golang-x group across 1 directory</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/851">kubernetes-sigs/prow#851</a> · base <code>main</code> · head_sha <code>cb946d83b934</code> · reviewed_at <code>2026-10-13T16:12:25Z</code></div>
+<div class="badges"><span class="badge c-amber">verdict: needs-discussion</span></div>
+<h2>Verdict</h2>
+<p>The <code>golang.org/x/text</code> update is safe to take and fixes a published vulnerability. The grouped dependency updates leave <code>golang.org/x/mod</code> at v0.38.0, which OSV still lists as affected by two advisories fixed in v0.40.0. The vulnerable <code>x/mod</code> packages were not found in first-party imports, but <code>govulncheck</code> could not complete, so confirm tooling exposure or update the indirect dependency.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Updates <code>golang.org/x/text</code> from v0.40.0 to v0.41.0 in the main module and tools module.
+</li>
+<li>Updates indirect <code>golang.org/x/mod</code> from v0.37.0 to v0.38.0 and <code>golang.org/x/tools</code> from v0.47.0 to v0.48.0 in both modules.
+</li>
+<li>Changes only dependency manifests and checksums; no application source changed.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-amber">should-fix</span>The x/mod update remains affected by two OSV advisories</h3>
+<ul>
+<li>where: <code>go.mod:170</code>, <code>hack/tools/go.mod:341</code>
+</li>
+<li>concern: OSV lists GO-2026-6179 and GO-2026-6180 for x/mod v0.38.0; both are fixed in v0.40.0, which was available before this PR merged. The advisories affect <code>sumdb/tlog</code> and <code>sumdb</code> symbols. No first-party source imports those packages; the observed dependency paths use <code>x/mod/module</code> and <code>sumdb/dirhash</code>, so confirm whether the tooling paths can reach the affected symbols or update the indirect dependency to v0.40.0. <code>govulncheck</code> did not complete, so reachability is unconfirmed.
+</li>
+<li>excerpt:<pre><code>golang.org/x/mod v0.38.0 // indirect</code></pre>
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>Classification: dependency-only; changed files are <code>go.mod</code>, <code>go.sum</code>, <code>hack/tools/go.mod</code>, and <code>hack/tools/go.sum</code>.
+</li>
+<li><code>golang.org/x/text</code> v0.41.0 was released August 11, 2026 (63 days before this review). OSV lists GO-2026-6629 / CVE-2026-56851 for v0.40.0 and no advisory for v0.41.0. The upstream fix prevents a panic in the PRECIS Nickname profile when transforming input into a short destination buffer; Prow uses <code>cases</code> and <code>language</code>, not <code>secure/precis</code>.
+</li>
+<li><code>golang.org/x/text</code> is imported in <code>pkg/spyglass/lenses/links/links.go:31-32</code> and <code>pkg/plugins/golint/suggestion/golint_suggestion.go:26-27</code>, for English title casing. This is light, non-sensitive exposure.
+</li>
+<li><code>golang.org/x/mod</code> v0.38.0 was released July 8, 2026; OSV lists GO-2026-6179 and GO-2026-6180 for both v0.37.0 and v0.38.0, fixed in v0.40.0. The v0.40.0 module proxy version has no OSV advisories.
+</li>
+<li><code>golang.org/x/tools</code> v0.48.0 was released July 9, 2026; OSV lists no advisories for v0.47.0 or v0.48.0. The upstream range includes a <code>modernize</code> panic fix, gopls updates, and an import resolver module-cache-index change. Prow uses it transitively through <code>x/lint</code>/<code>astutil</code>, <code>controller-tools</code>/<code>go/packages</code>, and counterfeiter generation; no sensitive application behavior change was identified.
+</li>
+<li><code>govulncheck</code> was attempted at the PR base and head for <code>./...</code>, then scoped to the <code>x/text</code> importer packages. Both attempts were OOM-killed (exit 137). Partial output showed a module-only GO-2026-6629 finding at base and no <code>x/text</code> finding at head; this is not a completed reachability check.
+</li>
+<li>PR #851 is merged (August 14, 2026).
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>Can the indirect <code>golang.org/x/mod</code> dependency be advanced to v0.40.0, or can you confirm that the tools using the current version cannot reach the affected <code>sumdb</code> symbols?
+</li></ul>
+<h2>Dependency followups</h2>
+<p>No concrete project-improvement opportunities were identified. Examined all three Go module version changes from PR #851, merged as <code>c97c24fcac174e7f610e7a5a6c7a23052d458d76</code>, against the original PR base <code>7e14d333447e988af71131de0bd52db54cd14906</code>.</p>
+<ul>
+<li><code>golang.org/x/text</code> v0.40.0 → v0.41.0 (direct in the main module; indirect in <code>hack/tools</code>): the substantive change fixes the PRECIS Nickname transformer. Our two callers use <code>cases.Title(language.English)</code> in <code>pkg/spyglass/lenses/links/links.go:93</code> and <code>pkg/plugins/golint/suggestion/golint_suggestion.go:80</code>; this range adds no replacement API, deprecation, or feature that changes those callers.
+</li>
+<li><code>golang.org/x/mod</code> v0.37.0 → v0.38.0 (indirect in both modules): the range changes comments and dependency requirements, with no new functionality that warrants editing our code. The existing security finding remains recorded under Findings.
+</li>
+<li><code>golang.org/x/tools</code> v0.47.0 → v0.48.0 (indirect in both modules): the new <code>modernize</code> import-comment analyzer has no matching canonical import comments in our Go source, and <code>modernize</code> is already enabled in <code>.golangci.yml:48</code>. Its panic/fix corrections and the module-cache-index speedup for the import resolver benefit existing tooling automatically. The remaining gopls, analyzer, and SSA changes offer no concrete migration at a first-party call site; we directly import none of these APIs.
+</li></ul>
+<p>No items were accepted or skipped, and no handoff prompts were produced.</p>
+</main></body></html>

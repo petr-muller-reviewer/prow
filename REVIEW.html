@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#583</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1><code>peribolos</code>:  Add Repository Fork Management Support</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/583">kubernetes-sigs/prow#583</a> · base <code>main</code> · head_sha <code>4ec0010fc71a</code> · reviewed_at <code>2026-10-05T20:16:37Z</code></div>
+<div class="badges"><span class="badge c-red">verdict: request-changes</span></div>
+<h2>Verdict</h2>
+<p><strong>Request changes.</strong> Explicit <code>--fix-forks</code> removes the earlier silent opt-in path, and the author addressed several findings from the previous review. Four actionable defects remain for deployments that adopt fork management: malformed fork configuration can mutate an existing repository before failure; renaming and case mismatches can remove existing team access; and two config entries can reconcile the same actual repository. I found no confirmed runtime regression for unchanged configs without <code>fork:</code>.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Adds a <code>fork:</code> block to repository config and creates organization forks from an upstream repository through the GitHub API.
+</li>
+<li>Finds existing forks by their parent, waits for new forks, and passes their actual names to repository, collaborator, and team reconciliation.
+</li>
+<li>Makes fork creation and reconciliation explicitly opt-in with <code>--fix-forks</code>; <code>--fix-repos</code> no longer enables it.
+</li>
+<li>Records fork parents in <code>--dump</code> output and adds tests for creation, matching, validation, and access reconciliation.
+</li></ul>
+<p>Since previous review:</p>
+<ul>
+<li>The PR was rebased onto a newer <code>main</code> that includes organization-role management. The fork patch remains in six files and adds fixes for team repo mapping, <code>previously</code> renames, fork source parsing, validation order, and explicit opt-in.
+</li>
+<li>On 2026-10-02, <code>petr-muller</code> commented on five of these paths. <code>hoxhaeris</code> replied with code changes and reported live end-to-end checks.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-red">blocking</span>Stop downstream writes when fork source validation fails</h3>
+<ul>
+<li>where: <code>cmd/peribolos/main.go:1648-1653,1239-1261</code>
+</li>
+<li>concern: With <code>--fix-forks --fix-repos</code>, an invalid <code>fork.from</code> returns an error and nil conflict information, but <code>configureOrg</code> defers that error and still runs repository and collaborator reconciliation. If an existing non-fork occupies the config key, its metadata or access can change before the run fails. This breaks existing behavior after opting into fork management; reject invalid fork config before dependent writes or exclude its entries from every downstream stage.
+</li>
+<li>excerpt:<pre><code>if len(validationErrors) &gt; 0 {
+    sort.Slice(validationErrors, func(i, j int) bool {
+        return validationErrors[i].Error() &lt; validationErrors[j].Error()
+    })
+    return nil, nil, utilerrors.NewAggregate(validationErrors)
+}</code></pre>
+</li></ul>
+<h3><span class="tag c-red">blocking</span>Refresh the fork-name map after a <code>previously</code> rename</h3>
+<ul>
+<li>where: <code>cmd/peribolos/main.go:1528-1553</code>
+</li>
+<li>concern: <code>configureForks</code> maps the config key to the fork's old name, and <code>configureRepos</code> now renames that fork when <code>previously</code> lists the old name. The map remains stale when collaborator and team reconciliation run. Team reconciliation can then grant the old path and remove the existing permission on the renamed repository, breaking access after feature adoption. Update the map to the new name after a successful rename, or pass the resolved post-rename name to later stages.
+</li>
+<li>excerpt:<pre><code>if isFork &amp;&amp; actualName != wantName {
+    renameRequested := false
+    for _, prev := range wantRepo.Previously {
+        if strings.EqualFold(prev, actualName) {
+            renameRequested = true
+            break
+        }
+    }
+    if !renameRequested {
+        updateName = actualName
+    }
+}</code></pre>
+</li></ul>
+<h3><span class="tag c-red">blocking</span>Compare conflicted repository names without regard to case</h3>
+<ul>
+<li>where: <code>cmd/peribolos/main.go:2113-2121</code>
+</li>
+<li>concern: <code>configureForks</code> stores the config spelling in <code>conflictedForks</code>, while <code>ListTeamReposBySlug</code> returns GitHub's spelling. For a rejected fork configured as <code>My-Fork</code> but listed as <code>my-fork</code>, this exact-case check misses the conflict and schedules removal of the team's existing permission. Normalize both names before deciding whether access to a rejected repository may be changed.
+</li>
+<li>excerpt:<pre><code>for haveRepo := range have {
+    if conflictedForks.Has(haveRepo) {
+        continue
+    }
+    if _, wantRepo := want[haveRepo]; !wantRepo {
+        actions[haveRepo] = github.None
+    }
+}</code></pre>
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>Reject an adopted fork whose actual name has another config entry</h3>
+<ul>
+<li>where: <code>cmd/peribolos/main.go:1754-1757</code>
+</li>
+<li>concern: If config key <code>foo</code> adopts an existing fork actually named <code>bar</code> while <code>bar</code> also has its own repository config entry, <code>validateRepos</code> accepts the distinct keys and both entries reconcile the same GitHub repository. Their metadata can overwrite each other in map iteration order. Reject the ambiguous mapping before repository or access reconciliation. This affects only feature adopters.
+</li>
+<li>excerpt:<pre><code>if actualName, ok := forkParentIndex()[expectedUpstream]; ok {
+    forkNames[repoName] = actualName
+    repoLogger.WithField(&quot;actual_name&quot;, actualName).Info(&quot;fork of upstream already exists with different name&quot;)
+    continue
+}</code></pre>
+</li></ul>
+<h2>Resolved</h2>
+<ul>
+<li>At the prior reviewed head, team reconciliation did not map config keys to actual fork names. The new <code>configureTeamRepos</code> maps them; the <code>previously</code> rename path above still leaves a stale map.
+</li>
+<li>At the prior reviewed head, team reconciliation ignored fork conflicts. It now skips them for matching spellings; the case mismatch above remains.
+</li>
+<li>The earlier <code>previously</code> finding is addressed: <code>configureRepos</code> now requests the rename. The later access reconciliation needs the updated name, as described above.
+</li>
+<li><code>fork.from</code> now uses <code>strings.Split</code> and rejects extra path segments.
+</li>
+<li><code>validateRepos</code> now runs before fork creation, preventing a rejected repository-name collision from creating a fork first.
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>Reviewed the PR patch against its merge base at <code>f82256c4c4328dfc2ed2be653c64cf321765b04b</code>; the reviewed head is <code>4ec0010fc71a954f6e20a3f658bfd5d47c25307c</code>.
+</li>
+<li>Without <code>--fix-forks</code>, <code>configureForks</code> is skipped. With that flag and no <code>fork:</code> entries, it returns before a fork API call. <code>--dump</code> still adds <code>fork:</code> for existing forks, so its output changes even for deployments that have not enabled fork management.
+</li>
+<li>The fork client sends the target organization, requested name, and <code>default_branch_only</code>; its GitHub App token scope is the target organization. New forks are polled for availability, retrying only 404 responses.
+</li>
+<li>Tests for mapped team access, matching-spelling conflicts, <code>previously</code> rename, source parsing, and validation-before-creation cover those individual paths. They do not cover a full rename followed by access reconciliation, case-different conflict names, or two config entries resolving to one actual repository.
+</li>
+<li><code>go test ./cmd/peribolos ./pkg/config/org ./pkg/github</code> passed at the reviewed head.
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>Should an existing fork under a different name be adopted in place when <code>previously</code> does not authorize a rename, or should peribolos report a name mismatch? The PR description says the config key enforces the fork name.
+</li>
+<li>Are there out-of-tree implementations of the exported <code>github.RepositoryClient</code> interface? Adding <code>CreateForkInOrg</code> requires them to add the method before they compile.
+</li></ul>
+</main></body></html>

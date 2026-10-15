@@ -3,7 +3,7 @@ pr: kubernetes-sigs/prow#966
 title: "config: expose loaded job definition counts"
 head_sha: 49a050829080b79ce689eecfa225affd142b1085
 base: main
-reviewed_at: 2026-10-09T12:46:33Z
+reviewed_at: 2026-10-15T23:14:10Z
 verdict: approve
 reassessed_at: 2026-10-10T18:19:59Z
 refresh_log:
@@ -11,9 +11,13 @@ refresh_log:
     old_sha: 8823ecb279c05df966ffe4e999c18d70a069e9df
     new_sha: 49a050829080b79ce689eecfa225affd142b1085
     summary: "Reviewed targeted collector rewrite and component registration; resolved scope and attribution documentation, retained missing coverage."
+  - at: 2026-10-15T23:14:10Z
+    old_sha: 49a050829080b79ce689eecfa225affd142b1085
+    new_sha: 49a050829080b79ce689eecfa225affd142b1085
+    summary: "No code changes; incorporated maintainer approval and registration discussion, author acknowledgment, and merge on October 10. Retained the local approve reassessment and separate followup."
 gate:
   decision: merge
-  gated_at: 2026-10-10T18:19:59Z
+  gated_at: 2026-10-15T23:17:39Z
   gated_head_sha: 49a050829080b79ce689eecfa225affd142b1085
   reviewed_head_sha: 49a050829080b79ce689eecfa225affd142b1085
 ---
@@ -22,14 +26,14 @@ gate:
 
 ## Gate
 
-Merge from the code-review perspective at reviewed head `49a050829080b79ce689eecfa225affd142b1085`. No blocking findings remain. This reassessment changes the severity of the saved findings; it does not claim a fresh GitHub activity or CI check.
+Merge. PR #966 already merged on 2026-10-10 at 18:45:16 UTC as `b8bd4f20ea0bb4c10da7da66bf84b8d70194bcc0`; its head remains the reviewed `49a050829080b79ce689eecfa225affd142b1085`, with no subsequent code delta. Prior substantive feedback is addressed or explicitly dispositioned as nonblocking, and the independent compatibility pass identified no unacceptable risk.
 
-- **Nonblocking — Cover the published metric's values and refresh behavior:** Focused tests would protect the counts and refresh contract, but inspection found no correctness defect that makes their absence a merge blocker.
-- **Withdrawn — Integrate collector publication in one place:** Registering a collector before exposing metrics follows existing command conventions. Exporter's two registrations correctly accommodate the pre-existing split between its custom scrape registry and default Pushgateway registry. Centralizing registration and using one gatherer are separate architectural improvements.
+- **Not addressed, accepted as nonblocking — REVIEW.md, “Cover the published metric's values and refresh behavior” (`pkg/config/agent.go:69-81`):** The PR does not add focused collector tests. The saved reassessment accepts this as a test suggestion because no incorrect count or refresh behavior was identified; it does not gate merge.
+- **Addressed by discussion, nonblocking — @petr-muller, collector publication (`cmd/crier/main.go:322`, `cmd/exporter/main.go:109-116`):** The maintainer acknowledged the existing registration conventions on October 10 and subsequently approved. Exporter's registrations cover both its custom scrape registry and default Pushgateway registry. Centralization remains a separate accepted followup.
 
-Prior naming, attribution, and agent ownership concerns are addressed. Counting accepted static configuration snapshots fits this PR's inventory purpose; in-repo definitions are a separate population.
+Gating list: none. Naming, static scope, source attribution, and agent ownership findings are addressed. No unresolved substantive GitHub feedback requires a change or confirmation.
 
-Independent merge risk: The reviewed PR adds one agent-owned collector with three bounded series and registration in 13 component entry points. It changes no configuration schema, job execution path, flag, default, or wire format. No concrete regression was identified. New local collector tests passed against the original PR implementation on 966-review, without the metrics refactor. These focused tests do not establish the full-suite or CI status.
+Independent merge risk: The full PR adds 93 lines and removes 4 across 15 files, including registration in 13 component entry points. Each registered agent emits three bounded series from a coherent cached snapshot. Describe and Collect add methods without removing or changing an existing exported signature; configuration schemas, flags, defaults, and job execution behavior are unchanged. Deployment impact is an additive metric with no migration or coordinated rollout. Documentation explains static scope and replica attribution. No notable merge risk was found. This gate used direct code inspection, with no applicable repository compatibility skill; it did not rerun tests. Prior local test results remain recorded in Checked.
 
 ## Verdict
 
@@ -50,6 +54,12 @@ Since previous review:
 - Prucek replaced the PR commit on 2026-10-08 at 13:39:15 UTC; the old SHA is not an ancestor of the current head. The targeted delta is 81 additions and 18 deletions across 15 existing files, suitable for an in-place refresh.
 - Replaced the global gauge with an agent-owned collector, renamed the metric, and added explicit registration in each component.
 - Added 13 lines of metrics documentation; no tests or substantive new reviewer comments were added.
+
+Since previous review (2026-10-15 refresh; no code changes):
+
+- On 2026-10-10, @petr-muller raised collector-publication centralization at 18:09:47 UTC, acknowledged existing registration patterns at 18:18:06 UTC, indicated acceptance at 18:22:50 UTC, and approved at 18:23:14 UTC. This supports the saved disposition of centralization as a separate followup.
+- PR #966 merged at 2026-10-10T18:45:16Z into commit `b8bd4f20ea0bb4c10da7da66bf84b8d70194bcc0`, with reviewed head unchanged at `49a050829080b79ce689eecfa225affd142b1085`.
+- @Prucek acknowledged the review on 2026-10-12 at 07:28:44 UTC. The local approve reassessment, nonblocking coverage suggestion, and accepted followup are preserved.
 
 ## Findings
 
@@ -117,13 +127,15 @@ Since previous review:
 - No requirement to count dynamically fetched in-repo definitions or instrument consumer execution for the static inventory objective.
 - No samples are emitted before the first snapshot; an accepted empty config emits three zeros.
 - Collector state belongs to each Agent, removing cross-agent overwrites. Distinct agents would still require distinct registries or distinguishing registration labels if exported together.
-- PR remains OPEN. No new inline comments or submitted reviews; the only new issue comment is an automated approval-notifier message on 2026-10-08 at 13:39:56 UTC.
+- PR is MERGED as of 2026-10-10T18:45:16Z; the head is unchanged from the reviewed commit. Since the prior review baseline, maintainer discussion and approval confirm registration centralization is nonblocking; the author subsequently acknowledged the review.
 
 ## Open questions
 
 - None that block this PR. The shared-gatherer improvement is recorded below as an accepted followup.
 
 ## Followups
+
+Followup walkthrough on 2026-10-15: retained one previously accepted architectural followup; skipped the additional collector-regression-test candidate at the maintainer's direction. No new work was accepted. The nonblocking test suggestion remains in Findings for review history, not as an accepted handoff.
 
 ### Centralize command collector registration and share one gatherer
 
@@ -135,7 +147,7 @@ Since previous review:
 - Local implementation: `92d519cd0` on `metrics-expose-collectors` centralizes command-owned collectors, including existing Deck, Gerrit, Moonraker, Sinker, and ghproxy metrics. `6c3e28edd` on `metrics-unified-gatherer` builds on it to use the same gatherer for both outputs. Exposure tests and compilation of affected commands passed; the metrics package tests passed after replaying the second commit.
 
 ```text
-In kubernetes-sigs/prow, following PR #966 (config: expose loaded job definition counts), centralize command-owned collector registration and make HTTP scraping and Pushgateway pushing use one configured gatherer.
+In kubernetes-sigs/prow, following merged PR #966 (config: expose loaded job definition counts), merge commit b8bd4f20ea0bb4c10da7da66bf84b8d70194bcc0, centralize command-owned collector registration and make HTTP scraping and Pushgateway pushing use one configured gatherer. Work from the merged default branch in the task's own worktree.
 
 Start by inspecting the separate local implementation, if available: 92d519cd0 (Centralize command-owned metric exposure) and 6c3e28edd (Use one gatherer for scraped and pushed metrics), on metrics-expose-collectors and metrics-unified-gatherer respectively. Reuse and adapt these commits to the current upstream code rather than rebuilding the change without inspecting them.
 

@@ -31,13 +31,13 @@ ul, ol { padding-left:1.5rem; }
 details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
 </style></head><body><main>
 <h1>config: expose loaded job definition counts</h1>
-<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/966">kubernetes-sigs/prow#966</a> · base <code>main</code> · head_sha <code>49a050829080</code> · reviewed_at <code>2026-10-09T12:46:33Z</code></div>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/966">kubernetes-sigs/prow#966</a> · base <code>main</code> · head_sha <code>49a050829080</code> · reviewed_at <code>2026-10-15T23:14:10Z</code></div>
 <div class="badges"><span class="badge c-green">verdict: approve</span><span class="badge c-green">gate: merge</span></div>
 <details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#966
 title: &quot;config: expose loaded job definition counts&quot;
 head_sha: 49a050829080b79ce689eecfa225affd142b1085
 base: main
-reviewed_at: 2026-10-09T12:46:33Z
+reviewed_at: 2026-10-15T23:14:10Z
 verdict: approve
 reassessed_at: 2026-10-10T18:19:59Z
 refresh_log:
@@ -45,20 +45,24 @@ refresh_log:
     old_sha: 8823ecb279c05df966ffe4e999c18d70a069e9df
     new_sha: 49a050829080b79ce689eecfa225affd142b1085
     summary: &quot;Reviewed targeted collector rewrite and component registration; resolved scope and attribution documentation, retained missing coverage.&quot;
+  - at: 2026-10-15T23:14:10Z
+    old_sha: 49a050829080b79ce689eecfa225affd142b1085
+    new_sha: 49a050829080b79ce689eecfa225affd142b1085
+    summary: &quot;No code changes; incorporated maintainer approval and registration discussion, author acknowledgment, and merge on October 10. Retained the local approve reassessment and separate followup.&quot;
 gate:
   decision: merge
-  gated_at: 2026-10-10T18:19:59Z
+  gated_at: 2026-10-15T23:17:39Z
   gated_head_sha: 49a050829080b79ce689eecfa225affd142b1085
   reviewed_head_sha: 49a050829080b79ce689eecfa225affd142b1085</code></pre></details>
 <h2>Gate</h2>
-<p>Merge from the code-review perspective at reviewed head <code>49a050829080b79ce689eecfa225affd142b1085</code>. No blocking findings remain. This reassessment changes the severity of the saved findings; it does not claim a fresh GitHub activity or CI check.</p>
+<p>Merge. PR #966 already merged on 2026-10-10 at 18:45:16 UTC as <code>b8bd4f20ea0bb4c10da7da66bf84b8d70194bcc0</code>; its head remains the reviewed <code>49a050829080b79ce689eecfa225affd142b1085</code>, with no subsequent code delta. Prior substantive feedback is addressed or explicitly dispositioned as nonblocking, and the independent compatibility pass identified no unacceptable risk.</p>
 <ul>
-<li><strong>Nonblocking — Cover the published metric's values and refresh behavior:</strong> Focused tests would protect the counts and refresh contract, but inspection found no correctness defect that makes their absence a merge blocker.
+<li><strong>Not addressed, accepted as nonblocking — REVIEW.md, “Cover the published metric's values and refresh behavior” (<code>pkg/config/agent.go:69-81</code>):</strong> The PR does not add focused collector tests. The saved reassessment accepts this as a test suggestion because no incorrect count or refresh behavior was identified; it does not gate merge.
 </li>
-<li><strong>Withdrawn — Integrate collector publication in one place:</strong> Registering a collector before exposing metrics follows existing command conventions. Exporter's two registrations correctly accommodate the pre-existing split between its custom scrape registry and default Pushgateway registry. Centralizing registration and using one gatherer are separate architectural improvements.
+<li><strong>Addressed by discussion, nonblocking — @petr-muller, collector publication (<code>cmd/crier/main.go:322</code>, <code>cmd/exporter/main.go:109-116</code>):</strong> The maintainer acknowledged the existing registration conventions on October 10 and subsequently approved. Exporter's registrations cover both its custom scrape registry and default Pushgateway registry. Centralization remains a separate accepted followup.
 </li></ul>
-<p>Prior naming, attribution, and agent ownership concerns are addressed. Counting accepted static configuration snapshots fits this PR's inventory purpose; in-repo definitions are a separate population.</p>
-<p>Independent merge risk: The reviewed PR adds one agent-owned collector with three bounded series and registration in 13 component entry points. It changes no configuration schema, job execution path, flag, default, or wire format. No concrete regression was identified. New local collector tests passed against the original PR implementation on 966-review, without the metrics refactor. These focused tests do not establish the full-suite or CI status.</p>
+<p>Gating list: none. Naming, static scope, source attribution, and agent ownership findings are addressed. No unresolved substantive GitHub feedback requires a change or confirmation.</p>
+<p>Independent merge risk: The full PR adds 93 lines and removes 4 across 15 files, including registration in 13 component entry points. Each registered agent emits three bounded series from a coherent cached snapshot. Describe and Collect add methods without removing or changing an existing exported signature; configuration schemas, flags, defaults, and job execution behavior are unchanged. Deployment impact is an additive metric with no migration or coordinated rollout. Documentation explains static scope and replica attribution. No notable merge risk was found. This gate used direct code inspection, with no applicable repository compatibility skill; it did not rerun tests. Prior local test results remain recorded in Checked.</p>
 <h2>Verdict</h2>
 <p>Approve, with a nonblocking test suggestion.</p>
 <p>The implementation records coherent static job counts when each config agent accepts a snapshot and exposes them through established publication paths. Naming and documentation describe the scope and attribution. Missing focused tests are a useful improvement, but do not justify requesting changes without an identified correctness defect. The separate local metrics refactor is not required for this PR to merge.</p>
@@ -81,6 +85,14 @@ gate:
 <li>Replaced the global gauge with an agent-owned collector, renamed the metric, and added explicit registration in each component.
 </li>
 <li>Added 13 lines of metrics documentation; no tests or substantive new reviewer comments were added.
+</li></ul>
+<p>Since previous review (2026-10-15 refresh; no code changes):</p>
+<ul>
+<li>On 2026-10-10, @petr-muller raised collector-publication centralization at 18:09:47 UTC, acknowledged existing registration patterns at 18:18:06 UTC, indicated acceptance at 18:22:50 UTC, and approved at 18:23:14 UTC. This supports the saved disposition of centralization as a separate followup.
+</li>
+<li>PR #966 merged at 2026-10-10T18:45:16Z into commit <code>b8bd4f20ea0bb4c10da7da66bf84b8d70194bcc0</code>, with reviewed head unchanged at <code>49a050829080b79ce689eecfa225affd142b1085</code>.
+</li>
+<li>@Prucek acknowledged the review on 2026-10-12 at 07:28:44 UTC. The local approve reassessment, nonblocking coverage suggestion, and accepted followup are preserved.
 </li></ul>
 <h2>Findings</h2>
 <h3><span class="tag c-amber">should-fix</span>Cover the published metric's values and refresh behavior</h3>
@@ -166,13 +178,14 @@ recordJobDefinitionMetrics(c)</code></pre>
 </li>
 <li>Collector state belongs to each Agent, removing cross-agent overwrites. Distinct agents would still require distinct registries or distinguishing registration labels if exported together.
 </li>
-<li>PR remains OPEN. No new inline comments or submitted reviews; the only new issue comment is an automated approval-notifier message on 2026-10-08 at 13:39:56 UTC.
+<li>PR is MERGED as of 2026-10-10T18:45:16Z; the head is unchanged from the reviewed commit. Since the prior review baseline, maintainer discussion and approval confirm registration centralization is nonblocking; the author subsequently acknowledged the review.
 </li></ul>
 <h2>Open questions</h2>
 <ul>
 <li>None that block this PR. The shared-gatherer improvement is recorded below as an accepted followup.
 </li></ul>
 <h2>Followups</h2>
+<p>Followup walkthrough on 2026-10-15: retained one previously accepted architectural followup; skipped the additional collector-regression-test candidate at the maintainer's direction. No new work was accepted. The nonblocking test suggestion remains in Findings for review history, not as an accepted handoff.</p>
 <h3>Centralize command collector registration and share one gatherer</h3>
 <ul>
 <li>Category: architecture
@@ -186,7 +199,7 @@ recordJobDefinitionMetrics(c)</code></pre>
 <li>Why followup: PR #966 correctly registers its collector for the existing output paths. The split between exporter's custom scrape registry and the default Pushgateway registry predates this PR; changing it affects existing metrics and belongs in a separate change.
 </li>
 <li>Local implementation: <code>92d519cd0</code> on <code>metrics-expose-collectors</code> centralizes command-owned collectors, including existing Deck, Gerrit, Moonraker, Sinker, and ghproxy metrics. <code>6c3e28edd</code> on <code>metrics-unified-gatherer</code> builds on it to use the same gatherer for both outputs. Exposure tests and compilation of affected commands passed; the metrics package tests passed after replaying the second commit.
-<pre><code>In kubernetes-sigs/prow, following PR #966 (config: expose loaded job definition counts), centralize command-owned collector registration and make HTTP scraping and Pushgateway pushing use one configured gatherer.
+<pre><code>In kubernetes-sigs/prow, following merged PR #966 (config: expose loaded job definition counts), merge commit b8bd4f20ea0bb4c10da7da66bf84b8d70194bcc0, centralize command-owned collector registration and make HTTP scraping and Pushgateway pushing use one configured gatherer. Work from the merged default branch in the task&#x27;s own worktree.
 
 Start by inspecting the separate local implementation, if available: 92d519cd0 (Centralize command-owned metric exposure) and 6c3e28edd (Use one gatherer for scraped and pushed metrics), on metrics-expose-collectors and metrics-unified-gatherer respectively. Reuse and adapt these commits to the current upstream code rather than rebuilding the change without inspecting them.
 

@@ -31,95 +31,102 @@ ul, ol { padding-left:1.5rem; }
 details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
 </style></head><body><main>
 <h1>branchprotector: add <code>require_last_push_approval</code> and <code>bypass_pull_request_allowances.apps</code></h1>
-<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/995">kubernetes-sigs/prow#995</a> · base <code>main</code> · head_sha <code>5ddea54f47db</code> · reviewed_at <code>2026-10-09T10:40:23Z</code></div>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/995">kubernetes-sigs/prow#995</a> · base <code>main</code> · head_sha <code>f14b640b59d7</code> · reviewed_at <code>2026-10-14T15:55:59Z</code></div>
 <div class="badges"><span class="badge c-green">verdict: approve</span><span class="badge c-amber">gate: hold</span></div>
 <details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#995
 title: &quot;branchprotector: add `require_last_push_approval` and `bypass_pull_request_allowances.apps`&quot;
-head_sha: 5ddea54f47dbf78bbfcf31cf8c7bb6f108e34423
+head_sha: f14b640b59d7f9f82dda202cfa904fd58f5fbe99
 base: main
-reviewed_at: 2026-10-09T10:40:23Z
+reviewed_at: 2026-10-14T15:55:59Z
 verdict: approve
 gate:
   decision: hold
-  gated_at: 2026-10-10T15:22:53Z
-  gated_head_sha: 5ddea54f47dbf78bbfcf31cf8c7bb6f108e34423
-  reviewed_head_sha: 5ddea54f47dbf78bbfcf31cf8c7bb6f108e34423</code></pre></details>
+  gated_at: 2026-10-15T10:49:09Z
+  gated_head_sha: f14b640b59d7f9f82dda202cfa904fd58f5fbe99
+  reviewed_head_sha: f14b640b59d7f9f82dda202cfa904fd58f5fbe99</code></pre></details>
 <h2>Gate</h2>
 <p><strong>Decision: HOLD</strong></p>
-<p>The PR head is unchanged since the review. The unresolved question about omitted app bypass allowances affects existing deployments that configure user or team bypasses in Prow while managing app allowances elsewhere. Hold for the author to confirm the intended behavior; if omission clears existing allowances, document the migration so operators can configure them before rollout.</p>
+<p>The concern raised by @petr-muller about omitted settings resetting manually managed GitHub policy is addressed by the current preservation helper in <code>f14b640b59d7f9f82dda202cfa904fd58f5fbe99</code>. One substantive local review finding remains: the config says an empty app list removes apps, while inherited policies union parent and child app lists. That can leave inherited bypass access in place when an operator expects an empty child list to remove it; clarify the behavior or change the merge semantics before merging.</p>
 <h3>Findings disposition</h3>
 <ul>
-<li><strong>Can't tell — omitted app allowances</strong> (<code>REVIEW.md</code>, <code>cmd/branchprotector/request.go:97-103</code>): the current code always sends <code>apps: []</code> when the config omits <code>apps</code>; <code>equalBypassRestrictions</code> detects existing app allowances as a mismatch and triggers reconciliation. Whether GitHub clears that app list and whether omission is intended to clear it need confirmation. Recommended disposition: preserve omitted allowances, or document that Prow takes ownership of the full list and require operators to migrate existing values.
+<li><strong>Addressed — @petr-muller issue comment (2026-10-10):</strong> the current code preserves omitted app allowances and last-push approval from GitHub state and warns operators to configure them explicitly.
 </li>
-<li>The policy merge test suggestion remains non-gating.
+<li><strong>Not addressed — <code>REVIEW.md</code> finding:</strong> <code>pkg/config/branch_protection.go:112-116, 215-226</code> still documents an empty app list as removing apps, but <code>mergeBypassRestrictions</code> unions child and parent lists. An empty child list cannot remove apps inherited from a parent.
 </li>
-<li>No submitted reviews or inline review comments were found. The author's October 8 issue comment asks whether adding the app field to this PR is acceptable; no maintainer response is present.
-</li></ul>
-<h3>Independent merge risk</h3>
-<ul>
-<li><strong>App bypass config</strong> (<code>cmd/branchprotector/request.go:97-103</code>): existing branches with <code>bypass_pull_request_allowances</code> configured for users or teams and app allowances maintained outside Prow may have those app allowances removed on reconciliation. This affects each such branchprotector-managed branch; the API documents replacement for user/team arrays but does not directly spell out the app-array case. The PR adds a config example but no upgrade note.
-</li>
-<li><strong>Last-push approval default</strong> (<code>cmd/branchprotector/request.go:147</code>, <code>cmd/branchprotector/protect.go:658</code>): an omitted setting becomes <code>false</code> and is now compared against GitHub state. Branches with review policy managed by Prow and <code>require_last_push_approval</code> enabled outside Prow will be reset to false on reconciliation. Operators must set it to true in Prow config to retain it; the documented YAML shows the default but gives no upgrade guidance.
-</li>
-<li>Both new config fields are optional, so existing config files continue to parse. No removed or renamed API fields or new credential requirements were found.
+<li>No submitted reviews or inline review comments were found. No later response clarifies the inherited-app behavior.
 </li></ul>
 <h3>Gating list</h3>
 <ul>
-<li>Confirm whether omitting <code>bypass_pull_request_allowances.apps</code> should preserve or clear existing GitHub app allowances. If clearing is intentional, document the migration and release impact before merge.
+<li>Clarify the meaning of <code>apps: []</code> under policy inheritance or implement removal semantics (<code>pkg/config/branch_protection.go:112-116, 215-226</code>). This gates merge because operators may believe they removed inherited app bypass access when the merged policy still allows it.
+</li></ul>
+<h3>Independent merge risk</h3>
+<ul>
+<li>The new config fields are optional; existing config files remain valid. The current preservation logic avoids resetting existing GitHub values when these fields are omitted. No other backward-incompatible API, config, or behavioral change was identified in the full PR diff against <code>main</code> (<code>b4b2b38994859131ab14b656b584e80b325096c0</code>..<code>f14b640b59d7f9f82dda202cfa904fd58f5fbe99</code>).
+</li>
+<li>Preserved enabled/nonempty values produce warnings until operators set them explicitly. This is documented and does not require a coordinated rollout.
+</li>
+<li>App allowance inheritance is the outstanding configuration risk described in the gating list. No specialized API/config compatibility skill was available; this pass inspected the full diff directly.
 </li></ul>
 <h2>Verdict</h2>
-<p>Approve with suggestions. The new policy fields are wired through configuration, merging, GitHub request/response types, comparisons, and documentation. Please clarify whether omitting <code>apps</code> should preserve existing app bypass allowances; the code sends an empty list, but the replacement behavior for apps is not directly stated in the API docs.</p>
+<p>Approve with suggestions. The three maintainer perspectives found no blocking issues, and the preservation logic reduces upgrade risk for settings that operators already manage on GitHub. Clarify how app allowances merge through inherited policies and give the temporary compatibility backstop a tracked sunset path.</p>
 <h2>What this PR does</h2>
 <ul>
 <li>Adds <code>require_last_push_approval</code> to branch protection review policy.
 </li>
 <li>Adds app slugs to pull request bypass allowances.
 </li>
-<li>Includes both fields in inherited policy and GitHub API comparisons.
+<li>Keeps the new settings optional so omitted values differ from explicit false or empty values.
 </li>
-<li>Updates configuration examples and branchprotector documentation.
+<li>Preserves current GitHub settings when these new fields are omitted, with warnings to configure them explicitly.
+</li>
+<li>Adds tests and updates configuration examples and operator documentation.
 </li></ul>
 <h2>Findings</h2>
-<h3><span class="tag c-blue">question</span>Clarify whether omitted app allowances are preserved</h3>
+<h3><span class="tag c-amber">should-fix</span>Clarify inherited app allowance behavior</h3>
 <ul>
-<li>where: <code>cmd/branchprotector/request.go:97-103</code>
+<li>where: <code>pkg/config/branch_protection.go:112-116, 215-226</code>
 </li>
-<li>concern: When bypass restrictions are configured without <code>apps</code>, this constructs an explicit empty app list. Existing app allowances then compare as a mismatch, so reconciliation may clear them. Should omission preserve existing app allowances? If so, keep the request field nil when config omits it, matching the existing <code>equalApps</code> compatibility behavior.
+<li>concern: The field comment says an empty app list removes apps, but policy merging unions child and parent lists. An empty child list therefore cannot remove apps inherited from a parent, which may mislead operators configuring policy inheritance. Clarify the documentation or define replacement semantics.
 </li>
-<li>excerpt:<pre><code>apps := append([]string{}, sets.List(sets.New[string](rp.Apps...))...)
-teams := append([]string{}, sets.List(sets.New[string](rp.Teams...))...)
-users := append([]string{}, sets.List(sets.New[string](rp.Users...))...)
-return &amp;github.BypassRestrictionsRequest{
-    Apps:  &amp;apps,
-    Teams: &amp;teams,
-    Users: &amp;users,
+<li>excerpt:<pre><code>return &amp;BypassRestrictions{
+    Apps:  unionStringPtrs(parent.Apps, child.Apps),
+    Users: unionStrings(parent.Users, child.Users),
+    Teams: unionStrings(parent.Teams, child.Teams),
 }</code></pre>
 </li></ul>
-<h3><span class="tag c-gray">nit</span>Add direct tests for policy merge behavior</h3>
+<h3><span class="tag c-gray">nit</span>Track the preservation backstop's sunset</h3>
 <ul>
-<li>where: <code>pkg/config/branch_protection.go:175-181, 205-209</code>
+<li>where: <code>cmd/branchprotector/protect.go:560-565</code>
 </li>
-<li>concern: The new boolean override and app-list union use existing merge patterns, but focused tests would protect their inheritance behavior from regressions.
+<li>concern: The TODO says to remove this compatibility behavior after configs have had time to set the fields, but gives no timeframe or tracking reference. Tie cleanup to a release or tracked follow-up so the temporary behavior does not become permanent by default.
 </li>
-<li>excerpt:<pre><code>return &amp;ReviewPolicy{
-    DismissalRestrictions:   mergeDismissalRestrictions(parent.DismissalRestrictions, child.DismissalRestrictions),
-    DismissStale:            selectBool(parent.DismissStale, child.DismissStale),
-    RequireOwners:           selectBool(parent.RequireOwners, child.RequireOwners),
-    Approvals:               selectInt(parent.Approvals, child.Approvals),
-    RequireLastPushApproval: selectBool(parent.RequireLastPushApproval, child.RequireLastPushApproval),
-    BypassRestrictions:      mergeBypassRestrictions(parent.BypassRestrictions, child.BypassRestrictions),
+<li>excerpt:<pre><code>// TODO: remove this backstop once configs had time to set these fields explicitly,
+// so they behave consistently with all other fields.</code></pre>
+</li></ul>
+<h2>Resolved</h2>
+<h3>Omitted review settings could reset existing GitHub values</h3>
+<p>The preservation helper now copies the current app allowances and last-push approval setting into the reconciliation request when configuration omits them. Explicit values remain configurable.</p>
+<ul>
+<li>where: <code>cmd/branchprotector/protect.go:575-588</code>
+</li>
+<li>excerpt:<pre><code>if reviews.BypassRestrictions.Apps == nil &amp;&amp; stateReviews != nil &amp;&amp; stateReviews.BypassRestrictions != nil &amp;&amp; len(stateReviews.BypassRestrictions.Apps) &gt; 0 {
+    apps := make([]string, 0, len(stateReviews.BypassRestrictions.Apps))
+    for _, app := range stateReviews.BypassRestrictions.Apps {
+        apps = append(apps, app.Slug)
+    }
+    reviews.BypassRestrictions.Apps = &amp;apps
 }</code></pre>
 </li></ul>
 <h2>Checked</h2>
 <ul>
-<li>Confirmed both new fields flow through config parsing, policy merging, API models, request construction, state comparison, and documentation.
+<li>Reviewed the PR diff at head <code>f14b640b59d7f9f82dda202cfa904fd58f5fbe99</code> against <code>main</code> from code quality, maintainability, and deployment risk perspectives.
 </li>
-<li>Confirmed an omitted <code>require_last_push_approval</code> maps to <code>false</code>; declare it as <code>true</code> in Prow config if branchprotector should keep it enabled.
+<li>Confirmed omitted review settings are preserved before reconciliation comparison; explicit values can be managed through config.
 </li>
-<li>Existing config files remain valid with the new optional fields.
+<li>Confirmed tests cover preservation and explicit overrides, and existing configuration remains compatible.
+</li>
+<li>No tests were run as part of this review.
 </li></ul>
 <h2>Open questions</h2>
-<ul>
-<li>When <code>bypass_pull_request_allowances.apps</code> is omitted, should branchprotector preserve app bypass allowances already set in GitHub, or treat omission as an instruction to clear them?
-</li></ul>
+<p>None.</p>
 </main></body></html>

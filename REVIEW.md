@@ -3,13 +3,18 @@ pr: kubernetes-sigs/prow#1007
 title: "WIP: Require rationale for /retest and /override"
 head_sha: 803a824aa9190d4b04e88c7885f7ef4756405c51
 base: main
-reviewed_at: 2026-10-10T14:14:36Z
+reviewed_at: 2026-10-15T23:14:27Z
 verdict: request-changes
 gate:
   decision: do-not-merge
   gated_at: 2026-10-10T14:18:44Z
   gated_head_sha: 803a824aa9190d4b04e88c7885f7ef4756405c51
   reviewed_head_sha: 803a824aa9190d4b04e88c7885f7ef4756405c51
+refresh_log:
+  - old_sha: 803a824aa9190d4b04e88c7885f7ef4756405c51
+    new_sha: 803a824aa9190d4b04e88c7885f7ef4756405c51
+    at: 2026-10-15T23:14:27Z
+    summary: "No code changes; recorded the Prow bot's rebase reminder."
 ---
 
 # Review
@@ -18,7 +23,7 @@ gate:
 
 **Verdict: do-not-merge** — the blocking rationale-bypass finding remains unchanged at the current PR head.
 
-The PR is still open at `803a824aa9190d4b04e88c7885f7ef4756405c51`, the same SHA covered by the review, with no commits since review. No submitted GitHub reviews, inline comments, or substantive human issue comments add or resolve findings. The local blocking finding is confirmed in the current code: the preflight validates the first `/override` rationale, while the native handler processes every match. Do not merge until repeated commands are rejected or each invocation is validated before side effects.
+The PR is open at `803a824aa9190d4b04e88c7885f7ef4756405c51`, the same SHA covered by the review. There are no commits since review and no new comments or reviews since the last refresh. The blocking finding is still present: the preflight validates the first `/override` rationale, while the native handler processes every match. Do not merge until repeated commands are rejected or each invocation is validated before side effects.
 
 ### Gating list
 
@@ -30,7 +35,6 @@ The PR is still open at `803a824aa9190d4b04e88c7885f7ef4756405c51`, the same SHA
 - **Operational dependency:** `Emergency: true` triggers GitHub team membership lookups; lookup failures block that command, and each configured team lookup adds API traffic. This is limited to opted-in commands/comments using the emergency field.
 - **Possible Go source-compatibility change:** The PR adds exported `PluginConfig` to exported `trigger.Client` (`pkg/plugins/trigger/trigger.go:202-209`). Downstream packages using unkeyed composite literals of this type would fail to compile; no such use was found in this repository, and the package exposes no constructor or handler using this type. Confirm whether this type is considered a supported external API before treating the field addition as harmless.
 - **No other notable compatibility risk found:** the other new exported configuration and rationale fields/types are additive; no existing default changes for users without a policy were found.
-
 ## Verdict
 
 Request changes. Two independent maintainer perspectives confirmed that the `/override` rationale check validates only the first invocation, while the native handler processes every match. A valid first rationale can therefore allow additional overrides without separate rationale; reject repeated commands or validate each invocation before processing any override.
@@ -40,6 +44,11 @@ Request changes. Two independent maintainer perspectives confirmed that the `/ov
 - Adds opt-in rationale policies scoped to exact repositories and the `/retest` and `/override` commands.
 - Parses `Reason:` and optional `Emergency:` fields and checks a configurable minimum of non-whitespace Unicode code points.
 - Adds a team-based emergency length bypass, config and handler coverage, and user documentation.
+
+Since previous review:
+
+- No PR code changes: `OLD_SHA` and `NEW_SHA` are both `803a824aa9190d4b04e88c7885f7ef4756405c51`.
+- `kubernetes-prow[bot]` commented on 2026-10-10 at 19:25 UTC that the PR needs a rebase. No new inline comments or reviews were submitted.
 
 ## Findings
 

@@ -31,22 +31,27 @@ ul, ol { padding-left:1.5rem; }
 details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
 </style></head><body><main>
 <h1>WIP: Require rationale for /retest and /override</h1>
-<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1007">kubernetes-sigs/prow#1007</a> · base <code>main</code> · head_sha <code>803a824aa919</code> · reviewed_at <code>2026-10-10T14:14:36Z</code></div>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1007">kubernetes-sigs/prow#1007</a> · base <code>main</code> · head_sha <code>803a824aa919</code> · reviewed_at <code>2026-10-15T23:14:27Z</code></div>
 <div class="badges"><span class="badge c-red">verdict: request-changes</span><span class="badge c-red">gate: do-not-merge</span></div>
 <details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#1007
 title: &quot;WIP: Require rationale for /retest and /override&quot;
 head_sha: 803a824aa9190d4b04e88c7885f7ef4756405c51
 base: main
-reviewed_at: 2026-10-10T14:14:36Z
+reviewed_at: 2026-10-15T23:14:27Z
 verdict: request-changes
 gate:
   decision: do-not-merge
   gated_at: 2026-10-10T14:18:44Z
   gated_head_sha: 803a824aa9190d4b04e88c7885f7ef4756405c51
-  reviewed_head_sha: 803a824aa9190d4b04e88c7885f7ef4756405c51</code></pre></details>
+  reviewed_head_sha: 803a824aa9190d4b04e88c7885f7ef4756405c51
+refresh_log:
+  - old_sha: 803a824aa9190d4b04e88c7885f7ef4756405c51
+    new_sha: 803a824aa9190d4b04e88c7885f7ef4756405c51
+    at: 2026-10-15T23:14:27Z
+    summary: &quot;No code changes; recorded the Prow bot&#x27;s rebase reminder.&quot;</code></pre></details>
 <h2>Gate</h2>
 <p><strong>Verdict: do-not-merge</strong> — the blocking rationale-bypass finding remains unchanged at the current PR head.</p>
-<p>The PR is still open at <code>803a824aa9190d4b04e88c7885f7ef4756405c51</code>, the same SHA covered by the review, with no commits since review. No submitted GitHub reviews, inline comments, or substantive human issue comments add or resolve findings. The local blocking finding is confirmed in the current code: the preflight validates the first <code>/override</code> rationale, while the native handler processes every match. Do not merge until repeated commands are rejected or each invocation is validated before side effects.</p>
+<p>The PR is open at <code>803a824aa9190d4b04e88c7885f7ef4756405c51</code>, the same SHA covered by the review. There are no commits since review and no new comments or reviews since the last refresh. The blocking finding is still present: the preflight validates the first <code>/override</code> rationale, while the native handler processes every match. Do not merge until repeated commands are rejected or each invocation is validated before side effects.</p>
 <h3>Gating list</h3>
 <ul>
 <li><code>REVIEW.md</code> <code>[blocking]</code> — repeated <code>/override</code> invocations bypass rationale validation for later commands (<code>pkg/plugins/override/override.go:324</code>, <code>pkg/plugins/rationale.go:119-140</code>, <code>pkg/plugins/override/override.go:489-506</code>). Fix by rejecting repeats or validating every occurrence before status or check-run mutations.
@@ -70,6 +75,12 @@ gate:
 <li>Parses <code>Reason:</code> and optional <code>Emergency:</code> fields and checks a configurable minimum of non-whitespace Unicode code points.
 </li>
 <li>Adds a team-based emergency length bypass, config and handler coverage, and user documentation.
+</li></ul>
+<p>Since previous review:</p>
+<ul>
+<li>No PR code changes: <code>OLD_SHA</code> and <code>NEW_SHA</code> are both <code>803a824aa9190d4b04e88c7885f7ef4756405c51</code>.
+</li>
+<li><code>kubernetes-prow[bot]</code> commented on 2026-10-10 at 19:25 UTC that the PR needs a rebase. No new inline comments or reviews were submitted.
 </li></ul>
 <h2>Findings</h2>
 <h3><span class="tag c-red">blocking</span>Validate or reject every <code>/override</code> invocation</h3>

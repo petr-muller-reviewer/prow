@@ -88,4 +88,40 @@ None.
 
 ## Followups
 
-No follow-ups accepted in the walkthrough (0 accepted, 1 skipped).
+### Probe: Verify trace-level diagnostics remain available
+
+- **Category:** tests
+- **Mode:** probe
+- **Where:** `cmd/horologium/main.go:221,225`; `cmd/horologium/main_test.go:675-680`
+- **Necessity:** could — protects the trace diagnostic path promised by PR #985.
+- **Why followup:** The merged code calls `Trace`, but the test only checks debug suppression. The probe was deferred from the merge because no runtime defect was identified.
+- **Handoff prompt:**
+
+```text
+In kubernetes-sigs/prow, following PR #985, “horologium: reduce horologium's log noise” (merge commit d3dc1c7b61b3f489e1f2d0f65b62b18dc6d8d079), probe the trace logging behavior in cmd/horologium/main.go and cmd/horologium/main_test.go, especially TestSyncStatsAndPerJobLogLevel.
+
+Task: Add temporary tests that exercise both per-job messages at Debug and Trace levels. Confirm both messages are suppressed at Debug and emitted at Trace. Run `go test ./cmd/horologium` and classify each failure as either a real implementation bug or a test/setup mistake.
+
+Acceptance criteria: Both levels are exercised and every failure is classified with evidence. If a real implementation bug is found, apply only the minimal fix and report the failing case. If no bug is found, leave no files changed.
+
+Scope guard: Delete all probe tests before finishing. Do not change scheduling, counters, or unrelated code. The tests are a means to find a bug, not a deliverable.
+```
+
+### Probe: Verify sync statistics after partial create failures
+
+- **Category:** tests
+- **Mode:** probe
+- **Where:** `cmd/horologium/main.go:244-255`; `cmd/horologium/main_test.go:621-681`
+- **Necessity:** could — checks that the new operational count stays accurate during partial API failures.
+- **Why followup:** The counter is documented as successful ProwJob creations, but the added test covers only successful creates. The merged implementation increments after successful `Create` and reports errors separately, so this was not a merge blocker.
+- **Handoff prompt:**
+
+```text
+In kubernetes-sigs/prow, following PR #985, “horologium: reduce horologium's log noise” (merge commit d3dc1c7b61b3f489e1f2d0f65b62b18dc6d8d079), probe syncStats error-path behavior in cmd/horologium/main.go and cmd/horologium/main_test.go.
+
+Task: Create a temporary client wrapper that fails Create for one periodic ProwJob and delegates Create for another. Exercise sync and check that it returns an error, continues processing subsequent periodics, and reports `stats.triggered` as only the number of successful creates. Run `go test ./cmd/horologium` and classify failures as real implementation bugs or test/setup mistakes.
+
+Acceptance criteria: The partial-failure path is exercised and each failure is classified with evidence. If a real bug is found, apply only the minimal fix and report the failing case. If no bug is found, leave no files changed.
+
+Scope guard: Delete all probe tests before finishing. Do not change normal scheduling behavior or unrelated code. The tests are a means to find a bug, not a deliverable.
+```

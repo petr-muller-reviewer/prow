@@ -3,13 +3,18 @@ pr: kubernetes-sigs/prow#1001
 title: "docs: generate the metrics reference from Go declarations"
 head_sha: 7a209d855110d9c9a13b66c418a93d2cdd29c75e
 base: main
-reviewed_at: 2026-10-09T15:27:50Z
+reviewed_at: 2026-10-15T23:14:23Z
 verdict: request-changes
 gate:
   decision: do-not-merge
-  gated_at: 2026-10-10T16:13:29Z
+  gated_at: 2026-10-15T23:17:51Z
   gated_head_sha: 7a209d855110d9c9a13b66c418a93d2cdd29c75e
   reviewed_head_sha: 7a209d855110d9c9a13b66c418a93d2cdd29c75e
+refresh_log:
+  - old_sha: 7a209d855110d9c9a13b66c418a93d2cdd29c75e
+    new_sha: 7a209d855110d9c9a13b66c418a93d2cdd29c75e
+    at: 2026-10-15T23:14:23Z
+    summary: "No code changes; kubernetes-prow[bot] commented that the PR needs rebase."
 ---
 
 # Review
@@ -38,6 +43,11 @@ Request changes. Code Quality and Maintainability reviewers independently confir
 - Resolves static names, labels, and help values, then sorts and links rows to their source definitions.
 - Preserves surrounding guidance and documents HTTP helper and exporter metrics separately.
 - Adds the metrics page to code generation and verification.
+
+**Since previous review:**
+
+- No code changed: the PR head remains `7a209d855110d9c9a13b66c418a93d2cdd29c75e`.
+- `kubernetes-prow[bot]` commented “PR needs rebase” on 2026-10-10T22:25:40Z. No reviews or inline comments were added, and the PR remains open.
 
 ## Findings
 

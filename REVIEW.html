@@ -31,19 +31,24 @@ ul, ol { padding-left:1.5rem; }
 details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
 </style></head><body><main>
 <h1>docs: generate the metrics reference from Go declarations</h1>
-<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1001">kubernetes-sigs/prow#1001</a> · base <code>main</code> · head_sha <code>7a209d855110</code> · reviewed_at <code>2026-10-09T15:27:50Z</code></div>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1001">kubernetes-sigs/prow#1001</a> · base <code>main</code> · head_sha <code>7a209d855110</code> · reviewed_at <code>2026-10-15T23:14:23Z</code></div>
 <div class="badges"><span class="badge c-red">verdict: request-changes</span><span class="badge c-red">gate: do-not-merge</span></div>
 <details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#1001
 title: &quot;docs: generate the metrics reference from Go declarations&quot;
 head_sha: 7a209d855110d9c9a13b66c418a93d2cdd29c75e
 base: main
-reviewed_at: 2026-10-09T15:27:50Z
+reviewed_at: 2026-10-15T23:14:23Z
 verdict: request-changes
 gate:
   decision: do-not-merge
-  gated_at: 2026-10-10T16:13:29Z
+  gated_at: 2026-10-15T23:17:51Z
   gated_head_sha: 7a209d855110d9c9a13b66c418a93d2cdd29c75e
-  reviewed_head_sha: 7a209d855110d9c9a13b66c418a93d2cdd29c75e</code></pre></details>
+  reviewed_head_sha: 7a209d855110d9c9a13b66c418a93d2cdd29c75e
+refresh_log:
+  - old_sha: 7a209d855110d9c9a13b66c418a93d2cdd29c75e
+    new_sha: 7a209d855110d9c9a13b66c418a93d2cdd29c75e
+    at: 2026-10-15T23:14:23Z
+    summary: &quot;No code changes; kubernetes-prow[bot] commented that the PR needs rebase.&quot;</code></pre></details>
 <h2>Gate</h2>
 <p><strong>Decision: do-not-merge</strong></p>
 <p>The prior blocking finding remains unresolved at the current PR head, which is unchanged from the reviewed head. The generator still accepts absent <code>Help</code> fields, and the generated descriptions for two metrics are blank. No submitted reviews or substantive inline comments were found; issue comments were bot notifications. The PR remains open.</p>
@@ -64,6 +69,12 @@ gate:
 <li>Preserves surrounding guidance and documents HTTP helper and exporter metrics separately.
 </li>
 <li>Adds the metrics page to code generation and verification.
+</li></ul>
+<p><strong>Since previous review:</strong></p>
+<ul>
+<li>No code changed: the PR head remains <code>7a209d855110d9c9a13b66c418a93d2cdd29c75e</code>.
+</li>
+<li><code>kubernetes-prow[bot]</code> commented “PR needs rebase” on 2026-10-10T22:25:40Z. No reviews or inline comments were added, and the PR remains open.
 </li></ul>
 <h2>Findings</h2>
 <h3><span class="tag c-red">blocking</span>Require help text for every generated metric row</h3>

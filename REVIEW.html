@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#816</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>slackevents: alert on merged PRs with cncf-cla: no label</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/816">kubernetes-sigs/prow#816</a> · base <code>main</code> · head_sha <code>8491820a2ce9</code> · reviewed_at <code>2026-09-30T13:15:16Z</code></div>
+<div class="badges"><span class="badge c-red">verdict: request-changes</span></div>
+<details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#816
+title: &quot;slackevents: alert on merged PRs with cncf-cla: no label&quot;
+head_sha: 8491820a2ce9bf06e5e9c3dad7e12498ef702dab
+base: main
+reviewed_at: 2026-09-30T13:15:16Z
+verdict: request-changes
+refresh_log:
+  - old_sha: 8491820a2ce9bf06e5e9c3dad7e12498ef702dab
+    new_sha: 8491820a2ce9bf06e5e9c3dad7e12498ef702dab
+    summary: &quot;No code changes; incorporated local Slack test report, WIP removal, and new PR comments and labels.&quot;</code></pre></details>
+<h2>What this PR does</h2>
+<p>Adds <code>plugins.CLAAlert</code> config (repo/org-scoped Slack channel list) and a new <code>PullRequestEvent</code> handler in <code>slackevents</code>. On merge, if the PR carries <code>cncf-cla: no</code> and repo/org has a configured <code>CLAAlert</code>, posts a Slack message to each configured channel. Includes help-provider/doc updates and 9 unit test cases.</p>
+<p>Reviewed twice: a direct code review, and a three-perspective maintainer review (code quality, maintainability, deployment risk) with advisor synthesis. All four independent passes converge on the same primary defect below; no correctness bug or deployment-blocking risk was found by any reviewer.</p>
+<p>Since previous review:</p>
+<ul>
+<li>No code changes: <code>8491820a2ce9bf06e5e9c3dad7e12498ef702dab</code> remains the PR head.
+</li>
+<li>On 2026-09-29, AaruniAggarwal removed <code>[WIP]</code> from the title; the <code>do-not-merge/work-in-progress</code> label was removed. The author reported a successful local merge test and showed the bot's <code>WriteMessage</code> log and Slack alert. This confirms the basic delivery path but does not test multi-channel failure handling or merge attribution when author and merger differ.
+</li>
+<li>The author requested a review on 2026-09-29. On 2026-09-30, petr-muller commented <code>/ok-to-test</code>, and the bot added <code>ok-to-test</code> and removed <code>needs-ok-to-test</code>. There are no new inline comments or submitted reviews.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-amber">should-fix</span>Channel fanout short-circuits on first error</h3>
+<ul>
+<li>where: <code>pkg/plugins/slackevents/slackevents.go:270-278</code> (in <code>notifyOnCLAIfMerged</code>)
+</li>
+<li>concern: The loop over <code>ca.Channels</code> returns immediately when <code>WriteMessage</code> errors on one channel, so later channels never get notified. Flagged independently by all three maintainer-review perspectives (code quality, maintainability, deployment risk) plus the direct review — highest-confidence finding in this PR. <code>notifyOnSlackIfManualMerge</code> elsewhere in the same file uses <code>utilerrors.NewAggregate</code> to attempt every channel and collect errors; this new code should follow that pattern, especially since CLA-compliance alerts benefit from best-effort delivery to all configured channels.
+</li>
+<li>excerpt:<pre><code>for _, ch := range ca.Channels {
+    if err := pc.SlackClient.WriteMessage(msg, ch); err != nil {
+        return fmt.Errorf(&quot;failed to post CLA alert to %s: %w&quot;, ch, err)
+    }
+}</code></pre>
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>Alert message misattributes the merge to the PR author</h3>
+<ul>
+<li>where: <code>pkg/plugins/slackevents/slackevents.go:262-269</code> (in <code>notifyOnCLAIfMerged</code>)
+</li>
+<li>concern: The message reads <code>&quot;*Alert:* PR #%d merged with %q label by %s — %s&quot;</code> using <code>pre.PullRequest.User.Login</code>, which is the PR <strong>author</strong>, not who merged it. This misleads readers into thinking <code>%s</code> performed the merge. Use <code>PullRequest.MergedBy.Login</code> if available, or reword to make clear it's the author (e.g. "opened by").
+</li>
+<li>excerpt:<pre><code>msg := fmt.Sprintf(
+    &quot;*Alert:* PR #%d merged with %q label by %s — %s&quot;,
+    pre.Number,
+    labels.ClaNo,
+    pre.PullRequest.User.Login,
+    pre.PullRequest.HTMLURL,
+)</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">nit</span>getCLAAlert duplicates getMergeWarning's matching logic</h3>
+<ul>
+<li>where: <code>pkg/plugins/slackevents/slackevents.go:281-291</code> (<code>getCLAAlert</code>)
+</li>
+<li>concern: Byte-for-byte structural duplicate of the existing <code>getMergeWarning</code> two-pass (exact org/repo match, then org-level fallback) logic, using <code>sets.NewString(...).Has(...)</code> rebuilt per call. Two copies now have to be kept in sync if matching semantics change; consider a shared helper.
+</li></ul>
+<h3><span class="tag c-gray">nit</span>No observability for sent/suppressed CLA alerts</h3>
+<ul>
+<li>where: <code>pkg/plugins/slackevents/slackevents.go:246-279</code> (<code>notifyOnCLAIfMerged</code>)
+</li>
+<li>concern: No log line marks "CLA alert sent" or "suppressed (no matching config)". For a compliance-sensitive alert, this makes production debugging of "why didn't we get notified" harder than necessary.
+</li></ul>
+<h3><span class="tag c-gray">nit</span>Per-repo help text doesn't mention CLA alert config</h3>
+<ul>
+<li>where: <code>pkg/plugins/slackevents/slackevents.go:63-77</code> (<code>helpProvider</code>)
+</li>
+<li>concern: <code>configInfo[repo.String()]</code> documents merge-warning status per repo but says nothing about whether a repo has <code>CLAAlerts</code> configured, unlike the parallel <code>MergeWarning</code> handling. Doc parity gap, not functional.
+</li></ul>
+<h3><span class="tag c-blue">question</span>Missing test for WriteMessage error path</h3>
+<ul>
+<li>where: <code>pkg/plugins/slackevents/slackevents_test.go:376-560</code> (<code>TestNotifyOnCLAIfMerged</code>)
+</li>
+<li>concern: 9 cases cover matching/non-matching/precedence logic well, but none exercise a failing <code>WriteMessage</code> call — exactly the path with the short-circuit bug above. Add once fanout error handling is fixed.
+</li></ul>
+<h3><span class="tag c-blue">question</span>Case-sensitive org/repo matching in getCLAAlert</h3>
+<ul>
+<li>where: <code>pkg/plugins/slackevents/slackevents.go:281-291</code> (<code>getCLAAlert</code>)
+</li>
+<li>concern: <code>sets.NewString(a.Repos...).Has(repo.String())</code> is case-sensitive; a misconfigured <code>Repos</code> entry (wrong case) silently never matches and never alerts. Matches existing repo-matching conventions elsewhere in Prow, but easy to get wrong and fails silently.
+</li></ul>
+<h3><span class="tag c-blue">question</span>No validation that CLAAlert.Channels is non-empty</h3>
+<ul>
+<li>where: <code>pkg/plugins/config.go:855-862</code> (<code>CLAAlert</code> struct)
+</li>
+<li>concern: A <code>CLAAlert</code> entry with <code>Repos</code> set but empty <code>Channels</code> would silently match and no-op (loop over zero channels). Consider config-load-time validation for parity with other Slack config, if such validation exists for <code>MergeWarnings</code>.
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>Merge/action guard (<code>Action != Closed || !Merged</code>) is correct and tested.
+</li>
+<li>Repo-exact-match-before-org-fallback precedence in <code>getCLAAlert</code> is correct and tested (<code>exact repo match takes precedence over org-level</code> case).
+</li>
+<li>Label matching iterates all labels and matches on <code>labels.ClaNo</code>, tested with label among others; <code>break</code> after first match prevents a double-send even if a duplicate label were ever present in the payload.
+</li>
+<li>Reading labels directly from <code>PullRequestEvent</code> (no extra GitHub API call) is efficient and documented as merge-strategy independent.
+</li>
+<li><code>helpProvider</code> yaml snippet and doc <code>&lt;ol&gt;</code> update render correctly; <code>plugins.RegisterPullRequestHandler</code> registration is new and doesn't conflict with existing push/comment handler registrations.
+</li>
+<li>New <code>CLAAlerts</code> field is <code>omitempty</code> and purely additive — no breaking change to existing configs, no new Slack scopes/tokens required, rollback is a plain binary revert.
+</li>
+<li><code>FakeClient</code> used in new tests is a pre-existing test helper, not duplicated.
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>Should a failed <code>WriteMessage</code> on one channel still allow other configured channels to receive the CLA alert (aggregate errors) rather than aborting the loop?
+</li>
+<li>Should the alert message use <code>MergedBy.Login</code> instead of <code>User.Login</code>, or is the author intentionally the signal wanted here?
+</li>
+<li>Is silent no-op on case-mismatched <code>Repos</code> entries or empty <code>Channels</code> in <code>CLAAlert</code> config acceptable, or should config validation catch this?
+</li>
+<li>Given this is marked WIP, is there a design decision still pending (e.g., dedup on redelivered webhook events, shared repo-matching helper, or per-repo CLA-alert status in docs) that would change the shape of this review?
+</li></ul>
+</main></body></html>

@@ -31,14 +31,19 @@ ul, ol { padding-left:1.5rem; }
 details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
 </style></head><body><main>
 <h1>plank: persist pod revival count before deleting the pod</h1>
-<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1006">kubernetes-sigs/prow#1006</a> · base <code>main</code> · head_sha <code>357b80eb511d</code> · reviewed_at <code>2026-10-10T14:07:32Z</code></div>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1006">kubernetes-sigs/prow#1006</a> · base <code>main</code> · head_sha <code>357b80eb511d</code> · reviewed_at <code>2026-10-15T22:51:17Z</code></div>
 <div class="badges"><span class="badge c-red">verdict: request-changes</span><span class="badge c-red">gate: do-not-merge</span></div>
 <details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#1006
 title: &quot;plank: persist pod revival count before deleting the pod&quot;
 head_sha: 357b80eb511d6b0f932e5e77edc23cf0e56e74a1
 base: main
-reviewed_at: 2026-10-10T14:07:32Z
+reviewed_at: 2026-10-15T22:51:17Z
 verdict: request-changes
+refresh_log:
+  - at: 2026-10-15T22:51:17Z
+    old_sha: 357b80eb511d6b0f932e5e77edc23cf0e56e74a1
+    new_sha: 357b80eb511d6b0f932e5e77edc23cf0e56e74a1
+    summary: &quot;No code changes; author added a note pointing to the motivation for the PR.&quot;
 gate:
   decision: do-not-merge
   gated_at: 2026-10-10T17:06:35Z
@@ -68,6 +73,10 @@ gate:
 <li>Records the counted pod's build ID in a ProwJob annotation to deduplicate repeated observations.
 </li>
 <li>Guards <code>getPodBuildID</code> when the pod has no containers.
+</li></ul>
+<p>Since previous review:</p>
+<ul>
+<li>No code changed (<code>357b80e</code> → <code>357b80e</code>). On Oct 13, author @jwendell noted the motivation was the misbehavior in <a href="https://github.com/istio/proxy/pull/7316">istio/proxy#7316</a>. No new inline comments or reviews were submitted.
 </li></ul>
 <h2>Findings</h2>
 <h3><span class="tag c-red">blocking</span>Empty build IDs bypass pod deduplication</h3>

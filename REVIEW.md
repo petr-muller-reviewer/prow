@@ -3,8 +3,13 @@ pr: kubernetes-sigs/prow#1006
 title: "plank: persist pod revival count before deleting the pod"
 head_sha: 357b80eb511d6b0f932e5e77edc23cf0e56e74a1
 base: main
-reviewed_at: 2026-10-10T14:07:32Z
+reviewed_at: 2026-10-15T22:51:17Z
 verdict: request-changes
+refresh_log:
+  - at: 2026-10-15T22:51:17Z
+    old_sha: 357b80eb511d6b0f932e5e77edc23cf0e56e74a1
+    new_sha: 357b80eb511d6b0f932e5e77edc23cf0e56e74a1
+    summary: "No code changes; author added a note pointing to the motivation for the PR."
 gate:
   decision: do-not-merge
   gated_at: 2026-10-10T17:06:35Z
@@ -39,6 +44,9 @@ Request changes. The revival count is persisted before pod deletion, but the per
 - Persists a ProwJob's revival count before deleting an unexpectedly stopped pod.
 - Records the counted pod's build ID in a ProwJob annotation to deduplicate repeated observations.
 - Guards `getPodBuildID` when the pod has no containers.
+
+Since previous review:
+- No code changed (`357b80e` → `357b80e`). On Oct 13, author @jwendell noted the motivation was the misbehavior in [istio/proxy#7316](https://github.com/istio/proxy/pull/7316). No new inline comments or reviews were submitted.
 
 ## Findings
 

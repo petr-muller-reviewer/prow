@@ -56,3 +56,36 @@ No findings.
 ## Open questions
 
 None.
+
+## Followups
+
+Accepted: 1 probe. Skipped: 0.
+
+### Probe real-Git branch/path checkout behavior
+
+- Category: tests
+- Necessity: could
+- Mode: probe
+- Area: `pkg/git/git_test.go`, v2 checkout and secondary-clone fixtures.
+- Why followup: the PR regression case checks mocked command arguments; real-Git coverage can exercise the reported collision without blocking the merge.
+
+```text
+In kubernetes-sigs/prow, perform a probe following PR #1012 — "Disambiguate git checkout from pathspecs with trailing \"--\"" (reviewed head a50883b90135f5df57159ab213c1015797d06b41). The PR was open when this followup was recorded; no merge commit was available. Work in a fresh worktree containing the PR's change, using the default branch after merge.
+
+Mode: probe.
+
+Write temporary real-Git integration tests around the v2 client's Checkout behavior. Reuse the localgit.NewV2 fixtures and patterns in pkg/git/git_test.go, pkg/git/localgit/localgit.go, and pkg/git/v2/client_factory.go; inspect pkg/git/v2/interactor.go and its mocked test in pkg/git/v2/interactor_test.go.
+
+Exercise these behaviors:
+- A fresh secondary clone has only a remote-tracking branch named team/app/overlays/prod, while that name also matches a tracked path. Give the target branch distinct content and verify that Checkout reaches the intended commit and updates the working tree. Explicitly establish that no matching local branch exists before the call.
+- A matching local branch can be checked out even when its name matches a tracked path.
+- A commit SHA can be checked out correctly, updating both HEAD and working-tree content.
+
+Run the probes with the PR's fix present. Demonstrate that removing the trailing separator reproduces the original remote-branch/path ambiguity, then restore the implementation. That expected pre-fix failure is a control, not a newly discovered bug.
+
+Classify each unexpected failure with evidence: real implementation bug, incorrect expectation, or fixture/test mistake. A real bug means a valid checkout fails, or reports success without selecting the intended commit and working tree, under the established fixture conditions.
+
+Acceptance: exercise every named behavior and report the result, Git version, commands run, and evidence for each failure classification. If a real implementation bug is found, apply only its minimal fix and report the reproducer so the maintainer can decide whether to retain it as a regression test. If no bug is found, leave no files changed.
+
+Scope: delete all probe tests and scratch artifacts before finishing. Restore any temporary implementation changes used for the pre-fix control. Do not submit the probe tests, fix unrelated code, refactor the Git client, or publish anything.
+```

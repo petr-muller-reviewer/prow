@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#661</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>Add support for git cherry-pick -x style commit messages</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/661">kubernetes-sigs/prow#661</a> · base <code>main</code> · head_sha <code>1d35794f7752</code> · reviewed_at <code>2026-09-29T17:23:02Z</code></div>
+<div class="badges"><span class="badge c-red">verdict: request-changes</span><span class="badge c-red">gate: do-not-merge</span></div>
+<details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#661
+title: &quot;Add support for git cherry-pick -x style commit messages&quot;
+head_sha: 1d35794f7752d9a169c08478ae6b5125368075fb
+base: main
+reviewed_at: 2026-09-29T17:23:02Z
+verdict: request-changes
+gate:
+  decision: do-not-merge
+  gated_at: 2026-09-29T17:48:12Z
+  gated_head_sha: 1d35794f7752d9a169c08478ae6b5125368075fb
+  reviewed_head_sha: 1d35794f7752d9a169c08478ae6b5125368075fb
+refresh_log:
+  - old_sha: 05052e23ba428d40595917f28f2236f488b5b3a5
+    new_sha: 1d35794f7752d9a169c08478ae6b5125368075fb
+    summary: &quot;Reviewed explicit Git identity arguments and updated helper tests; long-line patch finding remains open.&quot;</code></pre></details>
+<h2>Gate</h2>
+<p><strong>Decision: do-not-merge.</strong> At PR head <code>1d35794f7752d9a169c08478ae6b5125368075fb</code>, the saved blocking finding remains unchanged. Enabling the new flag makes a valid patch with a line over <code>bufio.Scanner</code>'s default 64 KiB limit fail after <code>git am</code>, so the cherry-pick branch is never pushed. Handle long patch lines and add a regression test before reconsidering merge.</p>
+<h3>Gating finding</h3>
+<ul>
+<li><strong>Not addressed — <code>REVIEW.md</code>, “SHA extraction rejects valid long-line patches”:</strong> <code>cmd/external-plugins/cherrypicker/server.go:850-860</code> still uses an unconfigured <code>bufio.Scanner</code> and returns its token-too-long error. This blocks merge.
+</li></ul>
+<h3>Other review feedback</h3>
+<ul>
+<li>The substantive GitHub comments about the default, error path, rollback, timeout, deprecated <code>filter-branch</code>, and local Git test helpers are addressed in the current code. The rebase still logs raw subprocess output internally at <code>cmd/external-plugins/cherrypicker/server.go:944-950</code>, while the requester receives a generic error at lines 658-664; this local-only subprocess does not independently gate merge, but deployments with hooks should avoid emitting secrets to its output.
+</li></ul>
+<h3>Independent merge risk</h3>
+<ul>
+<li>The diff changes no exported Go API, Kubernetes API, CRD, or config-file schema. <code>--add-original-commit-id</code> defaults to <code>false</code> at <code>cmd/external-plugins/cherrypicker/main.go:76</code>, so existing deployments retain their current behavior.
+</li>
+<li>Only operators enabling the flag incur a rebase/amend per commit, new commit hashes and bodies, and sensitivity to Git hooks and global configuration. The flag and these operational effects are not yet documented in the cherrypicker documentation; document them before rollout.
+</li></ul>
+<h2>Verdict</h2>
+<p>Request changes. SHA extraction still uses <code>bufio.Scanner</code> without a larger buffer, so an otherwise valid patch with a line over 64 KiB prevents the enabled cherry-pick from being pushed.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Adds <code>--add-original-commit-id</code>, disabled by default.
+</li>
+<li>Extracts source commit SHAs from the downloaded mbox patch.
+</li>
+<li>Rewrites applied commit messages with <code>git cherry-pick -x</code>-style trailers before pushing.
+</li>
+<li>Aborts and restores the local checkout if rewriting fails.
+</li></ul>
+<p>Since previous review:</p>
+<ul>
+<li>The author changed the rewrite helper to receive the already configured Git name and email from <code>Server.handle</code>, avoiding separate <code>git config</code> reads, and updated its tests. The changed Go files total 7 additions and 29 deletions.
+</li>
+<li>The PR branch removed previously committed <code>REVIEW.md</code> and <code>REVIEW.html</code> artifacts. AaruniAggarwal commented on 2026-09-29 at 17:21:02Z that the review comments had been addressed; there were no new inline comments or submitted reviews.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-red">blocking</span>SHA extraction rejects valid long-line patches</h3>
+<ul>
+<li>where: <code>cmd/external-plugins/cherrypicker/server.go:850-860</code>
+</li>
+<li>concern: <code>bufio.Scanner</code> has a 64 KiB maximum token size by default. A valid GitHub mbox patch containing a long generated, minified, or lockfile line makes <code>extractOriginalSHAs</code> fail; with <code>--add-original-commit-id</code>, the handler then refuses to push an otherwise successful cherry-pick branch.
+</li>
+<li>excerpt:<pre><code>scanner := bufio.NewScanner(file)
+for scanner.Scan() {
+    line := scanner.Text()
+    if matches := fromPattern.FindStringSubmatch(line); matches != nil {
+        shas = append(shas, matches[1])
+    }
+}
+if err := scanner.Err(); err != nil {
+    return nil, fmt.Errorf(&quot;error reading patch file: %w&quot;, err)
+}</code></pre>
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>The new option defaults to false, preserving existing cherrypicker behavior unless explicitly enabled.
+</li>
+<li>The updated helper receives the same name and email that <code>Server.handle</code> configures on the repository before <code>git am</code>; the helper tests pass explicit values.
+</li>
+<li>Rebase failures are aborted and reset to the pre-rebase HEAD before returning, and no branch is pushed after an extraction/rewrite failure.
+</li>
+<li>Commit messages are written through a temporary file rather than interpolated into the generated shell script.
+</li>
+<li>Unit coverage exercises empty input, invalid history, single- and multi-commit trailer ordering, and rebase rollback.
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>Can the follow-up add a handler-level test for an enabled multi-commit mbox patch, plus regression coverage for a patch line larger than 64 KiB?
+</li>
+<li>Should the cherrypicker documentation describe <code>--add-original-commit-id</code>, its default-disabled rollout, and the changed commit hashes/messages when enabled?
+</li></ul>
+</main></body></html>

@@ -3,7 +3,7 @@ pr: kubernetes-sigs/prow#730
 title: "Add gemini-agent Prow plugin"
 head_sha: cdc66d39b6b0d21f5b714d4ca1caee6f9583f555
 base: main
-reviewed_at: 2026-10-09T13:58:22Z
+reviewed_at: 2026-10-15T23:14:40Z
 verdict: approve-with-suggestions
 refresh_log:
   - from_sha: 27bec9f35515e125802bdbd1fa5e6c5bc0f9e551
@@ -14,6 +14,10 @@ refresh_log:
     to_sha: cdc66d39b6b0d21f5b714d4ca1caee6f9583f555
     at: 2026-10-09T13:58:22Z
     summary: "Rebased onto current main with a small rate-limit error-handling change; retained open findings and recorded the missing cumulative usage cap raised in PR discussion."
+  - from_sha: cdc66d39b6b0d21f5b714d4ca1caee6f9583f555
+    to_sha: cdc66d39b6b0d21f5b714d4ca1caee6f9583f555
+    at: 2026-10-15T23:14:40Z
+    summary: "No code changes. ameukam proposed an opt-in dry-run rollout and described usage caps and retry accounting as future hardening; kannon92 suggested separate CNCF Copilot credits."
 ---
 
 ## What this PR does
@@ -23,8 +27,8 @@ refresh_log:
 
 Since previous review:
 
-- The PR was rebased from `27bec9f35515e125802bdbd1fa5e6c5bc0f9e551` to `cdc66d39b6b0d21f5b714d4ca1caee6f9583f555`. The only plugin source change is the `errors.AsType` rewrite in rate-limit detection; the value-versus-pointer matching concern remains.
-- On 2026-10-07, ameukam pinged reviewers and cblecker raised concerns about prompt injection, abuse, and Vertex AI budget caps. No inline review comments or submitted reviews were added; the Prow bot reiterated the approval status.
+- No code changed: the head remains `cdc66d39b6b0d21f5b714d4ca1caee6f9583f555`, and the PR remains open.
+- On 2026-10-10, ameukam proposed starting with one explicitly opted-in public repository in dry-run mode, restricted to selected users or teams, and said dry-run still incurs inference costs. Daily usage caps, bounded concurrency, and retry quota accounting were described as future hardening. kannon92 suggested seeking separate CNCF Copilot credits. No inline comments or reviews were added.
 
 ## Findings
 
@@ -106,7 +110,7 @@ Since previous review:
 
 ### [should-fix] No cumulative usage cap for Gemini requests
 - where: `cmd/external-plugins/geminiagent/plugin/gemini-agent.go:59-64,86-89`
-- concern: The process-wide limiter caps request rate at 10 per minute, but it does not cap total requests or spend over a day or billing period. Repeated authorized invocations can therefore continue consuming the shared Vertex AI budget; the PR discussion on 2026-10-07 explicitly raised this abuse and budget concern. Add an operator-configurable quota or document the external budget controls that bound usage.
+- concern: The process-wide limiter caps request rate at 10 per minute, but it does not cap total requests or spend over a day or billing period. Repeated authorized invocations can therefore continue consuming the shared Vertex AI budget. In a 2026-10-10 reply, ameukam described persistent daily caps (global, per-user, and per-repository) and retry quota accounting as future hardening, and clarified that dry-run still incurs inference costs. Those controls are not present at this head; add a quota or require external spending controls before rollout.
 - excerpt: |
     defaultRPM     = 10
     maxRetries     = 3

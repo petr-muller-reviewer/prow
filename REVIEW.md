@@ -135,12 +135,57 @@ Since previous review (2026-10-15 refresh; no code changes):
 
 ## Followups
 
-Followup walkthrough on 2026-10-15: retained one previously accepted architectural followup; skipped the additional collector-regression-test candidate at the maintainer's direction. No new work was accepted. The nonblocking test suggestion remains in Findings for review history, not as an accepted handoff.
+Followup walkthrough rerun on 2026-10-15: accepted two new items (one probe and one deliverable), skipped none, and retained the previously accepted architectural followup. The earlier test-deliverable skip is superseded by acceptance as a throwaway bug-finding probe. This workflow records handoffs only; it did not implement them.
+
+### Probe the config-agent collector lifecycle and concurrent updates
+
+- Category: tests
+- Necessity: should — exercise the public monitoring contract without requiring tests as a submitted deliverable.
+- Mode: probe
+- Status: accepted by the maintainer on 2026-10-15; not executed by this workflow.
+- Where: `pkg/config/agent.go:69-81`, `pkg/config/agent.go:438-489`; temporary tests in `pkg/config/`.
+- Why followup: the merged change has no focused collector regression tests; no correctness defect was identified during review. Earlier local tests are mentioned in Checked and should be reused if recoverable within the task checkout.
+
+```text
+In kubernetes-sigs/prow, following PR #966 — "config: expose loaded job definition counts", merged as b8bd4f20ea0bb4c10da7da66bf84b8d70194bcc0, probe the config-agent collector for real bugs. Work from the merged default branch in the task's own checkout. Mode: probe.
+
+Inspect pkg/config/agent.go, especially Agent.Collect, Set, SetWithoutBroadcast, and countJobDefinitions. Look for reusable earlier local collector tests in this checkout or its git history before writing replacements; REVIEW.md records that such tests previously passed. Do not read sibling worktrees.
+
+Write temporary tests in the normal pkg/config test location. Register agents in isolated Prometheus registries and exercise: no samples before an accepted config versus three zeros after an empty config; unequal periodic/presubmit/postsubmit counts across multiple repositories; replacement including removal to zero through both setters; independent agents with different snapshots; and concurrent collection during alternating updates. Concurrent collection must yield one coherent snapshot, with no mixed counts, data races, or cross-agent leakage. Run the focused tests, including with the Go race detector for concurrent cases.
+
+Classify every failure using evidence: a real implementation defect versus an incorrect expectation, test mistake, or environment problem. Real bugs include incorrect counts or labels, stale values after accepted updates, mixed snapshots, races, and cross-agent interference under supported registration patterns. Identical unlabeled collectors cannot be registered together in one registry; use separate registries or distinguishing registration labels rather than treating that restriction as a bug.
+
+Acceptance: exercise every named behavior and report results. If a real bug is found, apply and verify only its minimal fix and report the reproducing case. Remove all probe tests and temporary artifacts before finishing. If no bugs are found, leave no task changes. The deliverable is a confirmed bug fix, never the probe tests; report any useful failing case so the maintainer can choose whether to retain it separately.
+
+Scope: do not redesign metric publication, change counting semantics, instrument in-repo jobs, fix style/test-only issues, commit, or publish without explicit authorization.
+```
+
+### Expose per-agent configuration load outcomes
+
+- Category: observability
+- Necessity: could — distinguish rejected updates from unchanged accepted job counts.
+- Mode: deliver
+- Status: accepted by the maintainer on 2026-10-15; not implemented by this workflow.
+- Where: `pkg/config/agent.go:238-277`, `pkg/config/agent.go:339-345`, `pkg/config/agent.go:376-413`, agent collector, and `site/content/en/docs/metrics/_index.md`.
+- Why followup: PR #966 intentionally measures accepted inventory. Load failures preserve that inventory, so counts alone cannot reveal rejected config changes; load outcomes are complementary observability rather than a fix to the inventory metric.
+
+```text
+In kubernetes-sigs/prow, following PR #966 — "config: expose loaded job definition counts", merged as b8bd4f20ea0bb4c10da7da66bf84b8d70194bcc0, add per-agent configuration load outcome metrics. Work from the merged default branch in the task's own checkout. Mode: deliver.
+
+Inspect pkg/config/agent.go: initial loading in Start and StartWatch, polling reloads, ConfigMap and directory watcher callbacks, Agent.Collect, and both setters. Existing job counts intentionally remain at the last accepted snapshot on Load errors; add observability that explains rejected updates without changing that behavior.
+
+Expose a per-agent counter of actual Load attempts with a bounded success/failure outcome label and a gauge of the last successful load time, using descriptive Prometheus names ending in _total and _timestamp_seconds respectively. Cache metric state safely on the agent and export it through its existing collector. Record exactly one outcome for each actual load attempt, including initial loads, and update the success timestamp only after accepting a successfully loaded snapshot. Do not count bare Set/SetWithoutBroadcast calls, unchanged-file polls, watcher errors, or post-load watcher setup errors as load attempts/failures. Define and document zero/uninitialized timestamp behavior before the first successful load.
+
+Acceptance: meaningful tests demonstrate success, failure preserving the old snapshot and successful-load timestamp, recovery, initial loading, both polling and watcher paths, skipped polls not increasing attempts, and independent agents. Verify concurrency safety and run the appropriate focused pkg/config tests. Document metrics and interpretation in site/content/en/docs/metrics/_index.md: an old successful-load timestamp alone is not evidence of failure when configuration is unchanged; combine it with load outcomes and inventory counts. Initial-failure metrics may be unavailable if startup exits before serving; do not change startup ordering to expose them.
+
+Scope: preserve polling, retry, watcher, config acceptance, and startup error behavior. Do not add path/repository/revision/error-message labels, in-repo metrics, component-registration refactors, deployment alert resources, or unrelated fixes. Do not commit or publish without explicit authorization.
+```
 
 ### Centralize command collector registration and share one gatherer
 
 - Category: architecture
 - Necessity: could — simplifies publication and prevents future divergence between scrape and push outputs.
+- Mode: deliver
 - Status: accepted by the maintainer; implemented in separate local commits, not published.
 - Where: `pkg/metrics/metrics.go`, `pkg/metrics/metrics_test.go`, command entry points under `cmd/`, and `site/content/en/docs/metrics/_index.md`.
 - Why followup: PR #966 correctly registers its collector for the existing output paths. The split between exporter's custom scrape registry and the default Pushgateway registry predates this PR; changing it affects existing metrics and belongs in a separate change.

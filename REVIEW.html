@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#1010</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>config: allow loading job config from multiple paths</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1010">kubernetes-sigs/prow#1010</a> · base <code>main</code> · head_sha <code>ac8ffb07e2ac</code> · reviewed_at <code>2026-10-15T23:38:03Z</code></div>
+<div class="badges"><span class="badge c-red">verdict: request-changes</span><span class="badge c-amber">gate: hold</span></div>
+<details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#1010
+title: &quot;config: allow loading job config from multiple paths&quot;
+head_sha: ac8ffb07e2ac7036c6bb4290f068a351508e7fad
+base: main
+reviewed_at: 2026-10-15T23:38:03Z
+verdict: request-changes
+gate:
+  decision: hold
+  gated_at: 2026-10-15T23:17:37Z
+  gated_head_sha: ac8ffb07e2ac7036c6bb4290f068a351508e7fad
+  reviewed_head_sha: ac8ffb07e2ac7036c6bb4290f068a351508e7fad</code></pre></details>
+<h2>Gate</h2>
+<p>Hold: document the deployment migration for changed <code>--job-config-path</code> behavior before merging.</p>
+<p>The PR is open at the reviewed head <code>ac8ffb07e2ac7036c6bb4290f068a351508e7fad</code>, with no subsequent commits and no submitted GitHub reviews, inline comments, or human issue comments. The previous local findings were withdrawn for the reasons recorded below. The code review found no introduced defects, but the intentional flag changes affect existing deployments and are described only in the PR body; the checked-in documentation does not explain the migration.</p>
+<p>Gating list:</p>
+<ul>
+<li><strong>Deployment migration notice</strong> — <code>pkg/flagutil/config/config.go:60</code> and <code>pkg/config/config.go:1748-1751</code> (independent compatibility assessment). An explicit <code>--job-config-path=</code> previously selected no separate job config; it now stores an empty path, attempts <code>os.Stat(&quot;&quot;)</code>, and makes the initial config-agent load fail. Any component whose deployment template emits an empty flag can fail to start after updating its image. Add a breaking-change announcement telling operators to omit the flag when unused, or preserve the previous empty-value behavior.
+</li>
+<li>Include repeated-flag behavior in the same notice: <code>pkg/flagutil/config/config.go:60</code> changes repeated flags from last-value-wins to merging every value. Existing deployment wrappers that append an override must remove the old value; otherwise they may load unintended jobs or fail on duplicate basenames.
+</li></ul>
+<p>Independent merge risks:</p>
+<ul>
+<li><strong>Go source compatibility</strong> — <code>pkg/config/config.go:1661</code>, <code>pkg/config/config.go:1667</code>, <code>pkg/config/config.go:1708</code>, <code>pkg/config/agent.go:345</code>, <code>pkg/config/agent.go:382</code>, and <code>pkg/flagutil/config/config.go:35</code> rename exported APIs or change their argument/field types. Downstream Go consumers must migrate to slices and the new names. This is deliberate and disclosed in the PR body; the library policy in <code>site/content/en/docs/overview/_index.md</code> explicitly disclaims backward compatibility, so it does not independently block merge.
+</li>
+<li><strong>Runtime compatibility</strong> — the empty-value and repeated-value changes above affect existing invocations without opting into the new multi-path feature. The default with the flag omitted still means no separate job config. The announcements page promises documentation for configuration/deployment breaking changes, and this PR does not add such an entry.
+</li>
+<li>No Kubernetes API/CRD or job YAML schema changes were found. No additional repository compatibility skill applies to this diff; this assessment used the code, the PR discussion endpoints, and the documented library and announcement policies. Tests were not run as part of this gate.
+</li></ul>
+<h2>Verdict</h2>
+<p>Request changes: document the deployment migration and rollback requirements before merging.</p>
+<p>The three maintainer perspectives found the implementation cohesive, with low maintenance burden and no confirmed introduced correctness defects. Maintainability and Deployment Risk independently identified missing operator guidance; the confirmed changes to empty and repeated flag values, plus silent source omission by older binaries, require a migration notice. Deployment risk is medium. Tests were inspected but not run.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Makes <code>--job-config-path</code> repeatable and changes the Go configuration APIs to accept path lists.
+</li>
+<li>Merges job configuration from files and recursively searched directories, with basename uniqueness across sources.
+</li>
+<li>Aggregates load errors and rejects the entire result on failure, using a separate <code>.prowignore</code> parser for each directory root.
+</li>
+<li>Extends config reload/watch handling and sinker size reporting to all configured paths and documents the CLI behavior.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-red">blocking</span>Document deployment migration and rollback</h3>
+<ul>
+<li>where: <code>site/content/en/docs/scaling.md:71-75</code>
+</li>
+<li>concern: Before merging, add guidance here and in the breaking-change announcements: operators must omit an unused <code>--job-config-path</code> because an explicit empty value now prevents startup, and wrappers that previously appended an override must account for every repeated value now being merged. Upgrade all consuming components before enabling multiple paths, and restore a single aggregate path before rollback because older binaries silently load only the final path. Maintainability and Deployment Risk both flagged the migration documentation gap; these compatibility changes were confirmed against the current and base implementations.
+</li>
+<li>excerpt:<pre><code>`--job-config-path` can be passed multiple times when the job configs are not
+all in one place, for example when they are stored on different volumes. The
+job configs of all the paths are merged. A path is either a file or a directory
+that is searched recursively, the paths must not overlap, and the base names of
+the files must be unique across all the paths, not only within each of them.</code></pre>
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>Clarify the disjoint-path contract</h3>
+<ul>
+<li>where: <code>pkg/config/config.go:1700-1703</code>
+</li>
+<li>concern: Non-blocking maintainability suggestion: the contract requires disjoint paths, but the implementation rejects overlaps only when they yield duplicate loaded basenames. Empty or ignored overlapping roots can therefore succeed until their contents change; either explicitly validate overlap or describe the narrower enforced constraint.
+</li>
+<li>excerpt:<pre><code>// ReadJobConfigs reads the JobConfig yaml from all the given paths and merges
+// it, but does not expand or validate the result. Every path is either a single
+// file or a directory that is searched recursively. File basenames must be
+// unique across all the paths, and the paths must not overlap.</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">nit</span>Assert an empty configuration after load errors</h3>
+<ul>
+<li>where: <code>pkg/config/config_test.go:3907-3908</code>
+</li>
+<li>concern: Optional test improvement: before returning from error cases, assert that <code>actual</code> is an empty <code>JobConfig</code>, especially when valid files were read before another source failed. The implementation currently discards partial results correctly, but these assertions would not catch a regression that returned partial configuration alongside the expected error.
+</li>
+<li>excerpt:<pre><code>if tc.expectedError != &quot;&quot; {
+    return
+}</code></pre>
+</li></ul>
+<h2>Resolved</h2>
+<ul>
+<li>Withdrawn: <strong>Handle file paths in sinker ConfigMap size reporting</strong>. The base revision already passes a file path to the same directory-oriented helper; this PR does not introduce the problem.
+</li>
+<li>Withdrawn: <strong>Name the loaded-file counter</strong>. This is a style suggestion without meaningful impact on correctness or maintainability.
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>Reviewed head <code>ac8ffb07e2ac7036c6bb4290f068a351508e7fad</code> against merge base <code>9851264902811315625eb653081f981dfb499289</code>; independent Code Quality and Maintainability reviewers both recommended approval, with no code blockers.
+</li>
+<li>The accumulator enforces basename uniqueness across files and directories, reports both conflicting paths, aggregates failures, and returns no partial job config on error.
+</li>
+<li><code>.prowignore</code> parsing is scoped to each directory root.
+</li>
+<li>Repeated flag values retain their order; defaults are replaced using the existing flag utility. Omitting the flag and passing a single nonempty path retain their prior behavior.
+</li>
+<li>Config polling, watch setup, and sinker monitoring iterate over all configured paths. In-tree callers were migrated to the new Go API.
+</li>
+<li>Running agents retain their last accepted configuration after failed reloads. All sources share a validation boundary, so one invalid source blocks the combined update.
+</li>
+<li>Exported Go APIs intentionally change; downstream consumers must migrate, consistent with the repository's explicit library compatibility policy.
+</li>
+<li>No job YAML schema, Kubernetes API/CRD, RBAC, webhook, secret-handling, or external service changes were identified.
+</li>
+<li>Reviewed the added tests for repeated flags, initial loads, recursion, duplicate basenames/jobs, ignore rules, errors, and modification-time selection. Tests were not run; end-to-end multi-path reload/watch behavior remains untested by the added cases.
+</li>
+<li>Maximum-timestamp polling can delay updates whose timestamps remain below another input's timestamp; this is inherited behavior and was not treated as an introduced defect.
+</li></ul>
+<h2>Open questions</h2>
+<p>None.</p>
+</main></body></html>

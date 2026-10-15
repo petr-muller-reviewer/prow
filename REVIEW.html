@@ -31,50 +31,78 @@ ul, ol { padding-left:1.5rem; }
 details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
 </style></head><body><main>
 <h1>Allow sharding Tide context policies in supplemental config</h1>
-<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1009">kubernetes-sigs/prow#1009</a> · base <code>main</code> · head_sha <code>e7d18e7ad8ef</code> · reviewed_at <code>2026-10-14T15:20:04Z</code></div>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1009">kubernetes-sigs/prow#1009</a> · base <code>main</code> · head_sha <code>e7d18e7ad8ef</code> · reviewed_at <code>2026-10-15T23:33:49Z</code></div>
 <div class="badges"><span class="badge c-green">verdict: approve</span><span class="badge c-green">gate: merge</span></div>
 <details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#1009
 title: &quot;Allow sharding Tide context policies in supplemental config&quot;
 head_sha: e7d18e7ad8ef2a600ba9aa778cd600e53993d418
 base: main
-reviewed_at: 2026-10-14T15:20:04Z
+reviewed_at: 2026-10-15T23:33:49Z
 verdict: approve
 gate:
   decision: merge
   gated_at: 2026-10-14T15:56:03Z
   gated_head_sha: e7d18e7ad8ef2a600ba9aa778cd600e53993d418
-  reviewed_head_sha: e7d18e7ad8ef2a600ba9aa778cd600e53993d418</code></pre></details>
-<h2>Gate</h2>
-<p><strong>Decision: merge.</strong> The PR head is unchanged since review, and no GitHub review submissions or substantive inline comments were found. The only local finding is a non-blocking diagnostic suggestion; it does not create merge risk.</p>
-<h3>Findings disposition</h3>
-<ul>
-<li>No unresolved gating findings. The local nit about including the earlier shard path in boolean-conflict errors is not a correctness or operational blocker.
-</li></ul>
-<h3>Gating list</h3>
-<ul>
-<li>None.
-</li></ul>
-<h3>Independent merge-risk pass</h3>
-<ul>
-<li>No exported Go API, CLI flag, or existing configuration field was removed or changed. Existing main-config behavior remains unchanged unless an operator opts into supplemental <code>tide.context_options</code>.
-</li>
-<li>Config impact is scoped to repositories and branches named by the supplemental policies. Operators should pass the supplemental-config flags to Tide and <code>checkconfig</code>, then run <code>checkconfig</code>; the new behavior is documented.
-</li>
-<li>Rolling back to an older binary requires removing <code>tide.context_options</code> from supplemental files, since the older loader rejects that field there. This affects only deployments that opt into the new configuration.
-</li></ul>
+  reviewed_head_sha: e7d18e7ad8ef2a600ba9aa778cd600e53993d418
+refresh_log:
+  - old_sha: e7d18e7ad8ef2a600ba9aa778cd600e53993d418
+    new_sha: e7d18e7ad8ef2a600ba9aa778cd600e53993d418
+    at: 2026-10-15T17:32:12Z
+    summary: &quot;No code changes; captured three non-blocking inline review comments from @Prucek.&quot;</code></pre></details>
 <h2>Verdict</h2>
-<p>Approve with a non-blocking suggestion. The three perspectives found no correctness issues or breaking changes, and deployment risk is low. Consider including the earlier shard path in same-scope boolean-conflict diagnostics to make conflicts easier to locate across large shard sets.</p>
+<p>Approve with non-blocking suggestions.</p>
+<p>All three independent maintainer perspectives found no blockers: Code Quality and Maintainability recommend approval, maintenance burden is low, and deployment risk is low. The implementation preserves existing configurations and hierarchical inheritance while adding same-scope list unions and boolean conflict detection. The suggestions below are optional. Tests were inspected but not run, and the author's reported test, lint, and large-fixture results were not independently verified. Before adopting shards, upgrade every component consuming them; before rolling back, move supplemental policies back into the main configuration.</p>
 <h2>What this PR does</h2>
 <ul>
-<li>Allows Tide context policies in supplemental Prow config files.
+<li>Accepts Tide context policies in supplemental configuration files.
 </li>
-<li>Combines context lists and rejects conflicting explicit booleans at matching policy scopes.
+<li>Combines context lists and rejects conflicting explicit booleans at matching global, org, repo, and branch scopes.
 </li>
-<li>Extends config scope detection so <code>checkconfig</code> can validate org and repo shard placement.
+<li>Classifies context policies by org and repo for supplemental directory validation.
 </li>
-<li>Documents the shard structure, merge behavior, and operational flags.
+<li>Documents configuration flags, shard placement, and inheritance behavior.
 </li></ul>
 <h2>Findings</h2>
+<p>No blocking or should-fix findings. The following suggestions are optional.</p>
+<h3><span class="tag c-gray">nit</span>Exercise reverse shard order</h3>
+<ul>
+<li>where: <code>pkg/config/tide_test.go:2117-2123</code>
+</li>
+<li>concern: The current test checks unions and repeated shards in one order. Consider merging the same valid shards in reverse order and comparing results to directly protect the documented order independence.
+</li>
+<li>excerpt:<pre><code>incoming := options([]string{&quot;b&quot;, &quot;a&quot;, &quot;b&quot;})
+var merged TideContextPolicyOptions
+if err := merged.mergeFrom(incoming); err != nil {
+    t.Fatal(err)
+}
+if err := merged.mergeFrom(options([]string{&quot;z&quot;, &quot;a&quot;})); err != nil {</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">nit</span>Document the policy-field maintenance requirement</h3>
+<ul>
+<li>where: <code>pkg/config/tide.go:464-466</code>
+</li>
+<li>concern: This helper controls scope classification and whether an incoming policy is processed. Consider documenting that adding a serialized policy field also requires updating this helper and the merge logic.
+</li>
+<li>excerpt:<pre><code>func isTideContextPolicySet(policy TideContextPolicy) bool {
+    return policy.SkipUnknownContexts != nil || policy.FromBranchProtection != nil || policy.OverwritePendingContexts != nil ||
+        len(policy.RequiredContexts) &gt; 0 || len(policy.RequiredIfPresentContexts) &gt; 0 || len(policy.OptionalContexts) &gt; 0 || len(policy.OptionalRegexContexts) &gt; 0</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">nit</span>Document upgrade and rollback ordering</h3>
+<ul>
+<li>where: <code>site/content/en/docs/components/core/tide/config.md:171-177</code>
+</li>
+<li>concern: Older binaries reject context policies in supplemental files. Consider adding a deployment note to upgrade checkconfig and all configuration consumers before adopting shards, and to consolidate supplemental context policies into the main configuration before rolling back.
+</li>
+<li>excerpt:<pre><code>`tide.context_options` can be split across supplemental Prow config files. Pass
+`--supplemental-prow-config-dir=config/shards` to Tide and `checkconfig`, alongside
+their main `--config-path`. The directory is searched recursively for filenames
+ending in `_prowconfig.yaml`. Set `--supplemental-prow-configs-filename-suffix`
+to use a different suffix, and repeat `--supplemental-prow-config-dir` to load
+multiple directories. These are centrally managed configuration shards; updating
+a PR&#x27;s `.prow.yaml` does not configure Tide context policies.</code></pre>
+</li></ul>
+<h2>Resolved</h2>
+<p>The following suggestions were recorded by earlier reviews. They are retained as history and closed as findings during the earlier defect-first review because they do not demonstrate actionable regressions. This disposition does not claim that code changes addressed them.</p>
 <h3><span class="tag c-gray">nit</span>Include the earlier shard in conflict diagnostics</h3>
 <ul>
 <li>where: <code>pkg/config/tide.go:408-409</code>
@@ -85,17 +113,51 @@ gate:
     errs = append(errs, fmt.Errorf(&quot;%s: conflicting values for %s&quot;, scope, field.name))
 }</code></pre>
 </li></ul>
+<h3><span class="tag c-gray">nit</span>Factor policy merging into named helpers</h3>
+<ul>
+<li>where: <code>pkg/config/tide.go:396-412</code>
+</li>
+<li>concern: In an inline comment on 2026-10-15, @Prucek suggested moving the closure into a separate function and factoring the merge method, which currently handles policy conflict checks and nested org/repo/branch map traversal. Named helpers could make the merge flow easier to follow.
+</li>
+<li>excerpt:<pre><code>mergePolicy := func(a, b TideContextPolicy, scope string) TideContextPolicy {
+    if !isTideContextPolicySet(b) {
+        return a
+    }
+    for _, field := range []struct {
+        name string
+        a, b *bool</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">nit</span>Align the shard-scope test name with the validator</h3>
+<ul>
+<li>where: <code>cmd/checkconfig/main_test.go:2223</code>
+</li>
+<li>concern: @Prucek suggested naming the test after <code>validateAdditionalProwConfigIsInOrgRepoDirectoryStructure</code> or incorporating it into the existing suite. The current name describes the tested shard-scope behavior, so this is a naming consistency suggestion.
+</li>
+<li>excerpt:<pre><code>func TestValidateTideContextPolicyShardScope(t *testing.T) {</code></pre>
+</li></ul>
 <h2>Checked</h2>
 <ul>
-<li>Code quality review found no actionable correctness, safety, or performance issues.
+<li>Three independent reviewers assessed code quality, long-term maintainability, and deployment risk. No concern was independently flagged by multiple reviewers.
 </li>
-<li>The merge path preserves existing context policies, unions lists, rejects same-scope boolean conflicts, and leaves hierarchical inheritance in the existing resolver.
+<li>Verified that the checked-out code matches PR head <code>e7d18e7ad8ef2a600ba9aa778cd600e53993d418</code>, excluding review artifacts. Local HEAD <code>c4d61699e162229711763df48843dab362218cb0</code> adds only a review-artifact commit; <code>head_sha</code> identifies the actual reviewed PR head.
 </li>
-<li>Deployment review found the change opt-in and backward-compatible for existing main-config YAML; operators adding supplemental policies should run <code>checkconfig</code>.
+<li>No existing configuration fields, defaults, permissions, external dependencies, or component lifecycle behavior changed.
 </li>
-<li>Rolling back to a binary without this change requires removing <code>tide.context_options</code> from supplemental files.
+<li>Users adopting many small shards may measure reload duration: each nonempty shard rebuilds accumulated maps. No performance regression was demonstrated, so this is an operational consideration rather than a finding.
 </li>
-<li>The PR description reports targeted tests and lint passing; tests were not rerun during this review.
+<li>Inspected the complete PR diff at <code>e7d18e7ad8ef2a600ba9aa778cd600e53993d418</code>; the local HEAD additionally contains a review-artifact commit.
+</li>
+<li>Followed supplemental loading through <code>ProwConfig.mergeFrom</code> and <code>Tide.mergeFrom</code>, before defaulting and component validation.
+</li>
+<li>Checked same-scope list unions, explicit false preservation, boolean conflict checks, nested map allocation, and empty merge-method handling.
+</li>
+<li>Traced global-to-branch inheritance through <code>ParseTideContextPolicyOptions</code> and effective context validation through <code>GetTideContextPolicy</code>.
+</li>
+<li>Checked <code>HasConfigFor</code>, global scope detection, and supplemental org/repo directory validation.
+</li>
+<li>Inspected added tests for loading, inheritance, lists, boolean conflicts, regex conflicts, and shard placement. Tests were not run; runtime behavior remains unverified by this review.
+</li>
+<li>Earlier gate and refresh metadata are retained as historical records; no new merge gate or CI assessment was performed.
 </li></ul>
 <h2>Open questions</h2>
 <p>None.</p>

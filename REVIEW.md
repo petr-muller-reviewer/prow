@@ -3,13 +3,40 @@ pr: kubernetes-sigs/prow#816
 title: "slackevents: alert on merged PRs with cncf-cla: no label"
 head_sha: 8491820a2ce9bf06e5e9c3dad7e12498ef702dab
 base: main
-reviewed_at: 2026-09-30T13:15:16Z
+reviewed_at: 2026-10-15T22:26:38Z
 verdict: request-changes
+gate:
+  decision: hold
+  gated_at: 2026-10-15T23:08:12Z
+  gated_head_sha: 8491820a2ce9bf06e5e9c3dad7e12498ef702dab
+  reviewed_head_sha: 8491820a2ce9bf06e5e9c3dad7e12498ef702dab
 refresh_log:
   - old_sha: 8491820a2ce9bf06e5e9c3dad7e12498ef702dab
     new_sha: 8491820a2ce9bf06e5e9c3dad7e12498ef702dab
     summary: "No code changes; incorporated local Slack test report, WIP removal, and new PR comments and labels."
+  - old_sha: 8491820a2ce9bf06e5e9c3dad7e12498ef702dab
+    new_sha: 8491820a2ce9bf06e5e9c3dad7e12498ef702dab
+    summary: "No code changes; recorded the author's October 15 review reminder."
 ---
+
+## Gate
+
+**hold** — fix incomplete channel delivery and misleading merge attribution before merging.
+
+The current PR head is unchanged from the reviewed head, `8491820a2ce9bf06e5e9c3dad7e12498ef702dab`. Both should-fix findings from `REVIEW.md` remain present in the current code. There are no submitted GitHub reviews or inline comments adding further gating concerns. The author's local Slack delivery report demonstrates the successful single-channel path, but does not resolve either finding. The full PR diff introduces optional configuration and an opt-in notification path without an identified breaking change for existing deployments.
+
+Gating list and findings disposition:
+
+- **not-addressed — Channel fanout short-circuits on first error** (source: `REVIEW.md`): `pkg/plugins/slackevents/slackevents.go:275-278` returns as soon as one `WriteMessage` call fails, skipping every later configured channel. This gates merge for deployments enabling CLA alerts with multiple channels. Attempt every channel and aggregate errors; add a test where an earlier channel fails and a later channel still receives its message (`pkg/plugins/slackevents/slackevents_test.go:374`).
+- **not-addressed — Alert message misattributes the merge to the PR author** (source: `REVIEW.md`): `pkg/plugins/slackevents/slackevents.go:268-273` formats "merged ... by" with `PullRequest.User.Login`, the author. This gates merge because every enabled alert can name the wrong merger. Reword the message to identify the author explicitly (for example, "opened by") and update the expected message in the test. The current `github.PullRequest` type does not expose `MergedBy`, so the earlier suggestion cannot be applied directly without extending that type.
+
+Evidence correction: the earlier fanout finding incorrectly claimed that `notifyOnSlackIfManualMerge` already aggregates errors. Its current loop at `pkg/plugins/slackevents/slackevents.go:173-176` also returns on the first error. The CLA delivery defect stands independently of that inaccurate precedent.
+
+Independent merge risk:
+
+- **API/config:** `pkg/plugins/config.go:629-635` adds optional `Slack.CLAAlerts` (`claalerts,omitempty`), and `pkg/plugins/config.go:855-862` adds `CLAAlert`. No existing exported fields, signatures, configuration keys, or defaults are removed or changed. Existing deployments without matching CLA alert configuration return before making a Slack call (`pkg/plugins/slackevents/slackevents.go:255-260`); no coordinated rollout or migration is indicated.
+- **Behavior:** `pkg/plugins/slackevents/slackevents.go:58` registers a new pull-request handler. Slack output requires a closed, merged PR, matching explicit repo/org configuration, and the `cncf-cla: no` label. The delivery and attribution risks above affect those opted-in repositories and channels. Existing push and comment behavior is unchanged by the diff.
+- **Configuration pitfalls, non-gating:** matching is case-sensitive (`pkg/plugins/slackevents/slackevents.go:287-298`), and empty channel lists silently send nothing (`pkg/plugins/config.go:861`). These affect newly configured CLA alerts; they do not change behavior for existing configurations. No relevant compatibility-specific repository skill was available; this assessment used the full PR diff and current source.
 
 ## What this PR does
 Adds `plugins.CLAAlert` config (repo/org-scoped Slack channel list) and a new `PullRequestEvent` handler in `slackevents`. On merge, if the PR carries `cncf-cla: no` and repo/org has a configured `CLAAlert`, posts a Slack message to each configured channel. Includes help-provider/doc updates and 9 unit test cases.
@@ -20,6 +47,9 @@ Since previous review:
 - No code changes: `8491820a2ce9bf06e5e9c3dad7e12498ef702dab` remains the PR head.
 - On 2026-09-29, AaruniAggarwal removed `[WIP]` from the title; the `do-not-merge/work-in-progress` label was removed. The author reported a successful local merge test and showed the bot's `WriteMessage` log and Slack alert. This confirms the basic delivery path but does not test multi-channel failure handling or merge attribution when author and merger differ.
 - The author requested a review on 2026-09-29. On 2026-09-30, petr-muller commented `/ok-to-test`, and the bot added `ok-to-test` and removed `needs-ok-to-test`. There are no new inline comments or submitted reviews.
+
+Since previous review (2026-09-30):
+- No code or PR state changes. On 2026-10-15 at 08:20 UTC, AaruniAggarwal [reminded petr-muller to review](https://github.com/kubernetes-sigs/prow/pull/816#issuecomment-6187720889). No new inline comments, submitted reviews, or label changes followed.
 
 ## Findings
 

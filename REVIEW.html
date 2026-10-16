@@ -1,81 +1,193 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>Review of kubernetes-sigs/prow#905</title>
-<style>
-  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-         line-height: 1.6; color: #1a1a1a; max-width: 860px; margin: 2rem auto; padding: 0 1.5rem; }
-  code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
-  code { background: #f2f2f2; padding: 0.1em 0.35em; border-radius: 3px; font-size: 0.92em; }
-  pre { background: #f6f6f6; padding: 0.8em 1em; border-radius: 6px; overflow-x: auto; border: 1px solid #e5e5e5; }
-  h1 { font-size: 1.5rem; margin-bottom: 0.2rem; }
-  h2 { font-size: 1.15rem; margin-top: 2rem; border-bottom: 1px solid #ddd; padding-bottom: 0.3rem; }
-  .meta { color: #555; font-size: 0.92rem; margin-bottom: 1.5rem; }
-  .meta a { color: #0969da; }
-  .verdict { font-weight: 600; padding: 0.7em 1em; border-radius: 6px; background: #dafbe1; border: 1px solid #7ee2a8; display: inline-block; }
-  ul { padding-left: 1.4rem; }
-  li { margin-bottom: 0.4rem; }
-  .none { color: #666; font-style: italic; }
-</style>
-</head>
-<body>
-
-<h1>Review of PR #905</h1>
-<div class="meta">
-  <a href="https://github.com/kubernetes-sigs/prow/pull/905">kubernetes-sigs/prow#905</a> —
-  "chore(deps): bump github.com/golangci/golangci-lint/v2 from 2.12.2 to 2.13.1 in /hack/tools"<br>
-  head: <code>72c049d2b66a42a7a998e07246cd38bce3e9c754</code> · base: <code>main</code> · reviewed: 2026-08-30T17:39:07Z
-</div>
-
-<p class="verdict">Verdict: approve</p>
-<p>Straightforward dependency bump of a dev-only build tool, well within an acceptable soak window and with no
-security-relevant changelog. The three accompanying code adaptations are correct, narrowly scoped fixes for
-newly-surfaced lint findings, not incidental drive-by changes.</p>
-
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#905</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>chore(deps): bump github.com/golangci/golangci-lint/v2 from 2.12.2 to 2.13.1 in /hack/tools</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/905">kubernetes-sigs/prow#905</a> · base <code>main</code> · head_sha <code>72c049d2b66a</code> · reviewed_at <code>2026-08-30T17:39:07Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span></div>
 <h2>What this PR does</h2>
 <ul>
-  <li>Bumps <code>github.com/golangci/golangci-lint/v2</code> from <code>v2.12.2</code> to <code>v2.13.1</code> in
-      <code>hack/tools/go.mod</code>/<code>go.sum</code> (direct dependency of the separate build-tooling module,
-      plus the usual transitive churn of golangci-lint's own dependencies).</li>
-  <li>Narrows the <code>staticcheck</code> exclude regex in <code>.golangci.yml:41</code> from a message-specific
-      match to a looser <code>SA1019: .*TrustedOrg is deprecated</code> pattern, to keep matching after upstream
-      reworded the deprecation string.</li>
-  <li>Migrates <code>cmd/deck/main.go:1364-1370</code> from the deprecated
-      <code>httputil.ReverseProxy.Director</code> field to <code>.Rewrite</code>, newly flagged by the updated
-      linter set.</li>
-  <li>Adds a documented <code>//nolint:staticcheck</code> on <code>pkg/io/credentials.go:34</code> for
-      <code>CredentialsFile</code> (SA1019), also newly surfaced by the bump.</li>
-</ul>
-
+<li>Bumps <code>github.com/golangci/golangci-lint/v2</code> from <code>v2.12.2</code> to <code>v2.13.1</code> in <code>hack/tools/go.mod</code>/<code>go.sum</code> (direct dependency of the separate build-tooling module, plus the usual transitive churn of golangci-lint's own dependencies).
+</li>
+<li>Narrows the <code>staticcheck</code> exclude regex in <code>.golangci.yml:41</code> from a message-specific match to a looser <code>SA1019: .*TrustedOrg is deprecated</code> pattern, to keep matching after upstream reworded the deprecation string.
+</li>
+<li>Migrates <code>cmd/deck/main.go:1364-1370</code> from the deprecated <code>httputil.ReverseProxy.Director</code> field to <code>.Rewrite</code>, newly flagged by the updated linter set.
+</li>
+<li>Adds a documented <code>//nolint:staticcheck</code> on <code>pkg/io/credentials.go:34</code> for <code>CredentialsFile</code> (SA1019), also newly surfaced by the bump.
+</li></ul>
 <h2>Findings</h2>
-<p class="none">None.</p>
-
-<h2>Things I checked and was fine with</h2>
+<p>None.</p>
+<h2>Checked</h2>
 <ul>
-  <li>Freshness: <code>v2.13.1</code> tagged 2026-08-20 (verified via <code>proxy.golang.org</code> and
-      <code>gh release view</code>) — 10 days old, real tag (not a pseudo-version). Acceptable soak time for a
-      dev-only tool.</li>
-  <li>Usage/exposure: <code>golangci-lint/v2</code> is a direct dependency of <code>hack/tools/go.mod</code>,
-      referenced only via the tool-pinning pattern in <code>hack/tools/tools.go</code>. Build/CI tooling only, not
-      linked into any shipped binary — no production exposure.</li>
-  <li>Changelog (<code>v2.12.2</code>→<code>v2.13.0</code>→<code>v2.13.1</code>): almost entirely bot bumps of
-      golangci-lint's own internal linter deps, plus minor fixes (package-facts caching, <code>funcorder</code>/
-      <code>gomoddirectives</code> field additions, go1.27 support, a new <code>goconst</code> option). No CVEs,
-      no security-relevant changes.</li>
-  <li><code>cmd/deck/main.go</code> <code>Director</code>→<code>Rewrite</code> migration: no remaining
-      <code>Director:</code> usages in the repo; the new code sets <code>pr.Out.URL</code>/<code>.ContentLength</code>/
-      <code>.Body</code>, the doc-recommended replacement, semantically equivalent to the old full-replacement
-      <code>Director</code> body.</li>
-  <li><code>pkg/io/credentials.go</code> nolint: justification in the comment (operator-supplied flag, not
-      untrusted input; no single replacement API covers all credential types accepted here) is sound, not a blind
-      suppression.</li>
-  <li><code>.golangci.yml</code> regex narrowing still scopes only to <code>TrustedOrg</code>-related
-      <code>SA1019</code> findings — no risk of over-broadly suppressing unrelated staticcheck hits.</li>
-</ul>
-
-<h2>Open questions for the author</h2>
-<p class="none">None.</p>
-
-</body>
-</html>
+<li>Freshness: <code>v2.13.1</code> tagged 2026-08-20 (verified via <code>proxy.golang.org</code> and <code>gh release view</code>) — 10 days old, real tag (not a pseudo-version). Acceptable soak time for a dev-only tool.
+</li>
+<li>Usage/exposure: <code>golangci-lint/v2</code> is a direct dependency of <code>hack/tools/go.mod</code>, referenced only via the tool-pinning pattern in <code>hack/tools/tools.go</code> (<code>grep -rln &quot;github.com/golangci/golangci-lint&quot; --include=&#x27;*.go&#x27; .</code> → only that file). Build/CI tooling only, not linked into any shipped binary — no production exposure.
+</li>
+<li>Changelog (<code>v2.12.2</code>→<code>v2.13.0</code>→<code>v2.13.1</code>): almost entirely bot bumps of golangci-lint's own internal linter deps, plus minor fixes (package-facts caching, <code>funcorder</code>/<code>gomoddirectives</code> field additions, go1.27 support, a new <code>goconst</code> option). No CVEs, no security-relevant changes.
+</li>
+<li><code>cmd/deck/main.go</code> <code>Director</code>→<code>Rewrite</code> migration: <code>grep -rn &quot;Director:&quot; --include=&#x27;*.go&#x27; .</code> returns no remaining hits; the new code sets <code>pr.Out.URL</code>/<code>.ContentLength</code>/<code>.Body</code>, which is the doc-recommended replacement and semantically equivalent to the old full-replacement <code>Director</code> body.
+</li>
+<li><code>pkg/io/credentials.go</code> nolint: justification in the comment (operator-supplied flag, not untrusted input; no single replacement API covers all credential types accepted here) is sound, not a blind suppression.
+</li>
+<li><code>.golangci.yml</code> regex narrowing still scopes only to <code>TrustedOrg</code>-related <code>SA1019</code> findings — no risk of over-broadly suppressing unrelated staticcheck hits.
+</li></ul>
+<h2>Open questions</h2>
+<p>None.</p>
+<h2>Dependency followups</h2>
+<p>Examined on 2026-10-16T00:19:00Z. No concrete opportunities identified; no items or handoff prompts recorded.</p>
+<p>PR #905 merged on 2026-08-26 at <code>7f1a03797ffbc75d8c54bc1adba0a045ef91669e</code>. Scope: the Go tooling dependency bump and the capabilities it adds at PR head <code>72c049d2b66a42a7a998e07246cd38bce3e9c754</code>. Since the merged head is already an ancestor of <code>upstream/main</code>, the ordinary merge-base is the PR head itself; the dependency inventory instead uses GitHub's recorded PR base <code>9a587d94024f159171ab0d71c8482cf2b064bc16</code> to avoid an empty post-merge diff. The local review commit is excluded.</p>
+<h3>Changelogs cross-referenced with Prow usage</h3>
+<ul>
+<li><code>github.com/golangci/golangci-lint/v2</code> <strong>v2.12.2 → v2.13.1</strong> (direct): reviewed both intervening releases, <a href="https://github.com/golangci/golangci-lint/releases/tag/v2.13.0">v2.13.0</a> and <a href="https://github.com/golangci/golangci-lint/releases/tag/v2.13.1">v2.13.1</a>, and the <a href="https://golangci-lint.run/docs/product/changelog/#v2130">curated changelog</a>. Prow pins the command in <code>hack/tools/tools.go:25</code> and runs it through <code>hack/make-rules/verify/golangci-lint.sh:37</code>. New settings for goconst, gomoddirectives, exhaustruct and other disabled linters have no existing configuration to migrate; cache fixes apply automatically. Go 1.27 support alone provides no concrete followup for this Go 1.26 codebase.
+</li>
+<li><code>golang.org/x/tools</code> <strong>v0.48.0 → v0.49.0</strong> (indirect, used through enabled govet/modernize): read the <a href="https://github.com/golang/tools/compare/v0.48.0...v0.49.0">commit range</a>. The new <a href="https://github.com/golang/tools/commit/cd7d17b664fc3769ed34b444294ccb2eb2e3310e">reflecttypeassert analyzer</a> targets two-result assertions on <code>reflect.Value.Interface()</code>. The only immediate assertion in Prow is the single-result assertion in <code>pkg/github/client_test.go:3438</code>, which the analyzer deliberately excludes to preserve panic behavior; the calls in <code>pkg/genyaml/populate_struct.go</code> do not perform such assertions. The new <a href="https://github.com/golang/tools/commit/63ec6f9ccb03c2a50c7e30d4e0ad29bf301e6d36">slicesclip analyzer</a> targets <code>s[:len(s):len(s)]</code>; no matching capacity-clipping expressions were found. Both analyzers are enabled automatically through modernize's suite; <code>.golangci.yml:24</code> only disables <code>omitzero</code>. Remaining changes fix analyzer behavior or documentation, with no matching suppression to remove.
+</li>
+<li><code>honnef.co/go/tools</code> <strong>v0.7.0 → v0.8.0</strong> (indirect, enabled staticcheck/unused): read <a href="https://github.com/dominikh/go-tools/releases/tag/2026.2">Staticcheck 2026.2 release notes</a>. SA9010 is covered by the existing <code>checks: all</code> configuration. SA1019 struct-initializer detection and diagnostic formatting are already addressed in this PR's ReverseProxy migration, CredentialsFile suppression and TrustedOrg exclusion. SA5011's removal does not require adding the suggested nilness replacement: govet's nilness analyzer is already explicitly enabled in <code>.golangci.yml:10</code>. Existing staticcheck suppressions concern real deprecations, not the generic/interface false positives improved by this release; none provides a concrete cleanup candidate.
+</li>
+<li><code>github.com/stretchr/testify</code> <strong>v1.12.0 → v1.12.1</strong> (indirect in tooling, imported by five Prow test files): read the <a href="https://github.com/stretchr/testify/releases/tag/v1.12.1">release</a> and <a href="https://github.com/stretchr/testify/compare/v1.12.0...v1.12.1">complete three-commit range</a>. This patch changes Testify's internal YAML dependency; it introduces no assertion API to adopt. Prow's separate root module already selects v1.12.1 at <code>go.mod:58</code>, unchanged by this PR.
+</li>
+<li><code>go.yaml.in/yaml/v3</code> <strong>v3.0.4 → v3.0.5</strong> (indirect in tooling, four Prow import sites): read the <a href="https://github.com/yaml/go-yaml/compare/v3.0.4...v3.0.5">complete ten-commit range</a> because no GitHub release entry exists for this tag. Changes retract invalid historical tags and update upstream tests/workflows; no new application API or behavior to adopt. Prow already selects v3.0.5 at <code>go.mod:62</code>, unchanged by this PR.
+</li></ul>
+<h3>Complete tooling manifest inventory</h3>
+<p>The following entries were inventoried from <code>hack/tools/go.mod</code>. Except for the direct command dependency, every changed entry is indirect. Pure transitive packages with no Prow imports were deprioritized rather than having every individual changelog read; analyzer packages exposed by the enabled linters were examined above. Adding a module path is distinguished from upgrading an existing path.</p>
+<ul>
+<li><code>4d63.com/gocheckcompilerdirectives</code>: <code>v1.3.0</code> → <code>v1.4.0</code> (indirect).
+</li>
+<li><code>charm.land/lipgloss/v2</code>: <code>v2.0.3</code> → <code>v2.0.6</code> (indirect).
+</li>
+<li><code>dev.gaijin.team/go/exhaustruct/v5</code>: <code>absent</code> → <code>v5.0.3</code> (indirect).
+</li>
+<li><code>dev.gaijin.team/go/golib</code>: <code>v0.6.0</code> → <code>v0.8.1</code> (indirect).
+</li>
+<li><code>github.com/Abirdcfly/dupword</code>: <code>v0.1.7</code> → <code>v0.1.8</code> (indirect).
+</li>
+<li><code>github.com/AlwxSin/noinlineerr</code>: <code>v1.0.5</code> → <code>v1.0.6</code> (indirect).
+</li>
+<li><code>github.com/Antonboom/errname</code>: <code>v1.1.1</code> → <code>v1.1.2</code> (indirect).
+</li>
+<li><code>github.com/Antonboom/nilnil</code>: <code>v1.1.1</code> → <code>v1.1.2</code> (indirect).
+</li>
+<li><code>github.com/ClickHouse/clickhouse-go-linter</code>: <code>v1.2.0</code> → <code>v1.2.1</code> (indirect).
+</li>
+<li><code>github.com/alecthomas/chroma/v2</code>: <code>v2.24.1</code> → <code>v2.27.0</code> (indirect).
+</li>
+<li><code>github.com/bombsimon/wsl/v5</code>: <code>v5.8.0</code> → <code>v5.9.0</code> (indirect).
+</li>
+<li><code>github.com/butuzov/mirror</code>: <code>v1.3.0</code> → <code>v1.3.3</code> (indirect).
+</li>
+<li><code>github.com/charmbracelet/ultraviolet</code>: <code>v0.0.0-20251205161215-1948445e3318</code> → <code>v0.0.0-20260811164956-006e29f97886</code> (indirect).
+</li>
+<li><code>github.com/charmbracelet/x/ansi</code>: <code>v0.11.7</code> → <code>v0.11.8</code> (indirect).
+</li>
+<li><code>github.com/dlclark/regexp2</code>: <code>v1.12.0</code> → <code>removed</code> (indirect).
+</li>
+<li><code>github.com/dlclark/regexp2/v2</code>: <code>absent</code> → <code>v2.2.1</code> (indirect).
+</li>
+<li><code>github.com/felixge/httpsnoop</code>: <code>v1.0.4</code> → <code>v1.1.0</code> (indirect).
+</li>
+<li><code>github.com/firefart/nonamedreturns</code>: <code>v1.0.6</code> → <code>v1.0.8</code> (indirect).
+</li>
+<li><code>github.com/ghostiam/protogetter</code>: <code>v0.3.20</code> → <code>v0.3.21</code> (indirect).
+</li>
+<li><code>github.com/go-critic/go-critic</code>: <code>v0.14.3</code> → <code>v0.14.4</code> (indirect).
+</li>
+<li><code>github.com/golangci/gofmt</code>: <code>v0.0.0-20250106114630-d62b90e6713d</code> → <code>v0.0.0-20260820135601-e84e05053792</code> (indirect).
+</li>
+<li><code>github.com/golangci/golangci-lint/v2</code>: <code>v2.12.2</code> → <code>v2.13.1</code> (direct).
+</li>
+<li><code>github.com/jgautheron/goconst</code>: <code>v1.10.0</code> → <code>v1.11.0</code> (indirect).
+</li>
+<li><code>github.com/kisielk/errcheck</code>: <code>v1.10.0</code> → <code>v1.20.0</code> (indirect).
+</li>
+<li><code>github.com/ldez/gomoddirectives</code>: <code>v0.8.0</code> → <code>v0.9.0</code> (indirect).
+</li>
+<li><code>github.com/lucasb-eyer/go-colorful</code>: <code>v1.4.0</code> → <code>v1.4.1</code> (indirect).
+</li>
+<li><code>github.com/mattn/go-colorable</code>: <code>v0.1.14</code> → <code>v0.1.15</code> (indirect).
+</li>
+<li><code>github.com/mattn/go-runewidth</code>: <code>v0.0.23</code> → <code>v0.0.24</code> (indirect).
+</li>
+<li><code>github.com/nunnatsa/ginkgolinter</code>: <code>v0.23.0</code> → <code>v0.24.0</code> (indirect).
+</li>
+<li><code>github.com/pelletier/go-toml/v2</code>: <code>v2.3.1</code> → <code>v2.4.3</code> (indirect).
+</li>
+<li><code>github.com/raeperd/recvcheck</code>: <code>v0.2.0</code> → <code>v0.3.0</code> (indirect).
+</li>
+<li><code>github.com/rogpeppe/go-internal</code>: <code>v1.14.1</code> → <code>v1.16.0</code> (indirect).
+</li>
+<li><code>github.com/santhosh-tekuri/jsonschema/v6</code>: <code>v6.0.2</code> → <code>v6.0.3</code> (indirect).
+</li>
+<li><code>github.com/securego/gosec/v2</code>: <code>v2.26.1</code> → <code>v2.28.0</code> (indirect).
+</li>
+<li><code>github.com/stretchr/testify</code>: <code>v1.12.0</code> → <code>v1.12.1</code> (indirect).
+</li>
+<li><code>github.com/uudashr/iface</code>: <code>v1.4.2</code> → <code>v1.5.0</code> (indirect).
+</li>
+<li><code>go.augendre.info/fatcontext</code>: <code>v0.9.0</code> → <code>v0.10.0</code> (indirect).
+</li>
+<li><code>go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp</code>: <code>v0.68.0</code> → <code>v0.69.0</code> (indirect).
+</li>
+<li><code>go.yaml.in/yaml/v3</code>: <code>v3.0.4</code> → <code>v3.0.5</code> (indirect).
+</li>
+<li><code>golang.org/x/exp/typeparams</code>: <code>v0.0.0-20260209203927-2842357ff358</code> → <code>v0.0.0-20260811152304-ee035b5b010f</code> (indirect).
+</li>
+<li><code>golang.org/x/mod</code>: <code>v0.38.0</code> → <code>v0.40.0</code> (indirect).
+</li>
+<li><code>golang.org/x/tools</code>: <code>v0.48.0</code> → <code>v0.49.0</code> (indirect).
+</li>
+<li><code>google.golang.org/genproto/googleapis/rpc</code>: <code>v0.0.0-20260523011958-0a33c5d7ca68</code> → <code>v0.0.0-20260706201446-f0a921348800</code> (indirect).
+</li>
+<li><code>honnef.co/go/tools</code>: <code>v0.7.0</code> → <code>v0.8.0</code> (indirect).
+</li>
+<li><code>mvdan.cc/gofumpt</code>: <code>v0.9.2</code> → <code>v0.11.0</code> (indirect).
+</li>
+<li><code>mvdan.cc/unparam</code>: <code>v0.0.0-20251027182757-5beb8c8f8f15</code> → <code>v0.0.0-20260818115549-3f964bcb5673</code> (indirect).
+</li></ul>
+<h3>Additional go.sum changes</h3>
+<p>The following eight modules change only in <code>hack/tools/go.sum</code>, not in its explicit requirements. These are checksum inventory changes and do not by themselves establish a change to Prow's runtime dependency selection. Of these modules, Prow directly imports only Cloud Auth and the Google API client: their root-module versions are already v0.23.2 and v0.293.0 respectively (<code>go.mod:6</code>, <code>go.mod:72</code>), newer than the tooling checksum ranges below. Their existing call sites, including <code>pkg/io/credentials.go:22</code> and <code>pkg/io/opener.go:39</code>, therefore gain no newly available runtime API from this PR. The other six modules have no direct Prow imports and were deprioritized.</p>
+<ul>
+<li><code>cloud.google.com/go/auth</code>: <code>v0.20.0</code> → <code>v0.21.0</code> (transitive checksum entries).
+</li>
+<li><code>github.com/go-quicktest/qt</code>: <code>v1.101.0</code> → <code>v1.102.0</code> (transitive checksum entries).
+</li>
+<li><code>github.com/google/pprof</code>: <code>v0.0.0-20260402051712-545e8a4df936</code> → <code>v0.0.0-20260709232956-b9395ee17fa0</code> (transitive checksum entries).
+</li>
+<li><code>github.com/googleapis/enterprise-certificate-proxy</code>: <code>v0.3.16</code> → <code>v0.3.18</code> (transitive checksum entries).
+</li>
+<li><code>github.com/googleapis/gax-go/v2</code>: <code>v2.22.0</code> → <code>v2.23.0</code> (transitive checksum entries).
+</li>
+<li><code>github.com/onsi/ginkgo/v2</code>: <code>v2.28.2</code> → <code>v2.32.0</code> (transitive checksum entries).
+</li>
+<li><code>github.com/onsi/gomega</code>: <code>v1.40.0</code> → <code>v1.42.1</code> (transitive checksum entries).
+</li>
+<li><code>google.golang.org/api</code>: <code>v0.283.0</code> → <code>v0.288.0</code> (transitive checksum entries).
+</li></ul>
+</main></body></html>

@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#1009</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>Allow sharding Tide context policies in supplemental config</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1009">kubernetes-sigs/prow#1009</a> · base <code>main</code> · head_sha <code>e7d18e7ad8ef</code> · reviewed_at <code>2026-10-15T23:33:49Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span><span class="badge c-green">gate: merge</span></div>
+<details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#1009
+title: &quot;Allow sharding Tide context policies in supplemental config&quot;
+head_sha: e7d18e7ad8ef2a600ba9aa778cd600e53993d418
+base: main
+reviewed_at: 2026-10-15T23:33:49Z
+verdict: approve
+gate:
+  decision: merge
+  gated_at: 2026-10-14T15:56:03Z
+  gated_head_sha: e7d18e7ad8ef2a600ba9aa778cd600e53993d418
+  reviewed_head_sha: e7d18e7ad8ef2a600ba9aa778cd600e53993d418
+refresh_log:
+  - old_sha: e7d18e7ad8ef2a600ba9aa778cd600e53993d418
+    new_sha: e7d18e7ad8ef2a600ba9aa778cd600e53993d418
+    at: 2026-10-15T17:32:12Z
+    summary: &quot;No code changes; captured three non-blocking inline review comments from @Prucek.&quot;</code></pre></details>
+<h2>Verdict</h2>
+<p>Approve with non-blocking suggestions.</p>
+<p>All three independent maintainer perspectives found no blockers: Code Quality and Maintainability recommend approval, maintenance burden is low, and deployment risk is low. The implementation preserves existing configurations and hierarchical inheritance while adding same-scope list unions and boolean conflict detection. The suggestions below are optional. Tests were inspected but not run, and the author's reported test, lint, and large-fixture results were not independently verified. Before adopting shards, upgrade every component consuming them; before rolling back, move supplemental policies back into the main configuration.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Accepts Tide context policies in supplemental configuration files.
+</li>
+<li>Combines context lists and rejects conflicting explicit booleans at matching global, org, repo, and branch scopes.
+</li>
+<li>Classifies context policies by org and repo for supplemental directory validation.
+</li>
+<li>Documents configuration flags, shard placement, and inheritance behavior.
+</li></ul>
+<h2>Findings</h2>
+<p>No blocking or should-fix findings. The following suggestions are optional.</p>
+<h3><span class="tag c-gray">nit</span>Exercise reverse shard order</h3>
+<ul>
+<li>where: <code>pkg/config/tide_test.go:2117-2123</code>
+</li>
+<li>concern: The current test checks unions and repeated shards in one order. Consider merging the same valid shards in reverse order and comparing results to directly protect the documented order independence.
+</li>
+<li>excerpt:<pre><code>incoming := options([]string{&quot;b&quot;, &quot;a&quot;, &quot;b&quot;})
+var merged TideContextPolicyOptions
+if err := merged.mergeFrom(incoming); err != nil {
+    t.Fatal(err)
+}
+if err := merged.mergeFrom(options([]string{&quot;z&quot;, &quot;a&quot;})); err != nil {</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">nit</span>Document the policy-field maintenance requirement</h3>
+<ul>
+<li>where: <code>pkg/config/tide.go:464-466</code>
+</li>
+<li>concern: This helper controls scope classification and whether an incoming policy is processed. Consider documenting that adding a serialized policy field also requires updating this helper and the merge logic.
+</li>
+<li>excerpt:<pre><code>func isTideContextPolicySet(policy TideContextPolicy) bool {
+    return policy.SkipUnknownContexts != nil || policy.FromBranchProtection != nil || policy.OverwritePendingContexts != nil ||
+        len(policy.RequiredContexts) &gt; 0 || len(policy.RequiredIfPresentContexts) &gt; 0 || len(policy.OptionalContexts) &gt; 0 || len(policy.OptionalRegexContexts) &gt; 0</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">nit</span>Document upgrade and rollback ordering</h3>
+<ul>
+<li>where: <code>site/content/en/docs/components/core/tide/config.md:171-177</code>
+</li>
+<li>concern: Older binaries reject context policies in supplemental files. Consider adding a deployment note to upgrade checkconfig and all configuration consumers before adopting shards, and to consolidate supplemental context policies into the main configuration before rolling back.
+</li>
+<li>excerpt:<pre><code>`tide.context_options` can be split across supplemental Prow config files. Pass
+`--supplemental-prow-config-dir=config/shards` to Tide and `checkconfig`, alongside
+their main `--config-path`. The directory is searched recursively for filenames
+ending in `_prowconfig.yaml`. Set `--supplemental-prow-configs-filename-suffix`
+to use a different suffix, and repeat `--supplemental-prow-config-dir` to load
+multiple directories. These are centrally managed configuration shards; updating
+a PR&#x27;s `.prow.yaml` does not configure Tide context policies.</code></pre>
+</li></ul>
+<h2>Resolved</h2>
+<p>The following suggestions were recorded by earlier reviews. They are retained as history and closed as findings during the earlier defect-first review because they do not demonstrate actionable regressions. This disposition does not claim that code changes addressed them.</p>
+<h3><span class="tag c-gray">nit</span>Include the earlier shard in conflict diagnostics</h3>
+<ul>
+<li>where: <code>pkg/config/tide.go:408-409</code>
+</li>
+<li>concern: When two supplemental files set different values for a boolean at the same scope, the error names the scope and field, but not the earlier file that supplied the conflicting value. Including both shard paths would make this easier to diagnose in large shard sets.
+</li>
+<li>excerpt:<pre><code>if field.a != nil &amp;&amp; field.b != nil &amp;&amp; *field.a != *field.b {
+    errs = append(errs, fmt.Errorf(&quot;%s: conflicting values for %s&quot;, scope, field.name))
+}</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">nit</span>Factor policy merging into named helpers</h3>
+<ul>
+<li>where: <code>pkg/config/tide.go:396-412</code>
+</li>
+<li>concern: In an inline comment on 2026-10-15, @Prucek suggested moving the closure into a separate function and factoring the merge method, which currently handles policy conflict checks and nested org/repo/branch map traversal. Named helpers could make the merge flow easier to follow.
+</li>
+<li>excerpt:<pre><code>mergePolicy := func(a, b TideContextPolicy, scope string) TideContextPolicy {
+    if !isTideContextPolicySet(b) {
+        return a
+    }
+    for _, field := range []struct {
+        name string
+        a, b *bool</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">nit</span>Align the shard-scope test name with the validator</h3>
+<ul>
+<li>where: <code>cmd/checkconfig/main_test.go:2223</code>
+</li>
+<li>concern: @Prucek suggested naming the test after <code>validateAdditionalProwConfigIsInOrgRepoDirectoryStructure</code> or incorporating it into the existing suite. The current name describes the tested shard-scope behavior, so this is a naming consistency suggestion.
+</li>
+<li>excerpt:<pre><code>func TestValidateTideContextPolicyShardScope(t *testing.T) {</code></pre>
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>Three independent reviewers assessed code quality, long-term maintainability, and deployment risk. No concern was independently flagged by multiple reviewers.
+</li>
+<li>Verified that the checked-out code matches PR head <code>e7d18e7ad8ef2a600ba9aa778cd600e53993d418</code>, excluding review artifacts. Local HEAD <code>c4d61699e162229711763df48843dab362218cb0</code> adds only a review-artifact commit; <code>head_sha</code> identifies the actual reviewed PR head.
+</li>
+<li>No existing configuration fields, defaults, permissions, external dependencies, or component lifecycle behavior changed.
+</li>
+<li>Users adopting many small shards may measure reload duration: each nonempty shard rebuilds accumulated maps. No performance regression was demonstrated, so this is an operational consideration rather than a finding.
+</li>
+<li>Inspected the complete PR diff at <code>e7d18e7ad8ef2a600ba9aa778cd600e53993d418</code>; the local HEAD additionally contains a review-artifact commit.
+</li>
+<li>Followed supplemental loading through <code>ProwConfig.mergeFrom</code> and <code>Tide.mergeFrom</code>, before defaulting and component validation.
+</li>
+<li>Checked same-scope list unions, explicit false preservation, boolean conflict checks, nested map allocation, and empty merge-method handling.
+</li>
+<li>Traced global-to-branch inheritance through <code>ParseTideContextPolicyOptions</code> and effective context validation through <code>GetTideContextPolicy</code>.
+</li>
+<li>Checked <code>HasConfigFor</code>, global scope detection, and supplemental org/repo directory validation.
+</li>
+<li>Inspected added tests for loading, inheritance, lists, boolean conflicts, regex conflicts, and shard placement. Tests were not run; runtime behavior remains unverified by this review.
+</li>
+<li>Earlier gate and refresh metadata are retained as historical records; no new merge gate or CI assessment was performed.
+</li></ul>
+<h2>Open questions</h2>
+<p>None.</p>
+</main></body></html>

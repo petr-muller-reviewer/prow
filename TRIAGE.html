@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#1011</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>cherrypicker: support applying PRs as a single squashed diff instead of per-commit git am</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/issues/1011">kubernetes-sigs/prow#1011</a> · main_sha <code>985126490281</code> · state <code>open</code> · labels <code>sig/testing</code> · triaged_at <code>2026-10-15T23:34:25Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: accepted</span></div>
+<details><summary>Full metadata</summary><pre><code>issue: kubernetes-sigs/prow#1011
+title: &quot;cherrypicker: support applying PRs as a single squashed diff instead of per-commit git am&quot;
+state: open
+labels: sig/testing
+main_sha: 9851264902811315625eb653081f981dfb499289
+triaged_at: 2026-10-15T23:34:25Z
+verdict: accepted
+advice:
+  advised_at: 2026-10-15T23:36:42Z
+  based_on_triaged_at: 2026-10-15T23:34:25Z</code></pre></details>
+<h2>Verdict</h2>
+<p><strong>accepted</strong> — This is an actionable feature request for Prow's cherrypicker external plugin. The per-commit <code>git am</code> behavior is confirmed in the current code, and the requested aggregate-diff mode could reduce conflict work. It needs repo-scoped configuration and decisions about source blobs and commit metadata before implementation.</p>
+<h2>What the issue reports</h2>
+<ul>
+<li>The cherrypicker currently fetches GitHub's patch and replays each source commit with <code>git am --3way</code>.
+</li>
+<li>A conflict in an intermediate commit can stop the cherry-pick even when resolving the PR's net change once would be practical.
+</li>
+<li>The author requests an optional squashed-diff mode that creates a single commit and preserves original authorship with co-author trailers.
+</li>
+<li>The issue cites kubernetes-sigs/kueue#17193 and PR #17200 as prior art for a manual cherry-pick script.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-amber">cause</span>The handler replays patch emails one commit at a time</h3>
+<ul>
+<li>detail: The handler passes the fetched patch to <code>r.Am</code>, which runs <code>git am --3way</code>; a failure aborts the current apply and the handler reports a conflict. This is the current design, not an unintended regression.
+</li>
+<li>evidence: <code>cmd/external-plugins/cherrypicker/server.go:615-631</code>; <code>pkg/git/v2/interactor.go:425-438</code>.
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>Cherrypicker apply path</h3>
+<ul>
+<li>where: <code>cmd/external-plugins/cherrypicker/server.go:569-616</code>
+</li>
+<li>excerpt:<pre><code>// Apply the patch.
+if err := r.Am(localPath); err != nil {
+    errs := []error{fmt.Errorf(&quot;failed to `git am`: %w&quot;, err)}</code></pre>
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>GitHub client already provides a pull request diff endpoint</h3>
+<ul>
+<li>where: <code>pkg/github/client.go:2559-2590</code>
+</li>
+<li>excerpt:<pre><code>accept:    &quot;application/vnd.github.diff&quot;,
+method:    http.MethodGet,
+path:      fmt.Sprintf(&quot;/repos/%s/%s/pulls/%d&quot;, org, repo, number),</code></pre>
+</li>
+<li>detail: The cherrypicker's local <code>githubClient</code> interface currently exposes the patch method, not the diff method.
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>Existing external-plugin configuration is routing-only</h3>
+<ul>
+<li>where: <code>pkg/plugins/config.go:171-182</code>
+</li>
+<li>excerpt:<pre><code>type ExternalPlugin struct {
+    Name     string   `json:&quot;name&quot;`
+    Endpoint string   `json:&quot;endpoint,omitempty&quot;`
+    Events   []string `json:&quot;events,omitempty&quot;`
+}</code></pre>
+</li>
+<li>detail: The cherrypicker's CLI flags are process-wide. A single boolean would affect every repository handled by that server. The issue needs a repo-scoped setting; the existing <code>external_plugins</code> entries do not pass arbitrary per-repository options to the server.
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>Git publisher can commit but has no sign-off option</h3>
+<ul>
+<li>where: <code>pkg/git/v2/publisher.go:52-68</code>
+</li>
+<li>excerpt:<pre><code>{&quot;add&quot;, &quot;--all&quot;},
+{&quot;commit&quot;, &quot;--message&quot;, title, &quot;--message&quot;, body, &quot;--author&quot;, fmt.Sprintf(&quot;%s &lt;%s&gt;&quot;, name, email)},</code></pre>
+</li>
+<li>detail: A one-commit mode needs an explicit decision about commit author, co-author trailers, and DCO sign-off, plus any publisher API support required.
+</li></ul>
+<h3><span class="tag c-blue">related-issue</span>Existing Prow cherrypicker issues are adjacent, not duplicates</h3>
+<ul>
+<li>ref: kubernetes-sigs/prow#500, kubernetes-sigs/prow#745
+</li>
+<li>relevance: #500 concerns original commit IDs in commit messages; #745 concerns a CRLF-related false conflict. Neither requests applying the PR net diff as one commit.
+</li></ul>
+<h3><span class="tag c-blue">related-issue</span>Kueue prior-art issue</h3>
+<ul>
+<li>ref: kubernetes-sigs/kueue#17193
+</li>
+<li>relevance: Cross-referenced by this issue; it asks for a manual cherry-pick script to operate on a squashed commit.
+</li></ul>
+<h3><span class="tag c-blue">related-pr</span>Kueue manual cherry-pick implementation</h3>
+<ul>
+<li>ref: kubernetes-sigs/kueue#17200
+</li>
+<li>relevance: Open PR that applies each PR's net diff once in a manual script. It is useful prior art but does not implement Prow's external plugin behavior.
+</li></ul>
+<h2>Resolved</h2>
+<p>No open questions have been resolved through implementation or reporter follow-up. The maintainer clarified that the mode must be selectable per repository, not as one process-wide switch.</p>
+<h2>Checked</h2>
+<ul>
+<li>Read issue #1011, its comments, labels, and timeline. The issue is open, labeled <code>sig/testing</code>, and has an <code>/assign</code> comment; no Prow PR referencing #1011 surfaced in the search.
+</li>
+<li>Queried cross-references and searched Prow issues for <code>cherrypicker squash</code>, <code>cherrypicker git am</code>, and <code>cherrypicker diff</code>.
+</li>
+<li>Reviewed Prow issues #500, #745, and #544. #500 and #745 are related but distinct; #544 is a separate completed request-processing bug.
+</li>
+<li>Read the cherrypicker handler, its CLI options, the GitHub diff/patch methods, the Git interactor and publisher, relevant tests, plugin configuration, and component documentation.
+</li>
+<li>Existing tests cover the format-patch/<code>git am</code> path; no test currently covers aggregate-diff apply, one-commit output, or its authorship/sign-off semantics.
+</li>
+<li>Read Kueue issue #17193 and open PR #17200. Git documents that <code>git apply --3way</code> requires the patch's base blobs to be locally available (<a href="https://git-scm.com/docs/git-apply">git-apply documentation</a>).
+</li></ul>
+<h2>Next steps</h2>
+<ul>
+<li>Decide where repo-scoped opt-in configuration lives. Current <code>external_plugins</code> configuration only routes events; adding a setting requires a dedicated cherrypicker config/allowlist or additional config plumbing.
+</li>
+<li>Define how the handler will make the diff's base blobs available for three-way apply, including for merged PRs and PRs whose base branch has advanced.
+</li>
+<li>Agree on the single commit's message, author, co-author trailers, and sign-off behavior.
+</li>
+<li>Add coverage for single- and multi-commit PRs, conflicts and cleanup, per-repo mode selection, and unchanged behavior for unconfigured repos; update the cherrypicker docs.
+</li>
+<li>Consider applying <code>kind/feature</code> and <code>area/plugins</code>; retain the current <code>sig/testing</code> label.
+</li></ul>
+<h2>Advice</h2>
+<h3>Add the feature and area labels</h3>
+<p><code>kind/feature</code> and <code>area/plugins</code> exist in the repository and are not on the issue. Keep the existing <code>sig/testing</code> label.</p>
+<pre><code>gh issue edit 1011 --repo kubernetes-sigs/prow --add-label &quot;kind/feature,area/plugins&quot;</code></pre>
+<p>No additional comment or milestone is suggested now. The issue remains open and assigned to <code>yindia</code>; the existing next steps capture the design questions. No Prow PR is linked or in flight. Kueue PR #17200 remains open as external prior art.</p>
+<h2>Open questions</h2>
+<ul>
+<li>Could we agree on the source and format for the per-repository opt-in? The existing external-plugin routing config does not provide custom settings to this server.
+</li>
+<li>Should the resulting commit include the PR author, each source commit author as <code>Co-authored-by</code>, and a <code>Signed-off-by</code> trailer?
+</li>
+<li>How should the diff's base blobs be fetched or retained so <code>git apply --3way</code> can use them on the target branch?
+</li></ul>
+</main></body></html>

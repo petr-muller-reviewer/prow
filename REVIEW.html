@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Review of kubernetes-sigs/prow#905</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+         line-height: 1.6; color: #1a1a1a; max-width: 860px; margin: 2rem auto; padding: 0 1.5rem; }
+  code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  code { background: #f2f2f2; padding: 0.1em 0.35em; border-radius: 3px; font-size: 0.92em; }
+  pre { background: #f6f6f6; padding: 0.8em 1em; border-radius: 6px; overflow-x: auto; border: 1px solid #e5e5e5; }
+  h1 { font-size: 1.5rem; margin-bottom: 0.2rem; }
+  h2 { font-size: 1.15rem; margin-top: 2rem; border-bottom: 1px solid #ddd; padding-bottom: 0.3rem; }
+  .meta { color: #555; font-size: 0.92rem; margin-bottom: 1.5rem; }
+  .meta a { color: #0969da; }
+  .verdict { font-weight: 600; padding: 0.7em 1em; border-radius: 6px; background: #dafbe1; border: 1px solid #7ee2a8; display: inline-block; }
+  ul { padding-left: 1.4rem; }
+  li { margin-bottom: 0.4rem; }
+  .none { color: #666; font-style: italic; }
+</style>
+</head>
+<body>
+
+<h1>Review of PR #905</h1>
+<div class="meta">
+  <a href="https://github.com/kubernetes-sigs/prow/pull/905">kubernetes-sigs/prow#905</a> —
+  "chore(deps): bump github.com/golangci/golangci-lint/v2 from 2.12.2 to 2.13.1 in /hack/tools"<br>
+  head: <code>72c049d2b66a42a7a998e07246cd38bce3e9c754</code> · base: <code>main</code> · reviewed: 2026-08-30T17:39:07Z
+</div>
+
+<p class="verdict">Verdict: approve</p>
+<p>Straightforward dependency bump of a dev-only build tool, well within an acceptable soak window and with no
+security-relevant changelog. The three accompanying code adaptations are correct, narrowly scoped fixes for
+newly-surfaced lint findings, not incidental drive-by changes.</p>
+
+<h2>What this PR does</h2>
+<ul>
+  <li>Bumps <code>github.com/golangci/golangci-lint/v2</code> from <code>v2.12.2</code> to <code>v2.13.1</code> in
+      <code>hack/tools/go.mod</code>/<code>go.sum</code> (direct dependency of the separate build-tooling module,
+      plus the usual transitive churn of golangci-lint's own dependencies).</li>
+  <li>Narrows the <code>staticcheck</code> exclude regex in <code>.golangci.yml:41</code> from a message-specific
+      match to a looser <code>SA1019: .*TrustedOrg is deprecated</code> pattern, to keep matching after upstream
+      reworded the deprecation string.</li>
+  <li>Migrates <code>cmd/deck/main.go:1364-1370</code> from the deprecated
+      <code>httputil.ReverseProxy.Director</code> field to <code>.Rewrite</code>, newly flagged by the updated
+      linter set.</li>
+  <li>Adds a documented <code>//nolint:staticcheck</code> on <code>pkg/io/credentials.go:34</code> for
+      <code>CredentialsFile</code> (SA1019), also newly surfaced by the bump.</li>
+</ul>
+
+<h2>Findings</h2>
+<p class="none">None.</p>
+
+<h2>Things I checked and was fine with</h2>
+<ul>
+  <li>Freshness: <code>v2.13.1</code> tagged 2026-08-20 (verified via <code>proxy.golang.org</code> and
+      <code>gh release view</code>) — 10 days old, real tag (not a pseudo-version). Acceptable soak time for a
+      dev-only tool.</li>
+  <li>Usage/exposure: <code>golangci-lint/v2</code> is a direct dependency of <code>hack/tools/go.mod</code>,
+      referenced only via the tool-pinning pattern in <code>hack/tools/tools.go</code>. Build/CI tooling only, not
+      linked into any shipped binary — no production exposure.</li>
+  <li>Changelog (<code>v2.12.2</code>→<code>v2.13.0</code>→<code>v2.13.1</code>): almost entirely bot bumps of
+      golangci-lint's own internal linter deps, plus minor fixes (package-facts caching, <code>funcorder</code>/
+      <code>gomoddirectives</code> field additions, go1.27 support, a new <code>goconst</code> option). No CVEs,
+      no security-relevant changes.</li>
+  <li><code>cmd/deck/main.go</code> <code>Director</code>→<code>Rewrite</code> migration: no remaining
+      <code>Director:</code> usages in the repo; the new code sets <code>pr.Out.URL</code>/<code>.ContentLength</code>/
+      <code>.Body</code>, the doc-recommended replacement, semantically equivalent to the old full-replacement
+      <code>Director</code> body.</li>
+  <li><code>pkg/io/credentials.go</code> nolint: justification in the comment (operator-supplied flag, not
+      untrusted input; no single replacement API covers all credential types accepted here) is sound, not a blind
+      suppression.</li>
+  <li><code>.golangci.yml</code> regex narrowing still scopes only to <code>TrustedOrg</code>-related
+      <code>SA1019</code> findings — no risk of over-broadly suppressing unrelated staticcheck hits.</li>
+</ul>
+
+<h2>Open questions for the author</h2>
+<p class="none">None.</p>
+
+</body>
+</html>

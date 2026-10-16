@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Review — kubernetes-sigs/prow#735</title>
+<style>
+  :root { --bg:#fbfbfa; --fg:#1e1e1c; --muted:#6b6b66; --rule:#dedcd6; --card:#fff; --accent:#7a4b1e; --should:#a35c00; --done:#6b6b66; }
+  * { box-sizing:border-box; } body { margin:0; padding:2.5rem 1.5rem 6rem; background:var(--bg); color:var(--fg); font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif; }
+  main { max-width:52rem; margin:0 auto; } code,pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; } code { background:#f2f1ed; padding:.1em .35em; border-radius:3px; font-size:.88em; } h1 { font-size:1.5rem; margin:0 0 .3rem; } h2 { font-size:1.15rem; margin:2.75rem 0 .9rem; padding-bottom:.35rem; border-bottom:2px solid var(--rule); } h3 { font-size:.98rem; margin:1.3rem 0 .5rem; } p { margin:.65rem 0; } ul { margin:.6rem 0; padding-left:1.35rem; } li { margin:.35rem 0; } .meta { color:var(--muted); font-size:.86rem; margin-bottom:1.75rem; } .meta div { margin:.15rem 0; } .verdict,.finding { background:var(--card); border:1px solid var(--rule); border-radius:5px; padding:1rem 1.2rem; margin:1.25rem 0; } .verdict { border-left:4px solid var(--accent); } .finding { padding:.9rem 1.1rem; } .tag { display:inline-block; font-size:.66rem; font-weight:700; letter-spacing:.07em; text-transform:uppercase; padding:.16em .5em; border-radius:3px; color:#fff; vertical-align:.15em; margin-right:.5rem; background:var(--should); } .done { background:var(--done); } .where { font-size:.82rem; color:var(--muted); } pre { background:#f2f1ed; padding:.85rem 1rem; overflow-x:auto; border-left:3px solid var(--rule); }
+</style>
+</head>
+<body><main>
+<h1>trigger: add /test-manual-required command</h1>
+<div class="meta">
+  <div><strong>PR:</strong> <a href="https://github.com/kubernetes-sigs/prow/pull/735">kubernetes-sigs/prow#735</a></div>
+  <div><strong>Head SHA:</strong> <code>dedd4fc90801a7b2c23936a9c53f2cb6a42e2e4f</code></div>
+  <div><strong>Base:</strong> <code>main</code></div>
+  <div><strong>Reviewed at:</strong> 2026-09-02T00:25:25Z</div>
+</div>
+<div class="verdict"><strong>Request changes — one required-context edge case remains.</strong><p>The PR has merged, but the saved review records the outstanding correctness issue below.</p></div>
+<h2>What this PR does</h2>
+<ul>
+  <li>Adds <code>/test-manual-required</code> to start manually triggered, non-optional presubmits without file-change conditions.</li>
+  <li>Forces selected jobs to run and wires the command into trigger matching and plugin help.</li>
+</ul>
+<p>Since previous review:</p>
+<ul>
+  <li>Renamed <code>/test-required</code>, removed status-context lookup, and implemented unconditional manual-job selection.</li>
+  <li>Updated unit and trigger-plugin coverage; the PR is now merged.</li>
+</ul>
+<h2>Findings</h2>
+<div class="finding">
+  <h3><span class="tag">should fix</span>Define “required” with <code>ContextRequired()</code></h3>
+  <div class="where"><code>pkg/pjutil/filter.go:276</code></div>
+  <p><code>!ps.Optional</code> still selects a <code>skip_report: true</code> manual job. It publishes no GitHub context, so it cannot be a required presubmit context. Use <code>ps.ContextRequired()</code> and add a <code>skip_report: true</code> regression case.</p>
+  <pre><code>if ps.Optional || !ps.NeedsExplicitTrigger() || ps.RunIfChanged != "" || ps.SkipIfOnlyChanged != "" {
+    return false, false, false
+}</code></pre>
+</div>
+<h3>Resolved</h3>
+<ul>
+  <li><span class="tag done">done</span><strong>Filter predicate should select manual jobs and force them</strong> — addressed in <code>dedd4fc90</code>: it requires <code>NeedsExplicitTrigger()</code>, excludes change matchers, forces matching jobs, and no longer fetches status contexts.</li>
+  <li><span class="tag done">done</span><strong>Command name was misleading</strong> — addressed in <code>dedd4fc90</code> by renaming it to <code>/test-manual-required</code>.</li>
+  <li><span class="tag done">done</span><strong>Tests needed to reflect the manual-only selection</strong> — addressed in <code>dedd4fc90</code>.</li>
+</ul>
+<h2>Checked</h2>
+<ul>
+  <li><code>NeedsExplicitTrigger()</code> excludes <code>always_run</code> and file-conditional jobs; explicit matcher checks are redundant but correct.</li>
+  <li>Filter ordering, command recognition, help pruning, and help-provider wiring are correct.</li>
+  <li>The focused refresh diff is 78 additions / 101 deletions across five trigger and pjutil files.</li>
+</ul>
+<h2>Activity since previous review</h2>
+<ul>
+  <li>2026-08-10: Amulyam24 pushed <code>dedd4fc90</code>, implementing the discussed design and rename.</li>
+  <li>2026-08-11 and 2026-08-13: petr-muller and Amulyam24 confirmed trusted-member behavior matches <code>/test</code>.</li>
+  <li>2026-08-19: petr-muller submitted an approval; the PR is now merged.</li>
+</ul>
+</main></body></html>

@@ -169,6 +169,30 @@ After PR #691 merges, carry over the strongest additions from closed PR #622:
 - Expand the flag reference where useful, while retaining a focused operator-facing page.
 - Preserve the `max_pod_age` qualification: it is based on pod start time and does not delete pods whose associated ProwJob is still active.
 
+## Followups
+
+### Document orphaned-pod cleanup and `max_pod_age` behavior
+
+- category: docs
+- where: `site/content/en/docs/components/core/sinker.md:17-22`
+- necessity: should
+- mode: deliver
+
+```text
+In kubernetes-sigs/prow, following PR #691 — "Document sinker component" (merge commit ffc57790ba3e94ab2081a4a5d498d8baba5db8f1), update site/content/en/docs/components/core/sinker.md to accurately describe Sinker pod cleanup.
+
+Task:
+- Document that Sinker removes orphaned pods whose associated ProwJob no longer exists.
+- Clarify that max_pod_age is measured from pod start time and age-based deletion applies only after the associated ProwJob is complete; orphaned pods are cleaned independently.
+- Verify the behavior against cmd/sinker/main.go.
+
+Acceptance criteria:
+- The cleanup section distinguishes age-based, terminated-ProwJob TTL, and orphaned-pod cleanup.
+- The age and completion conditions match the implementation.
+
+Scope guard: documentation-only change to the Sinker page. Do not change Sinker runtime behavior or unrelated documentation.
+```
+
 ## Reviewer Actions
 
 ### Before approving

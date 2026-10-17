@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Review of kubernetes-sigs/prow#898</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+         line-height: 1.6; color: #1a1a1a; max-width: 860px; margin: 2rem auto; padding: 0 1.5rem; }
+  code, pre { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; }
+  code { background: #f2f2f2; padding: 0.1em 0.35em; border-radius: 3px; font-size: 0.92em; }
+  pre { background: #f6f6f6; padding: 0.8em 1em; border-radius: 6px; overflow-x: auto; }
+  h1 { font-size: 1.5rem; }
+  h2 { font-size: 1.15rem; margin-top: 2rem; border-bottom: 1px solid #ddd; padding-bottom: 0.3rem; }
+  .meta { color: #555; font-size: 0.92rem; }
+  .verdict { display: inline-block; padding: 0.2em 0.7em; border-radius: 4px; font-weight: 600; }
+  .verdict.approve { background: #e3f7e6; color: #1a7431; }
+  ul { padding-left: 1.4rem; }
+  li { margin-bottom: 0.3rem; }
+</style>
+</head>
+<body>
+
+<h1>Review of PR #898</h1>
+<p class="meta">
+  <a href="https://github.com/kubernetes-sigs/prow/pull/898">kubernetes-sigs/prow#898</a> —
+  chore(deps): bump github.com/andygrunwald/go-gerrit from 1.1.1 to 1.2.0<br>
+  head_sha: <code>1e7ec7246542b8705aa984338efd72f6db3e0c61</code> · base: <code>main</code> ·
+  reviewed_at: 2026-09-01T00:16:28Z
+</p>
+
+<p><span class="verdict approve">APPROVE</span></p>
+<p>Dep-only bump, purely additive changelog, no CVEs, no project code affected. The only
+knock is process — go-gerrit v1.2.0 was only 4 days old when this was merged, under the
+usual freshness bar for a direct dependency on a core code path — but nothing has surfaced
+since.</p>
+
+<h2>What this PR does</h2>
+<ul>
+  <li>Bumps direct dependency <code>github.com/andygrunwald/go-gerrit</code> v1.1.1 → v1.2.0.</li>
+  <li>Transitively bumps indirect dependency <code>github.com/google/go-querystring</code> v1.1.0 → v1.2.0.</li>
+  <li>Touches only <code>go.mod</code> and <code>go.sum</code> — no project source changes.</li>
+  <li>go-gerrit is used across a heavy, core surface: Gerrit client/adapter/fakegerrit, crier's Gerrit reporter, and tide's Gerrit codereview logic.</li>
+  <li>New release is additive-only (new fields/context helper); one flagged breaking-shape change (<code>ReviewerInput</code> unkeyed literals) doesn't apply — we never construct that struct.</li>
+</ul>
+
+<h2>Findings</h2>
+<p>None.</p>
+
+<h2>Things I checked and was fine with</h2>
+<ul>
+  <li><code>go.mod</code>/<code>go.sum</code> diff — only the two module version bumps, nothing else.</li>
+  <li>Freshness of go-gerrit v1.2.0 via the Go module proxy — real tag (<code>refs/tags/v1.2.0</code>), released 2026-08-22, not a pseudo-version.</li>
+  <li>Import surface of both bumped modules via grep outside <code>vendor/</code>.</li>
+  <li>go-gerrit's v1.2.0 release notes and commit range v1.1.1...v1.2.0 for breaking changes or CVEs — none found.</li>
+  <li>Usage of <code>ReviewerInput</code> in project code — zero hits outside vendor, so the one breaking-shape change in the release doesn't affect us.</li>
+</ul>
+
+<h2>Open questions for the author</h2>
+<p>None.</p>
+
+</body>
+</html>

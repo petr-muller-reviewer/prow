@@ -1,62 +1,67 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>Review of kubernetes-sigs/prow#898</title>
-<style>
-  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-         line-height: 1.6; color: #1a1a1a; max-width: 860px; margin: 2rem auto; padding: 0 1.5rem; }
-  code, pre { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; }
-  code { background: #f2f2f2; padding: 0.1em 0.35em; border-radius: 3px; font-size: 0.92em; }
-  pre { background: #f6f6f6; padding: 0.8em 1em; border-radius: 6px; overflow-x: auto; }
-  h1 { font-size: 1.5rem; }
-  h2 { font-size: 1.15rem; margin-top: 2rem; border-bottom: 1px solid #ddd; padding-bottom: 0.3rem; }
-  .meta { color: #555; font-size: 0.92rem; }
-  .verdict { display: inline-block; padding: 0.2em 0.7em; border-radius: 4px; font-weight: 600; }
-  .verdict.approve { background: #e3f7e6; color: #1a7431; }
-  ul { padding-left: 1.4rem; }
-  li { margin-bottom: 0.3rem; }
-</style>
-</head>
-<body>
-
-<h1>Review of PR #898</h1>
-<p class="meta">
-  <a href="https://github.com/kubernetes-sigs/prow/pull/898">kubernetes-sigs/prow#898</a> —
-  chore(deps): bump github.com/andygrunwald/go-gerrit from 1.1.1 to 1.2.0<br>
-  head_sha: <code>1e7ec7246542b8705aa984338efd72f6db3e0c61</code> · base: <code>main</code> ·
-  reviewed_at: 2026-09-01T00:16:28Z
-</p>
-
-<p><span class="verdict approve">APPROVE</span></p>
-<p>Dep-only bump, purely additive changelog, no CVEs, no project code affected. The only
-knock is process — go-gerrit v1.2.0 was only 4 days old when this was merged, under the
-usual freshness bar for a direct dependency on a core code path — but nothing has surfaced
-since.</p>
-
-<h2>What this PR does</h2>
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#898</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>chore(deps): bump github.com/andygrunwald/go-gerrit from 1.1.1 to 1.2.0</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/898">kubernetes-sigs/prow#898</a> · base <code>main</code> · head_sha <code>1e7ec7246542</code> · reviewed_at <code>2026-09-01T00:16:28Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span></div>
+<h2>Summary</h2>
+<p>Dependabot dep-only bump: <code>github.com/andygrunwald/go-gerrit</code> v1.1.1 → v1.2.0 (direct), which transitively pulls <code>github.com/google/go-querystring</code> v1.1.0 → v1.2.0 (indirect). Only <code>go.mod</code>/<code>go.sum</code> change; no project code touched. Already merged 2026-08-26.</p>
 <ul>
-  <li>Bumps direct dependency <code>github.com/andygrunwald/go-gerrit</code> v1.1.1 → v1.2.0.</li>
-  <li>Transitively bumps indirect dependency <code>github.com/google/go-querystring</code> v1.1.0 → v1.2.0.</li>
-  <li>Touches only <code>go.mod</code> and <code>go.sum</code> — no project source changes.</li>
-  <li>go-gerrit is used across a heavy, core surface: Gerrit client/adapter/fakegerrit, crier's Gerrit reporter, and tide's Gerrit codereview logic.</li>
-  <li>New release is additive-only (new fields/context helper); one flagged breaking-shape change (<code>ReviewerInput</code> unkeyed literals) doesn't apply — we never construct that struct.</li>
-</ul>
-
+<li>go-gerrit v1.2.0 released 2026-08-22; PR opened/merged only 4 days later — under the ~5-day freshness bar, though at +10 days now with no reported fallout.
+</li>
+<li>go-gerrit is a direct dep with a heavy import surface: <code>pkg/gerrit/client</code>, <code>pkg/gerrit/adapter</code>, <code>pkg/gerrit/fakegerrit</code>, <code>pkg/crier/reporters/gerrit</code>, <code>pkg/tide/{gerrit,codereview}</code>, plus integration tests.
+</li>
+<li>Changelog is purely additive: <code>WithRunAs</code> context (X-Gerrit-RunAs header), <code>ChangeInfo.CurrentRevisionNumber</code> field, new <code>State</code>/<code>Notify</code>/<code>NotifyDetails</code> fields on <code>ReviewerInput</code>. No CVEs, no behavior changes to existing client logic.
+</li>
+<li>Release notes flag a breaking-shape gotcha: <code>ReviewerInput</code> gained a <code>State</code> field inserted between <code>Reviewer</code> and <code>Confirmed</code>, breaking unkeyed struct literals. Grepped the project for <code>ReviewerInput</code> — zero hits outside vendor, so this doesn't affect us.
+</li>
+<li><code>go-querystring</code> v1.2.0 is indirect-only, not imported by our code — no further analysis needed.
+</li></ul>
 <h2>Findings</h2>
 <p>None.</p>
-
-<h2>Things I checked and was fine with</h2>
+<h2>Checked</h2>
 <ul>
-  <li><code>go.mod</code>/<code>go.sum</code> diff — only the two module version bumps, nothing else.</li>
-  <li>Freshness of go-gerrit v1.2.0 via the Go module proxy — real tag (<code>refs/tags/v1.2.0</code>), released 2026-08-22, not a pseudo-version.</li>
-  <li>Import surface of both bumped modules via grep outside <code>vendor/</code>.</li>
-  <li>go-gerrit's v1.2.0 release notes and commit range v1.1.1...v1.2.0 for breaking changes or CVEs — none found.</li>
-  <li>Usage of <code>ReviewerInput</code> in project code — zero hits outside vendor, so the one breaking-shape change in the release doesn't affect us.</li>
-</ul>
-
-<h2>Open questions for the author</h2>
+<li><code>go.mod</code>/<code>go.sum</code> diff — only the two module bumps, no other changes.
+</li>
+<li>Freshness of go-gerrit v1.2.0 via proxy.golang.org (real tag, not pseudo-version).
+</li>
+<li>Import surface of both bumped modules (<code>grep</code> outside vendor).
+</li>
+<li>go-gerrit release notes and commit range v1.1.1...v1.2.0 for breaking changes/CVEs.
+</li>
+<li>Usage of <code>ReviewerInput</code> in project code (none) — the one breaking-shape change in the release doesn't apply.
+</li></ul>
+<h2>Open questions</h2>
 <p>None.</p>
-
-</body>
-</html>
+<h2>Dependency followups</h2>
+<p>No concrete followup opportunities were identified. Examined <code>github.com/andygrunwald/go-gerrit</code> v1.1.1 → v1.2.0 and its transitive dependency <code>github.com/google/go-querystring</code> v1.1.0 → v1.2.0. The Gerrit release adds <code>WithRunAs</code>, <code>ChangeInfo.CurrentRevisionNumber</code>, and <code>ReviewerInput</code> fields, but this repository has no call sites using these additions or <code>ReviewerInput</code>; the querystring bump is indirect and the repository does not import it directly.</p>
+</main></body></html>

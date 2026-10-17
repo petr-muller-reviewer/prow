@@ -43,3 +43,7 @@ None.
 ## Open questions
 
 None.
+
+## Dependency followups
+
+No concrete followup opportunities were identified. Examined `github.com/andygrunwald/go-gerrit` v1.1.1 → v1.2.0 and its transitive dependency `github.com/google/go-querystring` v1.1.0 → v1.2.0. The Gerrit release adds `WithRunAs`, `ChangeInfo.CurrentRevisionNumber`, and `ReviewerInput` fields, but this repository has no call sites using these additions or `ReviewerInput`; the querystring bump is indirect and the repository does not import it directly.

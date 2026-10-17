@@ -34,3 +34,7 @@ None.
 ## Open questions
 
 None.
+
+## Dependency followups
+
+No opportunities identified. Examined `github.com/felixge/fgprof v0.9.1 → v0.9.5`: the upstream changes improve profiler internals and preserve the `Handler()` API used at `pkg/pjutil/pprof/pprof.go:55`, so they require no project-side migration. The bump also updates fgprof's `github.com/google/pprof` module requirement from `v0.0.0-20200615235658-03e1cf38a040` to `v0.0.0-20240227163752-401108e1b7e7`, but Prow already selected `v0.0.0-20250403155104-27863c87afa6` in the PR base; no effective transitive upgrade or Prow-owned pprof call site is introduced.

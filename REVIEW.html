@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Review: kubernetes-sigs/prow#874</title>
+  <style>
+    body { background: #f7f8fa; color: #1f2328; font-family: system-ui, sans-serif; line-height: 1.55; margin: 0; }
+    main { background: #fff; box-shadow: 0 1px 4px #0002; margin: 2rem auto; max-width: 54rem; padding: 2rem 2.5rem; }
+    h1 { margin-top: 0; } h2 { border-bottom: 1px solid #d0d7de; margin-top: 2rem; padding-bottom: .35rem; }
+    code { background: #f1f3f5; border-radius: 3px; font-family: ui-monospace, monospace; padding: .1em .25em; }
+    .meta { color: #57606a; } .verdict { border-left: 4px solid #1a7f37; padding-left: 1rem; }
+    a { color: #0969da; } li { margin: .35rem 0; }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Review: kubernetes-sigs/prow#874</h1>
+    <p class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/874">chore(deps): bump github.com/felixge/fgprof from 0.9.1 to 0.9.5</a><br>
+    Head: <code>76b0e291246201e190f5bd5a36e4a739a432f8ce</code> · Base: <code>main</code> · Reviewed: 2026-09-01T18:53:42Z</p>
+  </header>
+
+  <section>
+    <h2>Verdict: approve</h2>
+    <p class="verdict">This is a dependency-only update of a direct profiling dependency to a tagged release from 2024-08-30; Prow's sole integration is <code>fgprof.Handler()</code> on its dedicated profiling server, and the upstream changes do not alter that API.</p>
+  </section>
+
+  <section>
+    <h2>What this PR does</h2>
+    <ul>
+      <li>Updates <code>github.com/felixge/fgprof</code> from <code>v0.9.1</code> to <code>v0.9.5</code> in <code>go.mod</code>.</li>
+      <li>Regenerates <code>go.sum</code> for fgprof and its updated transitive module metadata.</li>
+      <li>Takes upstream profiler overhead and profile-metadata improvements.</li>
+      <li>Includes the upstream workaround for the Go 1.23 goroutine-profile regression.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Findings</h2>
+    <h3>Blocking</h3><p>None.</p>
+    <h3>Should fix</h3><p>None.</p>
+    <h3>Nits</h3><p>None.</p>
+    <h3>Questions</h3><p>None.</p>
+  </section>
+
+  <section>
+    <h2>Things I checked and were fine with</h2>
+    <ul>
+      <li>Classification: dependency-only; only <code>go.mod</code> and <code>go.sum</code> changed.</li>
+      <li>Freshness/provenance: <code>v0.9.5</code> is a non-pseudo tagged release published 2024-08-30, with ample soak time.</li>
+      <li>Usage: direct dependency, imported only by <code>pkg/pjutil/pprof/pprof.go:29</code>; its handler is registered at <code>pkg/pjutil/pprof/pprof.go:55</code> on the profiling server. The helper is shared by 18 binaries, but the imported surface is one diagnostic handler.</li>
+      <li>Upstream <code>v0.9.1...v0.9.5</code>: profiling/STW-overhead reductions, more accurate profile timing metadata, line-number support, <code>google/pprof</code> update, and the Go 1.23 workaround. No changed behavior affects Prow's <code>fgprof.Handler()</code> use.</li>
+      <li>No security advisory or CVE was announced in the upstream release notes or commit range.</li>
+      <li><code>git diff --check</code> passes.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Open questions for the author</h2>
+    <p>None.</p>
+  </section>
+</main>
+</body>
+</html>

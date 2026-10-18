@@ -1,19 +1,152 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><title>Review: kubernetes-sigs/prow#943</title><style>body{font:16px/1.55 system-ui,sans-serif;color:#1f2937;max-width:960px;margin:40px auto;padding:0 24px}code,pre{font-family:ui-monospace,SFMono-Regular,Consolas,monospace}code{background:#f3f4f6;padding:2px 4px;border-radius:3px}pre{background:#f8fafc;border-left:4px solid #94a3b8;padding:14px;overflow:auto}.meta{color:#4b5563}.verdict{border-left:5px solid #dc2626;background:#fef2f2;padding:16px}h2{margin-top:2em}.finding{border:1px solid #e5e7eb;padding:16px;margin:16px 0}.blocking{border-left:5px solid #dc2626}.shouldfix{border-left:5px solid #d97706}</style></head><body>
-<header><h1>Review: <a href="https://github.com/kubernetes-sigs/prow/pull/943">kubernetes-sigs/prow#943</a></h1><p class="meta">cherrypicker: attribute cherrypick labels to the user who added them<br>Head: <code>b94a0f19abf206f247b9b4bd5817295e47eb2960</code> · Base: <code>main</code> · Reviewed: 2026-09-22T00:31:46Z</p></header>
-<section><h2>Verdict: request changes</h2><div class="verdict">The implementation can attribute labels applied directly in GitHub by a human, but it cannot identify the human who issued Prow's normal <code>/label cherrypick/...</code> command: Prow performs the GitHub label mutation as its bot. Reconstructing provenance at merge time also adds a paginated GitHub issue-events lookup and silently falls back to the PR author when it fails.</div></section>
-<section><h2>What this PR does</h2><ul><li>Adds label-event lookup to the cherrypicker GitHub client.</li><li>Uses a label webhook sender, or an issue-event actor after merge, as the preferred requester.</li><li>Rejects bot actors and otherwise falls back to the PR author.</li><li>Adds unit coverage for direct human/bot actors and merged-PR label histories.</li></ul></section>
-<section><h2>Findings</h2><h3>Blocking</h3><article class="finding blocking"><h4>Does not preserve the requester for Prow <code>/label</code> commands</h4><p><code>cmd/external-plugins/cherrypicker/server.go:505-526; server.go:570-575; pkg/plugins/label/label.go:256</code></p><pre>// Labels are attributed to whoever added them, falling back to the PR author.
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#943</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>cherrypicker: attribute cherrypick labels to the user who added them</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/943">kubernetes-sigs/prow#943</a> · base <code>main</code> · head_sha <code>b94a0f19abf2</code> · reviewed_at <code>2026-10-16T22:49:12Z</code></div>
+<div class="badges"><span class="badge c-red">verdict: request-changes</span></div>
+<details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#943
+title: &quot;cherrypicker: attribute cherrypick labels to the user who added them&quot;
+head_sha: b94a0f19abf206f247b9b4bd5817295e47eb2960
+base: main
+reviewed_at: 2026-10-16T22:49:12Z
+verdict: request-changes
+refresh_log:
+  - old_sha: b94a0f19abf206f247b9b4bd5817295e47eb2960
+    new_sha: b94a0f19abf206f247b9b4bd5817295e47eb2960
+    summary: &quot;No code changes; recorded approval activity and merge.&quot;</code></pre></details>
+<h2>Verdict</h2>
+<p>Request changes. The implementation can attribute labels applied directly in GitHub by a human, but it cannot identify the human who issued Prow's normal <code>/label cherrypick/...</code> command: Prow performs the GitHub label mutation as its bot. Reconstructing provenance at merge time also adds a paginated GitHub issue-events lookup and silently falls back to the PR author when it fails.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Adds label-event lookup to the cherrypicker GitHub client.
+</li>
+<li>Uses a label webhook sender, or an issue-event actor after merge, as the preferred requester.
+</li>
+<li>Rejects bot actors and otherwise falls back to the PR author.
+</li>
+<li>Adds unit coverage for direct human/bot actors and merged-PR label histories.
+</li></ul>
+<p>Since previous review:</p>
+<ul>
+<li>No code changes: <code>b94a0f19abf206f247b9b4bd5817295e47eb2960</code> remains the PR head.
+</li>
+<li><code>matthyx</code> approved the PR on 2026-10-16T15:26:28Z; the PR merged via <code>app/kubernetes-prow</code> on 2026-10-16T15:48:12Z.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-red">blocking</span>Does not preserve the requester for Prow <code>/label</code> commands</h3>
+<ul>
+<li>where: <code>cmd/external-plugins/cherrypicker/server.go:505-526; cmd/external-plugins/cherrypicker/server.go:570-575; pkg/plugins/label/label.go:256</code>
+</li>
+<li>concern: The label plugin authorizes the human comment author but calls <code>AddLabel</code> with Prow's GitHub credential. GitHub therefore reports the Prow bot as the label actor. <code>labelRequester</code> rejects that bot and falls back to the PR author, so the common <code>/label cherrypick/...</code> workflow neither assigns the cherry-pick to the requester nor preserves the intended authorization semantics for non-member PR authors. Carry the human requester at command-processing time, or retain the prior author-attribution behavior.
+</li>
+<li>excerpt:<pre><code>// Labels are attributed to whoever added them, falling back to the PR author.
 events, err := s.ghc.ListIssueEvents(org, repo, num)
 ...
-if labelerOK && !s.isBot(labeler) {
+if labelerOK &amp;&amp; !s.isBot(labeler) {
     return labeler.Login, true
 }
-return prAuthor, labelerOK || isMember(prAuthor)</pre><p>The label plugin authorizes the human comment author but calls <code>AddLabel</code> with Prow's GitHub credential. GitHub therefore reports the Prow bot as the label actor. <code>labelRequester</code> rejects that bot and falls back to the PR author, so the common <code>/label cherrypick/...</code> workflow neither assigns the cherry-pick to the requester nor preserves the intended authorization semantics for non-member PR authors. Carry the human requester at command-processing time, or retain the prior author-attribution behavior.</p></article><h3>Should fix</h3><article class="finding shouldfix"><h4>Avoid merge-time issue-history scans for requester provenance</h4><p><code>cmd/external-plugins/cherrypicker/server.go:505-516</code></p><pre>events, err := s.ghc.ListIssueEvents(org, repo, num)
+return prAuthor, labelerOK || isMember(prAuthor)</code></pre>
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>Avoid merge-time issue-history scans for requester provenance</h3>
+<ul>
+<li>where: <code>cmd/external-plugins/cherrypicker/server.go:505-516</code>
+</li>
+<li>concern: Every merged PR retaining a cherry-pick label now needs an issue-events API lookup, potentially scanning a paginated event history. This adds rate-limit and availability exposure; on failure the warning is followed by silent attribution to the PR author. Preserve the requester when the command is accepted instead of recovering it later from GitHub history.
+</li>
+<li>excerpt:<pre><code>events, err := s.ghc.ListIssueEvents(org, repo, num)
 if err != nil {
-    log.WithError(err).Warn("Failed to list issue events, attributing cherrypick labels to the PR author.")
-}</pre><p>Every merged PR retaining a cherry-pick label now needs an issue-events API lookup, potentially scanning a paginated event history. This adds rate-limit and availability exposure; on failure the warning is followed by silent attribution to the PR author. Preserve the requester when the command is accepted instead of recovering it later from GitHub history.</p></article><h3>Nits</h3><p>None.</p><h3>Questions</h3><p>See open questions below.</p></section>
-<section><h2>Things I checked and was fine with</h2><ul><li>Direct GitHub human-label attribution, membership fallback, bot filtering, and re-label ordering are covered by the added table-driven tests.</li><li>No configuration, manifest, flag, or migration behavior changes.</li><li>The added client method matches the existing GitHub-client issue-events API shape.</li><li>Targeted Go tests were started during review but did not complete before dependency compilation exceeded the execution window; no passing-test result is claimed.</li></ul></section>
-<section><h2>Open questions for the author</h2><ul><li>Is direct GitHub label application, rather than Prow's <code>/label</code> command, the only supported label-initiated cherry-pick workflow?</li><li>If <code>/label</code> is supported, where should cherrypicker receive or durably retain the authenticated comment author without querying the full issue-event history at merge time?</li></ul></section>
-</body></html>
+    log.WithError(err).Warn(&quot;Failed to list issue events, attributing cherrypick labels to the PR author.&quot;)
+}</code></pre>
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>Direct GitHub human-label attribution, membership fallback, bot filtering, and re-label ordering are covered by the added table-driven tests.
+</li>
+<li>No configuration, manifest, flag, or migration behavior changes.
+</li>
+<li>The added client method matches the existing GitHub-client issue-events API shape.
+</li>
+<li>Targeted Go tests were started during review but did not complete before dependency compilation exceeded the execution window; no passing-test result is claimed.
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>Is direct GitHub label application, rather than Prow's <code>/label</code> command, the only supported label-initiated cherry-pick workflow?
+</li>
+<li>If <code>/label</code> is supported, where should cherrypicker receive or durably retain the authenticated comment author without querying the full issue-event history at merge time?
+</li></ul>
+<h2>Followups</h2>
+<p>Accepted: 2. Skipped: 0. PR merged as <code>4425e386ffba859f8fbfb535617559f05d37bf2f</code>.</p>
+<h3>1. Fix <code>/label</code> requester attribution and authorization</h3>
+<ul>
+<li>Category: correctness/security
+</li>
+<li>Necessity: must
+</li>
+<li>Mode: deliver
+</li>
+<li>Where: <code>cmd/external-plugins/cherrypicker/server.go:343-583</code>; <code>pkg/plugins/label/label.go:150-256,314-347</code>
+</li>
+<li>Why followup: The blocking attribution finding merged unfixed. A bot actor also supplies authorization when it is an org member, even though the human issuing an unrestricted <code>/label</code> command need not be a member. This authorization concern depends on deployment label configuration and bot membership.
+<pre><code>In kubernetes-sigs/prow, implement a post-merge followup to PR #943, &quot;cherrypicker: attribute cherrypick labels to the user who added them&quot;, merged as 4425e386ffba859f8fbfb535617559f05d37bf2f. Work from the merged default branch and inspect current code before applying changes.
 
+Mode: deliver. Fix requester attribution and authorization for Prow-mediated /label cherrypick/&lt;branch&gt; requests. Focus on cmd/external-plugins/cherrypicker/server.go and server_test.go, plus pkg/plugins/label/label.go and the relevant command/event boundary.
+
+The label plugin applies labels with Prow&#x27;s GitHub credential, so a label webhook or issue-event actor identifies the bot, not the human command author. labelRequester currently avoids assigning to the bot but can still authorize using the bot&#x27;s org membership. With an unrestricted additional cherry-pick label, a non-member commenter can therefore cause a request to be accepted through a member bot. Verify this conditional path and preserve the authenticated human requester&#x27;s identity and authorization decision through label application and later merge processing. Choose a durable, restart-safe handoff supported by the existing architecture; do not infer the human&#x27;s identity from a bot label event or correlate by timing alone.
+
+Acceptance criteria: an authorized human&#x27;s /label request is attributed and assigned to that human for both pre-merge and already-merged PRs; an unauthorized non-member cannot gain authorization solely through a member bot when allowAll is false and the PR author is a non-member; existing intentionally supported member-author fallback and allowAll behavior remain explicit and tested; direct human label application still works. Add regression coverage that models a human command followed by a bot label event, including member/non-member authors and command users, and verify identity survives the merge handoff. Run the relevant cherrypicker and label-plugin tests and report the results.
+
+Scope guard: keep changes limited to cherry-pick requester identity, its authorization, and the minimum handoff required. Do not introduce a general-purpose storage service, unrelated label-plugin policy changes, or broad refactoring. If the current architecture cannot supply a trustworthy durable identity, explain the concrete constraint rather than introducing speculative attribution. Coordinate the provenance design with followup 2, which reduces event-history lookups. Do not publish externally without an explicit request.</code></pre>
+</li></ul>
+<h3>2. Reduce reliance on GitHub event history</h3>
+<ul>
+<li>Category: reliability/performance
+</li>
+<li>Necessity: should
+</li>
+<li>Mode: deliver
+</li>
+<li>Depends on: followup 1's requester provenance design
+</li>
+<li>Where: <code>cmd/external-plugins/cherrypicker/server.go:505-526</code>; <code>pkg/github/client.go:4768-4801</code>
+</li>
+<li>Why followup: The issue-history finding merged unfixed. Each applicable merge fetches potentially paginated history; lookup failure may misattribute to a member author or drop a member-requested cherry-pick on a non-member author's PR.
+<pre><code>In kubernetes-sigs/prow, implement a post-merge followup to PR #943, &quot;cherrypicker: attribute cherrypick labels to the user who added them&quot;, merged as 4425e386ffba859f8fbfb535617559f05d37bf2f. Work from the merged default branch and inspect the current implementation. This task depends on the durable human-requester handoff established by followup 1, &quot;Fix /label requester attribution and authorization&quot;; reuse that design rather than creating competing provenance mechanisms.
+
+Mode: deliver. Reduce merge-time GitHub issue-event-history lookups in cmd/external-plugins/cherrypicker/server.go and add focused coverage in server_test.go. The merged implementation calls ListIssueEvents whenever cherry-pick labels are present, scans the complete paginated history, and falls back to the PR author on failure. That can either change the assignee or silently drop a member&#x27;s request when the PR author is not an org member.
+
+Use the trustworthy requester information recorded for Prow-mediated requests to avoid history scans when provenance is already available. Define explicit recovery behavior for unresolved provenance, including labels applied directly in GitHub and event-API failures. Preserve authorization and direct-label support; make any unavoidable failed recovery or skipped request diagnosable using the component&#x27;s existing logging/comment conventions. Do not promise constant API cost for direct-label provenance if the available GitHub interface cannot provide it.
+
+Acceptance criteria: merge handling for requests with valid recorded provenance does not call ListIssueEvents solely to rediscover the requester; direct human labeling remains supported; tests cover mixed recorded/direct-label requests, missing provenance, relabeling, and event-API failure for member and non-member PR authors; failures neither invent requester identities nor authorize using an untrusted actor, and any skipped request is diagnosable. Assert API-call behavior with the fake client and run the relevant cherrypicker tests. Document any remaining history dependency and its tradeoff.
+
+Scope guard: reuse followup 1&#x27;s handoff, keep existing GitHub-client pagination semantics for other callers, and avoid unrelated cache, metrics, storage, or client refactoring. If followup 1 has not landed, identify that dependency and coordinate the design before implementing a parallel solution. Do not publish externally without an explicit request.</code></pre>
+</li></ul>
+</main></body></html>

@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Review: kubernetes-sigs/prow#917</title>
+  <style>
+    body { color: #202124; font: 16px/1.55 system-ui, -apple-system, sans-serif; margin: 0; }
+    main { margin: 3rem auto; max-width: 900px; padding: 0 1.5rem; }
+    h1, h2, h3 { line-height: 1.2; } h1 { margin-bottom: .25rem; }
+    .meta { color: #5f6368; } .verdict { background: #e6f4ea; border-left: 4px solid #137333; padding: 1rem; }
+    code { background: #f1f3f4; border-radius: 3px; font: .9em ui-monospace, SFMono-Regular, monospace; padding: .1em .25em; }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Review: <a href="https://github.com/kubernetes-sigs/prow/pull/917">kubernetes-sigs/prow#917</a></h1>
+      <p class="meta">chore(deps): bump the prometheus group across 1 directory with 2 updates<br>
+      Base: <code>main</code> · Head: <code>8bb5b9e0a9895cf3536576336b13627c4b5097df</code> · Reviewed: 2026-09-07T16:54:47Z</p>
+    </header>
+    <section class="verdict">
+      <h2>Verdict: approve</h2>
+      <p>Dep-only update with no project-code change. Both releases are seven days old; their substantive upstream changes do not affect Prow's exercised Prometheus paths.</p>
+    </section>
+    <section>
+      <h2>What this PR does</h2>
+      <ul>
+        <li>Updates <code>github.com/prometheus/client_model</code> from <code>v0.6.2</code> to <code>v0.6.3</code> in the root and tools modules.</li>
+        <li>Updates <code>github.com/prometheus/common</code> from <code>v0.70.1</code> to <code>v0.71.0</code> in the root and tools modules.</li>
+        <li>Refreshes the corresponding Go module checksums.</li>
+      </ul>
+    </section>
+    <section><h2>Findings</h2><h3>Blocking</h3><p>None.</p><h3>Should fix</h3><p>None.</p><h3>Nits</h3><p>None.</p><h3>Questions</h3><p>None.</p></section>
+    <section>
+      <h2>Things I checked and was fine with</h2>
+      <ul>
+        <li>Only <code>go.mod</code> and <code>go.sum</code> files changed; no project code requires a separate code review.</li>
+        <li><code>client_model</code> is directly imported only by three test files; production reaches it through <code>client_golang</code>.</li>
+        <li><code>common</code> is used in <code>pkg/metrics/push.go</code> for protobuf metric encoding and label-name validation; its OpenMetrics 2.0 changes are outside this path.</li>
+        <li>Both new tagged releases resolve to 2026-08-31; neither is a pseudo-version. Published GitHub repository-advisory endpoints returned no entries for either upstream repository.</li>
+        <li><code>go mod verify</code> passed in the root and <code>hack/tools</code>; <code>git diff --check</code> passed.</li>
+      </ul>
+    </section>
+    <section><h2>Open questions for the author</h2><p>None.</p></section>
+  </main>
+</body>
+</html>

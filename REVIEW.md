@@ -33,3 +33,14 @@ None.
 ## Open questions
 
 None.
+
+## Dependency followups
+
+Examined on 2026-10-18. No opportunities identified; no items or handoff prompts.
+
+- Context: PR #920 merged on 2026-09-07 as `38a1dbd3be0bb0e6b1d28d52ec475a6482908cbb`.
+- Module examined: direct Go dependency `google.golang.org/api v0.294.0 → v0.296.0`, covering intermediate release `v0.295.0` and the complete upstream commit range.
+- Transitive changes: none. The PR changes no other module versions, and both versions of this module have the same `go.mod` checksum, so its dependency requirements are unchanged.
+- Reason: the releases regenerate discovery clients that Prow does not import. Prow uses `option`, `iterator`, and `googleapi`; those packages and the shared transport/auth implementation are unchanged, apart from internal version metadata. No new deprecation, replacement API, useful feature, or default change applies to these call sites.
+- Evidence: reused the saved dependency review and its release-note analysis; reconfirmed the manifest/checksum diff, upstream changed-file list, and Prow imports. Existing credential-loader deprecation comments in `pkg/io/credentials.go` concern the unchanged `cloud.google.com/go/auth` dependency and are not unlocked by this bump.
+- Sources: [upstream comparison](https://github.com/googleapis/google-api-go-client/compare/v0.294.0...v0.296.0), [v0.295.0 release](https://github.com/googleapis/google-api-go-client/releases/tag/v0.295.0), [v0.296.0 release](https://github.com/googleapis/google-api-go-client/releases/tag/v0.296.0).

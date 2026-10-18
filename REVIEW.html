@@ -1,51 +1,79 @@
 <!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Review: kubernetes-sigs/prow#920</title>
-  <style>
-    body { max-width: 900px; margin: 2rem auto; padding: 0 1rem; color: #1f2328; font: 16px/1.55 system-ui, sans-serif; }
-    h1, h2 { line-height: 1.2; } code { background: #f3f4f6; border-radius: 3px; padding: .1em .3em; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
-    .metadata { color: #57606a; } .verdict { border-left: 4px solid #1a7f37; padding: .7rem 1rem; background: #dafbe1; }
-  </style>
-</head>
-<body>
-  <header>
-    <h1>Review: <a href="https://github.com/kubernetes-sigs/prow/pull/920">kubernetes-sigs/prow#920</a></h1>
-    <p class="metadata">chore(deps): bump google.golang.org/api from 0.294.0 to 0.296.0<br>
-      Head: <code>e2a802070c54ee319041fe0262b21482b351315e</code> · Base: <code>main</code> · Reviewed: 2026-09-07T15:10:26Z</p>
-  </header>
-  <section>
-    <h2>Verdict: approve</h2>
-    <p class="verdict">This dep-only update moves the direct <code>google.golang.org/api</code> requirement from <code>v0.294.0</code> to the tagged <code>v0.296.0</code> release. The intervening changes are discovery-client regenerations; no Prow-used core API packages changed and no security advisory was published for the upstream module.</p>
-  </section>
-  <section>
-    <h2>What this PR does</h2>
-    <ul>
-      <li>Updates the direct <code>google.golang.org/api</code> requirement in <code>go.mod</code> from <code>v0.294.0</code> to <code>v0.296.0</code>.</li>
-      <li>Replaces the corresponding two module checksums in <code>go.sum</code>.</li>
-      <li>Does not modify Prow source, tests, configuration, or generated project artifacts.</li>
-    </ul>
-  </section>
-  <section>
-    <h2>Findings</h2>
-    <h3>Blocking</h3><p>None.</p>
-    <h3>Should fix</h3><p>None.</p>
-    <h3>Nits</h3><p>None.</p>
-    <h3>Questions</h3><p>None.</p>
-  </section>
-  <section>
-    <h2>Things I checked and were fine with</h2>
-    <ul>
-      <li>Classification: dep-only; only <code>go.mod</code> and <code>go.sum</code> differ from <code>main</code>.</li>
-      <li>Release provenance: <code>v0.296.0</code> is a real tag from <code>googleapis/google-api-go-client</code>, published 2026-08-31 (seven days of soak time at review).</li>
-      <li>Upstream range <code>v0.294.0...v0.296.0</code>: seven commits, all automated discovery-client regeneration and release commits; no core <code>googleapi</code>, <code>option</code>, or <code>iterator</code> code changed.</li>
-      <li>Usage: direct import in five Prow packages. Production use is GCS I/O, Cloud Build, and Secret Manager helpers; tests also use Pub/Sub helpers. The importing paths use <code>googleapi</code>, <code>option</code>, and <code>iterator</code>, not regenerated discovery clients. Only Secret Manager discovery metadata overlaps, while Prow uses the separate Cloud Secret Manager client.</li>
-      <li>Security: no published upstream GitHub security advisories returned for this module.</li>
-      <li><code>git diff --check ffc57790ba3e94ab2081a4a5d498d8baba5db8f1..HEAD</code> passed.</li>
-    </ul>
-  </section>
-  <section><h2>Open questions for the author</h2><p>None.</p></section>
-</body>
-</html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#920</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>chore(deps): bump google.golang.org/api from 0.294.0 to 0.296.0</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/920">kubernetes-sigs/prow#920</a> · base <code>main</code> · head_sha <code>e2a802070c54</code> · reviewed_at <code>2026-09-07T15:10:26Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span></div>
+<h2>Verdict</h2>
+<p>Approve. This dep-only update moves the direct <code>google.golang.org/api</code> requirement from <code>v0.294.0</code> to the tagged <code>v0.296.0</code> release. The intervening changes are discovery-client regenerations; no Prow-used core API packages changed and no security advisory was published for the upstream module.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Updates the direct <code>google.golang.org/api</code> requirement in <code>go.mod</code> from <code>v0.294.0</code> to <code>v0.296.0</code>.
+</li>
+<li>Replaces the corresponding two module checksums in <code>go.sum</code>.
+</li>
+<li>Does not modify Prow source, tests, configuration, or generated project artifacts.
+</li></ul>
+<h2>Findings</h2>
+<p>None.</p>
+<h2>Checked</h2>
+<ul>
+<li>Classification: dep-only; only <code>go.mod</code> and <code>go.sum</code> differ from <code>main</code>.
+</li>
+<li>Release provenance: <code>v0.296.0</code> is a real tag from <code>googleapis/google-api-go-client</code>, published 2026-08-31 (seven days of soak time at review).
+</li>
+<li>Upstream range <code>v0.294.0...v0.296.0</code>: seven commits, all automated discovery-client regeneration and release commits; no core <code>googleapi</code>, <code>option</code>, or <code>iterator</code> code changed.
+</li>
+<li>Usage: direct import in five Prow packages. Production use is GCS I/O, Cloud Build, and Secret Manager helpers; tests also use Pub/Sub helpers. The importing paths use <code>googleapi</code>, <code>option</code>, and <code>iterator</code>, not regenerated discovery clients. Only Secret Manager discovery metadata overlaps, while Prow uses the separate Cloud Secret Manager client.
+</li>
+<li>Security: no published upstream GitHub security advisories returned for this module.
+</li>
+<li><code>git diff --check ffc57790ba3e94ab2081a4a5d498d8baba5db8f1..HEAD</code> passed.
+</li></ul>
+<h2>Open questions</h2>
+<p>None.</p>
+<h2>Dependency followups</h2>
+<p>Examined on 2026-10-18. No opportunities identified; no items or handoff prompts.</p>
+<ul>
+<li>Context: PR #920 merged on 2026-09-07 as <code>38a1dbd3be0bb0e6b1d28d52ec475a6482908cbb</code>.
+</li>
+<li>Module examined: direct Go dependency <code>google.golang.org/api v0.294.0 → v0.296.0</code>, covering intermediate release <code>v0.295.0</code> and the complete upstream commit range.
+</li>
+<li>Transitive changes: none. The PR changes no other module versions, and both versions of this module have the same <code>go.mod</code> checksum, so its dependency requirements are unchanged.
+</li>
+<li>Reason: the releases regenerate discovery clients that Prow does not import. Prow uses <code>option</code>, <code>iterator</code>, and <code>googleapi</code>; those packages and the shared transport/auth implementation are unchanged, apart from internal version metadata. No new deprecation, replacement API, useful feature, or default change applies to these call sites.
+</li>
+<li>Evidence: reused the saved dependency review and its release-note analysis; reconfirmed the manifest/checksum diff, upstream changed-file list, and Prow imports. Existing credential-loader deprecation comments in <code>pkg/io/credentials.go</code> concern the unchanged <code>cloud.google.com/go/auth</code> dependency and are not unlocked by this bump.
+</li>
+<li>Sources: <a href="https://github.com/googleapis/google-api-go-client/compare/v0.294.0...v0.296.0">upstream comparison</a>, <a href="https://github.com/googleapis/google-api-go-client/releases/tag/v0.295.0">v0.295.0 release</a>, <a href="https://github.com/googleapis/google-api-go-client/releases/tag/v0.296.0">v0.296.0 release</a>.
+</li></ul>
+</main></body></html>

@@ -1,68 +1,96 @@
 <!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Review: kubernetes-sigs/prow#876</title>
-  <style>
-    body { background: #fff; color: #202124; font: 16px/1.55 system-ui, sans-serif; margin: 0; }
-    main { max-width: 900px; margin: 40px auto; padding: 0 24px 48px; }
-    h1 { font-size: 1.7rem; line-height: 1.25; margin-bottom: .35rem; }
-    h2 { border-bottom: 1px solid #d0d7de; font-size: 1.2rem; margin-top: 2rem; padding-bottom: .35rem; }
-    code { background: #f6f8fa; border-radius: 4px; font: .9em ui-monospace, SFMono-Regular, Consolas, monospace; padding: .12em .3em; }
-    .meta { color: #57606a; }
-    .verdict { background: #dafbe1; border-left: 4px solid #1a7f37; padding: 14px 18px; }
-    .empty { color: #57606a; font-style: italic; }
-  </style>
-</head>
-<body>
-  <main>
-    <header>
-      <h1>Review: <a href="https://github.com/kubernetes-sigs/prow/pull/876">kubernetes-sigs/prow#876</a></h1>
-      <p class="meta">chore(deps): bump cloud.google.com/go/storage from 1.56.0 to 1.65.0<br>
-      Base: <code>main</code> · Head: <code>71779405cdfd3bb63a4890570991edf7d4272992</code> · Reviewed: 2026-09-01T18:48:20Z</p>
-    </header>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#876</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>chore(deps): bump cloud.google.com/go/storage from 1.56.0 to 1.65.0</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/876">kubernetes-sigs/prow#876</a> · base <code>main</code> · head_sha <code>71779405cdfd</code> · reviewed_at <code>2026-09-01T18:48:20Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span></div>
+<h2>Verdict</h2>
+<p>Approve. This is dependency-only churn. Storage v1.65.0 has adequate soak time, its Go 1.25 requirement is compatible with Prow's Go 1.26.4 declaration, and the intervening behavior changes do not overlap Prow's ordinary GCS object I/O surface in a concerning way.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Updates the direct GCS Storage client from <code>cloud.google.com/go/storage v1.56.0</code> to <code>v1.65.0</code>.
+</li>
+<li>Resolves Storage's newer Google Cloud, OpenTelemetry, monitoring, and generated-proto dependencies.
+</li>
+<li>Updates direct <code>cloud.google.com/go/secretmanager</code> from <code>v1.16.0</code> to <code>v1.20.0</code> and <code>google.golang.org/genproto</code> to a newer pseudo-version as part of module resolution.
+</li>
+<li>Changes only <code>go.mod</code> and <code>go.sum</code>; no Prow source, configuration, or tests change.
+</li></ul>
+<h2>Findings</h2>
+<p>None.</p>
+<h2>Checked</h2>
+<ul>
+<li>PR diff is dependency-only: 29 additions and 29 deletions across <code>go.mod</code> and <code>go.sum</code>.
+</li>
+<li>Storage v1.65.0 is a tagged 2026-08-19 release; it was six days old at merge and is 13 days old at review.
+</li>
+<li>Storage requires Go 1.25.0; Prow declares Go 1.26.4.
+</li>
+<li>Prow imports Storage in seven files, with production use concentrated in <code>pkg/io/opener.go</code> for GCS client construction, object reads/writes/listing, metadata updates, preconditions, and signed URLs.
+</li>
+<li>Intervening Storage releases add checksum/retry/writer and reader/download fixes plus APIs Prow does not call; no CVE/security advisory was identified in their release notes.
+</li>
+<li>Secret Manager remains used only by <code>cmd/webhook-server/secretmanager</code>; its intervening releases are API-source regeneration.
+</li>
+<li><code>git diff --check</code> passes.
+</li></ul>
+<h2>Open questions</h2>
+<p>None.</p>
+<h2>Followups</h2>
+<p>Assessed 2026-10-19. PR #876 merged on 2026-08-25 as <code>568cdd7970e81242b3ac58fbd94836a73fd37cce</code>. No unresolved review findings, introduced TODOs, or deferred human review requests were found. Accepted: 1; skipped: 0.</p>
+<h3>Probe GCS resumable uploads and failure handling</h3>
+<ul>
+<li>Category: tests
+</li>
+<li>Necessity: could
+</li>
+<li>Mode: probe
+</li>
+<li>Where: <code>pkg/io/opener.go:274</code> (Writer), <code>pkg/io/opener.go:523</code> (WriteContent), <code>pkg/io/option.go:60</code> (writer options); existing small-object integration examples in <code>pkg/pod-utils/gcs/upload_test.go:342</code>.
+</li>
+<li>Why followup: the Storage bump crosses nine minor versions with upload checksum and retry changes. Existing fake-GCS tests cover small uploads; focused coverage of uploads spanning chunks and upload-finalization failures would strengthen confidence in artifact I/O. No regression has been demonstrated, so this did not block the merge.
+<pre><code>In kubernetes-sigs/prow, carry out a throwaway bug-finding probe following PR #876, &quot;chore(deps): bump cloud.google.com/go/storage from 1.56.0 to 1.65.0&quot;, merged as 568cdd7970e81242b3ac58fbd94836a73fd37cce.
 
-    <section>
-      <h2>Verdict</h2>
-      <div class="verdict"><strong>Approve.</strong> This is dependency-only churn. Storage v1.65.0 has adequate soak time, its Go 1.25 requirement is compatible with Prow's Go 1.26.4 declaration, and the intervening behavior changes do not overlap Prow's ordinary GCS object I/O surface in a concerning way.</div>
-    </section>
+Work in a fresh worktree based on the current default branch, main. Recheck the current Storage version and relevant tests first; the review checkout contains the historical PR head. Focus on pkg/io/opener.go (Writer and WriteContent) and pkg/io/option.go (WriterOptions.apply). Existing emulator-based small-upload examples are in pkg/pod-utils/gcs/upload_test.go, Test_openerObjectWriter_Write.
 
-    <section>
-      <h2>What this PR does</h2>
-      <ul>
-        <li>Updates the direct GCS Storage client from <code>cloud.google.com/go/storage v1.56.0</code> to <code>v1.65.0</code>.</li>
-        <li>Resolves Storage's newer Google Cloud, OpenTelemetry, monitoring, and generated-proto dependencies.</li>
-        <li>Updates direct <code>cloud.google.com/go/secretmanager</code> from <code>v1.16.0</code> to <code>v1.20.0</code> and <code>google.golang.org/genproto</code> to a newer pseudo-version as part of module resolution.</li>
-        <li>Changes only <code>go.mod</code> and <code>go.sum</code>; no Prow source, configuration, or tests change.</li>
-      </ul>
-    </section>
+Write temporary tests in the normal test location or scratch space, and run them to exercise these behaviors through Prow&#x27;s I/O wrapper:
+1. Upload a deterministic object larger than multiple effective upload chunks, then verify its exact length and bytes. Respect the SDK&#x27;s actual chunk rounding and keep the payload bounded.
+2. Inject a transient failure during a resumable upload. For an upload eligible for retry, verify eventual success without duplicated or missing bytes; otherwise verify that failure is reported. Establish retry eligibility from the current SDK and Prow options rather than assuming every write is retried.
+3. Inject a terminal failure during finalization, including a case where Write succeeds but Close fails. Verify that Writer callers can observe the close error and that WriteContent returns it.
 
-    <section>
-      <h2>Findings</h2>
-      <h3>Blocking</h3><p class="empty">None.</p>
-      <h3>Should fix</h3><p class="empty">None.</p>
-      <h3>Nits</h3><p class="empty">None.</p>
-      <h3>Questions</h3><p class="empty">None.</p>
-    </section>
+Use the existing fake-GCS setup where suitable. If its protocol support cannot model a case, use a controlled local HTTP handler or transport, configured only in the probe. Do not access real buckets or credentials. Triage each failure with evidence: a Prow implementation or SDK compatibility bug, an emulator limitation, or a mistaken test expectation. Do not treat an emulator&#x27;s missing feature as a production regression. If a dependency regression is suspected, compare versions in isolation before attributing it to PR #876.
 
-    <section>
-      <h2>Things I checked and were fine with</h2>
-      <ul>
-        <li>PR diff is dependency-only: 29 additions and 29 deletions across <code>go.mod</code> and <code>go.sum</code>.</li>
-        <li>Storage v1.65.0 is a tagged 2026-08-19 release; it was six days old at merge and is 13 days old at review.</li>
-        <li>Storage requires Go 1.25.0; Prow declares Go 1.26.4.</li>
-        <li>Prow imports Storage in seven files, with production use concentrated in <code>pkg/io/opener.go</code> for GCS client construction, object reads/writes/listing, metadata updates, preconditions, and signed URLs.</li>
-        <li>Intervening Storage releases add checksum/retry/writer and reader/download fixes plus APIs Prow does not call; no CVE/security advisory was identified in their release notes.</li>
-        <li>Secret Manager remains used only by <code>cmd/webhook-server/secretmanager</code>; its intervening releases are API-source regeneration.</li>
-        <li><code>git diff --check</code> passes.</li>
-      </ul>
-    </section>
+Acceptance criteria: exercise all three behaviors, or document concrete limitations for any behavior that cannot be exercised faithfully. Classify every failure. A real bug means artifact corruption, incorrect success reporting, or a failure of Prow&#x27;s supported upload contract against valid protocol behavior. Apply only the minimal fix for a demonstrated real bug; report the failing case and commands so the maintainer can choose whether to retain a regression test. If no real bug is found, leave no files changed.
 
-    <section>
-      <h2>Open questions for the author</h2>
-      <p class="empty">None.</p>
-    </section>
-  </main>
-</body>
-</html>
+Scope guard: delete all probe tests and temporary instrumentation before finishing. The deliverable is a minimal bug fix if warranted, never the exploratory tests. Do not fix emulator-only problems, change general retry policy, introduce a transport migration, bump unrelated dependencies, or perform unrelated cleanup. Do not publish, push, open a PR, or comment on GitHub.</code></pre>
+</li></ul>
+</main></body></html>

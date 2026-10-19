@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Review: kubernetes-sigs/prow#875</title>
+  <style>
+    body { background: #fff; color: #1f2328; font: 16px/1.55 system-ui, sans-serif; margin: 0; }
+    main { max-width: 880px; margin: 3rem auto; padding: 0 1.5rem 3rem; }
+    h1, h2 { line-height: 1.25; } h2 { border-bottom: 1px solid #d8dee4; padding-bottom: .35rem; margin-top: 2rem; }
+    code { background: #f3f4f6; border-radius: 3px; font: .9em ui-monospace, monospace; padding: .12em .28em; }
+    .meta { color: #57606a; } .approve { color: #1a7f37; font-weight: 700; text-transform: uppercase; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Review: <a href="https://github.com/kubernetes-sigs/prow/pull/875">kubernetes-sigs/prow#875</a></h1>
+    <p class="meta">Title: chore(deps): bump github.com/mattn/go-zglob from 0.0.2 to 0.0.6<br>
+      Head: <code>36dbc1080631ce3e365a335dec7d54bccae874e8</code><br>
+      Base: <code>main</code><br>
+      Reviewed: 2026-09-01T18:48:12Z</p>
+
+    <h2>Verdict</h2>
+    <p><span class="approve">Approve</span> — Dep-only, direct Go-module update from <code>github.com/mattn/go-zglob</code> <code>v0.0.2</code> to <code>v0.0.6</code>; no findings.</p>
+
+    <h2>What this PR does</h2>
+    <ul>
+      <li>Updates the direct <code>go.mod</code> requirement from <code>v0.0.2</code> to <code>v0.0.6</code>.</li>
+      <li>Refreshes the two corresponding <code>go.sum</code> checksums.</li>
+      <li>Takes upstream glob matching support for braces, character ranges, negation, escaping, and improved traversal error handling.</li>
+    </ul>
+
+    <h2>Findings</h2>
+    <p>None.</p>
+
+    <h2>Things I checked and was fine with</h2>
+    <ul>
+      <li>Classification: only <code>go.mod</code> and <code>go.sum</code> change; no Prow source, test, configuration, or generated-code change.</li>
+      <li>Provenance/freshness: <code>v0.0.6</code> is the signed module-proxy tag at <code>df0b60a2740136eb7336cefdc92d4d87a6b90f9b</code>, published 2024-09-01; it had approximately 723 days of soak time when the PR merged.</li>
+      <li>Security: OSV returns no known advisory for <code>github.com/mattn/go-zglob</code>.</li>
+      <li>Usage: direct dependency with two production imports — <code>pkg/plugins/updateconfig/updateconfig.go:296</code> matches changed filenames to configured ConfigMap patterns; <code>pkg/sidecar/censor.go:168</code> and <code>pkg/sidecar/censor.go:177</code> match censor exclude/include patterns.</li>
+      <li>Exposure: the sidecar call site influences secret-redaction scope, but this PR does not change Prow's use of <code>Match</code>. The upstream changes are parser/features, traversal error propagation for <code>Glob</code>, and allocation improvements; no incompatible use at either Prow call site was identified.</li>
+      <li>PR CI: unit, integration, image-build, lint, and nonblocking race-detector checks passed.</li>
+    </ul>
+
+    <h2>Open questions for the author</h2>
+    <p>None.</p>
+  </main>
+</body>
+</html>

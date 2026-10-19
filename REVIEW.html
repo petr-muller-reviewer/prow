@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#735</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>trigger: add /test-manual-required command</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/735">kubernetes-sigs/prow#735</a> · base <code>main</code> · head_sha <code>dedd4fc90801</code> · reviewed_at <code>2026-09-02T00:25:25Z</code></div>
+<div class="badges"><span class="badge c-red">verdict: request-changes</span></div>
+<details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#735
+title: &quot;trigger: add /test-manual-required command&quot;
+head_sha: dedd4fc90801a7b2c23936a9c53f2cb6a42e2e4f
+base: main
+reviewed_at: 2026-09-02T00:25:25Z
+verdict: request-changes
+refresh_log:
+  - from_sha: 11e9af6600623d7faec3c382e45e4c538ad66b7e
+    to_sha: 11e9af6600623d7faec3c382e45e4c538ad66b7e
+    at: 2026-06-01T15:50:53Z
+    summary: &quot;No code change. Maintainer Prucek posted inline review confirming NeedsExplicitTrigger() should be removed, and issue comment requesting help entry.&quot;
+  - from_sha: 11e9af6600623d7faec3c382e45e4c538ad66b7e
+    to_sha: 124f7da44fcbfd71622252c9d7459ecd1e267ee4
+    at: 2026-06-15T12:44:06Z
+    summary: &quot;Author addressed earlier filter and help findings.&quot;
+  - from_sha: 124f7da44fcbfd71622252c9d7459ecd1e267ee4
+    to_sha: dedd4fc90801a7b2c23936a9c53f2cb6a42e2e4f
+    at: 2026-09-02T00:25:25Z
+    summary: &quot;Author implemented the agreed rename and unconditional manual-required filter; one ContextRequired() edge case remains.&quot;</code></pre></details>
+<h2>Summary</h2>
+<p>Adds <code>/test-manual-required</code>, which starts manually triggered, non-optional presubmits without file-change conditions. The filter forces the selected jobs to run, and the command is wired into trigger matching and plugin help.</p>
+<p>Since previous review:</p>
+<ul>
+<li>Renamed <code>/test-required</code> to <code>/test-manual-required</code> and removed the status-context lookup.
+</li>
+<li>Changed the filter to select explicitly triggered jobs unconditionally, excluding <code>always_run</code> and file-conditional jobs.
+</li>
+<li>Updated unit and trigger-plugin coverage. The PR is now merged.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-amber">should-fix</span>Define “required” with <code>ContextRequired()</code></h3>
+<ul>
+<li>where: <code>pkg/pjutil/filter.go:276</code>
+</li>
+<li>concern: <code>!ps.Optional</code> still selects a <code>skip_report: true</code> manual job. Such a job publishes no GitHub context, so it cannot be a required presubmit context. Use <code>ps.ContextRequired()</code> and add a <code>skip_report: true</code> regression case.
+</li>
+<li>excerpt:<pre><code>if ps.Optional || !ps.NeedsExplicitTrigger() || ps.RunIfChanged != &quot;&quot; || ps.SkipIfOnlyChanged != &quot;&quot; {
+    return false, false, false
+}</code></pre>
+</li></ul>
+<h3>Resolved</h3>
+<h4><span class="tag c-amber">should-fix</span>Filter predicate should select manual jobs and force them</h4>
+<ul>
+<li>Addressed in <code>dedd4fc90</code>: the filter now requires <code>NeedsExplicitTrigger()</code>, excludes change matchers, and returns <code>true, true, false</code>; it no longer fetches status contexts.
+</li></ul>
+<h4><span class="tag c-amber">should-fix</span>Command name was misleading</h4>
+<ul>
+<li>Addressed in <code>dedd4fc90</code>: renamed to <code>/test-manual-required</code> in the matcher, documentation, and help command.
+</li></ul>
+<h4><span class="tag c-gray">nit</span>Tests needed to reflect the manual-only selection</h4>
+<ul>
+<li>Addressed in <code>dedd4fc90</code>: tests cover required, optional, <code>always_run</code>, and conditional presubmits.
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li><code>NeedsExplicitTrigger()</code> is false for <code>always_run</code> and for either file-change matcher, so the explicit checks are redundant but behaviorally correct.
+</li>
+<li>Filter ordering, command recognition, help pruning, and help-provider wiring are correct.
+</li>
+<li>Diff from the saved baseline is 78 additions / 101 deletions across the five trigger and pjutil files; it is a focused update.
+</li></ul>
+<h2>Activity since previous review</h2>
+<ul>
+<li>2026-08-10: Amulyam24 pushed <code>dedd4fc90</code>, implementing the discussed design and rename.
+</li>
+<li>2026-08-11 and 2026-08-13: petr-muller and Amulyam24 confirmed trusted-member behavior matches <code>/test</code>.
+</li>
+<li>2026-08-19: petr-muller submitted an approval; the PR is now merged.
+</li></ul>
+<h2>Followups</h2>
+<p>Accepted: 2 (one deliverable, one probe). Skipped: 0.</p>
+<h3>Exclude non-reporting jobs from the required manual selection</h3>
+<ul>
+<li>Category: correctness
+</li>
+<li>Necessity: should
+</li>
+<li>Mode: deliver
+</li>
+<li>Where: <code>pkg/pjutil/filter.go:275</code>, <code>pkg/pjutil/filter_test.go</code>, <code>pkg/plugins/trigger/generic-comment_test.go</code>
+</li>
+<li>Why followup: the saved required-context finding remains in the merged implementation; <code>skip_report: true</code> manual jobs can be selected despite publishing no required GitHub context.
+<pre><code>In kubernetes-sigs/prow, following PR #735 — &quot;trigger: add /test-manual-required command&quot;
+(merge commit 7593870dc2d79348c29ed4acaa2c249bd3058b32), work from the current
+default branch containing that merge and first check whether this issue is already fixed.
+
+Update TestManualRequiredFilter.ShouldRun in pkg/pjutil/filter.go to use
+Presubmit.ContextRequired() when selecting required jobs. Add regression coverage
+for an otherwise eligible manual job with Optional:false and SkipReport:true:
+/test-manual-required must not select or start it. Preserve the selection of
+reporting required manual jobs and the exclusion of optional, automatic, and
+file-conditional jobs. Reuse the existing pjutil and trigger fixtures.
+
+Acceptance criteria: the regression case demonstrates the original issue and
+passes with the fix; existing relevant selections remain unchanged; run
+go test ./pkg/pjutil ./pkg/plugins/trigger successfully.
+
+Scope: only this command&#x27;s required-job predicate and focused regression coverage.
+Do not change /retest-required, Tide policy, trust handling, or unrelated filters.
+Leave the result local for review; do not publish or open a PR.</code></pre>
+</li></ul>
+<h3>Probe trust handling and branch restrictions</h3>
+<ul>
+<li>Category: tests
+</li>
+<li>Necessity: could
+</li>
+<li>Mode: probe
+</li>
+<li>Where: <code>pkg/plugins/trigger/generic-comment_test.go</code>, <code>pkg/pjutil/filter_test.go</code>
+</li>
+<li>Why followup: the PR discussion confirmed trust behavior, but its three new integration cases all use a trusted commenter; the new force-run path also merits exercising branch restrictions.
+<pre><code>In kubernetes-sigs/prow, following PR #735 — &quot;trigger: add /test-manual-required command&quot;
+(merge commit 7593870dc2d79348c29ed4acaa2c249bd3058b32), work from the current
+default branch containing that merge. Mode: probe.
+
+Write temporary tests using the existing trigger and pjutil fixtures to exercise
+/test-manual-required across these boundaries:
+1. An untrusted commenter on an untrusted PR without ok-to-test cannot start jobs
+   and receives the existing trust response.
+2. A trusted commenter can start required manual jobs on that PR without granting
+   persistent ok-to-test approval or removing needs-ok-to-test.
+3. An untrusted commenter on a PR with ok-to-test can start eligible jobs.
+4. A required manual job excluded by its branch filter does not run despite the
+   command&#x27;s forced=true selection.
+
+Inspect the current implementation and fixtures before setting expectations. Run
+the affected tests and classify each failure as an implementation bug, an incorrect
+expectation, or a fixture mistake. A real bug means unauthorized execution, an
+unintended persistent trust grant, failure to execute an eligible authorized job,
+or execution of a job excluded by its branch filter.
+
+Acceptance criteria: exercise every named case and explain any failures with
+evidence. Apply only minimal production fixes for confirmed bugs. Remove all
+temporary probe tests before finishing; if no bugs are found, leave no files
+changed. After any production fix, run go test ./pkg/pjutil ./pkg/plugins/trigger.
+Report the failing case for each confirmed bug so the user can choose whether to
+retain a regression test separately.
+
+Scope: no permanent test deliverable, test-only fixes, Tide policy changes, new
+labels, help redesign, or unrelated cleanup. Preserve pre-existing user changes.
+Leave any fixes local for review; do not publish or open a PR.</code></pre>
+</li></ul>
+</main></body></html>

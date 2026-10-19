@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Review: kubernetes-sigs/prow#876</title>
+  <style>
+    body { background: #fff; color: #202124; font: 16px/1.55 system-ui, sans-serif; margin: 0; }
+    main { max-width: 900px; margin: 40px auto; padding: 0 24px 48px; }
+    h1 { font-size: 1.7rem; line-height: 1.25; margin-bottom: .35rem; }
+    h2 { border-bottom: 1px solid #d0d7de; font-size: 1.2rem; margin-top: 2rem; padding-bottom: .35rem; }
+    code { background: #f6f8fa; border-radius: 4px; font: .9em ui-monospace, SFMono-Regular, Consolas, monospace; padding: .12em .3em; }
+    .meta { color: #57606a; }
+    .verdict { background: #dafbe1; border-left: 4px solid #1a7f37; padding: 14px 18px; }
+    .empty { color: #57606a; font-style: italic; }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Review: <a href="https://github.com/kubernetes-sigs/prow/pull/876">kubernetes-sigs/prow#876</a></h1>
+      <p class="meta">chore(deps): bump cloud.google.com/go/storage from 1.56.0 to 1.65.0<br>
+      Base: <code>main</code> · Head: <code>71779405cdfd3bb63a4890570991edf7d4272992</code> · Reviewed: 2026-09-01T18:48:20Z</p>
+    </header>
+
+    <section>
+      <h2>Verdict</h2>
+      <div class="verdict"><strong>Approve.</strong> This is dependency-only churn. Storage v1.65.0 has adequate soak time, its Go 1.25 requirement is compatible with Prow's Go 1.26.4 declaration, and the intervening behavior changes do not overlap Prow's ordinary GCS object I/O surface in a concerning way.</div>
+    </section>
+
+    <section>
+      <h2>What this PR does</h2>
+      <ul>
+        <li>Updates the direct GCS Storage client from <code>cloud.google.com/go/storage v1.56.0</code> to <code>v1.65.0</code>.</li>
+        <li>Resolves Storage's newer Google Cloud, OpenTelemetry, monitoring, and generated-proto dependencies.</li>
+        <li>Updates direct <code>cloud.google.com/go/secretmanager</code> from <code>v1.16.0</code> to <code>v1.20.0</code> and <code>google.golang.org/genproto</code> to a newer pseudo-version as part of module resolution.</li>
+        <li>Changes only <code>go.mod</code> and <code>go.sum</code>; no Prow source, configuration, or tests change.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Findings</h2>
+      <h3>Blocking</h3><p class="empty">None.</p>
+      <h3>Should fix</h3><p class="empty">None.</p>
+      <h3>Nits</h3><p class="empty">None.</p>
+      <h3>Questions</h3><p class="empty">None.</p>
+    </section>
+
+    <section>
+      <h2>Things I checked and were fine with</h2>
+      <ul>
+        <li>PR diff is dependency-only: 29 additions and 29 deletions across <code>go.mod</code> and <code>go.sum</code>.</li>
+        <li>Storage v1.65.0 is a tagged 2026-08-19 release; it was six days old at merge and is 13 days old at review.</li>
+        <li>Storage requires Go 1.25.0; Prow declares Go 1.26.4.</li>
+        <li>Prow imports Storage in seven files, with production use concentrated in <code>pkg/io/opener.go</code> for GCS client construction, object reads/writes/listing, metadata updates, preconditions, and signed URLs.</li>
+        <li>Intervening Storage releases add checksum/retry/writer and reader/download fixes plus APIs Prow does not call; no CVE/security advisory was identified in their release notes.</li>
+        <li>Secret Manager remains used only by <code>cmd/webhook-server/secretmanager</code>; its intervening releases are API-source regeneration.</li>
+        <li><code>git diff --check</code> passes.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Open questions for the author</h2>
+      <p class="empty">None.</p>
+    </section>
+  </main>
+</body>
+</html>

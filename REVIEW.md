@@ -56,3 +56,27 @@ Since previous review:
 
 (none — PR description already flags the deliberately-deferred `time.Tick`
 leak and `lastModTime` zero-value warts as known, out-of-scope issues)
+
+## Followups
+
+### Give test-created secret reloaders a shutdown path
+
+- category: tech-debt
+- where: `pkg/config/secret/reloader.go:55`, `pkg/config/secret/agent_test.go:260`
+- necessity: could — prevents test-created reload goroutines from polling removed temporary files and producing later log noise.
+- Mode: deliver
+- why: PR #861 explicitly deferred the reload loop's process-lifetime behavior; agent-managed reloaders remain process-lived, while the test directly creates loaders backed by temporary directories.
+- handoff prompt:
+
+```text
+In kubernetes-sigs/prow, following merged PR #861, "pkg/config/secret: fix TestAddWithParser flake" (merge commit 8591ce5f9cb0999d4918409c5b5139c0bd6e9bbb), add an internal shutdown path for test-created parsingSecretReloader instances in pkg/config/secret/reloader.go and use it from testAddWithParser in pkg/config/secret/agent_test.go.
+
+Replace the un-stoppable time.Tick loop with a stoppable ticker and provide an idempotent way for the directly constructed test loader to stop its reload goroutine. Register cleanup after loader.start succeeds, so the goroutine exits before the test's temporary directory is removed. Make shutdown safe with the existing reload callback and loop.
+
+Acceptance criteria:
+- TestAddWithParser stops its directly created loader during cleanup, and that loader no longer polls its deleted temporary file or emits later stat errors.
+- The existing reload and publication assertions still pass under the package's normal and race-enabled tests.
+- Agent-managed Add/AddWithParser registrations retain their current process-lifetime reload behavior; no public shutdown API is added.
+
+Scope guard: do not change secret reload intervals, the lastModTime initialization behavior, parser semantics, or unrelated agent lifecycle behavior.
+```

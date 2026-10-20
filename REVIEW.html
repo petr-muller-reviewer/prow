@@ -1,24 +1,113 @@
 <!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <title>Review: kubernetes-sigs/prow#877</title>
-  <style>
-    body { color: #202124; font: 16px/1.55 system-ui, sans-serif; margin: 2rem auto; max-width: 55rem; padding: 0 1rem; }
-    code { background: #f1f3f4; border-radius: 3px; padding: .1em .25em; }
-    h1, h2 { line-height: 1.2; } .verdict { border-left: 4px solid #188038; padding-left: 1rem; }
-  </style>
-</head>
-<body>
-  <h1>Review: <a href="https://github.com/kubernetes-sigs/prow/pull/877">kubernetes-sigs/prow#877</a></h1>
-  <p><code>head_sha: d69423cf4bd44339da13a2554cfc50d9330812ab</code><br><code>base: main</code><br><code>reviewed_at: 2026-09-01T18:24:37Z</code></p>
-  <h2>Verdict: approve</h2>
-  <p class="verdict">This dep-only change updates the directly used Go Cloud Development Kit after a 90-day soak. Its material <code>blob</code> changes are compatible with Prow's use, including the S3 upload-manager migration: Prow does not use <code>blob.Writer.As</code> or AWS manager types.</p>
-  <h2>What this PR does</h2>
-  <ul><li>Updates direct dependency <code>gocloud.dev</code> from <code>v0.40.0</code> to <code>v0.46.0</code> in <code>go.mod</code>.</li><li>Regenerates <code>go.sum</code> and the indirect module graph.</li><li>Replaces the now-unused AWS SDK v1 and S3 manager modules with AWS SDK v2 transfermanager through Go Cloud.</li></ul>
-  <h2>Findings</h2><p>No findings.</p>
-  <h2>Things I checked and were fine</h2>
-  <ul><li>Classification: dep-only (<code>go.mod</code>, <code>go.sum</code> only); <code>git diff --check HEAD^ HEAD</code> is clean.</li><li><code>v0.46.0</code> is a tagged release from 2026-06-02T22:21:46Z, 90 days old at review; no pseudo-version or freshness concern.</li><li>Prow imports <code>gocloud.dev/blob</code> in five production files: <code>pkg/io/{opener.go,option.go,iterator.go}</code> and <code>pkg/io/providers/{providers.go,aws.go}</code>. It uses blob storage to read, write, list, inspect, and sign artifact objects for GCS, S3, local, and memory backends.</li><li>The relevant upstream changes are the blob OpenTelemetry migration, S3 403-to-PermissionDenied mapping, file-bucket root-escape fix, typed error support, and v0.46 S3 upload migration from <code>s3/manager</code> to <code>s3/transfermanager</code>. Prow constructs its own <code>*s3.Client</code> in <code>pkg/io/providers/aws.go:54-92</code> and never calls the affected <code>blob.Writer.As</code> API; the breaking API change does not land in Prow.</li><li><code>go test ./pkg/io/...</code> passes.</li></ul>
-  <h2>Open questions for the author</h2><p>None.</p>
-</body>
-</html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#877</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>chore(deps): bump gocloud.dev from 0.40.0 to 0.46.0</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/877">kubernetes-sigs/prow#877</a> · base <code>main</code> · head_sha <code>d69423cf4bd4</code> · reviewed_at <code>2026-09-01T18:24:37Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span></div>
+<h2>Verdict</h2>
+<p>Approve. This dep-only change updates the directly used Go Cloud Development Kit after a 90-day soak. Its material <code>blob</code> changes are compatible with Prow's use, including the S3 upload-manager migration: Prow does not use <code>blob.Writer.As</code> or AWS manager types.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Updates direct dependency <code>gocloud.dev</code> from <code>v0.40.0</code> to <code>v0.46.0</code> in <code>go.mod</code>.
+</li>
+<li>Regenerates <code>go.sum</code> and the indirect module graph.
+</li>
+<li>Replaces the now-unused AWS SDK v1 and S3 manager modules with AWS SDK v2 transfermanager through Go Cloud.
+</li></ul>
+<h2>Findings</h2>
+<p>No findings.</p>
+<h2>Checked</h2>
+<ul>
+<li>Classification: dep-only (<code>go.mod</code>, <code>go.sum</code> only); <code>git diff --check HEAD^ HEAD</code> is clean.
+</li>
+<li><code>v0.46.0</code> is a tagged release from 2026-06-02T22:21:46Z, 90 days old at review; no pseudo-version or freshness concern.
+</li>
+<li>Prow imports <code>gocloud.dev/blob</code> in five production files: <code>pkg/io/{opener.go,option.go,iterator.go}</code> and <code>pkg/io/providers/{providers.go,aws.go}</code>. It uses blob storage to read, write, list, inspect, and sign artifact objects for GCS, S3, local, and memory backends.
+</li>
+<li>The relevant upstream changes are the blob OpenTelemetry migration, S3 403-to-PermissionDenied mapping, file-bucket root-escape fix, typed error support, and v0.46 S3 upload migration from <code>s3/manager</code> to <code>s3/transfermanager</code>. Prow constructs its own <code>*s3.Client</code> in <code>pkg/io/providers/aws.go:54-92</code> and never calls the affected <code>blob.Writer.As</code> API; the breaking API change does not land in Prow.
+</li>
+<li><code>go test ./pkg/io/...</code> passes.
+</li></ul>
+<h2>Open questions</h2>
+<p>None.</p>
+<h2>Dependency followups</h2>
+<p>Outcome: 2 accepted, 0 skipped. PR #877 merged on 2026-08-25 as <code>4cb91aa21d4341cbf124e1de44e507063c566e8f</code>; execute these prompts against the merged default branch, checking current call sites before editing.</p>
+<p>Examined <code>gocloud.dev v0.40.0 → v0.46.0</code> (all intermediate release notes), indirect <code>github.com/google/wire v0.6.0 → v0.7.0</code> (build-dependency fix; no Prow imports), and the replacement of indirect <code>github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.17.10</code> with <code>feature/s3/transfermanager v0.2.3</code> (handled inside Go Cloud; no Prow imports). Removed dependencies <code>github.com/aws/aws-sdk-go v1.55.5</code> and <code>github.com/jmespath/go-jmespath v0.4.0</code> have no Prow imports. Other removed go.sum entries are checksum cleanup, not selected-version upgrades. No further candidates: the new list iterator does not directly replace Prow's provider-neutral Next interface; other changes either apply internally or concern drivers Prow does not use.</p>
+<h3>Native conditional writes for S3 artifacts</h3>
+<ul>
+<li>status: accepted
+</li>
+<li>category: api-upgrade
+</li>
+<li>necessity: should — replace a racy existence check and eliminate an unclosed reader.
+</li>
+<li>dependency: <code>gocloud.dev v0.40.0 → v0.46.0</code>; <code>IfNotExist</code> introduced in v0.42.0.
+</li>
+<li>source: <a href="https://github.com/google/go-cloud/pull/3533">upstream #3533</a>, release note: "blob: introduce conditional write option for storage".
+</li>
+<li>where: <code>pkg/io/opener.go:312-325</code>, <code>pkg/io/opener.go:523-561</code>; create-only callers in <code>pkg/crier/reporters/gcs/reporter.go:156</code> and <code>pkg/crier/reporters/gcs/reporter.go:177</code>.
+</li>
+<li>handoff:
+<pre><code>Mode: deliver
+In kubernetes-sigs/prow, now that PR #877 — &quot;chore(deps): bump gocloud.dev from 0.40.0 to 0.46.0&quot; — merged as 4cb91aa21d4341cbf124e1de44e507063c566e8f, adopt native conditional writes for the Go Cloud blob path. Work against the merged default branch and first verify the relevant code is still present.
+
+The v0.42.0 release introduced &quot;blob: introduce conditional write option for storage&quot; (https://github.com/google/go-cloud/pull/3533). In pkg/io/opener.go:312-325, opener.Writer currently implements PreconditionDoesNotExist with a BeforeWrite callback that opens a reader, then writes separately. This races with competing writers and leaves a successful reader unclosed. Replace the callback with blob.WriterOptions.IfNotExist, mapping the existing option&#x27;s nil/false/true semantics. Account for the fact that failed conditions may now surface from Write or Close. Update isErrUnexpected/WriteContent&#x27;s handling to recognize gcerrors.ErrFailedPrecondition without suppressing unrelated failures. Retain compatibility with existing exported precondition errors and their callers where needed.
+
+Acceptance criteria: create-only writes leave existing content intact, including competing writes to one key; one concurrent creator wins; unconditional writes still overwrite. Expected failed-precondition errors from Write and Close retain WriteContent&#x27;s existing treatment. Exercise the Go Cloud path (memblob can provide deterministic coverage) and run go test ./pkg/io/... plus affected crier reporter tests. Review the S3 driver&#x27;s IfNoneMatch mapping and report any S3-compatible-provider limitation; do not claim a live S3 integration check unless performed.
+
+Scope: change the blob conditional-write path and necessary error handling/tests only. Preserve the GCS SDK and local-file paths, the public Opener interface, and crier&#x27;s intended started.json/finished.json behavior. Do not migrate providers or redesign iteration.</code></pre>
+</li></ul>
+<h3>Use Go Cloud's not-found sentinel</h3>
+<ul>
+<li>status: accepted
+</li>
+<li>category: simplification
+</li>
+<li>necessity: could — remove a stale workaround and recognize the new public sentinel directly.
+</li>
+<li>dependency: <code>gocloud.dev v0.40.0 → v0.46.0</code>; error sentinels introduced in v0.46.0.
+</li>
+<li>source: <a href="https://github.com/google/go-cloud/pull/3708">upstream #3708</a>, release note: "all: support typed errors and errors.Is for error codes".
+</li>
+<li>where: <code>pkg/io/opener.go:162-180</code>, <code>pkg/io/opener_test.go:169-219</code>.
+</li>
+<li>handoff:
+<pre><code>Mode: deliver
+In kubernetes-sigs/prow, now that PR #877 — &quot;chore(deps): bump gocloud.dev from 0.40.0 to 0.46.0&quot; — merged as 4cb91aa21d4341cbf124e1de44e507063c566e8f, use Go Cloud&#x27;s public not-found sentinel in pkg/io. Work against the merged default branch and verify current call sites before editing.
+
+The v0.46.0 release added &quot;all: support typed errors and errors.Is for error codes&quot; (https://github.com/google/go-cloud/pull/3708). pkg/io/opener.go:162-180 defines ErrNotFoundTest with the stale explanation that Go Cloud does not expose errors, special-cases that sentinel, and otherwise recognizes Go Cloud errors through gcerrors.Code(err) == gcerrors.NotFound. The latter does not recognize gcerrors.ErrNotFound itself. Migrate Go Cloud not-found recognition to errors.Is(err, gcerrors.ErrNotFound). Replace the stale test workaround while preserving source compatibility for exported ErrNotFoundTest, for example with a documented deprecated alias after checking compatibility needs. Preserve recognition of filesystem and GCS errors and remove only code made redundant by this migration.
+
+Acceptance criteria: IsNotExist recognizes direct and wrapped gcerrors.ErrNotFound, an actual missing-object blob error, existing filesystem/GCS not-found errors, and the compatibility symbol. It returns false for nil and unrelated or permission-denied errors. Extend pkg/io/opener_test.go&#x27;s existing cases as needed and run go test ./pkg/io/....
+
+Scope: the not-found helper, compatibility symbol/documentation, and focused tests only. Do not redesign other error handling or alter provider behavior. Coordinate with the native conditional-write followup if both touch pkg/io/opener.go.</code></pre>
+</li></ul>
+</main></body></html>

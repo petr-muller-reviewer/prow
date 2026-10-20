@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Triage: kubernetes-sigs/prow#777</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; line-height: 1.6; color: #24292f; max-width: 860px; margin: 2rem auto; padding: 0 1rem; }
+  h1 { font-size: 1.5rem; border-bottom: 1px solid #d0d7de; padding-bottom: 0.4rem; }
+  h2 { font-size: 1.25rem; margin-top: 2rem; border-bottom: 1px solid #d0d7de; padding-bottom: 0.3rem; }
+  h3 { font-size: 1rem; margin-top: 1.2rem; }
+  code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; font-size: 0.9em; background: #f6f8fa; padding: 0.15em 0.35em; border-radius: 3px; }
+  pre { background: #f6f8fa; padding: 1rem; border-radius: 6px; overflow-x: auto; font-size: 0.85em; line-height: 1.45; }
+  pre code { background: none; padding: 0; }
+  .header-block { background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 6px; padding: 1rem 1.2rem; margin-bottom: 1.5rem; }
+  .header-block dt { font-weight: 600; display: inline; }
+  .header-block dt::after { content: ": "; }
+  .header-block dd { display: inline; margin: 0; }
+  .header-block dl > div { margin-bottom: 0.25rem; }
+  .verdict { font-size: 1.1rem; font-weight: 600; color: #1a7f37; }
+  ul { padding-left: 1.5rem; }
+  li { margin-bottom: 0.3rem; }
+  a { color: #0969da; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .tag { display: inline-block; background: #ddf4ff; color: #0969da; padding: 0.1em 0.5em; border-radius: 2em; font-size: 0.8em; margin-right: 0.3em; }
+</style>
+</head>
+<body>
+
+<h1>Triage: kubernetes-sigs/prow#777</h1>
+
+<div class="header-block">
+  <dl>
+    <div><dt>Issue</dt><dd><a href="https://github.com/kubernetes-sigs/prow/issues/777">kubernetes-sigs/prow#777</a></dd></div>
+    <div><dt>Title</dt><dd>tide: context checker error silently drops PR instead of reporting via status context</dd></div>
+    <div><dt>State</dt><dd>open</dd></div>
+    <div><dt>Labels</dt><dd>(none)</dd></div>
+    <div><dt>Triaged at</dt><dd>2026-07-01T22:19:04Z</dd></div>
+    <div><dt>Main SHA</dt><dd><code>444074c659e1d2626895fbc542f7cc6ccfb19e16</code></dd></div>
+    <div><dt>Verdict</dt><dd><span class="verdict">accepted</span></dd></div>
+  </dl>
+</div>
+
+<h2>Verdict</h2>
+<p><strong>Accepted as a valid bug in the Tide component.</strong></p>
+<p>Two independent bugs compound: (1) a hypothesized context list collision when <code>from-branch-protection: true</code> causes the same context to appear in both <code>RequiredContexts</code> and <code>RequiredIfPresentContexts</code>, and (2) a confirmed silent subpool drop in <code>filterSubpools</code> that swallows the resulting error and leaves affected PRs with no tide status context. The specific collision trigger is a strong hypothesis but not yet confirmed; the silent-drop behavior is confirmed from logs.</p>
+
+<h2>What the issue reports</h2>
+<ul>
+  <li><code>TideContextPolicy.Validate()</code> errors when a context appears in both <code>RequiredContexts</code> and <code>RequiredIfPresentContexts</code>.</li>
+  <li>This can happen implicitly when <code>from-branch-protection: true</code> pulls BP-required contexts that are also conditionally-triggered presubmit jobs.</li>
+  <li><code>filterSubpools</code> catches the error, logs it, and silently drops the entire subpool &mdash; no tide status is set on any affected PR.</li>
+  <li>PR authors see no signal: no "error" status, no "pending" status, nothing. Tide appears to ignore the PR entirely.</li>
+  <li>Maintainer has observed the behavior in production with a concrete config: BP-required context + <code>always_run: false</code> + <code>skip_if_only_changed</code> + <code>from-branch-protection: true</code>.</li>
+</ul>
+
+<h2>Analysis</h2>
+
+<h3>Probable cause (hypothesized trigger)</h3>
+<p><code>GetTideContextPolicy</code> at <code>pkg/config/tide.go:944-995</code> builds the context policy from two independent sources:</p>
+<ol>
+  <li><strong>Branch protection</strong> (line 968): when <code>from-branch-protection: true</code>, contexts from <code>bp.RequiredStatusChecks.Contexts</code> are inserted into <code>required</code>.</li>
+  <li><strong>Job properties</strong> (lines 974-976): <code>BranchRequirements()</code> partitions presubmit jobs by trigger behavior. A conditionally-triggered, non-optional job (<code>TriggersConditionally() == true</code>) lands in <code>requiredIfPresent</code>.</li>
+</ol>
+<p>When the same context appears in both, <code>Validate()</code> at line 868 rejects the overlap. This is a hypothesis &mdash; confirmed that the error fires, but the exact config path producing the collision needs reproduction.</p>
+
+<pre><code>// pkg/config/tide.go:968 — BP contexts go into required
+required.Insert(bp.RequiredStatusChecks.Contexts...)
+
+// pkg/config/tide.go:974-976 — job properties may put same context into requiredIfPresent
+prowRequired, prowRequiredIfPresent, prowOptional := BranchRequirements(branch, presubmits, requireManuallyTriggeredJobs)
+required.Insert(prowRequired...)
+requiredIfPresent.Insert(prowRequiredIfPresent...)</code></pre>
+
+<h3>Silent subpool drop (confirmed)</h3>
+<p><code>filterSubpools</code> at <code>pkg/tide/tide.go:673-676</code> catches the <code>initSubpoolData</code> error and silently drops the subpool:</p>
+<pre><code>if err := c.initSubpoolData(sp); err != nil {
+    sp.log.WithError(err).Error("Error initializing subpool.")
+    return  // subpool silently excluded from filtered map
+}</code></pre>
+<p>The status controller runs independently and can only report on PRs it knows about from the pool map. Dropped subpool PRs may get misleading status or none at all.</p>
+
+<h3>Related code</h3>
+<ul>
+  <li><code>pkg/config/tide.go:862-891</code> &mdash; <code>TideContextPolicy.Validate()</code>: rejects overlapping context lists.</li>
+  <li><code>pkg/config/branch_protection.go:604-638</code> &mdash; <code>BranchRequirements()</code>: partitions jobs into required/requiredIfPresent/optional based on <code>TriggersConditionally()</code>.</li>
+  <li><code>pkg/config/jobs.go:533-550</code> &mdash; <code>TriggersConditionally()</code>, <code>ContextRequired()</code>: job categorization logic.</li>
+  <li><code>pkg/tide/tide.go:692-722</code> &mdash; <code>initSubpoolData</code>: calls <code>GetTideContextPolicy</code> per-PR, wraps Validate error.</li>
+  <li><code>pkg/tide/status.go:277-368</code> &mdash; <code>expectedStatus()</code>: has existing <code>StatusError</code> patterns for merge conflicts and blockers.</li>
+  <li><code>cmd/checkconfig/main.go:1183-1227</code> &mdash; <code>validateTideContextPolicy</code>: catches static config errors but not runtime collisions from <code>from-branch-protection: true</code>.</li>
+</ul>
+
+<h2>What I checked</h2>
+<ul>
+  <li>Confirmed the error message in the issue matches <code>pkg/config/tide.go:869</code>.</li>
+  <li>Confirmed <code>checkconfig</code> validates context policies at config-load time but cannot catch runtime collisions from <code>from-branch-protection: true</code>.</li>
+  <li>Verified the status controller already uses <code>github.StatusError</code> for merge conflicts and blockers &mdash; same pattern could report <code>initSubpoolData</code> errors.</li>
+  <li>Checked that <code>filterSubpools</code> has no error-propagation mechanism.</li>
+  <li>The specific config trigger (BP + conditional job collision) is a hypothesis; the symptom (silent drop, no status) is confirmed.</li>
+</ul>
+
+<h2>Recommended next steps</h2>
+<ul>
+  <li><strong>Confirm the hypothesis:</strong> reproduce with the exact config from the maintainer's comment and verify the Validate error is the one firing.</li>
+  <li><strong>Fix A (higher priority):</strong> deduplicate contexts in <code>GetTideContextPolicy</code> after merging BP and job sources, before calling <code>Validate()</code>. Keep <code>Validate()</code> strict so <code>checkconfig</code> still catches explicit misconfigurations.</li>
+  <li><strong>Fix B (hardening):</strong> propagate <code>initSubpoolData</code> errors to the tide status context as <code>github.StatusError</code>. Prevents any future init error from being silent.</li>
+  <li><strong>Label:</strong> <span class="tag">kind/bug</span> <span class="tag">area/tide</span> <span class="tag">help-wanted</span></li>
+</ul>
+
+<h2>Open questions</h2>
+<ul>
+  <li>Should <code>checkconfig</code> be updated to detect this configuration pattern and warn proactively?</li>
+  <li>Is "required wins over required-if-present" always the right resolution, or are there cases where conditional semantics should take precedence?</li>
+</ul>
+
+</body>
+</html>

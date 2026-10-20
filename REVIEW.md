@@ -1,33 +1,45 @@
 ---
 pr: kubernetes-sigs/prow#1013
 title: "feat: add squash-commits mode to cherrypicker"
-head_sha: ce50c67292a53542103cf2b4318c3daf4c6a559f
+head_sha: 399d1fd49b041dbf9b6d62d231a807b66bf99f1d
 base: main
-reviewed_at: 2026-10-19T13:08:04Z
-verdict: request-changes
+reviewed_at: 2026-10-20T12:27:33Z
+verdict: needs-discussion
 gate:
   decision: hold
-  gated_at: 2026-10-19T12:51:00Z
-  gated_head_sha: ce50c67292a53542103cf2b4318c3daf4c6a559f
-  reviewed_head_sha: ce50c67292a53542103cf2b4318c3daf4c6a559f
+  gated_at: 2026-10-20T12:43:39Z
+  gated_head_sha: 399d1fd49b041dbf9b6d62d231a807b66bf99f1d
+  reviewed_head_sha: 399d1fd49b041dbf9b6d62d231a807b66bf99f1d
+refresh_log:
+  - at: 2026-10-20T12:27:33Z
+    old_sha: ce50c67292a53542103cf2b4318c3daf4c6a559f
+    new_sha: 399d1fd49b041dbf9b6d62d231a807b66bf99f1d
+    summary: "Resolved the three implementation findings with targeted fixes and a trailer regression test."
 ---
 
 # Review
 
 ## Gate
 
-Decision: **hold**. Three actionable findings remain in the current PR head. The public pkg/git/v2.Interactor interface also gained methods, which can break downstream implementations at compile time; confirm compatibility expectations or preserve the interface.
+Decision: **hold** at `399d1fd49b041dbf9b6d62d231a807b66bf99f1d`.
 
-- Metadata lookup failures can still produce a squashed commit with missing or incorrect authorship (cmd/external-plugins/cherrypicker/server.go:813-827).
-- Commit body text can suppress a real Co-authored-by trailer (cmd/external-plugins/cherrypicker/server.go:920-925).
-- Long messages can exceed the OS argument limit when passed to Git (pkg/git/v2/interactor.go:439-449).
-- The exported interface change affects downstream packages that implement Interactor or RepoClient (pkg/git/v2/interactor.go:60-64; pkg/git/v2/client_factory.go:84-88).
+The previous implementation findings are addressed: metadata lookup failures stop the squash before applying the diff, co-author deduplication checks the final trailer block, and commit messages are passed through a file. The earlier nil-GitUser panic is also fixed. No outstanding implementation finding from the previous review remains.
 
-The earlier GitUser nil-pointer concern appears addressed by the new CommitWithAuthor path and its regression test. The --squash-commits flag defaults to false, so existing deployments retain their runtime behavior unless they enable it.
+One independent compatibility risk remains. This change adds `Apply` and `CommitWithAuthor` to the exported `pkg/git/v2.Interactor` interface (`interactor.go:63-67`), and the exported `RepoClient` embeds `Interactor` (`client_factory.go:92-95`). Downstream packages with their own implementations of either interface can therefore stop compiling. The squash flag defaults to false, so existing runtime behavior is unchanged by default, but that does not avoid the source compatibility break. Hold until maintainers confirm this interface break is acceptable or adjust the API to preserve downstream implementations.
+
+### Findings status
+
+- **Addressed:** metadata lookup failures, co-author trailer deduplication, long commit-message argument size, and nil author handling.
+- **Open maintainer disposition:** source compatibility for external `Interactor` and `RepoClient` implementations.
+
+### Merge risk
+
+- The exported interface change may require downstream implementers to add two methods or prevent them from compiling against this release.
+- The new squash mode is opt-in; the default remains the existing `git am` path.
 
 ## Verdict
 
-Request changes: the squash path can lose author attribution when GitHub metadata is unavailable, omit co-author trailers in some multi-commit messages, and fail for long commit messages. These are user-visible failures in the new mode.
+Needs discussion: the three implementation findings from the previous review are resolved, but the source compatibility impact of extending the exported Interactor interface still needs maintainer disposition.
 
 ## What this PR does
 
@@ -36,11 +48,21 @@ Request changes: the squash path can lose author attribution when GitHub metadat
 - Creates one signed-off commit for the cherry-pick and tries to preserve the original authorship.
 - Leaves the existing per-commit git am path in place when squash mode is disabled.
 
+Since previous review:
+
+- cmd/external-plugins/cherrypicker/server.go now aborts before applying the diff when either authorship metadata request fails, and reports those failures separately from conflicts.
+- cmd/external-plugins/cherrypicker/server.go now deduplicates co-author trailers against only the final trailer block.
+- pkg/git/v2/interactor.go writes the commit message to a temporary file and passes it with --file.
+
 ## Findings
+
+No new findings in this refresh.
+
+## Resolved
 
 ### [should-fix] Abort when commit metadata cannot be loaded
 - where: cmd/external-plugins/cherrypicker/server.go:813-827
-- concern: If listing the pull request's commits fails, the code logs a warning and continues with an empty commit list and author. It can then create a title-only commit attributed to the bot, losing the original authorship; stop before committing when required metadata is unavailable.
+- concern: If listing the pull request's commits fails, the code logs a warning and continues with an empty commit list and author. It can then create a title-only commit attributed to the bot, losing the original authorship.
 - excerpt: |
     commits, err := s.ghc.ListPullRequestCommits(org, repo, num)
     if err != nil {
@@ -50,43 +72,36 @@ Request changes: the squash path can lose author attribution when GitHub metadat
     author := primaryAuthor(commits, prAuthorLogin)
     message := squashCommitMessage(title, commits, author)
     return r.CommitWithAuthor(message, author, true)
+- resolution: The current code aborts when either ListPullRequestCommits or GetPullRequest fails, before applying the diff, and returns a metadata-specific response (server.go:697, 882-894).
 
 ### [should-fix] Check existing co-author trailers in the trailer block
 - where: cmd/external-plugins/cherrypicker/server.go:920-925
-- concern: For a multi-commit PR, commit bodies are copied into the base message. If one body mentions a co-author trailer, this substring check treats it as already present and omits the real trailer, so GitHub does not credit that co-author.
+- concern: For a multi-commit PR, commit bodies are copied into the base message. If one body mentions a co-author trailer, the substring check treats it as present and omits the actual trailer, so GitHub does not credit that co-author.
 - excerpt: |
-    base = strings.TrimRight(base, "\n")
     lower := strings.ToLower(base)
-    var add []string
-    for _, t := range trailers {
-        if !strings.Contains(lower, strings.ToLower(t)) {
-            add = append(add, t)
-        }
+    ...
+    if !strings.Contains(lower, strings.ToLower(t)) {
+        add = append(add, t)
     }
+- resolution: Deduplication now scans only the final trailer block, and a regression test covers a co-author trailer inside a bullet body (server.go:1009-1050; server_test.go:1841-1855).
 
 ### [should-fix] Pass long commit messages without an argv limit
 - where: pkg/git/v2/interactor.go:439-449
-- concern: The complete squashed message is passed as one --message argument. A sufficiently long pull request history can exceed Linux's per-argument limit and fail before Git runs; pass the message through a file or stdin.
+- concern: The complete squashed message was passed as one --message argument. A sufficiently long pull request history could exceed Linux's per-argument limit and fail before Git ran.
 - excerpt: |
     args := []string{"commit", "--message", message}
-    if author != "" {
-        args = append(args, "--author", author)
-    }
-    if signoff {
-        args = append(args, "--signoff")
-    }
+    ...
     if out, err := i.executor.Run(args...); err != nil {
         return fmt.Errorf("error committing: %w. output: %s", err, string(out))
     }
+- resolution: CommitWithAuthor now writes the message to a temporary file and invokes git commit with --file (interactor.go:472-489).
 
 ## Checked
 
 - --squash-commits defaults to false and the existing path still uses git am.
 - The squash path applies the diff with git apply --3way --index and adds the bot's sign-off.
-- The added end-to-end test checks PR creation but not the resulting commit author or message. Tests were not run.
+- The author added a regression test for co-author trailers in commit bullet bodies. The metadata error and long-message paths have no new targeted test in this update. Tests were not run.
 
 ## Open questions
 
-- Can the squash operation stop before committing if author metadata cannot be loaded?
-- Can trailer deduplication inspect only actual Git trailers rather than message-body text?
-- Can the commit message be passed through a file or stdin so long pull requests still work?
+- Can downstream users that implement pkg/git/v2.Interactor remain source-compatible, or should the new operations use an optional capability interface?

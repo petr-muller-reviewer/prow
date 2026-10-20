@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#1020</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>ghproxy: overlapping GETs to the same URL with different Accept headers share one response</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/issues/1020">kubernetes-sigs/prow#1020</a> · main_sha <code>4425e386ffba</code> · state <code>open</code> · labels <code>kind/bug</code> · triaged_at <code>2026-10-19T14:08:28Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: accepted</span></div>
+<details><summary>Full metadata</summary><pre><code>issue: kubernetes-sigs/prow#1020
+title: &quot;ghproxy: overlapping GETs to the same URL with different Accept headers share one response&quot;
+state: open
+labels: kind/bug
+main_sha: 4425e386ffba859f8fbfb535617559f05d37bf2f
+triaged_at: 2026-10-19T14:08:28Z
+verdict: accepted
+advice:
+  advised_at: 2026-10-20T12:43:31Z
+  based_on_triaged_at: 2026-10-19T14:08:28Z</code></pre></details>
+<h2>Verdict</h2>
+<p><strong>accepted</strong> — This is a reproducible bug in Prow's ghcache request coalescer. Keep the issue open while PR #1023 is reviewed; close it after the fix merges.</p>
+<h2>What the issue reports</h2>
+<ul>
+<li>ghcache coalesces overlapping GET requests to the same URL using an in-flight key that ignores Accept.
+</li>
+<li>GitHub serves pull-request JSON, diff, and patch representations from the same endpoint, selected by Accept.
+</li>
+<li>When requests for different representations overlap, a caller can receive the other request's body.
+</li>
+<li>The reporter supplied a concurrent regression test and reports it failed in five of five runs on main.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-blue">reproducibility</span>Concurrent requests return the wrong representation</h3>
+<ul>
+<li>detail: The issue includes a fake RoundTripper test that delays the JSON response, starts a diff request to the same URL, and checks the diff body. The reporter reports the test failed five of five times on main; this triage did not rerun it.
+</li>
+<li>evidence: kubernetes-sigs/prow#1020 issue body.
+</li></ul>
+<h3><span class="tag c-amber">cause</span>In-flight key omits Accept</h3>
+<ul>
+<li>detail: requestCoalescer.RoundTrip indexes active GET requests by URL alone. A matching request subscribes to the first and reconstructs its response from the first request's saved bytes, so different media types can share a response.
+</li>
+<li>evidence: pkg/ghcache/coalesce.go:97-100,105-170.
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>Pull request representations share an endpoint</h3>
+<ul>
+<li>where: pkg/github/client.go:2329-2344,2562-2592
+</li>
+<li>excerpt:<pre><code>accept:    &quot;application/vnd.github.symmetra-preview+json, application/vnd.github.shadow-cat-preview&quot;,
+path:      fmt.Sprintf(&quot;/repos/%s/%s/pulls/%d&quot;, org, repo, number),
+accept:    &quot;application/vnd.github.diff&quot;,
+path:      fmt.Sprintf(&quot;/repos/%s/%s/pulls/%d&quot;, org, repo, number),
+accept:    &quot;application/vnd.github.patch&quot;,
+path:      fmt.Sprintf(&quot;/repos/%s/%s/pulls/%d&quot;, org, repo, number),</code></pre>
+</li></ul>
+<h3><span class="tag c-blue">related-pr</span>Fix proposed in PR #1023</h3>
+<ul>
+<li>ref: kubernetes-sigs/prow#1023
+</li>
+<li>relevance: The open PR keys coalescing by URL and Accept values, adds a concurrent regression test, and updates ghcache documentation. Required CI checks passed at triage time; Tide was waiting for approval and an lgtm label.
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>Read the issue body and timeline; PR #1023 cross-references #1020 and states that it fixes the issue.
+</li>
+<li>Read the coalescer implementation, cache transport wiring, GitHub client methods, existing coalescer tests, and ghcache documentation.
+</li>
+<li>Existing coalescer tests cover same-URL coalescing but not different Accept values. PR #1023 adds coverage for multiple Accept-value sets.
+</li>
+<li>Reviewed PR #1023's diff and checks. Unit, race-detector, integration, image-build, and lint checks passed; Tide remained pending approval and lgtm.
+</li>
+<li>Searched issues for ghproxy accept, coalescer request, and pull diff patch; no separate duplicate was found. Unrelated results were ruled out.
+</li>
+<li>Did not rerun the reporter's reproduction.
+</li></ul>
+<h2>Next steps</h2>
+<ul>
+<li>Review PR #1023, with attention to the Accept-aware key and regression coverage for both distinct and matching representations.
+</li>
+<li>Complete the PR's maintainer approval and lgtm requirements.
+</li>
+<li>Keep the existing kind/bug label; consider adding area/ghproxy.
+</li>
+<li>Close issue #1020 after the fix merges.
+</li></ul>
+<h2>Advice</h2>
+<p>No change since triage: issue #1020 remains open with <code>kind/bug</code>, no assignee, no milestone, and no new comments. PR #1023 remains open and mergeable with no review decision. Its unit, race-detector, integration, image-build, and lint checks pass; Tide is pending because approval and <code>lgtm</code> are still needed.</p>
+<ol>
+<li>Review PR #1023, then approve it if the diff is satisfactory. The PR is the linked fix, so a separate implementation is unnecessary.
+<pre><code>gh pr diff 1023 --repo kubernetes-sigs/prow
+gh pr review 1023 --repo kubernetes-sigs/prow --approve</code></pre>
+</li>
+<li>Add the existing <code>area/ghproxy</code> label to make the issue discoverable by component. The issue already has <code>kind/bug</code>.
+<pre><code>gh issue edit 1020 --repo kubernetes-sigs/prow --add-label area/ghproxy</code></pre>
+</li>
+<li>After reviewing the change, apply <code>lgtm</code> if appropriate; Tide currently requires it. Do not close the issue while PR #1023 remains open.
+<pre><code>gh pr comment 1023 --repo kubernetes-sigs/prow --body $&#x27;&gt; *This was generated by AI during triage.*\n\n/lgtm&#x27;</code></pre>
+</li></ol>
+<p>No milestone, priority, <code>help wanted</code>, or <code>good first issue</code> label is recommended while the fix is already in an active PR and the triage assessed it as Level 3.</p>
+<h2>Open questions</h2>
+<ul>
+<li>Are there Prow GitHub API requests whose response representation varies by request headers beyond Accept? Knowing of other cases would help decide whether the coalescing key needs to account for additional headers.
+</li></ul>
+</main></body></html>

@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Review: kubernetes-sigs/prow#879</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; line-height: 1.55; margin: 0; }
+    main { max-width: 900px; margin: 0 auto; padding: 2.5rem 1.25rem 4rem; }
+    h1 { line-height: 1.2; margin-bottom: .35rem; }
+    h2 { border-bottom: 1px solid #8886; margin-top: 2.25rem; padding-bottom: .3rem; }
+    code { background: #8882; border-radius: .25rem; padding: .1rem .25rem; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .meta { color: #666; }
+    .verdict { border-left: .35rem solid #22863a; padding: .75rem 1rem; background: #22863a14; }
+    .none { color: #666; font-style: italic; }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Dependency review: <a href="https://github.com/kubernetes-sigs/prow/pull/879">kubernetes-sigs/prow#879</a></h1>
+      <p class="meta"><code>ad03089d119cfe3220a5492817075e47010301eb</code> · base <code>main</code> · reviewed 2026-09-01T18:02:56Z</p>
+    </header>
+
+    <section>
+      <h2>Verdict: approve</h2>
+      <div class="verdict">
+        <p>This dependency-only update moves the direct Pub/Sub client from <code>v2.6.0</code> to <code>v2.6.2</code>. The two patch releases fix publisher flow-control credit leakage and acknowledgement batches that can exceed Pub/Sub request limits; both are compatible with Prow's existing usage. The tagged v2.6.2 release was 13 days old at review time.</p>
+      </div>
+    </section>
+
+    <section>
+      <h2>What this PR does</h2>
+      <ul>
+        <li>Updates the direct production dependency <code>cloud.google.com/go/pubsub/v2</code> from <code>v2.6.0</code> to <code>v2.6.2</code> in <code>go.mod</code>.</li>
+        <li>Refreshes its checksums in <code>go.sum</code>.</li>
+        <li>Removes stale indirect checksums left by module tidying.</li>
+        <li>Includes the v2.6.1 flow-control credit-leak fix and v2.6.2 acknowledgement-batch-size fix.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Findings</h2>
+      <h3>Blocking</h3><p class="none">None.</p>
+      <h3>Should fix</h3><p class="none">None.</p>
+      <h3>Nits</h3><p class="none">None.</p>
+      <h3>Questions</h3><p class="none">None.</p>
+    </section>
+
+    <section>
+      <h2>Things I checked and were fine with</h2>
+      <ul>
+        <li>Only <code>go.mod</code> and <code>go.sum</code> change, so this is dependency-only.</li>
+        <li>The dependency is direct and appears in three production files: <code>pkg/crier/reporters/pubsub/reporter.go</code>, <code>pkg/pubsub/subscriber/server.go</code>, and <code>pkg/pubsub/subscriber/subscriber.go</code>; three further imports are tests/integration fakes.</li>
+        <li>Upstream v2.6.1 releases publisher flow-control credit after a scheduler error; v2.6.2 reduces acknowledgement batches to 1,000 to prevent <code>INVALID_ARGUMENT</code> failures with long acknowledgement IDs.</li>
+        <li>Prow creates a default publisher at <code>pkg/crier/reporters/pubsub/reporter.go:132-134</code>, and receives/acknowledges messages at <code>pkg/pubsub/subscriber/server.go:81</code> and <code>pkg/pubsub/subscriber/subscriber.go:123</code>; no changed API is used incompatibly.</li>
+        <li>The new version is a normal tag published 2026-08-19, not a pseudo-version; no CVE or breaking API change was identified.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Open questions for the author</h2>
+      <p class="none">None.</p>
+    </section>
+  </main>
+</body>
+</html>

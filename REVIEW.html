@@ -1,68 +1,76 @@
 <!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Review: kubernetes-sigs/prow#879</title>
-  <style>
-    :root { color-scheme: light dark; }
-    body { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; line-height: 1.55; margin: 0; }
-    main { max-width: 900px; margin: 0 auto; padding: 2.5rem 1.25rem 4rem; }
-    h1 { line-height: 1.2; margin-bottom: .35rem; }
-    h2 { border-bottom: 1px solid #8886; margin-top: 2.25rem; padding-bottom: .3rem; }
-    code { background: #8882; border-radius: .25rem; padding: .1rem .25rem; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
-    .meta { color: #666; }
-    .verdict { border-left: .35rem solid #22863a; padding: .75rem 1rem; background: #22863a14; }
-    .none { color: #666; font-style: italic; }
-  </style>
-</head>
-<body>
-  <main>
-    <header>
-      <h1>Dependency review: <a href="https://github.com/kubernetes-sigs/prow/pull/879">kubernetes-sigs/prow#879</a></h1>
-      <p class="meta"><code>ad03089d119cfe3220a5492817075e47010301eb</code> · base <code>main</code> · reviewed 2026-09-01T18:02:56Z</p>
-    </header>
-
-    <section>
-      <h2>Verdict: approve</h2>
-      <div class="verdict">
-        <p>This dependency-only update moves the direct Pub/Sub client from <code>v2.6.0</code> to <code>v2.6.2</code>. The two patch releases fix publisher flow-control credit leakage and acknowledgement batches that can exceed Pub/Sub request limits; both are compatible with Prow's existing usage. The tagged v2.6.2 release was 13 days old at review time.</p>
-      </div>
-    </section>
-
-    <section>
-      <h2>What this PR does</h2>
-      <ul>
-        <li>Updates the direct production dependency <code>cloud.google.com/go/pubsub/v2</code> from <code>v2.6.0</code> to <code>v2.6.2</code> in <code>go.mod</code>.</li>
-        <li>Refreshes its checksums in <code>go.sum</code>.</li>
-        <li>Removes stale indirect checksums left by module tidying.</li>
-        <li>Includes the v2.6.1 flow-control credit-leak fix and v2.6.2 acknowledgement-batch-size fix.</li>
-      </ul>
-    </section>
-
-    <section>
-      <h2>Findings</h2>
-      <h3>Blocking</h3><p class="none">None.</p>
-      <h3>Should fix</h3><p class="none">None.</p>
-      <h3>Nits</h3><p class="none">None.</p>
-      <h3>Questions</h3><p class="none">None.</p>
-    </section>
-
-    <section>
-      <h2>Things I checked and were fine with</h2>
-      <ul>
-        <li>Only <code>go.mod</code> and <code>go.sum</code> change, so this is dependency-only.</li>
-        <li>The dependency is direct and appears in three production files: <code>pkg/crier/reporters/pubsub/reporter.go</code>, <code>pkg/pubsub/subscriber/server.go</code>, and <code>pkg/pubsub/subscriber/subscriber.go</code>; three further imports are tests/integration fakes.</li>
-        <li>Upstream v2.6.1 releases publisher flow-control credit after a scheduler error; v2.6.2 reduces acknowledgement batches to 1,000 to prevent <code>INVALID_ARGUMENT</code> failures with long acknowledgement IDs.</li>
-        <li>Prow creates a default publisher at <code>pkg/crier/reporters/pubsub/reporter.go:132-134</code>, and receives/acknowledges messages at <code>pkg/pubsub/subscriber/server.go:81</code> and <code>pkg/pubsub/subscriber/subscriber.go:123</code>; no changed API is used incompatibly.</li>
-        <li>The new version is a normal tag published 2026-08-19, not a pseudo-version; no CVE or breaking API change was identified.</li>
-      </ul>
-    </section>
-
-    <section>
-      <h2>Open questions for the author</h2>
-      <p class="none">None.</p>
-    </section>
-  </main>
-</body>
-</html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#879</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>chore(deps): bump cloud.google.com/go/pubsub/v2 from 2.6.0 to 2.6.2</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/879">kubernetes-sigs/prow#879</a> · base <code>main</code> · head_sha <code>ad03089d119c</code> · reviewed_at <code>2026-09-01T18:02:56Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span></div>
+<h2>Verdict</h2>
+<p>Approve. This dependency-only update moves the direct Pub/Sub client from v2.6.0 to v2.6.2. The two patch releases fix publisher flow-control credit leakage and acknowledgement batches that can exceed Pub/Sub request limits; both are compatible with Prow's existing usage. The tagged v2.6.2 release was 13 days old at review time.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Updates the direct production dependency <code>cloud.google.com/go/pubsub/v2</code> from <code>v2.6.0</code> to <code>v2.6.2</code> in <code>go.mod</code>.
+</li>
+<li>Refreshes its checksums in <code>go.sum</code>.
+</li>
+<li>Removes stale indirect checksums left by module tidying.
+</li>
+<li>Includes the v2.6.1 flow-control credit-leak fix and v2.6.2 acknowledgement-batch-size fix.
+</li></ul>
+<h2>Findings</h2>
+<p>None.</p>
+<h2>Checked</h2>
+<ul>
+<li>Classified the change as dependency-only: only <code>go.mod</code> and <code>go.sum</code> change.
+</li>
+<li>Confirmed the dependency is direct and imported by three production files: <code>pkg/crier/reporters/pubsub/reporter.go</code>, <code>pkg/pubsub/subscriber/server.go</code>, and <code>pkg/pubsub/subscriber/subscriber.go</code>; three further imports are tests/integration fakes.
+</li>
+<li>Reviewed the upstream <code>pubsub/v2.6.0...pubsub/v2.6.2</code> release notes and component commits. v2.6.1 releases publisher flow-control credit after a scheduler error; v2.6.2 reduces acknowledgement batches to 1,000 to prevent <code>INVALID_ARGUMENT</code> failures with long acknowledgement IDs.
+</li>
+<li>Confirmed Prow creates a default publisher at <code>pkg/crier/reporters/pubsub/reporter.go:132-134</code>, and receives/acknowledges messages at <code>pkg/pubsub/subscriber/server.go:81</code> and <code>pkg/pubsub/subscriber/subscriber.go:123</code>; no changed API is used incompatibly.
+</li>
+<li>Confirmed the new version is a normal tag published 2026-08-19, not a pseudo-version; no CVE or breaking API change was identified.
+</li></ul>
+<h2>Open questions</h2>
+<p>None.</p>
+<h2>Dependency followups</h2>
+<p>Examined 2026-10-20 for merged PR #879 (merge commit <code>c55704ffb386ddc489728f5cd406f701525059b2</code>). No actionable opportunities identified; no items or handoff prompts recorded.</p>
+<ul>
+<li>Direct module examined: <code>cloud.google.com/go/pubsub/v2 v2.6.0 → v2.6.2</code>, including intermediate v2.6.1. The <a href="https://github.com/googleapis/google-cloud-go/releases/tag/pubsub/v2.6.1">v2.6.1 release notes</a> and <a href="https://github.com/googleapis/google-cloud-go/releases/tag/pubsub/v2.6.2">v2.6.2 release notes</a> describe internal fixes to publisher flow-control credit release, exactly-once tracing, fake-server acknowledgement IDs, and acknowledgement batch size. They introduce no deprecations, replacement APIs, or new features requiring changes to Prow's call sites.
+</li>
+<li>Usage checked: default publishing in <code>pkg/crier/reporters/pubsub/reporter.go:132-134</code>; receive configuration in <code>pkg/pubsub/subscriber/server.go:95-100</code>; acknowledgements in <code>pkg/pubsub/subscriber/subscriber.go:122-126</code>; fake-server usage in <code>pkg/crier/reporters/pubsub/reporter_test.go:483-485</code>. The fixes apply automatically, and the existing receive settings do not override the internal acknowledgement batch size.
+</li>
+<li>Transitive scope checked: the PR's actual <code>go.mod</code>/<code>go.sum</code> diff upgrades no other modules. Although Pub/Sub's own dependency minimums increase between these versions, Prow's pre-bump manifest already requires those versions or newer (including IAM, GAX, OpenTelemetry, Google API, gRPC, genproto, and the affected <code>golang.org/x</code> modules). Consequently, those minimum changes unlock no additional dependency features for Prow in this PR.
+</li>
+<li>Removals examined: indirect <code>go.einride.tech/aip v0.83.0</code> and <code>gotest.tools/v3 v3.5.2</code> checksums disappear rather than upgrading; neither module is imported by Prow's Go source. No migration follows from their removal.
+</li></ul>
+<p>Scope: compared PR head <code>ad03089d119cfe3220a5492817075e47010301eb</code> against the PR's recorded pre-merge base <code>4cb91aa21d4341cbf124e1de44e507063c566e8f</code>; the current upstream merge-base already contains the merged PR and would hide its dependency diff.</p>
+</main></body></html>

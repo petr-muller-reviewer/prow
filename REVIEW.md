@@ -3,14 +3,26 @@ pr: kubernetes-sigs/prow#719
 title: "mergecommitblocker: allow use of Git subtrees with `excluded_paths` config option"
 head_sha: 941664570326bd59dfcbbdb62cc66f6c874f203f
 base: main
-reviewed_at: 2026-07-20T14:59:39Z
+reviewed_at: 2026-10-20T13:59:23Z
 verdict: request-changes
 refresh_log:
   - from: 941664570326bd59dfcbbdb62cc66f6c874f203f
     to: 941664570326bd59dfcbbdb62cc66f6c874f203f
     at: 2026-07-20T14:59:39Z
     summary: No code changes; author asked in an issue comment (2026-07-20) whether anything else is needed. Findings unchanged.
+  - from: 941664570326bd59dfcbbdb62cc66f6c874f203f
+    to: 941664570326bd59dfcbbdb62cc66f6c874f203f
+    at: 2026-10-20T13:59:23Z
+    summary: No code changes; stale lifecycle and needs-rebase bot comments recorded. Findings unchanged.
 ---
+
+## What this PR does
+
+- Adds an `excluded_paths` config option to MergeCommitBlocker for repositories using Git subtrees.
+
+Since previous review:
+- No code changes: PR head remains `941664570326bd59dfcbbdb62cc66f6c874f203f`.
+- `k8s-triage-robot` marked the PR stale at 2026-10-20 07:04 UTC; `kubernetes-prow[bot]` reported that it needs rebase at 2026-10-20 07:05 UTC.
 
 ## Findings
 

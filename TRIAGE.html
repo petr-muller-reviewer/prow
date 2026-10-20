@@ -31,19 +31,22 @@ ul, ol { padding-left:1.5rem; }
 details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
 </style></head><body><main>
 <h1>Add regex support for branch matching in Tide status controller</h1>
-<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/issues/438">kubernetes-sigs/prow#438</a> · main_sha <code>61402617b331</code> · state <code>open</code> · labels <code>kind/feature, lifecycle/stale, area/tide</code> · triaged_at <code>2026-10-19T13:40:47Z</code></div>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/issues/438">kubernetes-sigs/prow#438</a> · main_sha <code>61402617b331</code> · state <code>open</code> · labels <code>kind/feature, area/tide</code> · triaged_at <code>2026-10-20T14:35:20Z</code></div>
 <div class="badges"><span class="badge c-green">verdict: accepted</span></div>
 <details><summary>Full metadata</summary><pre><code>issue: kubernetes-sigs/prow#438
 title: &quot;Add regex support for branch matching in Tide status controller&quot;
 state: open
-labels: kind/feature, lifecycle/stale, area/tide
+labels: kind/feature, area/tide
 main_sha: 61402617b3311e0ea6c0274b68ae71e9a524ab8b
-triaged_at: 2026-10-19T13:40:47Z
+triaged_at: 2026-10-20T14:35:20Z
 verdict: accepted
 refresh_log:
   - at: 2026-10-19T13:40:47Z
     since: 2026-06-02T09:01:39Z
-    summary: &quot;Issue remains open; stale lifecycle activity and four cross-referenced OpenShift release PRs were incorporated, including an unmerged regex-config attempt.&quot;</code></pre></details>
+    summary: &quot;Issue remains open; stale lifecycle activity and four cross-referenced OpenShift release PRs were incorporated, including an unmerged regex-config attempt.&quot;
+  - at: 2026-10-20T14:35:20Z
+    since: 2026-10-19T13:40:47Z
+    summary: &quot;kaovilai removed the lifecycle/stale label; issue remains open with no new cross-references or main-branch changes.&quot;</code></pre></details>
 <h2>What the issue reports</h2>
 <p>The issue requests regular-expression matching for target branches in Tide status queries.</p>
 <p>Since previous triage:</p>
@@ -53,6 +56,10 @@ refresh_log:
 <li>Four OpenShift release PRs were cross-referenced: #83619 merged with branch-specific Tide config changes; #84020 merged as repository onboarding; #84118 closed unmerged after exact branch exclusions; #85777 closed unmerged after proposing <code>includedBranchesRe</code> for app-scoped branches.
 </li>
 <li>In #85777, a CodeRabbit review flagged <code>includedBranchesRe</code> as unsupported; upstream Prow main still has no corresponding Tide query fields.
+</li></ul>
+<p>Since previous triage (2026-10-19T13:40:47Z):</p>
+<ul>
+<li>On 2026-10-20 at 02:25:54Z, kaovilai commented <code>/remove-lifecycle stale</code>; the issue remains open and the stale label is gone.
 </li></ul>
 <h2>Findings</h2>
 <h3><span class="tag c-amber">cause</span>GitHub Search API base: qualifier is exact-match only</h3>

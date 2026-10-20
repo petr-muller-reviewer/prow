@@ -2,14 +2,17 @@
 issue: kubernetes-sigs/prow#438
 title: "Add regex support for branch matching in Tide status controller"
 state: open
-labels: kind/feature, lifecycle/stale, area/tide
+labels: kind/feature, area/tide
 main_sha: 61402617b3311e0ea6c0274b68ae71e9a524ab8b
-triaged_at: 2026-10-19T13:40:47Z
+triaged_at: 2026-10-20T14:35:20Z
 verdict: accepted
 refresh_log:
   - at: 2026-10-19T13:40:47Z
     since: 2026-06-02T09:01:39Z
     summary: "Issue remains open; stale lifecycle activity and four cross-referenced OpenShift release PRs were incorporated, including an unmerged regex-config attempt."
+  - at: 2026-10-20T14:35:20Z
+    since: 2026-10-19T13:40:47Z
+    summary: "kaovilai removed the lifecycle/stale label; issue remains open with no new cross-references or main-branch changes."
 ---
 
 ## What the issue reports
@@ -20,6 +23,9 @@ Since previous triage:
 - The issue remains open. `lifecycle/stale` was added, and k8s-triage-robot posted the standard stale notice on 2026-10-19.
 - Four OpenShift release PRs were cross-referenced: #83619 merged with branch-specific Tide config changes; #84020 merged as repository onboarding; #84118 closed unmerged after exact branch exclusions; #85777 closed unmerged after proposing `includedBranchesRe` for app-scoped branches.
 - In #85777, a CodeRabbit review flagged `includedBranchesRe` as unsupported; upstream Prow main still has no corresponding Tide query fields.
+
+Since previous triage (2026-10-19T13:40:47Z):
+- On 2026-10-20 at 02:25:54Z, kaovilai commented `/remove-lifecycle stale`; the issue remains open and the stale label is gone.
 
 ## Findings
 

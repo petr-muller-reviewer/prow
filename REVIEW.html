@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Review of kubernetes-sigs/prow#237</title>
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+    max-width: 900px;
+    margin: 2rem auto;
+    padding: 0 1.5rem;
+    color: #1a1a1a;
+  }
+  code, pre {
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 0.9em;
+  }
+  pre {
+    background: #f5f5f5;
+    padding: 0.75rem 1rem;
+    border-radius: 6px;
+    overflow-x: auto;
+    border-left: 3px solid #999;
+  }
+  code.loc {
+    background: #eee;
+    padding: 0.15rem 0.4rem;
+    border-radius: 4px;
+  }
+  header {
+    border-bottom: 2px solid #333;
+    padding-bottom: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  header dl {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 0.25rem 1rem;
+    margin: 0.5rem 0;
+  }
+  header dt { font-weight: 600; color: #555; }
+  h1 { font-size: 1.5rem; }
+  h2 { border-bottom: 1px solid #ddd; padding-bottom: 0.3rem; margin-top: 2.5rem; }
+  h3 { margin-top: 1.5rem; margin-bottom: 0.3rem; }
+  .verdict {
+    background: #fff3cd;
+    border: 1px solid #ffe69c;
+    border-radius: 6px;
+    padding: 1rem 1.25rem;
+    margin: 1rem 0;
+  }
+  .verdict .label {
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: #7a5c00;
+  }
+  .finding {
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1rem;
+  }
+  .finding.blocking { border-left: 4px solid #d33; }
+  .finding.should-fix { border-left: 4px solid #d98c00; }
+  .finding.nit { border-left: 4px solid #888; }
+  .finding.question { border-left: 4px solid #2a6bd6; }
+  .sev {
+    display: inline-block;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 0.1rem 0.5rem;
+    border-radius: 4px;
+    margin-right: 0.5rem;
+  }
+  .sev.blocking { background: #fde2e2; color: #a30000; }
+  .sev.should-fix { background: #fff0d6; color: #8a5a00; }
+  .sev.nit { background: #eee; color: #555; }
+  .sev.question { background: #dbe9ff; color: #1a4faa; }
+  .note {
+    background: #eef6ff;
+    border: 1px solid #cfe3fc;
+    border-radius: 6px;
+    padding: 0.75rem 1rem;
+    margin: 1rem 0;
+    font-size: 0.95em;
+  }
+  ul { padding-left: 1.4rem; }
+  a { color: #2a6bd6; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Review of kubernetes-sigs/prow#237</h1>
+  <dl>
+    <dt>Title</dt><dd>Add Orgs sharding for Blunderbuss</dd>
+    <dt>PR</dt><dd><a href="https://github.com/kubernetes-sigs/prow/pull/237">kubernetes-sigs/prow#237</a></dd>
+    <dt>Head SHA</dt><dd><code>4e881b4c27b4f5e11c167e52800b513b7706abc0</code></dd>
+    <dt>Base</dt><dd><code>main</code></dd>
+    <dt>Reviewed at</dt><dd>2026-07-26T23:25:28Z</dd>
+  </dl>
+</header>
+
+<div class="verdict">
+  <div class="label">Verdict: Request changes</div>
+  <p>The sharding design and precedence resolution (<code class="loc">BlunderbussFor</code>) are sound and well tested, but there's a real correctness bug in <code class="loc">descendShards</code>: mutations made to repo-level configs (specifically <code class="loc">ReviewerCount</code> defaulting) are silently discarded because <code class="loc">Repos</code> is a value-typed map and the loop takes the address of a copy. This causes a silent functional regression (logged error, no reviewers requested) for any repo override that omits <code class="loc">request_count</code>. Should be fixed before merge, along with a regression test and two minor error-formatting bugs.</p>
+</div>
+
+<div class="note">
+  <strong>Update since previous review:</strong> no code changes (same head SHA). Ran a three-perspective maintainer review (code quality, maintainability, deployment risk) plus advisor synthesis. All three independently confirmed the <code class="loc">descendShards</code> bug by code reading. One earlier hypothesis was refuted and removed: repo-level <code class="loc">WaitForStatus.DescriptionRe</code> is <strong>not</strong> at risk of a nil-pointer panic, since <code class="loc">WaitForStatus</code> is itself a pointer field and survives the value-copy loop intact. Two new nits were added: the repo-key convention diverges from the existing Bugzilla sharding pattern, and the <code class="loc">genyaml</code>/doc-gen changes are bundled into this feature PR without explanation.
+</div>
+
+<h2>What this PR does</h2>
+<ul>
+  <li>Moves <code class="loc">Blunderbuss</code> plugin config fields (<code class="loc">ReviewerCount</code>, <code class="loc">MaxReviewerCount</code>, <code class="loc">ExcludeApprovers</code>, etc.) into a new embedded <code class="loc">*BlunderbussConfig</code> struct.</li>
+  <li>Adds <code class="loc">Blunderbuss.Orgs map[string]BlunderbussOrgConfig</code> and <code class="loc">BlunderbussOrgConfig.Repos map[string]BlunderbussConfig</code> for org- and repo-scoped overrides.</li>
+  <li>Adds <code class="loc">Configuration.BlunderbussFor(org, repo)</code> resolving precedence repo &gt; org &gt; global, wired into all four blunderbuss event handlers plus the help provider.</li>
+  <li>Adds <code class="loc">SetDefaults()</code>, <code class="loc">descendShards()</code>, <code class="loc">mergeFrom()</code>, and per-shard <code class="loc">compileRegexpsAndDurations()</code>, mirroring the existing Bugzilla sharding pattern.</li>
+  <li>Extends <code class="loc">genyaml</code>/<code class="loc">populate_struct</code> to handle pointer-embedded structs and <code class="loc">omitempty</code> ints, needed now that <code class="loc">BlunderbussConfig</code> is referenced via pointer; regenerates doc YAML (incidentally touching unrelated fields too).</li>
+</ul>
+
+<h2>Findings</h2>
+
+<div class="finding blocking">
+  <h3><span class="sev blocking">Blocking</span>repo-level shard mutations from descendShards are silently dropped</h3>
+  <p><code class="loc">pkg/plugins/config.go:1472-1477</code></p>
+  <pre>for repo, repoConfig := range orgConfig.Repos {
+    if err := f(&amp;repoConfig); err != nil {
+        errs = append(errs, fmt.Errorf("error in blunderbuss configuration for repo %s/%s: %w", org, repo, err))
+    }
+}</pre>
+  <p><code class="loc">orgConfig.Repos</code> is <code class="loc">map[string]BlunderbussConfig</code> (value type). The loop mutates only the loop-local copy <code class="loc">repoConfig</code> via <code class="loc">f(&amp;repoConfig)</code>; the result is never written back into <code class="loc">orgConfig.Repos[repo]</code>. This breaks <code class="loc">SetDefaults()</code>: repo-level <code class="loc">ReviewerCount</code> is never defaulted to 2 when omitted. Combined with the new check in <code class="loc">handle()</code> at <code class="loc">pkg/plugins/blunderbuss/blunderbuss.go:251-253</code> (<code class="loc">if reviewerCount == nil { return fmt.Errorf(...) }</code>), a repo override that omits <code class="loc">request_count</code> will error on every PR/comment/status event for that repo instead of defaulting to 2 — a silent functional regression (logged error, no reviewers requested), not a crash. Org-level configs don't have this problem because <code class="loc">BlunderbussOrgConfig.BlunderbussConfig</code> is a pointer, so mutations persist through it; only the value-typed <code class="loc">Repos</code> map is affected. Confirmed independently by three review passes (code quality, maintainability, deployment risk).</p>
+</div>
+
+<div class="finding should-fix">
+  <h3><span class="sev should-fix">Should fix</span>pointer value formatted with %d in validation error messages</h3>
+  <p><code class="loc">pkg/plugins/config.go:1490</code> and <code class="loc">pkg/plugins/config.go:1500</code></p>
+  <pre>return fmt.Errorf("invalid request_count: %d (must be at least 1)", b.ReviewerCount)
+...
+return fmt.Errorf("invalid reviewer configuration: max_request_count %d must be at least request_count %d", b.MaxReviewerCount, b.ReviewerCount)</pre>
+  <p><code class="loc">b.ReviewerCount</code> is <code class="loc">*int</code>, but is passed directly to <code class="loc">%d</code> in both calls instead of being dereferenced (or using the already-computed local <code class="loc">reviewerCount</code>). This produces an unreadable error like <code class="loc">%!d(*int=0xc0001234)</code> instead of the intended integer. The original code correctly used <code class="loc">*b.ReviewerCount</code>.</p>
+</div>
+
+<div class="finding should-fix">
+  <h3><span class="sev should-fix">Should fix</span>missing regression test for repo-shard defaulting</h3>
+  <p><code class="loc">pkg/plugins/config_test.go</code> (TestBlunderbussFor, TestBlunderbussMergeFrom), <code class="loc">pkg/plugins/blunderbuss/blunderbuss_test.go</code> (TestHandlePullRequestShardedConfig, TestHandleStatusShardedConfig)</p>
+  <p>No test calls <code class="loc">Configuration.setDefaults()</code> end-to-end on a config with only a repo-level shard omitting <code class="loc">ReviewerCount</code> and asserts the default (2) shows up via <code class="loc">BlunderbussFor()</code>. Every existing sharded fixture pre-populates <code class="loc">ReviewerCount</code>/<code class="loc">WaitForStatus</code> explicitly, which is exactly why the blocking bug above shipped uncaught.</p>
+</div>
+
+<div class="finding nit">
+  <h3><span class="sev nit">Nit</span>repo-key convention diverges from existing Bugzilla sharding</h3>
+  <p><code class="loc">pkg/plugins/config.go</code> (<code class="loc">BlunderbussOrgConfig.Repos map[string]BlunderbussConfig</code>, keyed by full <code class="loc">org/repo</code>)</p>
+  <p>The existing Bugzilla sharding (<code class="loc">Bugzilla.Orgs[org].Repos</code>) keys repos by bare <code class="loc">repo</code>. Blunderbuss instead uses fully-qualified <code class="loc">org/repo</code> keys nested under the org key already, which is redundant, and its own test (<code class="loc">"uses org config with invalid repo config key"</code>) documents that a bare <code class="loc">repo</code> key silently falls back to the org config with no validation error — a footgun tested-around rather than fixed. Two incompatible sharding conventions now coexist in the same file.</p>
+</div>
+
+<div class="finding nit">
+  <h3><span class="sev nit">Nit</span>genyaml/populate_struct changes bundled without explanation</h3>
+  <p><code class="loc">pkg/genyaml/genyaml.go</code>, <code class="loc">pkg/genyaml/populate_struct.go</code>, <code class="loc">pkg/config/prow-config-documented.yaml</code>, <code class="loc">pkg/plugins/plugin-config-documented.yaml</code></p>
+  <p>The <code class="loc">ast.StarExpr</code> and <code class="loc">reflect.Int</code> handling are needed for this PR's pointer-typed <code class="loc">BlunderbussConfig</code>, but they also change generated docs for unrelated types (Gerrit <code class="loc">ratelimit</code>, Jenkins/Tide <code class="loc">max_concurrency</code>/<code class="loc">max_goroutines</code>, project-config team IDs, <code class="loc">repo_milestone.maintainers_id</code>, etc.). Likely correct, but bundling a generic doc-gen fix into a feature PR without mentioning it in the description makes the diff harder to review/bisect.</p>
+</div>
+
+<div class="finding nit">
+  <h3><span class="sev nit">Nit</span>inconsistent receiver types on related methods</h3>
+  <p><code class="loc">pkg/plugins/config.go:1483</code> vs <code class="loc">pkg/plugins/config.go:1669</code></p>
+  <p><code class="loc">validateBlunderbuss</code> uses a value receiver (<code class="loc">func (b Blunderbuss) validateBlunderbuss()</code>) while <code class="loc">compileRegexpsAndDurations</code> uses a pointer receiver on the same type doing structurally similar shard-walking work. Not a bug, just inconsistent style.</p>
+</div>
+
+<div class="finding question">
+  <h3><span class="sev question">Question</span>mergeFrom conflict philosophy diverges from Bugzilla</h3>
+  <p><code class="loc">pkg/plugins/config.go</code> <code class="loc">Blunderbuss.mergeFrom</code> vs Bugzilla's supplemental-config merge</p>
+  <p>Bugzilla's merge treats any duplicate org/repo config across supplemental configs as an error regardless of content; Blunderbuss's merge instead does <code class="loc">reflect.DeepEqual</code> and only errors on genuine mismatches, silently succeeding on identical duplicates. Intentional design choice, or should it match Bugzilla's stricter model for consistency?</p>
+</div>
+
+<h2>Things I checked and was fine with</h2>
+<ul>
+  <li><code class="loc">BlunderbussFor</code> precedence logic (repo &gt; org &gt; global &gt; empty) — correct, well covered by <code class="loc">TestBlunderbussFor</code> including the "org key not formatted as org/repo" edge case.</li>
+  <li><code class="loc">Blunderbuss.mergeFrom</code> — global/org/repo conflict detection via <code class="loc">reflect.DeepEqual</code>; test cases cover conflicting-vs-matching merges at all three levels.</li>
+  <li><code class="loc">genyaml.go</code> <code class="loc">ast.StarExpr</code> handling and <code class="loc">populate_struct.go</code> <code class="loc">reflect.Int</code> case — narrowly scoped, needed for pointer/int <code class="loc">omitempty</code> doc generation; unrelated fields changed in the regenerated YAML docs are expected fallout, not scope creep.</li>
+  <li><code class="loc">HasConfigFor</code> and top-level <code class="loc">mergeFrom</code> updates to include <code class="loc">Blunderbuss</code> in the equality/diff sets — consistent with how other shardable plugins are wired in.</li>
+  <li>Existing global-only <code class="loc">blunderbuss:</code> configs are unaffected — the config schema change is purely additive at the YAML level (the only breaking change is at the Go API level: <code class="loc">Blunderbuss.BlunderbussConfig.ExcludeApprovers</code> instead of <code class="loc">Blunderbuss.ExcludeApprovers</code>).</li>
+  <li>Repo-level <code class="loc">WaitForStatus.DescriptionRe</code> is <strong>not</strong> at risk of a nil-pointer panic (correcting an earlier hypothesis): <code class="loc">WaitForStatus</code> is itself a pointer field, so it's copied by reference even through the buggy value-copy loop, and <code class="loc">handleStatus()</code> also nil-checks <code class="loc">wfs</code> before use.</li>
+  <li><code class="loc">handle()</code>'s <code class="loc">reviewerCount == nil</code> guard converts what could have been undefined behavior into a caught, logged error — this is why the defaulting bug manifests as a functional no-op rather than a panic/crash.</li>
+</ul>
+
+<h2>Open questions for the author</h2>
+<ul>
+  <li>Should <code class="loc">descendShards</code> write repo-level results back into the map (e.g. <code class="loc">rc := orgConfig.Repos[repo]; f(&amp;rc); orgConfig.Repos[repo] = rc</code>), or should <code class="loc">Repos</code> become <code class="loc">map[string]*BlunderbussConfig</code> for consistency with the pointer semantics already used at the global/org level?</li>
+  <li>Is the <code class="loc">org/repo</code>-keyed <code class="loc">Repos</code> map intentionally different from Bugzilla's bare-<code class="loc">repo</code> convention, or should it be aligned / explicitly validated?</li>
+  <li>Is the <code class="loc">pkg/genyaml</code> generator fix intentionally bundled with this feature, or would you prefer to split it into its own PR/commit for reviewability?</li>
+</ul>
+
+</body>
+</html>

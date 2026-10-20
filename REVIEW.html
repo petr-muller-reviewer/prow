@@ -1,51 +1,81 @@
 <!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Review: kubernetes-sigs/prow#881</title>
-<style>
-  body { color: #1f2328; font: 16px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 0; }
-  main { margin: 2.5rem auto; max-width: 56rem; padding: 0 1.5rem; }
-  h1 { line-height: 1.2; }
-  h2 { border-bottom: 1px solid #d0d7de; margin-top: 2rem; padding-bottom: .3rem; }
-  code { background: #f6f8fa; border-radius: 3px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; padding: .12em .28em; }
-  .meta { color: #57606a; }
-  .verdict { background: #dafbe1; border-left: 4px solid #1a7f37; padding: 1rem 1.2rem; }
-</style>
-</head>
-<body>
-<main>
-<h1>Review: <a href="https://github.com/kubernetes-sigs/prow/pull/881">kubernetes-sigs/prow#881</a></h1>
-<p class="meta"><code>chore(deps): bump cloud.google.com/go/secretmanager from 1.20.0 to 1.21.0</code><br>
-Base: <code>main</code> &middot; Head: <code>764a1e54b78bbb53c72aa72fe07bbe53c0291850</code> &middot; Reviewed: <code>2026-09-01T18:02:45Z</code></p>
-
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#881</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>chore(deps): bump cloud.google.com/go/secretmanager from 1.20.0 to 1.21.0</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/881">kubernetes-sigs/prow#881</a> · base <code>main</code> · head_sha <code>764a1e54b78b</code> · reviewed_at <code>2026-09-01T18:02:45Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span></div>
 <h2>Verdict</h2>
-<div class="verdict"><strong>Approve.</strong> This is a narrowly scoped, adequately soaked, direct dependency update. The only substantive upstream change is additive managed-secret-rotation API support; Prow does not call those APIs.</div>
-
+<p>approve — This is a narrowly scoped, adequately soaked, direct dependency update. The only substantive upstream change is additive managed-secret-rotation API support; Prow does not call those APIs.</p>
 <h2>What this PR does</h2>
 <ul>
-<li>Updates <code>cloud.google.com/go/secretmanager</code> from <code>v1.20.0</code> to <code>v1.21.0</code>.</li>
-<li>Replaces the corresponding two module checksums in <code>go.sum</code>.</li>
-<li>Takes the Secret Manager client release published on 2026-07-20.</li>
-<li>Does not change Prow source, tests, generated code, or configuration.</li>
-</ul>
-
+<li>Updates <code>cloud.google.com/go/secretmanager</code> from <code>v1.20.0</code> to <code>v1.21.0</code>.
+</li>
+<li>Replaces the corresponding two module checksums in <code>go.sum</code>.
+</li>
+<li>Takes the Secret Manager client release published on 2026-07-20.
+</li>
+<li>Does not change Prow source, tests, generated code, or configuration.
+</li></ul>
 <h2>Findings</h2>
 <p>None.</p>
-
-<h2>Things I checked and were fine</h2>
+<h2>Checked</h2>
 <ul>
-<li>Dependency-only classification: <code>go.mod</code> and <code>go.sum</code> are the only files changed.</li>
-<li><code>v1.21.0</code> is a signed/tagged upstream release, 43 days old at review time; it is not a pseudo-version.</li>
-<li>The module is a direct production dependency, imported only by <code>cmd/webhook-server/secretmanager/secretmanager.go:23-24</code>.</li>
-<li>Prow uses existing Secret Manager create, get, list, add-version, and update operations to manage webhook-server certificate secrets; this is a sensitive but single-package integration.</li>
-<li>Upstream release notes and module diff show additive <code>EnableManagedRotation</code> and <code>RotateSecret</code> APIs plus generated protobuf/client support. Prow does not call either API; no security advisory or behavior change affecting its invoked APIs is listed.</li>
-<li><code>git diff --check HEAD^ HEAD</code> passes.</li>
-</ul>
-
-<h2>Open questions for the author</h2>
+<li>Dependency-only classification: <code>go.mod</code> and <code>go.sum</code> are the only files changed.
+</li>
+<li><code>v1.21.0</code> is a signed/tagged upstream release, 43 days old at review time; it is not a pseudo-version.
+</li>
+<li>The module is a direct production dependency, imported only by <code>cmd/webhook-server/secretmanager/secretmanager.go:23-24</code>.
+</li>
+<li>Prow uses existing Secret Manager create, get, list, add-version, and update operations to manage webhook-server certificate secrets; this is a sensitive but single-package integration.
+</li>
+<li>Upstream release notes and module diff show additive <code>EnableManagedRotation</code> and <code>RotateSecret</code> APIs plus generated protobuf/client support. Prow does not call either API; no security advisory or behavior change affecting its invoked APIs is listed.
+</li>
+<li><code>git diff --check HEAD^ HEAD</code> passes.
+</li></ul>
+<h2>Open questions</h2>
 <p>None.</p>
-</main>
-</body>
-</html>
+<h2>Dependency followups</h2>
+<p>Examined on 2026-10-20: no actionable opportunities identified; no items or handoff prompts recorded.</p>
+<ul>
+<li>Context: PR #881 merged on 2026-08-25 as <code>9ce9de565a570827be6c9e55ac540a1351a6796f</code>. Compared PR head <code>764a1e54b78bbb53c72aa72fe07bbe53c0291850</code> with its parent <code>c55704ffb</code> because the merged PR head is already an ancestor of <code>upstream/main</code>; their merge-base would hide the original bump.
+</li>
+<li>Module examined: Go direct production dependency <code>cloud.google.com/go/secretmanager</code>, <code>v1.20.0</code> → <code>v1.21.0</code>. Read the full intervening changelog entry and compared the published module sources. The <a href="https://github.com/googleapis/google-cloud-go/releases/tag/secretmanager/v1.21.0">release notes</a> describe the change as “Update API sources and regenerate.”
+</li>
+<li>New APIs <code>EnableManagedRotation</code> and <code>RotateSecret</code> rotate Cloud SQL database passwords. They cannot replace Prow's certificate/key generation and version upload in <code>cmd/webhook-server/helpers.go:171-178</code> and <code>cmd/webhook-server/secretmanager/secretmanager.go:110-124</code>.
+</li>
+<li>Generated additions include secret-type metadata and managed-rotation status fields. No concrete simplification or correctness benefit was identified for Prow's existing create, list, get, update-label, add-version, or access-version calls in <code>cmd/webhook-server/secretmanager/secretmanager.go:59-174</code>.
+</li>
+<li>No newly deprecated API used by Prow or relevant default change was found. The stronger <code>Close()</code> documentation repeats an existing cleanup requirement rather than introducing a new API or migration opportunity.
+</li>
+<li>Transitive scope: no indirect module version changes are introduced by this PR. Although the dependency's own minimum requirements increase, every new requirement is already met or exceeded by Prow's unchanged root requirements before the bump. Those upstream requirement increases therefore unlock no additional transitive features here.
+</li></ul>
+</main></body></html>

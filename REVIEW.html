@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Review: kubernetes-sigs/prow#881</title>
+<style>
+  body { color: #1f2328; font: 16px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 0; }
+  main { margin: 2.5rem auto; max-width: 56rem; padding: 0 1.5rem; }
+  h1 { line-height: 1.2; }
+  h2 { border-bottom: 1px solid #d0d7de; margin-top: 2rem; padding-bottom: .3rem; }
+  code { background: #f6f8fa; border-radius: 3px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; padding: .12em .28em; }
+  .meta { color: #57606a; }
+  .verdict { background: #dafbe1; border-left: 4px solid #1a7f37; padding: 1rem 1.2rem; }
+</style>
+</head>
+<body>
+<main>
+<h1>Review: <a href="https://github.com/kubernetes-sigs/prow/pull/881">kubernetes-sigs/prow#881</a></h1>
+<p class="meta"><code>chore(deps): bump cloud.google.com/go/secretmanager from 1.20.0 to 1.21.0</code><br>
+Base: <code>main</code> &middot; Head: <code>764a1e54b78bbb53c72aa72fe07bbe53c0291850</code> &middot; Reviewed: <code>2026-09-01T18:02:45Z</code></p>
+
+<h2>Verdict</h2>
+<div class="verdict"><strong>Approve.</strong> This is a narrowly scoped, adequately soaked, direct dependency update. The only substantive upstream change is additive managed-secret-rotation API support; Prow does not call those APIs.</div>
+
+<h2>What this PR does</h2>
+<ul>
+<li>Updates <code>cloud.google.com/go/secretmanager</code> from <code>v1.20.0</code> to <code>v1.21.0</code>.</li>
+<li>Replaces the corresponding two module checksums in <code>go.sum</code>.</li>
+<li>Takes the Secret Manager client release published on 2026-07-20.</li>
+<li>Does not change Prow source, tests, generated code, or configuration.</li>
+</ul>
+
+<h2>Findings</h2>
+<p>None.</p>
+
+<h2>Things I checked and were fine</h2>
+<ul>
+<li>Dependency-only classification: <code>go.mod</code> and <code>go.sum</code> are the only files changed.</li>
+<li><code>v1.21.0</code> is a signed/tagged upstream release, 43 days old at review time; it is not a pseudo-version.</li>
+<li>The module is a direct production dependency, imported only by <code>cmd/webhook-server/secretmanager/secretmanager.go:23-24</code>.</li>
+<li>Prow uses existing Secret Manager create, get, list, add-version, and update operations to manage webhook-server certificate secrets; this is a sensitive but single-package integration.</li>
+<li>Upstream release notes and module diff show additive <code>EnableManagedRotation</code> and <code>RotateSecret</code> APIs plus generated protobuf/client support. Prow does not call either API; no security advisory or behavior change affecting its invoked APIs is listed.</li>
+<li><code>git diff --check HEAD^ HEAD</code> passes.</li>
+</ul>
+
+<h2>Open questions for the author</h2>
+<p>None.</p>
+</main>
+</body>
+</html>

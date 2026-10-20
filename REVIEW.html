@@ -1,45 +1,73 @@
 <!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Review: kubernetes-sigs/prow#892</title>
-  <style>
-    body { color: #1f2328; font: 16px/1.55 system-ui, sans-serif; margin: 2rem auto; max-width: 900px; padding: 0 1rem; }
-    h1, h2 { line-height: 1.2; } code { background: #f6f8fa; border-radius: 4px; font: .9em ui-monospace, monospace; padding: .12em .3em; }
-    .meta { color: #57606a; } .approve { color: #1a7f37; font-weight: 700; } a { color: #0969da; }
-  </style>
-</head>
-<body>
-  <header>
-    <h1>Review: <a href="https://github.com/kubernetes-sigs/prow/pull/892">kubernetes-sigs/prow#892</a></h1>
-    <p class="meta">Base: <code>main</code> · Head: <code>9ec3e553adbe7a2a3bc456be0646aabb039a4ad0</code> · Reviewed: 2026-09-01T16:55:49Z</p>
-  </header>
-  <section>
-    <h2>Verdict</h2>
-    <p class="approve">Approve</p>
-    <p>This is a tool-only, direct dependency update from an untagged pseudo-version to its corresponding 22-day-old tagged release. The relevant upstream changes do not affect Prow's use of <code>protoc-gen-go</code>.</p>
-  </section>
-  <section>
-    <h2>What this PR does</h2>
-    <ul>
-      <li>Updates <code>google.golang.org/protobuf</code> in the nested <code>hack/tools</code> Go module.</li>
-      <li>Replaces pseudo-version <code>v1.36.12-0.20260120151049-f2248ac996af</code> with tagged <code>v1.36.12</code>.</li>
-      <li>Updates only the associated two <code>go.sum</code> checksums.</li>
-      <li>Leaves Prow application code and the root Go module unchanged.</li>
-    </ul>
-  </section>
-  <section><h2>Findings</h2><h3>Blocking</h3><p>None.</p><h3>Should fix</h3><p>None.</p><h3>Nits</h3><p>None.</p><h3>Questions</h3><p>None.</p></section>
-  <section>
-    <h2>Things I checked and was fine with</h2>
-    <ul>
-      <li>Classification: dep-only; only <code>hack/tools/go.mod</code> and <code>hack/tools/go.sum</code> change.</li>
-      <li><code>google.golang.org/protobuf</code> is direct in <code>hack/tools/go.mod:12</code>; its sole tools-module use is blank-importing <code>google.golang.org/protobuf/cmd/protoc-gen-go</code> at <code>hack/tools/tools.go:35</code>.</li>
-      <li>The release is tagged, dated 2026-08-10, and was 22 days old at review; the previous version was an untagged pseudo-version.</li>
-      <li>The upstream range contains the release commit, numeric descriptor-default parsing that accepts hexadecimal/octal literals, and protobuf/protoc edition/test metadata updates. No stated security fix or API incompatibility affects this generator-only use.</li>
-      <li><code>go mod verify</code> in <code>hack/tools</code> passed.</li>
-    </ul>
-  </section>
-  <section><h2>Open questions for the author</h2><p>None.</p></section>
-</body>
-</html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#892</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>chore(deps): bump google.golang.org/protobuf from 1.36.12-0.20260120151049-f2248ac996af to 1.36.12 in /hack/tools</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/892">kubernetes-sigs/prow#892</a> · base <code>main</code> · head_sha <code>9ec3e553adbe</code> · reviewed_at <code>2026-09-01T16:55:49Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span></div>
+<h2>Verdict</h2>
+<p>Approve. This is a tool-only, direct dependency update from an untagged pseudo-version to its corresponding 22-day-old tagged release. The relevant upstream changes do not affect Prow's use of <code>protoc-gen-go</code>.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Updates <code>google.golang.org/protobuf</code> in the nested <code>hack/tools</code> Go module.
+</li>
+<li>Replaces pseudo-version <code>v1.36.12-0.20260120151049-f2248ac996af</code> with tagged <code>v1.36.12</code>.
+</li>
+<li>Updates only the associated two <code>go.sum</code> checksums.
+</li>
+<li>Leaves Prow application code and the root Go module unchanged.
+</li></ul>
+<h2>Findings</h2>
+<p>None.</p>
+<h2>Checked</h2>
+<ul>
+<li>Classification: dep-only; only <code>hack/tools/go.mod</code> and <code>hack/tools/go.sum</code> change.
+</li>
+<li><code>google.golang.org/protobuf</code> is direct in <code>hack/tools/go.mod:12</code>; its sole tools-module use is blank-importing <code>google.golang.org/protobuf/cmd/protoc-gen-go</code> at <code>hack/tools/tools.go:35</code>.
+</li>
+<li>The release is tagged, dated 2026-08-10, and was 22 days old at review; the previous version was an untagged pseudo-version.
+</li>
+<li>The upstream range contains the release commit, numeric descriptor-default parsing that accepts hexadecimal/octal literals, and protobuf/protoc edition/test metadata updates. No stated security fix or API incompatibility affects this generator-only use.
+</li>
+<li><code>go mod verify</code> in <code>hack/tools</code> passed.
+</li></ul>
+<h2>Open questions</h2>
+<p>None.</p>
+<h2>Dependency followups</h2>
+<p>Examined on 2026-10-20: no improvement opportunities identified; no items or handoff prompts.</p>
+<ul>
+<li>Scope: PR #892, merged as <code>f678c3d2cfa3d13e672584882585f4d62398866f</code>; direct Go dependency <code>google.golang.org/protobuf</code> in <code>hack/tools</code> changed from <code>v1.36.12-0.20260120151049-f2248ac996af</code> to <code>v1.36.12</code>. No transitive versions changed; the upstream module's <code>go.mod</code> is identical between these versions.
+</li>
+<li>Reused the reviewed three-commit upstream changelog: numeric descriptor defaults gain hexadecimal/octal parsing, protobuf/protoc edition and test metadata are refreshed, and the version is tagged. No new deprecation or replacement API calls for a migration in Prow.
+</li>
+<li>Usage cross-check: <code>hack/tools/tools.go:35</code> tracks <code>protoc-gen-go</code>, but <code>hack/make-rules/update/codegen.sh:50</code> explicitly installs <code>protoc-gen-go@v1.32.0</code>, independently of this module pin. The only project proto, <code>pkg/gangway/gangway.proto:1</code>, uses proto3; no explicit numeric defaults or affected descriptor/edition API call sites were found in project code. Neither upstream change supplies a concrete simplification or feature adoption for this PR's usage.
+</li></ul>
+</main></body></html>

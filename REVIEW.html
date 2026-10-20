@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Review: kubernetes-sigs/prow#877</title>
+  <style>
+    body { color: #202124; font: 16px/1.55 system-ui, sans-serif; margin: 2rem auto; max-width: 55rem; padding: 0 1rem; }
+    code { background: #f1f3f4; border-radius: 3px; padding: .1em .25em; }
+    h1, h2 { line-height: 1.2; } .verdict { border-left: 4px solid #188038; padding-left: 1rem; }
+  </style>
+</head>
+<body>
+  <h1>Review: <a href="https://github.com/kubernetes-sigs/prow/pull/877">kubernetes-sigs/prow#877</a></h1>
+  <p><code>head_sha: d69423cf4bd44339da13a2554cfc50d9330812ab</code><br><code>base: main</code><br><code>reviewed_at: 2026-09-01T18:24:37Z</code></p>
+  <h2>Verdict: approve</h2>
+  <p class="verdict">This dep-only change updates the directly used Go Cloud Development Kit after a 90-day soak. Its material <code>blob</code> changes are compatible with Prow's use, including the S3 upload-manager migration: Prow does not use <code>blob.Writer.As</code> or AWS manager types.</p>
+  <h2>What this PR does</h2>
+  <ul><li>Updates direct dependency <code>gocloud.dev</code> from <code>v0.40.0</code> to <code>v0.46.0</code> in <code>go.mod</code>.</li><li>Regenerates <code>go.sum</code> and the indirect module graph.</li><li>Replaces the now-unused AWS SDK v1 and S3 manager modules with AWS SDK v2 transfermanager through Go Cloud.</li></ul>
+  <h2>Findings</h2><p>No findings.</p>
+  <h2>Things I checked and were fine</h2>
+  <ul><li>Classification: dep-only (<code>go.mod</code>, <code>go.sum</code> only); <code>git diff --check HEAD^ HEAD</code> is clean.</li><li><code>v0.46.0</code> is a tagged release from 2026-06-02T22:21:46Z, 90 days old at review; no pseudo-version or freshness concern.</li><li>Prow imports <code>gocloud.dev/blob</code> in five production files: <code>pkg/io/{opener.go,option.go,iterator.go}</code> and <code>pkg/io/providers/{providers.go,aws.go}</code>. It uses blob storage to read, write, list, inspect, and sign artifact objects for GCS, S3, local, and memory backends.</li><li>The relevant upstream changes are the blob OpenTelemetry migration, S3 403-to-PermissionDenied mapping, file-bucket root-escape fix, typed error support, and v0.46 S3 upload migration from <code>s3/manager</code> to <code>s3/transfermanager</code>. Prow constructs its own <code>*s3.Client</code> in <code>pkg/io/providers/aws.go:54-92</code> and never calls the affected <code>blob.Writer.As</code> API; the breaking API change does not land in Prow.</li><li><code>go test ./pkg/io/...</code> passes.</li></ul>
+  <h2>Open questions for the author</h2><p>None.</p>
+</body>
+</html>

@@ -1,69 +1,79 @@
 <!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Review: kubernetes-sigs/prow#883</title>
-  <style>
-    body { background: #fff; color: #202124; font: 16px/1.55 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 0; }
-    main { margin: 2.5rem auto; max-width: 54rem; padding: 0 1.25rem; }
-    header { border-bottom: 1px solid #d0d7de; margin-bottom: 1.75rem; padding-bottom: 1rem; }
-    h1 { font-size: 1.65rem; line-height: 1.25; margin: 0 0 .5rem; }
-    h2 { font-size: 1.2rem; margin-top: 2rem; }
-    code { background: #f6f8fa; border-radius: 4px; font: .9em ui-monospace, SFMono-Regular, Consolas, monospace; padding: .1em .3em; }
-    .meta { color: #57606a; margin: .25rem 0; }
-    .verdict { border-left: 4px solid #1a7f37; background: #dafbe1; padding: .8rem 1rem; }
-    .none { color: #57606a; }
-  </style>
-</head>
-<body>
-  <main>
-    <header>
-      <h1>Review: <a href="https://github.com/kubernetes-sigs/prow/pull/883">kubernetes-sigs/prow#883</a></h1>
-      <p class="meta">chore(deps): bump github.com/sirupsen/logrus from 1.9.4 to 1.10.1 in /hack/tools</p>
-      <p class="meta">Base: <code>main</code> · Head: <code>978e94245738e11747e32474635cc49753f94122</code> · Reviewed: 2026-09-01T17:53:32Z</p>
-    </header>
-
-    <section>
-      <h2>Verdict</h2>
-      <div class="verdict"><strong>Approve.</strong> This dependency-only update affects the isolated <code>hack/tools</code> module's image-build utility, not Prow's root module. The v1.10.1 release is a tagged, 13-day-old patch release; its formatter and concurrency fixes are compatible with the APIs used here, and OSV reports no advisories affecting this version.</div>
-    </section>
-
-    <section>
-      <h2>What this PR does</h2>
-      <ul>
-        <li>Updates the direct <code>hack/tools</code> dependency <code>github.com/sirupsen/logrus</code> from <code>v1.9.4</code> to <code>v1.10.1</code>.</li>
-        <li>Regenerates <code>hack/tools/go.sum</code>.</li>
-        <li>Updates Logrus test-only transitive modules <code>github.com/stretchr/testify</code> (v1.11.1 to v1.12.0) and <code>github.com/stretchr/objx</code> (v0.5.2 to v0.5.3).</li>
-        <li>Removes no-longer-required indirect test dependencies from the tools module.</li>
-      </ul>
-    </section>
-
-    <section>
-      <h2>Findings</h2>
-      <h3>Blocking</h3><p class="none">None.</p>
-      <h3>Should fix</h3><p class="none">None.</p>
-      <h3>Nits</h3><p class="none">None.</p>
-      <h3>Questions</h3><p class="none">None.</p>
-    </section>
-
-    <section>
-      <h2>Things I checked and was fine with</h2>
-      <ul>
-        <li>Classification: dependency-only; only <code>hack/tools/go.mod</code> and <code>hack/tools/go.sum</code> changed.</li>
-        <li><code>v1.10.1</code> was released 2026-08-19, is a real tag, and is 13 days old at review time.</li>
-        <li>The bump applies only to <code>sigs.k8s.io/prow/hack/tools</code>; root <code>go.mod</code> remains on Logrus <code>v1.9.4</code>.</li>
-        <li><code>hack/tools/prowimagebuilder/main.go:69-398</code> is Logrus's sole direct consumer in the bumped module. It uses level methods and <code>WithField(s)</code>/<code>WithError</code>; it does not use generic <code>Log*</code> methods, custom formatters, <code>Entry.HasCaller</code>, or raw <code>[]byte</code> fields affected by the release changes.</li>
-        <li>Logrus <code>v1.10.1</code> requires Go 1.23; <code>hack/tools/go.mod</code> specifies Go 1.26.</li>
-        <li>OSV's version-specific query returned no advisories for <code>github.com/sirupsen/logrus@v1.10.1</code>.</li>
-        <li>A focused <code>go test</code> was not completed: package initialization builds <code>github.com/google/ko</code>, whose dependency build exceeded the 30-second execution limit.</li>
-      </ul>
-    </section>
-
-    <section>
-      <h2>Open questions for the author</h2>
-      <p class="none">None.</p>
-    </section>
-  </main>
-</body>
-</html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#883</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>chore(deps): bump github.com/sirupsen/logrus from 1.9.4 to 1.10.1 in /hack/tools</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/883">kubernetes-sigs/prow#883</a> · base <code>main</code> · head_sha <code>978e94245738</code> · reviewed_at <code>2026-09-01T17:53:32Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span></div>
+<h2>Verdict</h2>
+<p>Approve. This dependency-only update affects the isolated <code>hack/tools</code> module's image-build utility, not Prow's root module. The v1.10.1 release is a tagged, 13-day-old patch release; its formatter and concurrency fixes are compatible with the APIs used here, and OSV reports no advisories affecting this version.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Updates the direct <code>hack/tools</code> dependency <code>github.com/sirupsen/logrus</code> from <code>v1.9.4</code> to <code>v1.10.1</code>.
+</li>
+<li>Regenerates <code>hack/tools/go.sum</code>.
+</li>
+<li>Updates Logrus test-only transitive modules <code>github.com/stretchr/testify</code> (<code>v1.11.1</code> to <code>v1.12.0</code>) and <code>github.com/stretchr/objx</code> (<code>v0.5.2</code> to <code>v0.5.3</code>).
+</li>
+<li>Removes no-longer-required indirect test dependencies from the tools module.
+</li></ul>
+<h2>Findings</h2>
+<p>None.</p>
+<h2>Checked</h2>
+<ul>
+<li>Classification: dependency-only; only <code>hack/tools/go.mod</code> and <code>hack/tools/go.sum</code> changed.
+</li>
+<li><code>v1.10.1</code> was released 2026-08-19, is a real tag, and is 13 days old at review time.
+</li>
+<li>The bump applies only to <code>sigs.k8s.io/prow/hack/tools</code>; root <code>go.mod</code> remains on Logrus <code>v1.9.4</code>.
+</li>
+<li><code>hack/tools/prowimagebuilder/main.go:69-398</code> is Logrus's sole direct consumer in the bumped module. It uses level methods and <code>WithField(s)</code>/<code>WithError</code>; it does not use generic <code>Log*</code> methods, custom formatters, <code>Entry.HasCaller</code>, or raw <code>[]byte</code> fields affected by the release changes.
+</li>
+<li>Logrus <code>v1.10.1</code> requires Go 1.23; <code>hack/tools/go.mod</code> specifies Go 1.26.
+</li>
+<li>OSV's version-specific query returned no advisories for <code>github.com/sirupsen/logrus@v1.10.1</code>.
+</li>
+<li>A focused <code>go test</code> was not completed: package initialization builds <code>github.com/google/ko</code>, whose dependency build exceeded the 30-second execution limit.
+</li></ul>
+<h2>Open questions</h2>
+<p>None.</p>
+<h2>Dependency followups</h2>
+<p>Examined on 2026-10-20. No concrete opportunities identified; no items or handoff prompts recorded. PR #883 merged as <code>10f425fd6c7c425ba34d8ed6c2964a7384fc3e04</code> on 2026-08-25.</p>
+<ul>
+<li>Direct: <code>github.com/sirupsen/logrus</code> <code>v1.9.4</code> → <code>v1.10.1</code>, including intermediate <code>v1.10.0</code>. The <a href="https://github.com/sirupsen/logrus/blob/v1.10.1/CHANGELOG.md">changelog</a> adds slog adapters, narrower logging interfaces, and explicit caller support, and deprecates <code>Entry.HasCaller</code> and <code>MutexWrap</code>. The sole importing file in the affected module, <code>hack/tools/prowimagebuilder/main.go:32</code>, uses ordinary fields, errors, and level methods; it has no deprecated calls, slog bridge, custom caller handling, or broad logger interface to replace. Formatter and concurrency improvements apply automatically; the byte-field formatting change requires no adjustment to its string and string-slice fields.
+</li>
+<li>Indirect: <code>github.com/stretchr/testify</code> <code>v1.11.1</code> → <code>v1.12.0</code>. The <a href="https://github.com/stretchr/testify/releases/tag/v1.12.0">release notes</a> cover assertion aliases, fixes to assertions/mocks/suites, and internal vendoring of go-spew and go-difflib. No owned Go files in <code>hack/tools</code> import Testify; the repository's Testify imports belong to the separate root module, which remains on <code>v1.11.1</code>. There is no affected call site to migrate.
+</li>
+<li>Indirect: <code>github.com/stretchr/objx</code> <code>v0.5.2</code> → <code>v0.5.3</code>. The <a href="https://github.com/stretchr/objx/releases/tag/v0.5.3">release notes</a> cover dependency, test-helper, documentation, and CI changes. No owned Go files import Objx; no new runtime API or call-site improvement applies.
+</li>
+<li>Removed indirect requirements: <code>github.com/davecgh/go-spew</code> <code>v1.1.2-0.20180830191138-d8f796af33cc</code> and <code>github.com/pmezard/go-difflib</code> <code>v1.0.1-0.20181226105442-5d4384ee4fb2</code>. These removals follow Testify's internal vendoring; they do not unlock a project-code change.
+</li></ul>
+</main></body></html>

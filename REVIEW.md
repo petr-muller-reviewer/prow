@@ -35,3 +35,12 @@ None.
 ## Open questions
 
 None.
+
+## Dependency followups
+
+Examined on 2026-10-20. No concrete opportunities identified; no items or handoff prompts recorded. PR #883 merged as `10f425fd6c7c425ba34d8ed6c2964a7384fc3e04` on 2026-08-25.
+
+- Direct: `github.com/sirupsen/logrus` `v1.9.4` → `v1.10.1`, including intermediate `v1.10.0`. The [changelog](https://github.com/sirupsen/logrus/blob/v1.10.1/CHANGELOG.md) adds slog adapters, narrower logging interfaces, and explicit caller support, and deprecates `Entry.HasCaller` and `MutexWrap`. The sole importing file in the affected module, `hack/tools/prowimagebuilder/main.go:32`, uses ordinary fields, errors, and level methods; it has no deprecated calls, slog bridge, custom caller handling, or broad logger interface to replace. Formatter and concurrency improvements apply automatically; the byte-field formatting change requires no adjustment to its string and string-slice fields.
+- Indirect: `github.com/stretchr/testify` `v1.11.1` → `v1.12.0`. The [release notes](https://github.com/stretchr/testify/releases/tag/v1.12.0) cover assertion aliases, fixes to assertions/mocks/suites, and internal vendoring of go-spew and go-difflib. No owned Go files in `hack/tools` import Testify; the repository's Testify imports belong to the separate root module, which remains on `v1.11.1`. There is no affected call site to migrate.
+- Indirect: `github.com/stretchr/objx` `v0.5.2` → `v0.5.3`. The [release notes](https://github.com/stretchr/objx/releases/tag/v0.5.3) cover dependency, test-helper, documentation, and CI changes. No owned Go files import Objx; no new runtime API or call-site improvement applies.
+- Removed indirect requirements: `github.com/davecgh/go-spew` `v1.1.2-0.20180830191138-d8f796af33cc` and `github.com/pmezard/go-difflib` `v1.0.1-0.20181226105442-5d4384ee4fb2`. These removals follow Testify's internal vendoring; they do not unlock a project-code change.

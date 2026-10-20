@@ -3,8 +3,13 @@ pr: kubernetes-sigs/prow#802
 title: "peribolos: add --ignore-repos flag for team repo reconciliation"
 head_sha: fccd7841c84dca2990f854c949f3cbb66b25d202
 base: main
-reviewed_at: 2026-07-22T14:34:09Z
+reviewed_at: 2026-10-20T15:21:11Z
 verdict: request-changes
+refresh_log:
+  - old_sha: fccd7841c84dca2990f854c949f3cbb66b25d202
+    new_sha: fccd7841c84dca2990f854c949f3cbb66b25d202
+    at: 2026-10-20T15:21:11Z
+    summary: No code changes; recorded lifecycle, Tide merge-conflict status, and ok-to-test activity while the PR remains open.
 ---
 
 ## Summary
@@ -23,6 +28,11 @@ Reviewed via `/review` (single-pass) and `/muller-maintainer-review`
 (3 parallel specialist reviewers + advisor synthesis) — the private/internal
 "add" gap and the undisclosed scope were independently identified by every
 reviewer across both passes.
+
+Since previous review:
+- No code changes: the PR head remains `fccd7841c84dca2990f854c949f3cbb66b25d202`; there are no new commits or diff changes.
+- `k8s-triage-robot` marked the PR `lifecycle/stale` at 01:59:03Z on 2026-10-20. Tide reported a merge conflict at 01:59:36Z. At 15:19:43Z, `petr-muller` issued `/ok-to-test`; the bot added `ok-to-test` and removed `needs-ok-to-test`. No new inline comments or submitted reviews were found.
+- The PR remains open.
 
 ## Findings
 

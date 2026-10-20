@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#438</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>Add regex support for branch matching in Tide status controller</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/issues/438">kubernetes-sigs/prow#438</a> · main_sha <code>61402617b331</code> · state <code>open</code> · labels <code>kind/feature, lifecycle/stale, area/tide</code> · triaged_at <code>2026-10-19T13:40:47Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: accepted</span></div>
+<details><summary>Full metadata</summary><pre><code>issue: kubernetes-sigs/prow#438
+title: &quot;Add regex support for branch matching in Tide status controller&quot;
+state: open
+labels: kind/feature, lifecycle/stale, area/tide
+main_sha: 61402617b3311e0ea6c0274b68ae71e9a524ab8b
+triaged_at: 2026-10-19T13:40:47Z
+verdict: accepted
+refresh_log:
+  - at: 2026-10-19T13:40:47Z
+    since: 2026-06-02T09:01:39Z
+    summary: &quot;Issue remains open; stale lifecycle activity and four cross-referenced OpenShift release PRs were incorporated, including an unmerged regex-config attempt.&quot;</code></pre></details>
+<h2>What the issue reports</h2>
+<p>The issue requests regular-expression matching for target branches in Tide status queries.</p>
+<p>Since previous triage:</p>
+<ul>
+<li>The issue remains open. <code>lifecycle/stale</code> was added, and k8s-triage-robot posted the standard stale notice on 2026-10-19.
+</li>
+<li>Four OpenShift release PRs were cross-referenced: #83619 merged with branch-specific Tide config changes; #84020 merged as repository onboarding; #84118 closed unmerged after exact branch exclusions; #85777 closed unmerged after proposing <code>includedBranchesRe</code> for app-scoped branches.
+</li>
+<li>In #85777, a CodeRabbit review flagged <code>includedBranchesRe</code> as unsupported; upstream Prow main still has no corresponding Tide query fields.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-amber">cause</span>GitHub Search API base: qualifier is exact-match only</h3>
+<ul>
+<li>detail: Tide drives PR discovery via the GitHub Search API, translating <code>includedBranches</code>/<code>excludedBranches</code> entries into <code>base:&quot;X&quot;</code> / <code>-base:&quot;X&quot;</code> qualifiers. The GitHub Search API does not support regex for the <code>base:</code> qualifier, so patterns cannot be passed through directly.
+</li>
+<li>evidence: <code>pkg/config/tide.go:620-625</code>
+</li></ul>
+<h3><span class="tag c-amber">cause</span>Branchprotector analogy is architecturally misleading</h3>
+<ul>
+<li>detail: Branchprotector enumerates all branches via the GitHub Branches API and filters locally with compiled <code>*regexp.Regexp</code>. Tide has no equivalent enumeration step; it relies on GitHub to do the filtering server-side. The two components are not analogous.
+</li>
+<li>evidence: <code>cmd/branchprotector/protect.go:312-346</code>
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>TideQuery branch fields</h3>
+<ul>
+<li>where: <code>pkg/config/tide.go:546-562</code>
+</li>
+<li>excerpt:<pre><code>ExcludedBranches []string `json:&quot;excludedBranches,omitempty&quot;`
+IncludedBranches []string `json:&quot;includedBranches,omitempty&quot;`</code></pre>
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>constructQuery branch qualifier generation</h3>
+<ul>
+<li>where: <code>pkg/config/tide.go:620-625</code>
+</li>
+<li>excerpt:<pre><code>for _, b := range tq.ExcludedBranches {
+    queryString = append(queryString, fmt.Sprintf(&quot;-base:\&quot;%s\&quot;&quot;, b))
+}
+for _, b := range tq.IncludedBranches {
+    queryString = append(queryString, fmt.Sprintf(&quot;base:\&quot;%s\&quot;&quot;, b))
+}</code></pre>
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>requirementDiff branch scoring (status only, not merge decisions)</h3>
+<ul>
+<li>where: <code>pkg/tide/status.go:149-155</code>
+</li>
+<li>excerpt:<pre><code>targetBranchDenied := slices.Contains(q.ExcludedBranches, string(pr.BaseRef.Name))
+targetBranchAllowed := len(q.IncludedBranches) == 0
+if slices.Contains(q.IncludedBranches, string(pr.BaseRef.Name)) {
+    targetBranchAllowed = true
+}</code></pre>
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>branchprotector regex branch filtering</h3>
+<ul>
+<li>where: <code>cmd/branchprotector/protect.go:312-346</code>
+</li>
+<li>excerpt:<pre><code>var branchInclusions *regexp.Regexp
+if len(repo.Policy.Include) &gt; 0 {
+    branchInclusions, err = regexp.Compile(strings.Join(repo.Policy.Include, `|`))
+}
+// then filters against GetBranches() results locally</code></pre>
+</li></ul>
+<h3><span class="tag c-blue">related-issue</span>GitHub Search API improvements</h3>
+<ul>
+<li>ref: kubernetes-sigs/prow#482
+</li>
+<li>relevance: Explores GitHub's improved Search API; if GitHub adds regex support to base: qualifier the implementation becomes trivial.
+</li></ul>
+<h3><span class="tag c-blue">related-pr</span>OpenShift config attempt to use regex branch matching</h3>
+<ul>
+<li>ref: openshift/release#85777
+</li>
+<li>relevance: Proposed <code>includedBranchesRe</code> for app-scoped branch names, but closed unmerged on 2026-10-08; a CodeRabbit review flagged the selector as unsupported. This is a configuration attempt, not an implementation in Prow.
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>GitHub Search API <code>base:</code> qualifier is exact-match only — confirmed by reading <code>constructQuery()</code> and the GitHub Search API docs reference in the source comments (<code>pkg/config/tide.go:545</code>)
+</li>
+<li><code>requirementDiff()</code> branch matching drives status display only, not merge decisions — a fix there alone would be insufficient
+</li>
+<li>No existing PRs are working on this feature
+</li>
+<li>branchprotector regex works via Branches API enumeration + local filtering — not applicable to Tide's search-based architecture
+</li>
+<li>Upstream main advanced to <code>61402617b3311e0ea6c0274b68ae71e9a524ab8b</code>; its Tide query code still has no regex branch fields, and the intervening changes in <code>pkg/config/tide.go</code> and <code>pkg/tide/status.go</code> do not implement them
+</li></ul>
+<h2>Next steps</h2>
+<ul>
+<li>Apply <code>help-wanted</code> label
+</li>
+<li>Post a comment summarizing the GitHub Search API constraint and the three implementation approaches (enumerate-and-expand, local post-filter, new config fields) so contributors understand the design decision needed before coding
+</li>
+<li>Monitor issue #482 for GitHub Search API improvements that could simplify the implementation
+</li>
+<li>Require a design discussion comment or GH Discussion before accepting implementation PRs
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>Which implementation approach do Tide maintainers prefer: enumerate-and-expand (correct semantics, extra Branches API calls per sync), local post-filter (no extra calls, larger PR result sets), or separate new config fields?
+</li>
+<li>Is the additional GitHub Branches API call overhead acceptable given Tide's existing rate limit budget on large deployments?
+</li>
+<li>Should new regex fields be named <code>includedBranchPatterns</code>/<code>excludedBranchPatterns</code> or something else?
+</li></ul>
+</main></body></html>

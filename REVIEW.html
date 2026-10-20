@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#792</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>tide: update search API to ISSUE_ADVANCED</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/792">kubernetes-sigs/prow#792</a> · base <code>main</code> · head_sha <code>d138f93c72a1</code> · reviewed_at <code>2026-10-20T12:43:13Z</code></div>
+<div class="badges"><span class="badge c-red">verdict: request-changes</span></div>
+<h2>Verdict</h2>
+<p>Request changes. Switching searches to <code>ISSUE_ADVANCED</code> changes how space-separated repository qualifiers are interpreted, but Tide and the dashboard fallback still emit multiple repo qualifiers joined by spaces. Those paths can stop finding results for configurations that include multiple repositories.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Updates the <code>githubv4</code> dependency.
+</li>
+<li>Moves Tide, blocker, and PR status GraphQL searches to <code>ISSUE_ADVANCED</code>.
+</li>
+<li>Shards Tide and blocker searches by organization.
+</li>
+<li>Joins repositories with explicit <code>OR</code> in the dashboard's generated query.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-amber">should-fix</span>Keep same-org repo filters disjunctive</h3>
+<ul>
+<li>where: <code>pkg/tide/tide.go:2111</code>
+</li>
+<li>concern: Tide query builders still emit multiple <code>repo:</code> qualifiers for one org separated by spaces. With <code>ISSUE_ADVANCED</code>, spaces mean <code>AND</code>, so a query for multiple configured repos in one org can match none of them; the blocker and status searches share this query construction. GitHub documents spaces as <code>AND</code> and <code>OR</code> for alternatives (<a href="https://docs.github.com/en/issues/tracking-your-work-with-issues/using-issues/filtering-and-searching-issues-and-pull-requests">search syntax</a>).
+</li>
+<li>excerpt:<pre><code>} `graphql:&quot;search(type: ISSUE_ADVANCED, first: 37, after: $searchCursor, query: $query)&quot;`</code></pre>
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>Preserve OR in dashboard fallback repo scoping</h3>
+<ul>
+<li>where: <code>pkg/prstatus/prstatus.go:137</code>
+</li>
+<li>concern: When a custom dashboard query has no <code>org:</code> or <code>repo:</code> qualifier, <code>HandlePrStatus</code> appends configured repositories with spaces. Under <code>ISSUE_ADVANCED</code>, this requires a result to match every configured repo, so the fallback returns no results when more than one repo is configured.
+</li>
+<li>excerpt:<pre><code>} `graphql:&quot;search(type: ISSUE_ADVANCED, first: 100, after: $searchCursor, query: $query)&quot;`</code></pre>
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>The query construction call sites in Tide, blockers, status search, and the dashboard.
+</li>
+<li>Existing tests cover org sharding and the generated dashboard query, but not these multi-repo cases.
+</li>
+<li>No tests were run.
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>Can tests cover multiple configured repositories in the same org and an unscoped custom dashboard query?
+</li></ul>
+</main></body></html>

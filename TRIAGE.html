@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#1021</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>pull-prow-integration: gangway's fixed nodePort 32000 can collide with an automatically assigned NodePort</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/issues/1021">kubernetes-sigs/prow#1021</a> · main_sha <code>4425e386ffba</code> · state <code>open</code> · labels <code>kind/flake</code> · triaged_at <code>2026-10-19T14:09:44Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: accepted</span></div>
+<details><summary>Full metadata</summary><pre><code>issue: kubernetes-sigs/prow#1021
+title: &quot;pull-prow-integration: gangway&#x27;s fixed nodePort 32000 can collide with an automatically assigned NodePort&quot;
+state: open
+labels: kind/flake
+main_sha: 4425e386ffba859f8fbfb535617559f05d37bf2f
+triaged_at: 2026-10-19T14:09:44Z
+verdict: accepted
+advice:
+  advised_at: 2026-10-20T12:31:10Z
+  based_on_triaged_at: 2026-10-19T14:09:44Z</code></pre></details>
+<h2>Verdict</h2>
+<p><strong>accepted</strong> — This is a reproducible failure in Prow's integration setup: Kubernetes can allocate NodePort 32000 to an earlier Service, then reject gangway's fixed claim before tests start. Keep the issue open while PR #1022, which addresses the collision, is reviewed; its integration presubmit passes.</p>
+<h2>What the issue reports</h2>
+<ul>
+<li><code>pull-prow-integration</code> failed while applying gangway's Service with <code>provided port is already allocated</code>; the run produced no junit file because tests did not start.
+</li>
+<li>Gangway pins NodePort 32000, while earlier NodePort Services use automatic allocation and fakepubsub also receives an explicit selected port.
+</li>
+<li>The report proposes moving gangway to the lower static band and keeping fakepubsub's selection out of that port.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-blue">reproducibility</span>reported CI failure before tests</h3>
+<ul>
+<li>detail: The linked run failed applying gangway because NodePort 32000 was already allocated. The issue reports no <code>junit-integration.xml</code>; this triage did not independently rerun the failure.
+</li>
+<li>evidence: <a href="https://prow.k8s.io/view/gs/kubernetes-ci-logs/pr-logs/pull/kubernetes-sigs_prow/1013/pull-prow-integration/2111481444873277440">Prow build for PR #1013</a>
+</li></ul>
+<h3><span class="tag c-amber">cause</span>gangway claims a port after automatic NodePorts are created</h3>
+<ul>
+<li>detail: Earlier Services can receive 32000 automatically, then gangway's explicit claim fails. In the default range, Kubernetes prefers dynamic allocation from 30086-32767, which includes 32000; the static band is 30000-30085.
+</li>
+<li>evidence: <code>test/integration/lib.sh:201-255</code>; <a href="https://kubernetes.io/docs/concepts/services-networking/service/#reserve-nodeport-ranges-to-avoid-collisions">Kubernetes NodePort allocation docs</a>
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>gangway fixes NodePort 32000</h3>
+<ul>
+<li>where: <code>test/integration/config/prow/cluster/gangway_service.yaml:10-18</code>
+</li>
+<li>excerpt:<pre><code>ports:
+- name: grpc
+  port: 32000
+  targetPort: 32000
+  nodePort: 32000
+  protocol: TCP</code></pre>
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>automatic NodePort Services precede gangway</h3>
+<ul>
+<li>where: <code>test/integration/lib.sh:201-255</code>
+</li>
+<li>excerpt:<pre><code>hook_rbac.yaml
+hook_service.yaml
+hook_deployment.yaml
+...
+deck_rbac.yaml
+deck_service.yaml
+deck_deployment.yaml
+deck_tenant_deployment.yaml
+...
+gangway_rbac.yaml
+gangway_service.yaml
+gangway_deployment.yaml</code></pre>
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>fakepubsub gets an explicit port and kind forwards gangway traffic</h3>
+<ul>
+<li>where: <code>test/integration/integration-test.sh:198-207</code>, <code>test/integration/lib.sh:504-508</code>, <code>test/integration/setup-kind-cluster.sh:176-187</code>, <code>test/integration/test/gangway_test.go:158-159</code>
+</li>
+<li>excerpt:<pre><code>fakepubsub_node_port=&quot;$(get_random_node_port)&quot;
+...
+function get_random_node_port() {
+  # 30000-32767 is the default NodePort range. If &quot;shuf&quot; isn&#x27;t available, use
+  # 30303 as a default.
+  shuf -i 30000-32767 -n 1 || echo 30303
+}
+...
+  containerPort: 32000
+  hostPort: 32000
+...
+c, err := gangwayGoogleClient.NewInsecure(&quot;:32000&quot;, tt.projectNumber)</code></pre>
+</li></ul>
+<h3><span class="tag c-blue">related-pr</span>PR #1022 moves gangway into the static band</h3>
+<ul>
+<li>ref: kubernetes-sigs/prow#1022
+</li>
+<li>relevance: The open PR moves gangway to NodePort 30000, maps host port 32000 to container port 30000, and selects fakepubsub ports from 30001-30085. Its <code>pull-prow-integration</code> check passes; existing kind clusters need the updated mapping or recreation.
+</li></ul>
+<h2>Resolved</h2>
+<p>None.</p>
+<h2>Checked</h2>
+<ul>
+<li>Read issue #1021 and its timeline; PR #1022 is the only cross-reference. Similar issue searches for <code>gangway nodePort</code>, <code>nodePort collision</code>, and <code>pull-prow-integration gangway</code> found no other matching issue.
+</li>
+<li>Read NodePort setup order, gangway and fakepubsub manifests, integration test connection, and kind port mapping.
+</li>
+<li>Confirmed issue #1022 remains open and its <code>pull-prow-integration</code> check passes; the Tide check is pending approval and <code>lgtm</code> labels.
+</li>
+<li>Confirmed the default static/dynamic NodePort bands in Kubernetes documentation. No independent local test run was performed.
+</li></ul>
+<h2>Next steps</h2>
+<ul>
+<li>Review PR #1022's static-band allocation, fakepubsub range, and kind mapping/migration note.
+</li>
+<li>Keep #1021 open until the PR is merged and CI confirms the failure is resolved; then close it as fixed.
+</li>
+<li>Consider adding <code>area/gangway</code> while retaining the existing <code>kind/flake</code> label.
+</li></ul>
+<h2>Advice</h2>
+<p>No issue activity since triage: #1021 remains open with <code>kind/flake</code>, no new comments were posted, and PR #1022 remains the only linked PR. The existing next steps still apply.</p>
+<ol>
+<li><strong>Review PR #1022 before pursuing separate work.</strong> The PR is open and mergeable, its <code>pull-prow-integration</code> check passes, and Tide is waiting for the <code>approved</code> label. The issue is already cross-referenced by the PR.
+<pre><code>gh pr view 1022 --repo kubernetes-sigs/prow
+gh pr diff 1022 --repo kubernetes-sigs/prow</code></pre>
+</li>
+<li><strong>Optionally add <code>area/gangway</code>.</strong> That label exists and is not currently applied; keep <code>kind/flake</code>.
+<pre><code>gh issue edit 1021 --repo kubernetes-sigs/prow --add-label area/gangway</code></pre>
+</li></ol>
+<p>Keep #1021 open until PR #1022 is merged and CI confirms the failure is resolved. No milestone or help-wanted label is recommended while the fix is already in flight.</p>
+<h2>Open questions</h2>
+<p>None identified during triage.</p>
+</main></body></html>

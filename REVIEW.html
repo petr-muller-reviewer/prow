@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#1013</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>feat: add squash-commits mode to cherrypicker</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1013">kubernetes-sigs/prow#1013</a> · base <code>main</code> · head_sha <code>ce50c67292a5</code> · reviewed_at <code>2026-10-19T13:08:04Z</code></div>
+<div class="badges"><span class="badge c-red">verdict: request-changes</span><span class="badge c-amber">gate: hold</span></div>
+<details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#1013
+title: &quot;feat: add squash-commits mode to cherrypicker&quot;
+head_sha: ce50c67292a53542103cf2b4318c3daf4c6a559f
+base: main
+reviewed_at: 2026-10-19T13:08:04Z
+verdict: request-changes
+gate:
+  decision: hold
+  gated_at: 2026-10-19T12:51:00Z
+  gated_head_sha: ce50c67292a53542103cf2b4318c3daf4c6a559f
+  reviewed_head_sha: ce50c67292a53542103cf2b4318c3daf4c6a559f</code></pre></details>
+<h2>Gate</h2>
+<p>Decision: <strong>hold</strong>. Three actionable findings remain in the current PR head. The public pkg/git/v2.Interactor interface also gained methods, which can break downstream implementations at compile time; confirm compatibility expectations or preserve the interface.</p>
+<ul>
+<li>Metadata lookup failures can still produce a squashed commit with missing or incorrect authorship (cmd/external-plugins/cherrypicker/server.go:813-827).
+</li>
+<li>Commit body text can suppress a real Co-authored-by trailer (cmd/external-plugins/cherrypicker/server.go:920-925).
+</li>
+<li>Long messages can exceed the OS argument limit when passed to Git (pkg/git/v2/interactor.go:439-449).
+</li>
+<li>The exported interface change affects downstream packages that implement Interactor or RepoClient (pkg/git/v2/interactor.go:60-64; pkg/git/v2/client_factory.go:84-88).
+</li></ul>
+<p>The earlier GitUser nil-pointer concern appears addressed by the new CommitWithAuthor path and its regression test. The --squash-commits flag defaults to false, so existing deployments retain their runtime behavior unless they enable it.</p>
+<h2>Verdict</h2>
+<p>Request changes: the squash path can lose author attribution when GitHub metadata is unavailable, omit co-author trailers in some multi-commit messages, and fail for long commit messages. These are user-visible failures in the new mode.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Adds a default-off --squash-commits option to the cherrypicker.
+</li>
+<li>Fetches a pull request's net diff and applies it to the target branch with three-way support.
+</li>
+<li>Creates one signed-off commit for the cherry-pick and tries to preserve the original authorship.
+</li>
+<li>Leaves the existing per-commit git am path in place when squash mode is disabled.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-amber">should-fix</span>Abort when commit metadata cannot be loaded</h3>
+<ul>
+<li>where: cmd/external-plugins/cherrypicker/server.go:813-827
+</li>
+<li>concern: If listing the pull request's commits fails, the code logs a warning and continues with an empty commit list and author. It can then create a title-only commit attributed to the bot, losing the original authorship; stop before committing when required metadata is unavailable.
+</li>
+<li>excerpt:<pre><code>commits, err := s.ghc.ListPullRequestCommits(org, repo, num)
+if err != nil {
+    logger.WithError(err).Warnf(&quot;failed to list commits for #%d; squashed commit will omit authorship&quot;, num)
+}
+...
+author := primaryAuthor(commits, prAuthorLogin)
+message := squashCommitMessage(title, commits, author)
+return r.CommitWithAuthor(message, author, true)</code></pre>
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>Check existing co-author trailers in the trailer block</h3>
+<ul>
+<li>where: cmd/external-plugins/cherrypicker/server.go:920-925
+</li>
+<li>concern: For a multi-commit PR, commit bodies are copied into the base message. If one body mentions a co-author trailer, this substring check treats it as already present and omits the real trailer, so GitHub does not credit that co-author.
+</li>
+<li>excerpt:<pre><code>base = strings.TrimRight(base, &quot;\n&quot;)
+lower := strings.ToLower(base)
+var add []string
+for _, t := range trailers {
+    if !strings.Contains(lower, strings.ToLower(t)) {
+        add = append(add, t)
+    }
+}</code></pre>
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>Pass long commit messages without an argv limit</h3>
+<ul>
+<li>where: pkg/git/v2/interactor.go:439-449
+</li>
+<li>concern: The complete squashed message is passed as one --message argument. A sufficiently long pull request history can exceed Linux's per-argument limit and fail before Git runs; pass the message through a file or stdin.
+</li>
+<li>excerpt:<pre><code>args := []string{&quot;commit&quot;, &quot;--message&quot;, message}
+if author != &quot;&quot; {
+    args = append(args, &quot;--author&quot;, author)
+}
+if signoff {
+    args = append(args, &quot;--signoff&quot;)
+}
+if out, err := i.executor.Run(args...); err != nil {
+    return fmt.Errorf(&quot;error committing: %w. output: %s&quot;, err, string(out))
+}</code></pre>
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>--squash-commits defaults to false and the existing path still uses git am.
+</li>
+<li>The squash path applies the diff with git apply --3way --index and adds the bot's sign-off.
+</li>
+<li>The added end-to-end test checks PR creation but not the resulting commit author or message. Tests were not run.
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>Can the squash operation stop before committing if author metadata cannot be loaded?
+</li>
+<li>Can trailer deduplication inspect only actual Git trailers rather than message-body text?
+</li>
+<li>Can the commit message be passed through a file or stdin so long pull requests still work?
+</li></ul>
+</main></body></html>

@@ -2,17 +2,32 @@
 issue: kubernetes-sigs/prow#777
 title: "tide: context checker error silently drops PR instead of reporting via status context"
 state: open
-labels:
+labels: ""
 main_sha: 444074c659e1d2626895fbc542f7cc6ccfb19e16
-triaged_at: 2026-07-01T22:19:04Z
+triaged_at: 2026-10-20T23:36:58Z
 verdict: accepted
+refresh_log:
+  - since: 2026-07-01T22:19:04Z
+    summary: Confirmed the BP/job context collision; checkconfig validation and config fixes landed, and Tide status reporting is in open PR #938.
+advice:
+  advised_at: 2026-10-20T23:38:35Z
+  based_on_triaged_at: 2026-10-20T23:36:58Z
 ---
+
+## What the issue reports
+
+- A context-policy validation error can cause Tide to drop an entire subpool without setting a useful Tide status on the affected PR.
+- The suspected collision is an explicit branch-protection required context that is also a conditionally triggered Prow job context.
+- Since previous triage:
+  - The collision mechanism was confirmed in a follow-up comment by petr-muller on 2026-07-01; maintainer Prucek asked whether Tide should also report the error, and petr-muller agreed that stronger Tide reporting would help.
+  - PR #791 merged on 2026-07-02 and made `checkconfig` detect these BP/job collisions. OpenShift config PR #81365 also merged that day to remove collisions in seven repos; a later revert PR #81371 was closed without merging.
+  - PR #938, opened 2026-09-14, remains open and proposes reporting excluded PRs with an error on their Tide status context. It explicitly fixes #777 and also addresses related issue #937.
 
 ## Findings
 
-### [cause] Context list collision in GetTideContextPolicy (hypothesized)
-- detail: When `from-branch-protection: true` is set, `GetTideContextPolicy` inserts BP's `RequiredStatusChecks.Contexts` into the `required` set (line 968). Separately, `BranchRequirements()` partitions presubmit jobs by trigger behavior — a conditionally-triggered, non-optional job lands in `requiredIfPresent` (line 627). If the same context appears in both sources, `Validate()` rejects it. This trigger is hypothesized based on the observed config but not yet confirmed as the exact culprit.
-- evidence: `pkg/config/tide.go:962-976`, `pkg/config/branch_protection.go:604-638`
+### [cause] Context list collision in GetTideContextPolicy (confirmed)
+- detail: With `from-branch-protection: true`, an explicitly configured BP required context enters `required`, while a matching conditionally triggered, non-optional presubmit enters `requiredIfPresent`. `Validate()` rejects the overlap. The follow-up comment by petr-muller on 2026-07-01 confirmed this exact path using `ci/prow/test` and a `skip_if_only_changed` presubmit.
+- evidence: `pkg/config/tide.go:962-987`, `pkg/config/branch_protection.go:604-638`, issue comment 2026-07-01T22:32:46Z
 
 ### [cause] Silent subpool drop on initSubpoolData error (confirmed)
 - detail: `filterSubpools` logs the error and silently drops the entire subpool. No tide status context is set on any PR in the subpool. The status controller may show a misleading "missing requirements" status or nothing at all.
@@ -78,20 +93,53 @@ verdict: accepted
 ### [related-code] validateTideContextPolicy — static config validation (misses runtime collisions)
 - where: `cmd/checkconfig/main.go:1183-1227`
 
+### [related-pr] checkconfig now detects branch-protection context collisions
+- ref: kubernetes-sigs/prow#791
+- relevance: Merged 2026-07-02; adds literal branches from branch-protection config to `validateTideContextPolicy` and tests detection of the BP-required/conditionally-triggered collision. This catches the configuration problem before runtime but does not add a Tide status for a PR when runtime initialization fails.
+
+### [related-pr] Tide reports excluded PRs on their status context
+- ref: kubernetes-sigs/prow#938
+- relevance: Open; handles per-PR `initSubpoolData` failures as exclusions and reports `StatusError` with the merge-requirements error before building the context checker. Its approach matches the existing hardening recommendation and the maintainer's preference for surfacing the error.
+
+### [related-pr] OpenShift config collision fixes
+- ref: openshift/release#81365
+- relevance: Merged 2026-07-02; removes colliding branch-protection contexts in seven affected repos, after PR #791 made `checkconfig` detect them. PR openshift/release#81371 proposed reverting some branch-protection changes but was closed without merging.
+
+### [related-issue] Tide status missing for PRs excluded after changed-file fetch errors
+- ref: kubernetes-sigs/prow#937
+- relevance: Related symptom from a different exclusion path; open PR #938 addresses it alongside this issue.
+
 ## Checked
 
 - Confirmed the error message in the issue matches `pkg/config/tide.go:869`
 - Confirmed `checkconfig` validates context policies at config-load time but cannot catch runtime collisions from `from-branch-protection: true`
 - Verified the status controller already uses `github.StatusError` for merge conflicts and blockers — same pattern could report initSubpoolData errors
 - Checked that `filterSubpools` has no error-propagation mechanism — errors are logged and subpools are dropped
-- The specific config trigger (BP + conditional job collision) is a hypothesis — the symptom (silent drop, no status) is confirmed
+- The specific config trigger (BP required context + matching conditional job context) is confirmed by the 2026-07-01 issue comment and by the collision test added in PR #791
+- PR #791 changes only `cmd/checkconfig`; it detects the config collision but does not surface runtime Tide status errors
+- PR #938 changes `pkg/tide/status.go` and `pkg/tide/tide.go` to keep the affected PR's exclusion reason and report it as a Tide error status
+- PR #81365 updates seven OpenShift repo configs; PR #81371, which proposed reverting some of those branch-protection changes, was closed unmerged
 
 ## Next steps
 
-- Confirm the hypothesis: reproduce with the exact config from the maintainer's comment and verify the Validate error is the one firing
-- Fix A (higher priority): deduplicate contexts in `GetTideContextPolicy` after merging BP and job sources, before calling `Validate()` — keep `Validate()` strict so `checkconfig` still catches explicit misconfigurations
-- Fix B (hardening): propagate `initSubpoolData` errors to the tide status context as `github.StatusError` — prevents any future init error from being silent
-- Label with `kind/bug`, `area/tide`, `help-wanted`
+- Review and track open PR #938; its per-PR exclusion and `github.StatusError` reporting match the remaining user-visible problem and the maintainer's stated preference
+- Decide whether runtime deduplication in `GetTideContextPolicy` is still desirable: PR #791 catches the config pattern and known OpenShift collisions were corrected, while Tide's runtime validation remains strict
+- Label with `kind/bug`, `area/tide`, and `triage/accepted`; help wanted is unnecessary while PR #938 is active
+
+## Advice
+
+1. **Review and track PR #938; avoid duplicate implementation.** It is open and mergeable, explicitly fixes #777, and its status reporting addresses the remaining issue. PR #791 and openshift/release#81365 handle config validation and known config collisions, not Tide's missing status.
+
+   ```sh
+   gh pr view 938 --repo kubernetes-sigs/prow
+   gh pr diff 938 --repo kubernetes-sigs/prow
+   ```
+
+2. **Apply the issue labels.** The issue is accepted but currently has no labels. These existing labels identify the bug, Tide area, and accepted status; `help wanted` is not needed while a fix is already in flight.
+
+   ```sh
+   gh issue edit 777 --repo kubernetes-sigs/prow --add-label "kind/bug,area/tide,triage/accepted"
+   ```
 
 ## Open questions
 

@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#745</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>[cherrypicker]: reports a false conflict although the change applies cleanly</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/issues/745">kubernetes-sigs/prow#745</a> · main_sha <code>9fa65c208d31</code> · state <code>open</code> · labels <code>lifecycle/stale</code> · triaged_at <code>2026-10-20T13:37:17Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: accepted</span></div>
+<details><summary>Full metadata</summary><pre><code>issue: kubernetes-sigs/prow#745
+title: &quot;[cherrypicker]: reports a false conflict although the change applies cleanly&quot;
+state: open
+labels: lifecycle/stale
+main_sha: 9fa65c208d31319fc1d64b01100656a8c7a52199
+triaged_at: 2026-10-20T13:37:17Z
+verdict: accepted
+refresh_log:
+  - previous: 2026-06-09T14:41:27Z
+    summary: &quot;New comment from valen-mascarenhas14 refining root cause to CRLF line-ending stripping by git am; contributor volunteered to implement fix&quot;
+  - previous: 2026-06-15T11:18:17Z
+    summary: &quot;Recorded maintainer guidance, Karmada&#x27;s CRLF cleanup tracking, and lifecycle/stale label; issue remains open with no Prow fix linked&quot;</code></pre></details>
+<h2>What the issue reports</h2>
+<ul>
+<li>The cherrypicker reports a conflict when applying a change that the reporter can apply cleanly through other Git commands.
+</li>
+<li>The existing reproduction points to CRLF context being stripped by <code>git am</code>, making the patch fail against the target branch.
+</li></ul>
+<h3>Since previous triage</h3>
+<ul>
+<li>On 2026-06-15, valen-mascarenhas14 asked maintainers for input. BenTheElder replied, “I don't use the cherry-picker plugin,” and suggested checking for CRLF in presubmit; this adds no new reproduction or Prow fix.
+</li>
+<li>On 2026-06-16, zhzhuang-zju cross-referenced <a href="https://github.com/karmada-io/website/issues/1026">karmada-io/website#1026</a>, which cites this issue and tracks normalizing CRLF files and adding a CRLF check. As last updated on 2026-06-30, its main and release-1.17 cleanup tasks were complete, while release-1.18 and release-1.16 remained open.
+</li>
+<li>On 2026-10-20, k8s-triage-robot added <code>lifecycle/stale</code> after the inactivity period. The issue remains open.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-amber">cause</span>git am strips CRLF line endings, causing patch context mismatch</h3>
+<ul>
+<li>detail: The actual trigger is <code>git am</code>'s default behavior of stripping CR from CRLF lines during mail processing. When files in the repository use CRLF line endings, the patch downloaded from GitHub contains CRLF context lines. <code>git am</code> normalizes these to LF, causing the patch context to no longer match the working tree content, and the apply fails. <code>git am --keep-cr --3way</code> preserves the original CRLF endings and succeeds on the same patch. This is more specific than the initial "missing base blobs" hypothesis — the blob reconstruction fails because the content has been altered by CR stripping.
+</li>
+<li>evidence: Comment by valen-mascarenhas14 on 2026-06-14 confirming local reproduction. The 6 <code>compatibility.md</code> files in <code>karmada-io/website</code> were stored with CRLF endings; <code>git am --keep-cr</code> applies the patch cleanly. See also <a href="https://git-scm.com/docs/git-am">git am --keep-cr documentation</a>.
+</li></ul>
+<h3><span class="tag c-amber">cause</span>git am --3way fails when target branch lacks base blobs from patch index</h3>
+<ul>
+<li>detail: Original hypothesis. <code>git am --3way</code> reconstructs the base tree using blob SHAs from the patch's <code>index</code> line. When the target branch has diverged from the source branch, those blobs may not exist locally. Now understood to be a downstream effect of the CRLF stripping — the content mismatch prevents blob lookup. Both causes may independently trigger failures; the CRLF case is confirmed for this specific report.
+</li>
+<li>evidence: <code>pkg/git/v2/interactor.go:428-439</code> — <code>Am()</code> runs <code>git am --3way</code> with no fallback.
+</li></ul>
+<h3><span class="tag c-blue">reproducibility</span>Fully reproducible with public PR</h3>
+<ul>
+<li>detail: Reporter provides exact steps using <code>karmada-io/website#1022</code> and target branch <code>release-1.18</code>. <code>git am --3way</code> fails on the patch; <code>git apply --3way</code>, <code>git cherry-pick</code>, and <code>git am --keep-cr --3way</code> all succeed on the same change.
+</li>
+<li>evidence: <a href="https://github.com/karmada-io/website/pull/1022#issuecomment-4657244157">https://github.com/karmada-io/website/pull/1022#issuecomment-4657244157</a>
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>Am() method — hardcoded git am --3way</h3>
+<ul>
+<li>where: <code>pkg/git/v2/interactor.go:425-439</code>
+</li>
+<li>excerpt:<pre><code>func (i *interactor) Am(path string) error {
+	i.logger.Infof(&quot;Applying patch at %s&quot;, path)
+	out, err := i.executor.Run(&quot;am&quot;, &quot;--3way&quot;, path)
+	if err == nil {
+		return nil
+	}
+	i.logger.WithError(err).Infof(&quot;Patch apply failed with output: %s&quot;, string(out))
+	if abortOut, abortErr := i.executor.Run(&quot;am&quot;, &quot;--abort&quot;); abortErr != nil {
+		i.logger.WithError(abortErr).Warningf(&quot;Aborting patch apply failed with output: %s&quot;, string(abortOut))
+	}
+	return errors.New(string(bytes.TrimPrefix(out, []byte(&quot;The copy of the patch that failed is found in: .git/rebase-apply/patch&quot;))))
+}</code></pre>
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>handle() error path — no fallback attempted</h3>
+<ul>
+<li>where: <code>cmd/external-plugins/cherrypicker/server.go:616-632</code>
+</li>
+<li>excerpt:<pre><code>if err := r.Am(localPath); err != nil {
+	errs := []error{fmt.Errorf(&quot;failed to `git am`: %w&quot;, err)}
+	logger.WithError(err).Warn(&quot;failed to apply PR on top of target branch&quot;)
+	resp := fmt.Sprintf(&quot;#%d failed to apply on top of branch %q:\n```\n%v\n```&quot;, num, targetBranch, err)
+	if err := s.createComment(logger, org, repo, num, comment, resp); err != nil {
+		errs = append(errs, fmt.Errorf(&quot;failed to create comment: %w&quot;, err))
+	}
+	...</code></pre>
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>getPatch() — downloads patch in mbox format</h3>
+<ul>
+<li>where: <code>cmd/external-plugins/cherrypicker/server.go:750-761</code>
+</li>
+<li>excerpt:<pre><code>func (s *Server) getPatch(org, repo, targetBranch string, num int) (string, error) {
+	patch, err := s.ghc.GetPullRequestPatch(org, repo, num)
+	...
+	localPath := fmt.Sprintf(&quot;/tmp/%s_%s_%d_%s.patch&quot;, org, repo, num, normalize(targetBranch))
+	...</code></pre>
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>GetPullRequestPatch() — GitHub API with patch media type</h3>
+<ul>
+<li>where: <code>pkg/github/client.go:2360-2372</code>
+</li>
+<li>excerpt:<pre><code>func (c *client) GetPullRequestPatch(org, repo string, number int) ([]byte, error) {
+	_, patch, err := c.requestRaw(&amp;request{
+		accept:    &quot;application/vnd.github.patch&quot;,
+		method:    http.MethodGet,
+		path:      fmt.Sprintf(&quot;/repos/%s/%s/pulls/%d&quot;, org, repo, number),
+		...</code></pre>
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>Interactor interface — Am() is the only patch application method</h3>
+<ul>
+<li>where: <code>pkg/git/v2/interactor.go:61-62</code>
+</li>
+<li>excerpt:<pre><code>// Am calls `git am`
+Am(path string) error</code></pre>
+</li></ul>
+<h3><span class="tag c-blue">related-issue</span>Karmada tracks CRLF cleanup as a mitigation</h3>
+<ul>
+<li>ref: karmada-io/website#1026
+</li>
+<li>relevance: The issue cites Prow #745 and tracks normalizing CRLF files plus a CRLF check. This supports the identified trigger and offers a downstream mitigation; its release-1.18 cleanup task was still open at the issue's 2026-06-30 update.
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>No existing issues or PRs in kubernetes-sigs/prow addressing this problem
+</li>
+<li>No configuration option to select alternative cherry-pick strategies
+</li>
+<li>The <code>Interactor</code> interface has no <code>Apply()</code> or <code>CherryPick()</code> method — only <code>Am()</code>
+</li>
+<li><code>cherrypickapproved</code> and <code>cherrypickunapproved</code> in <code>pkg/plugins/</code> are separate label-management plugins, not involved in actual cherry-pick operations
+</li>
+<li>CRLF root cause confirmed by valen-mascarenhas14's local reproduction (2026-06-14)
+</li></ul>
+<h2>Next steps</h2>
+<ul>
+<li>If the issue remains active, remove <code>lifecycle/stale</code> and apply <code>kind/bug</code>, <code>area/cherrypicker</code>, and <code>help-wanted</code> as appropriate.
+</li>
+<li>Reply to valen-mascarenhas14 with guidance: retry with <code>git am --keep-cr --3way</code> when plain <code>git am --3way</code> fails. Consider <code>git apply --3way</code> for failures that <code>--keep-cr</code> does not address, such as genuinely missing base blobs.
+</li>
+<li>Track the unfinished release-1.18 and release-1.16 CRLF cleanup tasks in karmada-io/website#1026 as downstream mitigation; they do not address the general Prow behavior.
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>Is retrying with <code>--keep-cr</code> sufficient, or should the fix also include a <code>git apply --3way</code> fallback for non-CRLF failure cases?
+</li>
+<li>Should <code>--keep-cr</code> be the default instead of a retry? It's harmless on non-CRLF repos (no effect when there are no CRs to keep).
+</li></ul>
+</main></body></html>

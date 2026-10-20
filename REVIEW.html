@@ -31,47 +31,59 @@ ul, ol { padding-left:1.5rem; }
 details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
 </style></head><body><main>
 <h1>tide: update search API to ISSUE_ADVANCED</h1>
-<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/792">kubernetes-sigs/prow#792</a> · base <code>main</code> · head_sha <code>d138f93c72a1</code> · reviewed_at <code>2026-10-20T12:43:13Z</code></div>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/792">kubernetes-sigs/prow#792</a> · base <code>main</code> · head_sha <code>4e28b6458261</code> · reviewed_at <code>2026-10-20T14:15:42Z</code></div>
 <div class="badges"><span class="badge c-red">verdict: request-changes</span></div>
 <h2>Verdict</h2>
-<p>Request changes. Switching searches to <code>ISSUE_ADVANCED</code> changes how space-separated repository qualifiers are interpreted, but Tide and the dashboard fallback still emit multiple repo qualifiers joined by spaces. Those paths can stop finding results for configurations that include multiple repositories.</p>
+<p>Request changes. The PR selects a GraphQL search enum that GitHub scheduled for removal, and several query paths still join repository qualifiers with spaces. Those paths can fail against current schemas or stop returning results for valid multi-repo configurations.</p>
 <h2>What this PR does</h2>
 <ul>
 <li>Updates the <code>githubv4</code> dependency.
 </li>
-<li>Moves Tide, blocker, and PR status GraphQL searches to <code>ISSUE_ADVANCED</code>.
+<li>Switches Tide, blocker, and PR status searches to <code>ISSUE_ADVANCED</code>.
 </li>
-<li>Shards Tide and blocker searches by organization.
+<li>Shards Tide searches by organization regardless of authentication mode.
 </li>
-<li>Joins repositories with explicit <code>OR</code> in the dashboard's generated query.
+<li>Uses explicit <code>OR</code> between repositories in the dashboard's generated query.
 </li></ul>
 <h2>Findings</h2>
-<h3><span class="tag c-amber">should-fix</span>Keep same-org repo filters disjunctive</h3>
+<h3><span class="tag c-red">blocking</span>Use the supported GraphQL search type</h3>
 <ul>
 <li>where: <code>pkg/tide/tide.go:2111</code>
 </li>
-<li>concern: Tide query builders still emit multiple <code>repo:</code> qualifiers for one org separated by spaces. With <code>ISSUE_ADVANCED</code>, spaces mean <code>AND</code>, so a query for multiple configured repos in one org can match none of them; the blocker and status searches share this query construction. GitHub documents spaces as <code>AND</code> and <code>OR</code> for alternatives (<a href="https://docs.github.com/en/issues/tracking-your-work-with-issues/using-issues/filtering-and-searching-issues-and-pull-requests">search syntax</a>).
+<li>concern: GitHub's breaking-change documentation scheduled removal of <code>SearchType.ISSUE_ADVANCED</code> for November 4, 2025, because advanced search becomes the default for <code>ISSUE</code>. That date has passed, so schemas that applied the change can reject this query; the same enum is used in <code>pkg/tide/blockers/blockers.go:264</code> and <code>pkg/prstatus/prstatus.go:137</code>. Use <code>ISSUE</code> while keeping the advanced query syntax (<a href="https://docs.github.com/en/enterprise-server@3.19/graphql/overview/breaking-changes">GitHub breaking changes</a>, <a href="https://github.blog/changelog/2025-03-06-github-issues-projects-api-support-for-issues-advanced-search-and-more/">API announcement</a>).
 </li>
 <li>excerpt:<pre><code>} `graphql:&quot;search(type: ISSUE_ADVANCED, first: 37, after: $searchCursor, query: $query)&quot;`</code></pre>
 </li></ul>
-<h3><span class="tag c-amber">should-fix</span>Preserve OR in dashboard fallback repo scoping</h3>
+<h3><span class="tag c-amber">should-fix</span>Keep same-org repository alternatives disjunctive</h3>
+<ul>
+<li>where: <code>pkg/tide/tide.go:2111</code>
+</li>
+<li>concern: Tide query builders still emit multiple <code>repo:</code> qualifiers for one org separated by spaces. With advanced search, spaces mean <code>AND</code>, so queries for multiple configured repos in one org can return no PRs; the blocker and status searches share this query construction. Use explicit <code>OR</code> or separate searches, and cover a same-org multi-repo configuration in tests (<a href="https://github.blog/changelog/2025-03-06-github-issues-projects-api-support-for-issues-advanced-search-and-more/">GitHub search syntax</a>).
+</li>
+<li>excerpt:<pre><code>} `graphql:&quot;search(type: ISSUE_ADVANCED, first: 37, after: $searchCursor, query: $query)&quot;`</code></pre>
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>Preserve repository OR in dashboard fallback queries</h3>
 <ul>
 <li>where: <code>pkg/prstatus/prstatus.go:137</code>
 </li>
-<li>concern: When a custom dashboard query has no <code>org:</code> or <code>repo:</code> qualifier, <code>HandlePrStatus</code> appends configured repositories with spaces. Under <code>ISSUE_ADVANCED</code>, this requires a result to match every configured repo, so the fallback returns no results when more than one repo is configured.
+<li>concern: When a custom dashboard query has no <code>org:</code> or <code>repo:</code> qualifier, <code>HandlePrStatus</code> appends configured repositories with spaces. Under advanced search, multiple repos become an <code>AND</code>, so the fallback can return no results. Use <code>OR</code> in this fallback and cover it with a multi-repo custom-query test.
 </li>
 <li>excerpt:<pre><code>} `graphql:&quot;search(type: ISSUE_ADVANCED, first: 100, after: $searchCursor, query: $query)&quot;`</code></pre>
 </li></ul>
 <h2>Checked</h2>
 <ul>
-<li>The query construction call sites in Tide, blockers, status search, and the dashboard.
+<li>Tide, blocker, status, and dashboard query construction call sites.
 </li>
-<li>Existing tests cover org sharding and the generated dashboard query, but not these multi-repo cases.
+<li>The documented removal schedule for <code>ISSUE_ADVANCED</code> and the new advanced-search qualifier semantics.
+</li>
+<li>The concern that the generated dashboard query's <code>OR</code> bypasses shared filters; GitHub's documented syntax shows shared filters before owner alternatives.
+</li>
+<li>Existing tests cover org sharding and the generated dashboard query, but not the same-org repo or custom-query fallback cases.
 </li>
 <li>No tests were run.
 </li></ul>
 <h2>Open questions</h2>
 <ul>
-<li>Can tests cover multiple configured repositories in the same org and an unscoped custom dashboard query?
+<li>Can tests cover multiple configured repositories in one org and an unscoped custom dashboard query?
 </li></ul>
 </main></body></html>

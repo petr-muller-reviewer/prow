@@ -34,3 +34,21 @@ No findings.
 ## Open questions
 
 None.
+
+## Dependency followups
+
+Examined PR #880, merged as `9c9e83d5cbb8f4980fd453d421bfdb4c73b8f304`. Accepted: 0; skipped: 1. No handoff prompts.
+
+- `github.com/sirupsen/logrus v1.9.4 → v1.10.1` (direct): reviewed v1.10.0 and v1.10.1 changelogs against Prow usage. No calls to deprecated `Entry.HasCaller` or `MutexWrap`; no existing `log/slog` integration to simplify. Performance and concurrency fixes apply without call-site changes.
+- `github.com/stretchr/testify v1.11.1 → v1.12.0` (direct, test-only): five files import `assert`; no uses of the changed assertion-function types, ordered assertions, `PanicsWithError`, `mock`, or `suite` APIs that warrant migration. Diagnostic improvements apply automatically.
+- `github.com/stretchr/objx v0.5.2 → v0.5.3` (transitive): no Prow imports; changes concern upstream tests, dependency maintenance, and CI, with no application API opportunity.
+
+### Skipped: narrow the cherrypicker helper's logger
+
+- category: api-upgrade
+- necessity: could
+- dependency: `github.com/sirupsen/logrus v1.9.4 → v1.10.1`; new `WarnLogger` interface introduced in v1.10.0.
+- where: `cmd/external-plugins/cherrypicker/server.go:735-750`, `getPusherAndOrg`.
+- proposed scope: replace the helper's `logrus.FieldLogger` parameter with `logrus.WarnLogger`, since its only logging call is `Warnf`; verify cherrypicker tests.
+- decision: skipped by user; no implementation requested.
+- source: [Logrus v1.10.0 release notes](https://github.com/sirupsen/logrus/releases/tag/v1.10.0).

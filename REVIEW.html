@@ -1,61 +1,91 @@
 <!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Review: kubernetes-sigs/prow#880</title>
-  <style>
-    body { font: 16px/1.55 system-ui, sans-serif; color: #1f2328; margin: 2rem auto; max-width: 900px; padding: 0 1rem; }
-    header, section { margin-bottom: 2rem; }
-    .meta { display: grid; grid-template-columns: max-content 1fr; gap: .25rem 1rem; }
-    .meta dt { font-weight: 650; }
-    code { font: .9em ui-monospace, SFMono-Regular, Menlo, monospace; background: #f6f8fa; padding: .1em .25em; border-radius: 3px; }
-    .verdict { color: #1a7f37; font-weight: 700; }
-  </style>
-</head>
-<body>
-  <header>
-    <h1>Review: <a href="https://github.com/kubernetes-sigs/prow/pull/880">kubernetes-sigs/prow#880</a></h1>
-    <dl class="meta">
-      <dt>Title</dt><dd>chore(deps): bump github.com/sirupsen/logrus from 1.9.4 to 1.10.1</dd>
-      <dt>Head SHA</dt><dd><code>5c172fb819b326db98ab2204c5854ff10fd47116</code></dd>
-      <dt>Base</dt><dd><code>main</code></dd>
-      <dt>Reviewed</dt><dd>2026-09-01T18:03:10Z</dd>
-      <dt>Verdict</dt><dd>approve</dd>
-    </dl>
-  </header>
-  <section>
-    <h2>Verdict</h2>
-    <p class="verdict">Approve.</p>
-    <p>This is a dependency-only update with no project-source changes. Logrus v1.10.1 is compatible with Prow's Go 1.26.4 baseline, uses the production JSON formatter, and includes relevant concurrency and reentrant-logging fixes. The accompanying Testify update is test-only.</p>
-  </section>
-  <section>
-    <h2>What this PR does</h2>
-    <ul>
-      <li>Updates direct dependency <code>github.com/sirupsen/logrus</code> from <code>v1.9.4</code> to <code>v1.10.1</code> in <code>go.mod</code>.</li>
-      <li>Updates direct test dependency <code>github.com/stretchr/testify</code> from <code>v1.11.1</code> to <code>v1.12.0</code> and its indirect <code>github.com/stretchr/objx</code> dependency from <code>v0.5.2</code> to <code>v0.5.3</code>.</li>
-      <li>Regenerates the corresponding module checksums in <code>go.sum</code>.</li>
-    </ul>
-  </section>
-  <section>
-    <h2>Findings</h2>
-    <p>No findings.</p>
-  </section>
-  <section>
-    <h2>Things I checked and were fine</h2>
-    <ul>
-      <li>PR diff: only <code>go.mod</code> and <code>go.sum</code> changed; no project code changed.</li>
-      <li><code>github.com/sirupsen/logrus v1.10.1</code>: tagged 2026-08-19; requires Go 1.23, satisfied by <code>go 1.26.4</code> in <code>go.mod:3</code>.</li>
-      <li>Prow production logging defaults to <code>logrus.JSONFormatter</code> through <code>pkg/logrusutil/logrusutil.go:44-55</code>; the release's <code>TextFormatter</code> output changes do not affect normal production logs.</li>
-      <li>Prow has a reentrant-logging deadlock regression test at <code>pkg/logrusutil/logrusutil_test.go:150-157</code>; Logrus v1.10 includes reentrant logging deadlock and race fixes.</li>
-      <li><code>github.com/stretchr/testify v1.12.0</code> is imported only by five <code>*_test.go</code> files; no production Go file imports it.</li>
-      <li><code>git diff --check HEAD^ HEAD</code> and <code>go test ./pkg/logrusutil ./pkg/config/secret</code> pass.</li>
-      <li>Logrus v1.10.2, released after this PR, contains only a test-dependency update and no functional changes.</li>
-    </ul>
-  </section>
-  <section>
-    <h2>Open questions for the author</h2>
-    <p>None.</p>
-  </section>
-</body>
-</html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#880</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>chore(deps): bump github.com/sirupsen/logrus from 1.9.4 to 1.10.1</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/880">kubernetes-sigs/prow#880</a> · base <code>main</code> · head_sha <code>5c172fb819b3</code> · reviewed_at <code>2026-09-01T18:03:10Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span></div>
+<h2>Verdict</h2>
+<p>Approve. This is a dependency-only update with no project-source changes. Logrus v1.10.1 is compatible with Prow's Go 1.26.4 baseline, uses the production JSON formatter, and includes relevant concurrency and reentrant-logging fixes. The accompanying Testify update is test-only.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Updates direct dependency <code>github.com/sirupsen/logrus</code> from <code>v1.9.4</code> to <code>v1.10.1</code> in <code>go.mod</code>.
+</li>
+<li>Updates direct test dependency <code>github.com/stretchr/testify</code> from <code>v1.11.1</code> to <code>v1.12.0</code> and its indirect <code>github.com/stretchr/objx</code> dependency from <code>v0.5.2</code> to <code>v0.5.3</code>.
+</li>
+<li>Regenerates the corresponding module checksums in <code>go.sum</code>.
+</li></ul>
+<h2>Findings</h2>
+<p>No findings.</p>
+<h2>Checked</h2>
+<ul>
+<li>PR diff: only <code>go.mod</code> and <code>go.sum</code> changed; no project code changed.
+</li>
+<li><code>github.com/sirupsen/logrus v1.10.1</code>: tagged 2026-08-19; requires Go 1.23, satisfied by <code>go 1.26.4</code> in <code>go.mod:3</code>.
+</li>
+<li>Prow production logging defaults to <code>logrus.JSONFormatter</code> through <code>pkg/logrusutil/logrusutil.go:44-55</code>; the release's <code>TextFormatter</code> output changes do not affect normal production logs.
+</li>
+<li>Prow has a reentrant-logging deadlock regression test at <code>pkg/logrusutil/logrusutil_test.go:150-157</code>; Logrus v1.10 includes reentrant logging deadlock and race fixes.
+</li>
+<li><code>github.com/stretchr/testify v1.12.0</code> is imported only by five <code>*_test.go</code> files; no production Go file imports it.
+</li>
+<li><code>git diff --check HEAD^ HEAD</code> and <code>go test ./pkg/logrusutil ./pkg/config/secret</code> pass.
+</li>
+<li>Logrus v1.10.2, released after this PR, contains only a test-dependency update and no functional changes.
+</li></ul>
+<h2>Open questions</h2>
+<p>None.</p>
+<h2>Dependency followups</h2>
+<p>Examined PR #880, merged as <code>9c9e83d5cbb8f4980fd453d421bfdb4c73b8f304</code>. Accepted: 0; skipped: 1. No handoff prompts.</p>
+<ul>
+<li><code>github.com/sirupsen/logrus v1.9.4 → v1.10.1</code> (direct): reviewed v1.10.0 and v1.10.1 changelogs against Prow usage. No calls to deprecated <code>Entry.HasCaller</code> or <code>MutexWrap</code>; no existing <code>log/slog</code> integration to simplify. Performance and concurrency fixes apply without call-site changes.
+</li>
+<li><code>github.com/stretchr/testify v1.11.1 → v1.12.0</code> (direct, test-only): five files import <code>assert</code>; no uses of the changed assertion-function types, ordered assertions, <code>PanicsWithError</code>, <code>mock</code>, or <code>suite</code> APIs that warrant migration. Diagnostic improvements apply automatically.
+</li>
+<li><code>github.com/stretchr/objx v0.5.2 → v0.5.3</code> (transitive): no Prow imports; changes concern upstream tests, dependency maintenance, and CI, with no application API opportunity.
+</li></ul>
+<h3>Skipped: narrow the cherrypicker helper's logger</h3>
+<ul>
+<li>category: api-upgrade
+</li>
+<li>necessity: could
+</li>
+<li>dependency: <code>github.com/sirupsen/logrus v1.9.4 → v1.10.1</code>; new <code>WarnLogger</code> interface introduced in v1.10.0.
+</li>
+<li>where: <code>cmd/external-plugins/cherrypicker/server.go:735-750</code>, <code>getPusherAndOrg</code>.
+</li>
+<li>proposed scope: replace the helper's <code>logrus.FieldLogger</code> parameter with <code>logrus.WarnLogger</code>, since its only logging call is <code>Warnf</code>; verify cherrypicker tests.
+</li>
+<li>decision: skipped by user; no implementation requested.
+</li>
+<li>source: <a href="https://github.com/sirupsen/logrus/releases/tag/v1.10.0">Logrus v1.10.0 release notes</a>.
+</li></ul>
+</main></body></html>

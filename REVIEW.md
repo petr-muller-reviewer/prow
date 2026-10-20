@@ -32,3 +32,13 @@ None.
 ## Open questions
 
 None.
+
+## Dependency followups
+
+No opportunities identified. Examined direct Go dependency `google.golang.org/protobuf`, `v1.36.12-0.20260120151049-f2248ac996af` → `v1.36.12`, for PR #889 (merged 2026-08-25 at `796b00398130fcba87242a54299c1bb68f3c7c17`). The manifest/checksum diff contains no transitive version changes.
+
+- The [actual upstream commit range](https://github.com/protocolbuffers/protobuf-go/compare/f2248ac996af...v1.36.12) adds hexadecimal/octal numeric-default parsing and updates protobuf type metadata, generated descriptors, and upstream tests. Prow has no dynamic-descriptor construction, numeric-default workaround, or use of the newly added descriptor fields to migrate or simplify.
+- Existing Gangway generated message/runtime use and ResultStore timestamp/duration/wrapper construction need no call-site changes. No newly deprecated API used by Prow was identified in this range.
+- The [release notes](https://github.com/protocolbuffers/protobuf-go/releases/tag/v1.36.12) also describe changes since `v1.36.11` that were already present in the old pseudo-version, including prototext recursion limits and protojson fixes. These are not newly unlocked by this PR; the example's `prototext.Unmarshal` call at `pkg/examples/gangway/main.go:69` therefore provides no followup opportunity for this bump.
+
+No items or handoff prompts recorded.

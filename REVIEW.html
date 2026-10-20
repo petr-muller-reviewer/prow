@@ -1,60 +1,72 @@
 <!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Review: kubernetes-sigs/prow#889</title>
-  <style>
-    body { color: #1f2937; font: 16px/1.55 system-ui, sans-serif; margin: 0; background: #f8fafc; }
-    main { max-width: 920px; margin: 2.5rem auto; padding: 0 1.25rem 2.5rem; }
-    section, header { background: white; border: 1px solid #e2e8f0; border-radius: 8px; margin: 1rem 0; padding: 1.25rem 1.5rem; }
-    h1 { margin: 0 0 .25rem; font-size: 1.6rem; } h2 { font-size: 1.15rem; margin-top: 0; }
-    code { background: #eef2f7; border-radius: 3px; padding: .1em .3em; font-family: ui-monospace, monospace; }
-    .meta { color: #475569; margin: .25rem 0; } .approve { color: #166534; font-weight: 700; }
-    ul { padding-left: 1.25rem; } .empty { color: #475569; font-style: italic; }
-  </style>
-</head>
-<body>
-  <main>
-    <header>
-      <h1>Review: <a href="https://github.com/kubernetes-sigs/prow/pull/889">kubernetes-sigs/prow#889</a></h1>
-      <p class="meta">chore(deps): bump google.golang.org/protobuf from 1.36.12-0.20260120151049-f2248ac996af to 1.36.12</p>
-      <p class="meta">Head: <code>5d768d2bd1ab1f50fb3b0a61fe08bf8452f5e07b</code> · Base: <code>main</code> · Reviewed: 2026-09-01T16:37:29Z</p>
-    </header>
-    <section>
-      <h2>Verdict</h2>
-      <p class="approve">Approve</p>
-      <p>This dependency-only change replaces an untagged pseudo-version with the tagged <code>v1.36.12</code> release, published 2026-08-10 (22 days of soak). The limited runtime changes do not overlap Prow's direct production use, and all PR CI checks passed.</p>
-    </section>
-    <section>
-      <h2>What this PR does</h2>
-      <ul>
-        <li>Updates direct production dependency <code>google.golang.org/protobuf</code> from <code>v1.36.12-0.20260120151049-f2248ac996af</code> to <code>v1.36.12</code> in <code>go.mod</code>.</li>
-        <li>Replaces the matching module checksums in <code>go.sum</code>.</li>
-        <li>Moves from an untagged January pseudo-version to the August tagged release.</li>
-      </ul>
-    </section>
-    <section>
-      <h2>Findings</h2>
-      <h3>Blocking</h3><p class="empty">None.</p>
-      <h3>Should fix</h3><p class="empty">None.</p>
-      <h3>Nits</h3><p class="empty">None.</p>
-      <h3>Questions</h3><p class="empty">None.</p>
-    </section>
-    <section>
-      <h2>Things I checked and was fine with</h2>
-      <ul>
-        <li>Only <code>go.mod</code> and <code>go.sum</code> change; no Prow source changes.</li>
-        <li>The Go proxy resolves <code>v1.36.12</code> to upstream tag <code>refs/tags/v1.36.12</code>; the release was published 2026-08-10.</li>
-        <li>The upstream delta after <code>f2248ac996af</code> is protobuf type metadata updates and hexadecimal/octal numeric-default parsing; no published security advisory.</li>
-        <li>12 Prow Go files import protobuf, primarily generated Gangway types and ResultStore timestamp/duration/wrapper construction. The only direct import of an affected encoder is example-only <code>prototext.Unmarshal</code> in <code>pkg/examples/gangway/main.go:25</code>.</li>
-        <li>Unit, integration, image-build, lint, and nonblocking race-detector CI checks succeeded.</li>
-      </ul>
-    </section>
-    <section>
-      <h2>Open questions for the author</h2>
-      <p class="empty">None.</p>
-    </section>
-  </main>
-</body>
-</html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#889</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>chore(deps): bump google.golang.org/protobuf from 1.36.12-0.20260120151049-f2248ac996af to 1.36.12</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/889">kubernetes-sigs/prow#889</a> · base <code>main</code> · head_sha <code>5d768d2bd1ab</code> · reviewed_at <code>2026-09-01T16:37:29Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span></div>
+<h2>Verdict</h2>
+<p>Approve. This dependency-only change replaces an untagged pseudo-version with the tagged <code>v1.36.12</code> release, published 2026-08-10 (22 days of soak). The limited runtime changes do not overlap Prow's direct production use, and all PR CI checks passed.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Updates direct production dependency <code>google.golang.org/protobuf</code> from <code>v1.36.12-0.20260120151049-f2248ac996af</code> to <code>v1.36.12</code> in <code>go.mod</code>.
+</li>
+<li>Replaces the matching module checksums in <code>go.sum</code>.
+</li>
+<li>Moves from an untagged January pseudo-version to the August tagged release.
+</li></ul>
+<h2>Findings</h2>
+<p>None.</p>
+<h2>Checked</h2>
+<ul>
+<li>Classification: only <code>go.mod</code> and <code>go.sum</code> change; no Prow source changes.
+</li>
+<li>Provenance and freshness: Go proxy resolves <code>v1.36.12</code> to upstream tag <code>refs/tags/v1.36.12</code>; release published 2026-08-10.
+</li>
+<li>Upstream delta after commit <code>f2248ac996af</code>: protobuf type metadata updates and support for hexadecimal/octal numeric defaults in descriptor parsing; no published security advisory.
+</li>
+<li>Usage: 12 Prow Go files import protobuf, primarily generated Gangway types and ResultStore timestamp/duration/wrapper construction. The only direct import of an affected encoder is example-only <code>prototext.Unmarshal</code> in <code>pkg/examples/gangway/main.go:25</code>.
+</li>
+<li>CI: unit, integration, image-build, lint, and nonblocking race-detector checks succeeded.
+</li></ul>
+<h2>Open questions</h2>
+<p>None.</p>
+<h2>Dependency followups</h2>
+<p>No opportunities identified. Examined direct Go dependency <code>google.golang.org/protobuf</code>, <code>v1.36.12-0.20260120151049-f2248ac996af</code> → <code>v1.36.12</code>, for PR #889 (merged 2026-08-25 at <code>796b00398130fcba87242a54299c1bb68f3c7c17</code>). The manifest/checksum diff contains no transitive version changes.</p>
+<ul>
+<li>The <a href="https://github.com/protocolbuffers/protobuf-go/compare/f2248ac996af...v1.36.12">actual upstream commit range</a> adds hexadecimal/octal numeric-default parsing and updates protobuf type metadata, generated descriptors, and upstream tests. Prow has no dynamic-descriptor construction, numeric-default workaround, or use of the newly added descriptor fields to migrate or simplify.
+</li>
+<li>Existing Gangway generated message/runtime use and ResultStore timestamp/duration/wrapper construction need no call-site changes. No newly deprecated API used by Prow was identified in this range.
+</li>
+<li>The <a href="https://github.com/protocolbuffers/protobuf-go/releases/tag/v1.36.12">release notes</a> also describe changes since <code>v1.36.11</code> that were already present in the old pseudo-version, including prototext recursion limits and protojson fixes. These are not newly unlocked by this PR; the example's <code>prototext.Unmarshal</code> call at <code>pkg/examples/gangway/main.go:69</code> therefore provides no followup opportunity for this bump.
+</li></ul>
+<p>No items or handoff prompts recorded.</p>
+</main></body></html>

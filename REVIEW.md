@@ -38,3 +38,16 @@ None — dep-only PR, no project code changed, no standard code review applicabl
 ## Open questions
 
 None.
+
+## Dependency followups
+
+No concrete opportunities identified for `github.com/bwmarrin/snowflake` **v0.0.0 → v0.3.0** (direct dependency), including intermediate releases v0.1.0 and v0.2.0. The PR's `go.mod`/`go.sum` diff contains no other module version changes, so there are no transitive bumps to examine. No items or handoff prompts recorded.
+
+- **Actual usage:** `NewNode(1)` in `pkg/jenkins/controller.go:87` and `pkg/pjutil/tot.go:42`; `Generate().String()` in `pkg/jenkins/controller.go:486` and `pkg/pjutil/tot.go:82` supplies fallback build IDs when no `tot` URL is configured.
+- **Deprecations:** v0.1.0 deprecates internal package variables and the `ID.Time()`, `ID.Node()`, and `ID.Step()` methods. Prow calls none of these; `*snowflake.Node` is a separate, unaffected type.
+- **Clock and performance improvements:** v0.2.0 applies monotonic time calculations and generation optimizations inside the existing `NewNode`/`Generate` API. These benefits require no call-site changes.
+- **New parser APIs:** v0.3.0 adds conversions such as `ParseString`, `ParseInt64`, and `ParseBytes`. Neither Prow call site parses Snowflake IDs or contains a matching custom conversion to replace.
+
+Sources: [v0.1.0 release](https://github.com/bwmarrin/snowflake/releases/tag/v0.1.0), [v0.2.0 release](https://github.com/bwmarrin/snowflake/releases/tag/v0.2.0), [v0.3.0 release](https://github.com/bwmarrin/snowflake/releases/tag/v0.3.0), and [complete upstream comparison](https://github.com/bwmarrin/snowflake/compare/v0.0.0...v0.3.0).
+
+Examined on 2026-10-21 using PR base `1078c911f25784c44cd6b200706af4e7794eebe2` and head `49f143a0ff8443573b85cdbcc033ada42642c584`. PR #894 merged on 2026-08-26 at `76db8409cae96f83bb9dff54931ae988cfa18a97`.

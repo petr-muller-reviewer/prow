@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Review: prow#799</title>
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+    color: #1a1a1a;
+    background: #fafafa;
+    margin: 0;
+    padding: 2rem;
+  }
+  .wrap {
+    max-width: 880px;
+    margin: 0 auto;
+  }
+  code, pre {
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 0.88em;
+  }
+  pre {
+    background: #f0f0f0;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 0.75rem 1rem;
+    overflow-x: auto;
+  }
+  code.inline {
+    background: #f0f0f0;
+    padding: 0.1em 0.35em;
+    border-radius: 4px;
+  }
+  header {
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+  header dl {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 0.25rem 1rem;
+    margin: 0.5rem 0 0 0;
+  }
+  header dt { color: #666; font-weight: 600; }
+  header dd { margin: 0; }
+  h1 { font-size: 1.4rem; margin: 0; }
+  h2 { font-size: 1.15rem; border-bottom: 2px solid #eee; padding-bottom: 0.3rem; margin-top: 2.2rem; }
+  h3 { font-size: 1rem; margin-bottom: 0.3rem; }
+  .verdict {
+    display: inline-block;
+    font-weight: 700;
+    padding: 0.3em 0.8em;
+    border-radius: 6px;
+    color: #fff;
+    background: #d9822b;
+  }
+  .finding {
+    background: #fff;
+    border: 1px solid #ddd;
+    border-left-width: 5px;
+    border-radius: 6px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1rem;
+  }
+  .finding.blocking { border-left-color: #c0392b; }
+  .finding.should-fix { border-left-color: #d9822b; }
+  .finding.nit { border-left-color: #888; }
+  .finding.question { border-left-color: #2b6fc0; }
+  .badge {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding: 0.15em 0.55em;
+    border-radius: 4px;
+    color: #fff;
+    margin-right: 0.5em;
+  }
+  .badge.blocking { background: #c0392b; }
+  .badge.should-fix { background: #d9822b; }
+  .badge.nit { background: #888; }
+  .badge.question { background: #2b6fc0; }
+  .loc { color: #666; }
+  ul { padding-left: 1.3rem; }
+  a { color: #2b6fc0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>Review: kubernetes-sigs/prow#799</h1>
+  <dl>
+    <dt>Title</dt><dd>feat(label): support configurable exclusive label sets</dd>
+    <dt>Head SHA</dt><dd><code class="inline">bd9671c139db78a6d381e40b2c3ff2ca4deaf108</code></dd>
+    <dt>Base</dt><dd>main</dd>
+    <dt>Reviewed at</dt><dd>2026-07-26T23:25:04Z</dd>
+    <dt>Link</dt><dd><a href="https://github.com/kubernetes-sigs/prow/pull/799">github.com/kubernetes-sigs/prow/pull/799</a></dd>
+  </dl>
+</header>
+
+<h2>Verdict</h2>
+<p><span class="verdict">Request changes</span></p>
+<p>The core feature (configurable exclusive label prefixes) is a reasonable, mostly-clean addition, but it ships with hardcoded default prefixes (<code class="inline">priority/</code>, <code class="inline">lifecycle/</code>, <code class="inline">tracked/</code>) that are applied unconditionally to every repo using the label plugin — a silent behavior change with no opt-in, no test coverage, and no mention in the PR description. That needs to be resolved before merge; the remaining issues (stale-snapshot conflict detection, a case-sensitivity mismatch, overlap with the existing <code class="inline">lifecycle</code> plugin) are smaller correctness/design gaps worth fixing but not independent blockers.</p>
+<p><strong>Confirmed by independent multi-perspective review</strong> (three parallel reviewers — code quality, maintainability, deployment risk — plus a synthesizing advisor pass): all three converged independently on the hardcoded-defaults issue as the primary blocker, and the deployment-risk reviewer separately rated it HIGH risk since <code class="inline">priority/*</code> is one of the plugin's always-active label categories, meaning ordinary <code class="inline">/priority</code> usage on any repo would trigger silent removals immediately upon upgrade with no rollback path for already-removed labels.</p>
+
+<h2>What this PR does</h2>
+<ul>
+  <li>Adds <code class="inline">ExclusiveLabelPrefixes []string</code> to the <code class="inline">plugins.Label</code> config struct, merged in <code class="inline">Label.mergeFrom</code>.</li>
+  <li>In <code class="inline">handleComment</code>, after a label is successfully added, computes which existing issue labels share its prefix (from a configured list plus three hardcoded defaults) and queues them for removal.</li>
+  <li>Adds helper functions <code class="inline">conflictingExclusiveLabels</code>, <code class="inline">uniqueExclusiveLabelPrefixes</code>, <code class="inline">exclusiveLabelPrefix</code>, <code class="inline">hasExclusiveLabelPrefix</code>.</li>
+  <li>Adds a <code class="inline">continue</code> after a failed <code class="inline">AddLabel</code> call so conflict-removal isn't computed for labels that didn't actually get added.</li>
+  <li>Regenerates <code class="inline">plugin-config-documented.yaml</code> and adds one new table-driven test case.</li>
+</ul>
+
+<h2>Findings</h2>
+
+<div class="finding blocking">
+  <h3><span class="badge blocking">Blocking</span>Hardcoded default prefixes change behavior for all existing installations</h3>
+  <p class="loc"><code class="inline">pkg/plugins/label/label.go:41</code> and <code class="inline">pkg/plugins/label/label.go:206</code></p>
+  <pre>defaultExclusiveLabelPrefixes = []string{"priority/", "lifecycle/", "tracked/"}
+...
+exclusiveLabelPrefixes := uniqueExclusiveLabelPrefixes(append(defaultExclusiveLabelPrefixes, config.ExclusiveLabelPrefixes...))</pre>
+  <p>This unconditionally merges <code class="inline">priority/</code>, <code class="inline">lifecycle/</code>, and <code class="inline">tracked/</code> into the exclusive set for every repo running the label plugin, even with <code class="inline">exclusive_label_prefixes</code> unset. That silently changes behavior for every existing upstream user, with no opt-in and no mention in the PR description. <code class="inline">lifecycle/*</code> labels are already managed by the separate <code class="inline">lifecycle</code> plugin with its own exclusivity handling, so this could conflict or double-remove. No test exercises this default path at all — the added test explicitly passes its own prefix list.</p>
+</div>
+
+<div class="finding blocking">
+  <h3><span class="badge blocking">Blocking</span>Silent fleet-wide behavior change: <code class="inline">/priority</code> now auto-removes existing labels with zero config change</h3>
+  <p class="loc"><code class="inline">pkg/plugins/label/label.go:41,206</code></p>
+  <pre>defaultExclusiveLabelPrefixes = []string{"priority/", "lifecycle/", "tracked/"}</pre>
+  <p>Since <code class="inline">priority</code> is one of the label plugin's always-active regex categories, any <code class="inline">/priority X</code> command on any repo running the label plugin starts silently removing that issue/PR's existing <code class="inline">priority/*</code> label the moment this ships — no operator opts in, no restart-time signal, and it's not documented as a default anywhere. This is a one-way change: rollback reverts the binary but does not restore labels already removed while the new logic was live. Independently rated HIGH risk by the deployment-risk reviewer.</p>
+</div>
+
+<div class="finding should-fix">
+  <h3><span class="badge should-fix">Should fix</span>Duplicates existing <code class="inline">lifecycle</code> plugin's own exclusivity logic for <code class="inline">lifecycle/*</code></h3>
+  <p class="loc"><code class="inline">pkg/plugins/label/label.go:41</code> vs <code class="inline">pkg/plugins/lifecycle/lifecycle.go</code></p>
+  <p>The separate <code class="inline">lifecycle</code> plugin already implements exclusivity for <code class="inline">lifecycle/{active,frozen,stale,rotten}</code> via its own <code class="inline">/lifecycle</code> command and exact-enum matching. This PR's default <code class="inline">lifecycle/</code> prefix creates a second, divergent implementation of the same invariant (prefix-match vs exact-enum, different case-handling) — a likely source of future incident-debugging confusion.</p>
+</div>
+
+<div class="finding question">
+  <h3><span class="badge question">Question</span>Where does the <code class="inline">tracked/</code> default prefix come from?</h3>
+  <p class="loc"><code class="inline">pkg/plugins/label/label.go:41</code></p>
+  <p><code class="inline">tracked/</code> appears nowhere else in the codebase — no constant, no plugin, no docs, no mention in the PR description. It looks like it encodes one org's private labeling convention rather than a general-purpose default.</p>
+</div>
+
+<div class="finding should-fix">
+  <h3><span class="badge should-fix">Should fix</span>Stale label snapshot misses conflicts within a single comment</h3>
+  <p class="loc"><code class="inline">pkg/plugins/label/label.go:378-394, 262</code></p>
+  <pre>for _, labelToAdd := range labelsToAdd {
+    ...
+    if err := gc.AddLabel(org, repo, e.Number, labelToAdd); err != nil {
+        ...
+        continue
+    }
+    labelsToRemove = append(labelsToRemove, conflictingExclusiveLabels(issueLabels, labelToAdd, exclusiveLabelPrefixes)...)
+}</pre>
+  <p><code class="inline">conflictingExclusiveLabels</code> is evaluated against <code class="inline">issueLabels</code>, fetched once before the add-loop runs and never updated as labels are added. If one comment adds two labels sharing an exclusive prefix, neither is flagged as conflicting with the other — both survive, breaking the "mutually exclusive" guarantee for that edge case.</p>
+</div>
+
+<div class="finding should-fix">
+  <h3><span class="badge should-fix">Should fix</span>Case-sensitive equality check inconsistent with rest of file</h3>
+  <p class="loc"><code class="inline">pkg/plugins/label/label.go:388</code></p>
+  <pre>if existingLabel == labelToAdd || !hasExclusiveLabelPrefix(existingLabel, []string{matchingPrefix}) {
+    continue
+}</pre>
+  <p>This uses a plain <code class="inline">==</code>, while the rest of the codebase uses <code class="inline">strings.EqualFold</code> for label comparisons (see <code class="inline">github.HasLabel</code>). <code class="inline">labelToAdd</code> is already lowercased by the regex-extraction helpers, but <code class="inline">issueLabels</code> come straight from the GitHub API with arbitrary casing — a differently-cased duplicate of the just-added label would fail this equality check and could be queued for its own removal.</p>
+</div>
+
+<div class="finding nit">
+  <h3><span class="badge nit">Nit</span>Single-element slice allocation to reuse multi-prefix helper</h3>
+  <p class="loc"><code class="inline">pkg/plugins/label/label.go:388</code></p>
+  <pre>!hasExclusiveLabelPrefix(existingLabel, []string{matchingPrefix})</pre>
+  <p>Wraps one string in a slice per existing label just to call the multi-prefix helper. A direct prefix check would avoid the per-call allocation and read more directly.</p>
+</div>
+
+<div class="finding nit">
+  <h3><span class="badge nit">Nit</span>Append onto package-level slice is fragile</h3>
+  <p class="loc"><code class="inline">pkg/plugins/label/label.go:206</code></p>
+  <p><code class="inline">append(defaultExclusiveLabelPrefixes, config.ExclusiveLabelPrefixes...)</code> appends onto a shared package <code class="inline">var</code>. Safe today only because <code class="inline">len == cap</code> forces reallocation; a future change that pre-allocates capacity on that var would introduce a data race across concurrent <code class="inline">handleComment</code> calls.</p>
+</div>
+
+<div class="finding nit">
+  <h3><span class="badge nit">Nit</span><code class="inline">mergeFrom</code> doesn't dedup ExclusiveLabelPrefixes</h3>
+  <p class="loc"><code class="inline">pkg/plugins/config.go:2385-2389</code></p>
+  <pre>l.ExclusiveLabelPrefixes = append(l.ExclusiveLabelPrefixes, other.ExclusiveLabelPrefixes...)</pre>
+  <p>Appends without dedup, unlike the runtime <code class="inline">uniqueExclusiveLabelPrefixes</code> dedup in label.go. Harmless since runtime dedup happens later, but inconsistent with other merge fields nearby.</p>
+</div>
+
+<div class="finding nit">
+  <h3><span class="badge nit">Nit</span>No validation that configured prefixes end in a separator</h3>
+  <p class="loc"><code class="inline">pkg/plugins/config.go:458-461</code>, <code class="inline">exclusiveLabelPrefix</code>/<code class="inline">hasExclusiveLabelPrefix</code></p>
+  <p>Prefixes are matched with plain <code class="inline">strings.HasPrefix</code>. A configured prefix missing the trailing <code class="inline">/</code> (e.g. <code class="inline">track</code> instead of <code class="inline">tracked/</code>) would also match unrelated labels like <code class="inline">trackless/foo</code>.</p>
+</div>
+
+<div class="finding nit">
+  <h3><span class="badge nit">Nit</span>No log line distinguishes exclusivity-triggered removal from explicit /remove-*</h3>
+  <p class="loc"><code class="inline">pkg/plugins/label/label.go:262-290</code></p>
+  <p>Labels queued via <code class="inline">conflictingExclusiveLabels</code> are merged into the same generic <code class="inline">labelsToRemove</code> path as explicit <code class="inline">/remove-*</code> commands, with no distinguishing log field — hurts incident debuggability ("why was this label removed?").</p>
+</div>
+
+<div class="finding question">
+  <h3><span class="badge question">Question</span>Was the added <code class="inline">continue</code> after failed AddLabel intentional?</h3>
+  <p class="loc"><code class="inline">pkg/plugins/label/label.go:258-262</code></p>
+  <pre>if err := gc.AddLabel(org, repo, e.Number, labelToAdd); err != nil {
+    log.WithError(err).WithField("label", labelToAdd).Error("GitHub failed to add the label")
+    continue
+}</pre>
+  <p>Correct, welcome fix — skips computing conflict-removal when the add itself failed — but not called out in the PR description as an intentional behavior change alongside the new feature.</p>
+</div>
+
+<h2>Things I checked and was fine with</h2>
+<ul>
+  <li><code class="inline">Label.mergeFrom</code> correctly appends <code class="inline">ExclusiveLabelPrefixes</code> (aside from the dedup nit above).</li>
+  <li><code class="inline">plugin-config-documented.yaml</code> regenerated correctly for the new field.</li>
+  <li>Permission/restricted-label gating (<code class="inline">canUserSetLabel</code>) is unaffected — the new removal path goes through the same remove-loop with the same checks.</li>
+  <li>The added positive-path test correctly exercises configured-prefix removal end-to-end.</li>
+  <li>No security concerns — no new bypass of existing label permission checks; independently confirmed by deployment-risk review — removals still go through <code class="inline">canUserSetLabel</code>, so risk is purely behavioral/data-loss, not a permission bypass.</li>
+  <li>Config schema change is additive/<code class="inline">omitempty</code>-tagged; existing YAML/JSON configs continue to parse without error.</li>
+</ul>
+
+<h2>Open questions for the author</h2>
+<ul>
+  <li>Why hardcode <code class="inline">priority/</code>, <code class="inline">lifecycle/</code>, <code class="inline">tracked/</code> as always-on defaults rather than making this purely opt-in via <code class="inline">exclusive_label_prefixes</code>? This changes behavior for every existing repo using the label plugin without any config change on their part.</li>
+  <li>Have you considered the interaction with the separate <code class="inline">lifecycle</code> plugin's own exclusivity handling for <code class="inline">lifecycle/*</code> labels? Could the two conflict or double-remove?</li>
+  <li>Should <code class="inline">conflictingExclusiveLabels</code> use the running set of labels-added-so-far rather than the pre-comment snapshot, to catch conflicts between two labels added within the same comment?</li>
+  <li>Where does the <code class="inline">tracked/</code> prefix convention come from — is it specific to one downstream user's setup rather than a general-purpose default?</li>
+  <li>If the hardcoded defaults are kept in some form, will there be a release note or migration announcement so operators can audit exposure before upgrading?</li>
+</ul>
+
+</div>
+</body>
+</html>

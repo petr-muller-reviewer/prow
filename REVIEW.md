@@ -3,12 +3,15 @@ pr: kubernetes-sigs/prow#998
 title: "Allowed Including Label Presets In Presets"
 head_sha: de9d6191eabd6f4f35292ade58acf011a74b38f4
 base: main
-reviewed_at: 2026-10-10T15:57:29Z
+reviewed_at: 2026-10-21T00:06:28Z
 verdict: request-changes
 refresh_log:
   - old_sha: 2d952766c57dedbe59a8b9d7e9bcba5a3cfb42fc
     new_sha: de9d6191eabd6f4f35292ade58acf011a74b38f4
     summary: Removed the unused mergePreset wrapper; the ambiguous selector finding remains.
+  - old_sha: de9d6191eabd6f4f35292ade58acf011a74b38f4
+    new_sha: de9d6191eabd6f4f35292ade58acf011a74b38f4
+    summary: Recorded two issue comments; no code changes or PR reviews since the prior refresh.
 ---
 # Review
 ## Verdict
@@ -22,6 +25,10 @@ Request changes to prevent includes from silently selecting the wrong preset whe
 
 Since previous review:
 - Commit `de9d6191e` removed the unused `mergePreset` wrapper in `pkg/config/jobs.go` (7 lines deleted), resolving the corresponding cleanup finding.
+
+Since previous review (`2026-10-10T15:57:29Z`):
+- No code changed; the PR head remains `de9d6191eabd6f4f35292ade58acf011a74b38f4`.
+- On Oct 16, 2026, `midnightconman` said tests were passing and asked for a review; on Oct 20, they asked `cjwagner` and `Prucek` to review.
 
 ## Findings
 

@@ -31,18 +31,21 @@ ul, ol { padding-left:1.5rem; }
 details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
 </style></head><body><main>
 <h1>Allowed Including Label Presets In Presets</h1>
-<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/998">kubernetes-sigs/prow#998</a> · base <code>main</code> · head_sha <code>de9d6191eabd</code> · reviewed_at <code>2026-10-10T15:57:29Z</code></div>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/998">kubernetes-sigs/prow#998</a> · base <code>main</code> · head_sha <code>de9d6191eabd</code> · reviewed_at <code>2026-10-21T00:06:28Z</code></div>
 <div class="badges"><span class="badge c-red">verdict: request-changes</span></div>
 <details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#998
 title: &quot;Allowed Including Label Presets In Presets&quot;
 head_sha: de9d6191eabd6f4f35292ade58acf011a74b38f4
 base: main
-reviewed_at: 2026-10-10T15:57:29Z
+reviewed_at: 2026-10-21T00:06:28Z
 verdict: request-changes
 refresh_log:
   - old_sha: 2d952766c57dedbe59a8b9d7e9bcba5a3cfb42fc
     new_sha: de9d6191eabd6f4f35292ade58acf011a74b38f4
-    summary: Removed the unused mergePreset wrapper; the ambiguous selector finding remains.</code></pre></details>
+    summary: Removed the unused mergePreset wrapper; the ambiguous selector finding remains.
+  - old_sha: de9d6191eabd6f4f35292ade58acf011a74b38f4
+    new_sha: de9d6191eabd6f4f35292ade58acf011a74b38f4
+    summary: Recorded two issue comments; no code changes or PR reviews since the prior refresh.</code></pre></details>
 <h2>Verdict</h2>
 <p>Request changes to prevent includes from silently selecting the wrong preset when global and repo-local presets share a label:value selector. Code Quality found no critical Go issues; Maintainability and Deployment Risk independently confirmed this selector ambiguity.</p>
 <h2>What this PR does</h2>
@@ -58,6 +61,12 @@ refresh_log:
 <p>Since previous review:</p>
 <ul>
 <li>Commit <code>de9d6191e</code> removed the unused <code>mergePreset</code> wrapper in <code>pkg/config/jobs.go</code> (7 lines deleted), resolving the corresponding cleanup finding.
+</li></ul>
+<p>Since previous review (<code>2026-10-10T15:57:29Z</code>):</p>
+<ul>
+<li>No code changed; the PR head remains <code>de9d6191eabd6f4f35292ade58acf011a74b38f4</code>.
+</li>
+<li>On Oct 16, 2026, <code>midnightconman</code> said tests were passing and asked for a review; on Oct 20, they asked <code>cjwagner</code> and <code>Prucek</code> to review.
 </li></ul>
 <h2>Findings</h2>
 <h3><span class="tag c-amber">should-fix</span>Reject ambiguous include selectors across global and repo presets</h3>

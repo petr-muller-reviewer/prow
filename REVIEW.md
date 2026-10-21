@@ -1,15 +1,19 @@
 ---
 pr: kubernetes-sigs/prow#1006
 title: "plank: persist pod revival count before deleting the pod"
-head_sha: 357b80eb511d6b0f932e5e77edc23cf0e56e74a1
+head_sha: acfc9e71aed8d45a25685a5cfbf5013803f8ca5b
 base: main
-reviewed_at: 2026-10-15T22:51:17Z
+reviewed_at: 2026-10-21T11:33:40Z
 verdict: request-changes
 refresh_log:
   - at: 2026-10-15T22:51:17Z
     old_sha: 357b80eb511d6b0f932e5e77edc23cf0e56e74a1
     new_sha: 357b80eb511d6b0f932e5e77edc23cf0e56e74a1
     summary: "No code changes; author added a note pointing to the motivation for the PR."
+  - at: 2026-10-21T11:33:40Z
+    old_sha: 357b80eb511d6b0f932e5e77edc23cf0e56e74a1
+    new_sha: acfc9e71aed8d45a25685a5cfbf5013803f8ca5b
+    summary: "Author amended the commit message and rebased; the patch is unchanged. New comments address LGTM and EasyCLA co-signing."
 gate:
   decision: do-not-merge
   gated_at: 2026-10-10T17:06:35Z
@@ -23,7 +27,7 @@ gate:
 
 **Decision: do-not-merge**
 
-The PR head is unchanged since the review, so the confirmed blocking finding remains. The retry count can still be incremented more than once for the same stopped pod when no build ID can be recovered.
+The author amended the commit message and rebased the PR, but the patch is unchanged, so the confirmed blocking finding remains. The retry count can still be incremented more than once for the same stopped pod when no build ID can be recovered.
 
 **Gating list**
 
@@ -46,7 +50,8 @@ Request changes. The revival count is persisted before pod deletion, but the per
 - Guards `getPodBuildID` when the pod has no containers.
 
 Since previous review:
-- No code changed (`357b80e` → `357b80e`). On Oct 13, author @jwendell noted the motivation was the misbehavior in [istio/proxy#7316](https://github.com/istio/proxy/pull/7316). No new inline comments or reviews were submitted.
+- The head changed from `357b80e` to `acfc9e7` after the commit message was amended and the branch rebased on `main`; the commit patch ID is unchanged and the PR diff remains three files (+174/-24). The empty-build-ID finding remains.
+- On Oct 19, Prucek posted `/lgtm` and raised an EasyCLA concern about co-signing a commit with an AI tool. @jwendell replied that the commit body was amended and the branch rebased; the Prow bot then reported the LGTM label was removed after new changes. No inline comments or review submissions were added.
 
 ## Findings
 

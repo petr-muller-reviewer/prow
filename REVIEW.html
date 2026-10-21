@@ -31,19 +31,23 @@ ul, ol { padding-left:1.5rem; }
 details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
 </style></head><body><main>
 <h1>plank: persist pod revival count before deleting the pod</h1>
-<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1006">kubernetes-sigs/prow#1006</a> · base <code>main</code> · head_sha <code>357b80eb511d</code> · reviewed_at <code>2026-10-15T22:51:17Z</code></div>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1006">kubernetes-sigs/prow#1006</a> · base <code>main</code> · head_sha <code>acfc9e71aed8</code> · reviewed_at <code>2026-10-21T11:33:40Z</code></div>
 <div class="badges"><span class="badge c-red">verdict: request-changes</span><span class="badge c-red">gate: do-not-merge</span></div>
 <details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#1006
 title: &quot;plank: persist pod revival count before deleting the pod&quot;
-head_sha: 357b80eb511d6b0f932e5e77edc23cf0e56e74a1
+head_sha: acfc9e71aed8d45a25685a5cfbf5013803f8ca5b
 base: main
-reviewed_at: 2026-10-15T22:51:17Z
+reviewed_at: 2026-10-21T11:33:40Z
 verdict: request-changes
 refresh_log:
   - at: 2026-10-15T22:51:17Z
     old_sha: 357b80eb511d6b0f932e5e77edc23cf0e56e74a1
     new_sha: 357b80eb511d6b0f932e5e77edc23cf0e56e74a1
     summary: &quot;No code changes; author added a note pointing to the motivation for the PR.&quot;
+  - at: 2026-10-21T11:33:40Z
+    old_sha: 357b80eb511d6b0f932e5e77edc23cf0e56e74a1
+    new_sha: acfc9e71aed8d45a25685a5cfbf5013803f8ca5b
+    summary: &quot;Author amended the commit message and rebased; the patch is unchanged. New comments address LGTM and EasyCLA co-signing.&quot;
 gate:
   decision: do-not-merge
   gated_at: 2026-10-10T17:06:35Z
@@ -51,7 +55,7 @@ gate:
   reviewed_head_sha: 357b80eb511d6b0f932e5e77edc23cf0e56e74a1</code></pre></details>
 <h2>Gate</h2>
 <p><strong>Decision: do-not-merge</strong></p>
-<p>The PR head is unchanged since the review, so the confirmed blocking finding remains. The retry count can still be incremented more than once for the same stopped pod when no build ID can be recovered.</p>
+<p>The author amended the commit message and rebased the PR, but the patch is unchanged, so the confirmed blocking finding remains. The retry count can still be incremented more than once for the same stopped pod when no build ID can be recovered.</p>
 <p><strong>Gating list</strong></p>
 <ul>
 <li><code>REVIEW.md</code> blocking finding (<code>pkg/plank/reconciler.go:483-515</code>): <code>revivalAlreadyCounted</code> is always false for an empty build ID. The current code still writes an empty annotation, allowing repeated stale or terminating observations to consume multiple revival attempts. Add a stable fallback identity and test that path before merging.
@@ -76,7 +80,9 @@ gate:
 </li></ul>
 <p>Since previous review:</p>
 <ul>
-<li>No code changed (<code>357b80e</code> → <code>357b80e</code>). On Oct 13, author @jwendell noted the motivation was the misbehavior in <a href="https://github.com/istio/proxy/pull/7316">istio/proxy#7316</a>. No new inline comments or reviews were submitted.
+<li>The head changed from <code>357b80e</code> to <code>acfc9e7</code> after the commit message was amended and the branch rebased on <code>main</code>; the commit patch ID is unchanged and the PR diff remains three files (+174/-24). The empty-build-ID finding remains.
+</li>
+<li>On Oct 19, Prucek posted <code>/lgtm</code> and raised an EasyCLA concern about co-signing a commit with an AI tool. @jwendell replied that the commit body was amended and the branch rebased; the Prow bot then reported the LGTM label was removed after new changes. No inline comments or review submissions were added.
 </li></ul>
 <h2>Findings</h2>
 <h3><span class="tag c-red">blocking</span>Empty build IDs bypass pod deduplication</h3>

@@ -33,3 +33,13 @@ None.
 ## Open questions
 
 None.
+
+## Dependency followups
+
+Examined on 2026-10-21. No actionable opportunities identified; no items or handoff prompts.
+
+- Scope: PR #891, merged as `da76fd4bf78649f471b25f7cd438d554c7626e7e`; direct Go dependency `github.com/fsnotify/fsnotify v1.9.0 → v1.10.1`, covering intermediate v1.10.0. Since the PR is already merged into the tracked base, used the PR-head commit's parent for the manifest comparison. Only fsnotify changed; no transitive version changes. Upstream's `golang.org/x/sys v0.13.0` requirement is unchanged.
+- Usage: `pkg/pod-utils/wrapper/options.go:102` creates a watcher, line 107 closes it, line 119 adds one directory, and lines 132–139 consume events/errors and filter marker-file `Create` events. Entrypoint and sidecar call this helper.
+- Reason: the releases provide backend fixes and an inotify performance improvement that apply automatically, plus a Go minimum increase already satisfied by Prow. They introduce no replacement API, deprecation, or useful new public feature requiring changes to this call site. Recursive-watch fixes concern an internal capability unavailable through the public API; the removed no-follow option was also internal. Neither justifies followup work here.
+- The polling fallback at `pkg/pod-utils/wrapper/options.go:124` and lines 140–145 is not made redundant by these fixes. The separate `gopkg.in/fsnotify.v1` imports in `pkg/config/agent.go` and `pkg/flagutil/kubernetes_cluster_clients.go` are not bumped by this PR; migrating them is not unlocked by this version range.
+- Sources: [v1.10.1 changelog, including v1.10.0](https://github.com/fsnotify/fsnotify/blob/v1.10.1/CHANGELOG.md), [complete upstream version comparison](https://github.com/fsnotify/fsnotify/compare/v1.9.0...v1.10.1).

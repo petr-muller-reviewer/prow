@@ -41,25 +41,31 @@ reviewed_at: 2026-10-15T23:38:03Z
 verdict: request-changes
 gate:
   decision: hold
-  gated_at: 2026-10-15T23:17:37Z
+  gated_at: 2026-10-21T12:02:56Z
   gated_head_sha: ac8ffb07e2ac7036c6bb4290f068a351508e7fad
   reviewed_head_sha: ac8ffb07e2ac7036c6bb4290f068a351508e7fad</code></pre></details>
 <h2>Gate</h2>
-<p>Hold: document the deployment migration for changed <code>--job-config-path</code> behavior before merging.</p>
-<p>The PR is open at the reviewed head <code>ac8ffb07e2ac7036c6bb4290f068a351508e7fad</code>, with no subsequent commits and no submitted GitHub reviews, inline comments, or human issue comments. The previous local findings were withdrawn for the reasons recorded below. The code review found no introduced defects, but the intentional flag changes affect existing deployments and are described only in the PR body; the checked-in documentation does not explain the migration.</p>
+<p>Hold: the operator migration and rollback documentation remains unaddressed.</p>
+<p>As of 2026-10-21, PR #1010 is open at reviewed head <code>ac8ffb07e2ac7036c6bb4290f068a351508e7fad</code>; there are no code changes since the saved review and no submitted GitHub reviews, inline comments, or human issue comments. The current checkout differs from the PR head only in review artifacts. The implementation assessment remains unchanged, but existing deployment arguments can break after an image upgrade, and rollback after adopting multiple paths can silently omit jobs. The operator documentation still does not explain these cases.</p>
+<p>Prior findings disposition:</p>
+<ul>
+<li><strong>Not addressed; blocks merge:</strong> <strong>Document deployment migration and rollback</strong> (<code>REVIEW.md</code>, <code>site/content/en/docs/scaling.md:71-75</code>). The scaling guide describes the new capability and path constraints but omits empty-value migration, repeated flags formerly used as overrides, and safe rollback. Add these instructions to the scaling guide and the breaking-change announcements to unblock this gate.
+</li>
+<li><strong>Not addressed; non-blocking:</strong> <strong>Clarify the disjoint-path contract</strong> (<code>REVIEW.md</code>, <code>pkg/config/config.go:1700-1703</code>). The API still requires disjoint paths, while the reader detects overlaps only when loaded basenames collide (<code>pkg/config/config.go:1713-1726</code>, <code>1808-1814</code>). The original maintainer review explicitly treated this as optional; it does not independently gate merge.
+</li></ul>
 <p>Gating list:</p>
 <ul>
-<li><strong>Deployment migration notice</strong> — <code>pkg/flagutil/config/config.go:60</code> and <code>pkg/config/config.go:1748-1751</code> (independent compatibility assessment). An explicit <code>--job-config-path=</code> previously selected no separate job config; it now stores an empty path, attempts <code>os.Stat(&quot;&quot;)</code>, and makes the initial config-agent load fail. Any component whose deployment template emits an empty flag can fail to start after updating its image. Add a breaking-change announcement telling operators to omit the flag when unused, or preserve the previous empty-value behavior.
-</li>
-<li>Include repeated-flag behavior in the same notice: <code>pkg/flagutil/config/config.go:60</code> changes repeated flags from last-value-wins to merging every value. Existing deployment wrappers that append an override must remove the old value; otherwise they may load unintended jobs or fail on duplicate basenames.
+<li><code>site/content/en/docs/scaling.md:71-75</code> — source: saved maintainer review and direct compatibility assessment. Publish operator guidance to omit unused flags, remove earlier flag values from override wrappers, upgrade all consuming components before using multiple paths, and restore one aggregate path before rollback.
 </li></ul>
 <p>Independent merge risks:</p>
 <ul>
-<li><strong>Go source compatibility</strong> — <code>pkg/config/config.go:1661</code>, <code>pkg/config/config.go:1667</code>, <code>pkg/config/config.go:1708</code>, <code>pkg/config/agent.go:345</code>, <code>pkg/config/agent.go:382</code>, and <code>pkg/flagutil/config/config.go:35</code> rename exported APIs or change their argument/field types. Downstream Go consumers must migrate to slices and the new names. This is deliberate and disclosed in the PR body; the library policy in <code>site/content/en/docs/overview/_index.md</code> explicitly disclaims backward compatibility, so it does not independently block merge.
+<li><strong>Empty flag values:</strong> <code>pkg/flagutil/config/config.go:60</code>, <code>pkg/flagutil/strings.go:63-69</code>, and <code>pkg/config/config.go:1748-1751</code>. An explicit empty flag is retained as a path and fails the initial load. This affects any component deployment or template emitting <code>--job-config-path=</code>; omitting the flag retains the previous no-separate-job-config behavior. The change is acknowledged in the PR body but lacks an operator migration announcement.
 </li>
-<li><strong>Runtime compatibility</strong> — the empty-value and repeated-value changes above affect existing invocations without opting into the new multi-path feature. The default with the flag omitted still means no separate job config. The announcements page promises documentation for configuration/deployment breaking changes, and this PR does not add such an entry.
+<li><strong>Repeated flags and rollback:</strong> <code>pkg/flagutil/config/config.go:60</code>. Existing invocations with repeated flags switch from last-value-wins to loading every source, potentially restoring unintended jobs or failing on duplicates. Multiple sources are opt-in for deployments that previously used at most one value, but existing override wrappers are affected on upgrade. Once multiple paths are adopted, an older binary loads only the final path, so components must be upgraded before enabling the new arguments and arguments/mounts must be restored before rollback. This is not documented in the operator guide.
 </li>
-<li>No Kubernetes API/CRD or job YAML schema changes were found. No additional repository compatibility skill applies to this diff; this assessment used the code, the PR discussion endpoints, and the documented library and announcement policies. Tests were not run as part of this gate.
+<li><strong>Go API compatibility:</strong> <code>pkg/config/config.go:1661</code>, <code>1667</code>, <code>1708</code>; <code>pkg/config/agent.go:345</code>, <code>382</code>; <code>pkg/flagutil/config/config.go:35</code>. Downstream Go consumers must update renamed fields/functions and scalar-to-slice arguments before rebuilding. This deliberate source break is disclosed in the PR body and consistent with the library compatibility policy in <code>site/content/en/docs/overview/_index.md</code>, so it is a migration caveat rather than an additional merge blocker.
+</li>
+<li>No new Kubernetes API/CRD, job YAML schema, or access-control risk was identified. This gate used direct code and documentation analysis plus the saved maintainer perspectives; no additional listed compatibility skill applies. Tests were not run as part of this gate.
 </li></ul>
 <h2>Verdict</h2>
 <p>Request changes: document the deployment migration and rollback requirements before merging.</p>

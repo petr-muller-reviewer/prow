@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#1024</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>peribolos: support delete_branch_on_merge repo setting</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1024">kubernetes-sigs/prow#1024</a> · base <code>main</code> · head_sha <code>3ad2362395c5</code> · reviewed_at <code>2026-10-21T23:56:17Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span><span class="badge c-green">gate: merge</span></div>
+<details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#1024
+title: &quot;peribolos: support delete_branch_on_merge repo setting&quot;
+head_sha: 3ad2362395c5d629b9880194d4ffe6df7e3428f5
+base: main
+reviewed_at: 2026-10-21T23:56:17Z
+verdict: approve
+gate:
+  decision: merge
+  gated_at: 2026-10-21T23:56:55Z
+  gated_head_sha: 3ad2362395c5d629b9880194d4ffe6df7e3428f5
+  reviewed_head_sha: 3ad2362395c5d629b9880194d4ffe6df7e3428f5</code></pre></details>
+<h2>Gate</h2>
+<p><strong>Verdict: merge</strong></p>
+<p>The current PR head matches the head covered by the review, and there are no new commits, change requests, substantive inline comments, or blocking findings. The two saved findings are nonblocking test suggestions. The change adds optional behavior and does not alter existing deployments when the setting is unset.</p>
+<p><strong>Gating list</strong></p>
+<ul>
+<li>None.
+</li></ul>
+<p><strong>Area 2 — Independent merge risk</strong></p>
+<ul>
+<li><strong>Configuration:</strong> <code>delete_branch_on_merge</code> is an optional pointer field. The current config loader uses <code>yaml.Unmarshal</code> without strict unknown-field checking, so older binaries ignore the new key; existing configs remain valid.
+</li>
+<li><strong>Behavior:</strong> setting the field to <code>true</code> opts configured repositories into GitHub's automatic deletion of merged head branches. This is intentional; no migration is required.
+</li>
+<li><strong>Go API:</strong> the change adds fields to exported structs in <code>pkg/github</code> and <code>pkg/config/org</code>. Downstream Go source using unkeyed composite literals for these structs could require updates; keyed literals and deployed binaries are unaffected. This is a limited source-compatibility caveat, not a merge blocker.
+</li></ul>
+<p>No specialized repository compatibility skill was available or relevant; this pass assessed the config, exported types, and behavior directly.</p>
+<h2>Verdict</h2>
+<p>Approve with suggestions. The three maintainer perspectives found no blocking correctness, maintainability, or deployment concern. They suggested a few focused tests for the new field's false update and GitHub request conversion paths.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Adds <code>delete_branch_on_merge</code> to per-repository Peribolos configuration.
+</li>
+<li>Carries the setting through GitHub repository reads and create/update requests.
+</li>
+<li>Dumps enabled values and prunes the GitHub default of <code>false</code>.
+</li>
+<li>Preserves existing behavior for repositories whose config leaves the field unset.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-gray">nit</span>Cover disabling the setting in update delta tests</h3>
+<ul>
+<li>where: <code>cmd/peribolos/main_test.go:4861-4870</code>
+</li>
+<li>concern: Add a case where the current value is <code>true</code> and the configured value is explicitly <code>false</code>. This would verify that Peribolos sends an explicit false update; current cases cover enabling and an unchanged true value.
+</li>
+<li>excerpt:<pre><code>description: &quot;unchanged delete branch on merge produces no delta&quot;,
+current: github.FullRepo{
+    Repo:                github.Repo{Name: repoName},
+    DeleteBranchOnMerge: true,
+},
+newState: org.Repo{
+    DeleteBranchOnMerge: new(true),
+},</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">nit</span>Test GitHub request conversion for the new field</h3>
+<ul>
+<li>where: <code>pkg/github/types.go:438</code>
+</li>
+<li>concern: Add <code>pkg/github</code> coverage that checks <code>delete_branch_on_merge</code> in serialized create/update requests and verifies <code>ToRepo</code> preserves the value. Peribolos tests cover delta construction, but not this request-model boundary.
+</li>
+<li>excerpt:<pre><code>DeleteBranchOnMerge *bool `json:&quot;delete_branch_on_merge,omitempty&quot;`</code></pre>
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>Code Quality: the field is wired through dump, create, update, and request conversion; the pointer preserves unset versus explicitly false semantics.
+</li>
+<li>Maintainability: the implementation follows existing repo-setting helpers and adds little ongoing complexity.
+</li>
+<li>Deployment Risk: risk is low; existing configs need no migration, and only an explicit <code>true</code> changes merged-branch behavior.
+</li>
+<li>The reviewers and this review did not run tests.
+</li></ul>
+<h2>Open questions</h2>
+<p>None.</p>
+<p>Standards: 0 findings; Spec: 0 findings. Maintainer perspectives: 2 nonblocking test suggestions, 0 blocking concerns.</p>
+</main></body></html>

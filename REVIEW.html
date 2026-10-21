@@ -1,65 +1,72 @@
 <!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Review: kubernetes-sigs/prow#887</title>
-  <style>
-    body { background: #fff; color: #1f2328; font: 16px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; margin: 0; }
-    main { max-width: 900px; margin: 0 auto; padding: 36px 24px 64px; }
-    h1 { margin: 0 0 6px; font-size: 1.7rem; }
-    h2 { border-bottom: 1px solid #d0d7de; margin-top: 32px; padding-bottom: 6px; }
-    h3 { margin-bottom: 4px; }
-    .meta { color: #57606a; margin: 0; }
-    .verdict { background: #dafbe1; border-left: 4px solid #1a7f37; padding: 14px 18px; }
-    code { background: #f6f8fa; border-radius: 4px; font: 0.9em ui-monospace, SFMono-Regular, Menlo, monospace; padding: 0.15em 0.35em; }
-    .none { color: #57606a; }
-  </style>
-</head>
-<body>
-  <main>
-    <header>
-      <h1>Review: kubernetes-sigs/prow#887</h1>
-      <p class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/887">PR #887</a> · base <code>main</code> · head <code>1a3f21ed7967a7c26c7b04edc000a31320b33045</code> · reviewed 2026-09-01T16:56:22Z</p>
-    </header>
-
-    <section>
-      <h2>Verdict: approve</h2>
-      <div class="verdict">Approve. This dependency-only update moves <code>github.com/djherbis/atime</code> from <code>v1.0.0</code> to the long-soaked tagged <code>v1.1.0</code> release. Its substantive upstream change is Go-module and WebAssembly support; Prow's only import remains on native filesystem-atime retrieval, whose platform implementations did not change.</div>
-    </section>
-
-    <section>
-      <h2>What this PR does</h2>
-      <ul>
-        <li>Updates the direct production requirement <code>github.com/djherbis/atime</code> from <code>v1.0.0</code> to <code>v1.1.0</code> in <code>go.mod</code>.</li>
-        <li>Replaces the corresponding module and module-metadata checksums in <code>go.sum</code>.</li>
-        <li>Does not modify Prow source, tests, configuration, or generated code.</li>
-      </ul>
-    </section>
-
-    <section>
-      <h2>Findings</h2>
-      <h3>Blocking</h3><p class="none">None.</p>
-      <h3>Should fix</h3><p class="none">None.</p>
-      <h3>Nits</h3><p class="none">None.</p>
-      <h3>Questions</h3><p class="none">None.</p>
-    </section>
-
-    <section>
-      <h2>Things I checked and were fine with</h2>
-      <ul>
-        <li>Only <code>go.mod</code> and <code>go.sum</code> changed, so this is dependency-only.</li>
-        <li><code>v1.1.0</code> is a tagged release published 2021-04-25; no OSV advisories were returned for the module.</li>
-        <li>The upstream <code>v1.0.0...v1.1.0</code> diff adds <code>atime_wasm.go</code> and Go-module metadata; native platform implementations are unchanged.</li>
-        <li>The only import is <code>pkg/diskutil/diskutil.go:24</code>; <code>GetATime</code> calls <code>atime.Stat</code> at line 47 and has no callers outside this package.</li>
-        <li><code>go test ./pkg/diskutil</code> passes; the package has no test files.</li>
-      </ul>
-    </section>
-
-    <section>
-      <h2>Open questions for the author</h2>
-      <p class="none">None.</p>
-    </section>
-  </main>
-</body>
-</html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#887</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>chore(deps): bump github.com/djherbis/atime from 1.0.0 to 1.1.0</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/887">kubernetes-sigs/prow#887</a> · base <code>main</code> · head_sha <code>1a3f21ed7967</code> · reviewed_at <code>2026-09-01T16:56:22Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span></div>
+<h2>Verdict</h2>
+<p>Approve. This dependency-only update moves <code>github.com/djherbis/atime</code> from <code>v1.0.0</code> to the long-soaked tagged <code>v1.1.0</code> release. Its substantive upstream change is Go-module and WebAssembly support; Prow's only import remains on native filesystem-atime retrieval, whose platform implementations did not change.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Updates the direct production requirement <code>github.com/djherbis/atime</code> from <code>v1.0.0</code> to <code>v1.1.0</code> in <code>go.mod</code>.
+</li>
+<li>Replaces the corresponding module and module-metadata checksums in <code>go.sum</code>.
+</li>
+<li>Does not modify Prow source, tests, configuration, or generated code.
+</li></ul>
+<h2>Findings</h2>
+<h3>Blocking</h3>
+<p>None.</p>
+<h3>Should fix</h3>
+<p>None.</p>
+<h3>Nits</h3>
+<p>None.</p>
+<h3>Questions</h3>
+<p>None.</p>
+<h2>Checked</h2>
+<ul>
+<li>Classified the diff as dependency-only: only <code>go.mod</code> and <code>go.sum</code> changed.
+</li>
+<li>Confirmed <code>v1.1.0</code> is a tagged release published 2021-04-25, with no OSV advisories returned for this module.
+</li>
+<li>Reviewed the upstream <code>v1.0.0...v1.1.0</code> diff: the code change adds <code>atime_wasm.go</code>; the remaining substantive packaging change is <code>go.mod</code>.
+</li>
+<li>Confirmed the direct import surface is one file: <code>pkg/diskutil/diskutil.go:24</code>, where <code>GetATime</code> calls <code>atime.Stat</code> at line 47. No callers of <code>GetATime</code> exist outside that package.
+</li>
+<li>Ran <code>go test ./pkg/diskutil</code> successfully; the package contains no test files.
+</li></ul>
+<h2>Open questions</h2>
+<p>None.</p>
+<h2>Dependency followups</h2>
+<p>No opportunities identified for <code>github.com/djherbis/atime</code> <code>v1.0.0</code> → <code>v1.1.0</code> (direct dependency); no transitive dependencies were added or updated. PR #887 merged as <code>9e331e2b3b0044248d27af14c0c93e9de6102d0c</code>.</p>
+<p>The <a href="https://github.com/djherbis/atime/releases/tag/v1.1.0">release notes</a> and <a href="https://github.com/djherbis/atime/compare/v1.0.0...v1.1.0">complete version comparison</a> add Go-module metadata and WebAssembly support, with no API deprecations, replacements, or native behavior changes. Prow's sole call is <code>atime.Stat</code> in <code>pkg/diskutil/diskutil.go:47</code>; the surrounding package uses native <code>syscall.Statfs</code>, so WebAssembly support offers no concrete improvement there. No followup items or handoff prompts.</p>
+</main></body></html>

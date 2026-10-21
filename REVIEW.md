@@ -46,3 +46,9 @@ None.
 ## Open questions
 
 None.
+
+## Dependency followups
+
+No opportunities identified for `github.com/djherbis/atime` `v1.0.0` → `v1.1.0` (direct dependency); no transitive dependencies were added or updated. PR #887 merged as `9e331e2b3b0044248d27af14c0c93e9de6102d0c`.
+
+The [release notes](https://github.com/djherbis/atime/releases/tag/v1.1.0) and [complete version comparison](https://github.com/djherbis/atime/compare/v1.0.0...v1.1.0) add Go-module metadata and WebAssembly support, with no API deprecations, replacements, or native behavior changes. Prow's sole call is `atime.Stat` in `pkg/diskutil/diskutil.go:47`; the surrounding package uses native `syscall.Statfs`, so WebAssembly support offers no concrete improvement there. No followup items or handoff prompts.

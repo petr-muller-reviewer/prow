@@ -9,6 +9,11 @@ refresh_log:
   - old_sha: 4dc604d56097e0566f9138475e12abd463284586
     new_sha: 33bee48b0d9c19b96170dbb63c9a7b9af7d1d70e
     summary: "The PR now makes request checksum mode configurable, but the Go CDK upload path is unchanged and the blocking finding remains."
+recommended_rereview:
+  - at: 2026-10-21T13:45:23Z
+    old_sha: 33bee48b0d9c19b96170dbb63c9a7b9af7d1d70e
+    new_sha: 1d33073be881a26a1c7d7838a8a0b517ca2f0da7
+    reason: "The revision adds 198 net lines in the upload implementation, dependency set, and request-level tests for the previously blocking finding."
 gate:
   decision: do-not-merge
   gated_at: 2026-10-19T13:08:59Z
@@ -47,6 +52,27 @@ Since previous review:
 
 - Replaced the automatic custom-endpoint default with an opt-in JSON setting and added validation and an OCI/Swift example (`pkg/io/providers/aws.go`, `pkg/io/providers/providers.go`).
 - Expanded the client configuration tests (`pkg/io/providers/aws_test.go`). The Go CDK bucket-opening and transfer-manager upload path did not change, so the prior blocking finding remains unresolved.
+
+## Re-review recommended
+
+### 2026-10-21T13:45:23Z — `33bee48b0d9c19b96170dbb63c9a7b9af7d1d70e` → `1d33073be881a26a1c7d7838a8a0b517ca2f0da7`
+
+**What changed**
+
+- `pkg/io/providers/aws.go` (+21/−1): passes the client checksum mode into `s3blob.Options` and accepts case-insensitive setting values.
+- `pkg/io/providers/aws_test.go` (+166): adds a TLS-backed upload test that checks the actual `PutObject` headers for default and `when_required` modes.
+- `go.mod` (+25/−25) and `go.sum` (+58/−58): upgrades `gocloud.dev` from v0.46.0 to v0.47.0 and the S3 transfer manager from v0.2.3 to v0.4.3, with related dependency updates.
+- `pkg/io/providers/providers.go` (+12): documents the credential setting and adds an S3-compatible storage example.
+
+**Why this exceeds update in place**
+
+The PR diff adds 198 net lines across five files, exceeding the substantial-change threshold. The new code changes the upload path and pinned transfer-manager dependencies in the exact area of the prior blocking finding, and adds the request-level coverage that was previously missing. Re-review the behavior and dependency changes before updating the findings or gate decision.
+
+**Activity since the last review**
+
+- Sunnatillo pushed commit `1d33073` on 2026-10-19; the prior head is no longer an ancestor. GitHub lists one commit on the current PR head.
+- Sunnatillo posted `/cc @petr-muller` at 2026-10-19T18:47:26Z and an upload verification report at 2026-10-19T20:35:24Z. The report says OCI `eu-paris-1` returned 501 with default `aws-chunked` headers and 200 without the trailer under `when_required`.
+- No inline comments or submitted reviews were added. Bot label activity changed `size/M` to `size/L`, temporarily toggled the CLA label, and added then removed `do-not-merge/work-in-progress`.
 
 ## Findings
 

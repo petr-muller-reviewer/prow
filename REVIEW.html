@@ -43,6 +43,11 @@ refresh_log:
   - old_sha: 4dc604d56097e0566f9138475e12abd463284586
     new_sha: 33bee48b0d9c19b96170dbb63c9a7b9af7d1d70e
     summary: &quot;The PR now makes request checksum mode configurable, but the Go CDK upload path is unchanged and the blocking finding remains.&quot;
+recommended_rereview:
+  - at: 2026-10-21T13:45:23Z
+    old_sha: 33bee48b0d9c19b96170dbb63c9a7b9af7d1d70e
+    new_sha: 1d33073be881a26a1c7d7838a8a0b517ca2f0da7
+    reason: &quot;The revision adds 198 net lines in the upload implementation, dependency set, and request-level tests for the previously blocking finding.&quot;
 gate:
   decision: do-not-merge
   gated_at: 2026-10-19T13:08:59Z
@@ -76,6 +81,28 @@ gate:
 <li>Replaced the automatic custom-endpoint default with an opt-in JSON setting and added validation and an OCI/Swift example (<code>pkg/io/providers/aws.go</code>, <code>pkg/io/providers/providers.go</code>).
 </li>
 <li>Expanded the client configuration tests (<code>pkg/io/providers/aws_test.go</code>). The Go CDK bucket-opening and transfer-manager upload path did not change, so the prior blocking finding remains unresolved.
+</li></ul>
+<h2>Re-review recommended</h2>
+<h3>2026-10-21T13:45:23Z — <code>33bee48b0d9c19b96170dbb63c9a7b9af7d1d70e</code> → <code>1d33073be881a26a1c7d7838a8a0b517ca2f0da7</code></h3>
+<p><strong>What changed</strong></p>
+<ul>
+<li><code>pkg/io/providers/aws.go</code> (+21/−1): passes the client checksum mode into <code>s3blob.Options</code> and accepts case-insensitive setting values.
+</li>
+<li><code>pkg/io/providers/aws_test.go</code> (+166): adds a TLS-backed upload test that checks the actual <code>PutObject</code> headers for default and <code>when_required</code> modes.
+</li>
+<li><code>go.mod</code> (+25/−25) and <code>go.sum</code> (+58/−58): upgrades <code>gocloud.dev</code> from v0.46.0 to v0.47.0 and the S3 transfer manager from v0.2.3 to v0.4.3, with related dependency updates.
+</li>
+<li><code>pkg/io/providers/providers.go</code> (+12): documents the credential setting and adds an S3-compatible storage example.
+</li></ul>
+<p><strong>Why this exceeds update in place</strong></p>
+<p>The PR diff adds 198 net lines across five files, exceeding the substantial-change threshold. The new code changes the upload path and pinned transfer-manager dependencies in the exact area of the prior blocking finding, and adds the request-level coverage that was previously missing. Re-review the behavior and dependency changes before updating the findings or gate decision.</p>
+<p><strong>Activity since the last review</strong></p>
+<ul>
+<li>Sunnatillo pushed commit <code>1d33073</code> on 2026-10-19; the prior head is no longer an ancestor. GitHub lists one commit on the current PR head.
+</li>
+<li>Sunnatillo posted <code>/cc @petr-muller</code> at 2026-10-19T18:47:26Z and an upload verification report at 2026-10-19T20:35:24Z. The report says OCI <code>eu-paris-1</code> returned 501 with default <code>aws-chunked</code> headers and 200 without the trailer under <code>when_required</code>.
+</li>
+<li>No inline comments or submitted reviews were added. Bot label activity changed <code>size/M</code> to <code>size/L</code>, temporarily toggled the CLA label, and added then removed <code>do-not-merge/work-in-progress</code>.
 </li></ul>
 <h2>Findings</h2>
 <h3><span class="tag c-red">blocking</span>The actual upload still uses aws-chunked encoding</h3>

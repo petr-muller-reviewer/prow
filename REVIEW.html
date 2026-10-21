@@ -1,60 +1,75 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>Review of kubernetes-sigs/prow#899</title>
-<style>
-  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; line-height: 1.6; max-width: 860px; margin: 2rem auto; padding: 0 1.5rem; color: #1a1a1a; }
-  code, pre { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; background: #f4f4f4; padding: 0.1em 0.35em; border-radius: 3px; }
-  pre { padding: 0.75em; overflow-x: auto; }
-  h1 { font-size: 1.5rem; }
-  h2 { font-size: 1.2rem; border-bottom: 1px solid #ddd; padding-bottom: 0.2em; margin-top: 2rem; }
-  .meta { color: #555; font-size: 0.9em; }
-  .verdict { padding: 0.75em 1em; border-radius: 6px; background: #e8f5e9; border: 1px solid #a5d6a7; }
-  .finding { margin: 1em 0; padding: 0.75em 1em; border-left: 4px solid #ccc; background: #fafafa; }
-  ul { padding-left: 1.4em; }
-</style>
-</head>
-<body>
-
-<h1>Review of <a href="https://github.com/kubernetes-sigs/prow/pull/899">kubernetes-sigs/prow#899</a></h1>
-<p class="meta">
-  chore(deps): bump github.com/evanphx/json-patch from 5.9.0+incompatible to 5.9.11+incompatible<br>
-  head_sha: <code>9058f0eb9be5e19778b614d13ecbe3d059f4eabd</code> · base: <code>main</code><br>
-  reviewed_at: 2026-09-01T11:06:51Z
-</p>
-
-<h2>Verdict</h2>
-<div class="verdict">
-  <strong>Approve.</strong> Dep-only patch bump of a direct dependency, well-aged release, non-behavioral changelog, and the single call site in this repo is a light-touch, non-sensitive use.
-</div>
-
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#899</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>chore(deps): bump github.com/evanphx/json-patch from 5.9.0+incompatible to 5.9.11+incompatible</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/899">kubernetes-sigs/prow#899</a> · base <code>main</code> · head_sha <code>9058f0eb9be5</code> · reviewed_at <code>2026-09-01T11:06:51Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span></div>
 <h2>What this PR does</h2>
 <ul>
-  <li>Dependabot bump of <code>github.com/evanphx/json-patch</code> from <code>v5.9.0+incompatible</code> to <code>v5.9.11+incompatible</code>.</li>
-  <li>Dep-only change: touches only <code>go.mod</code> (1 line) and <code>go.sum</code> (2 lines). No vendoring in this repo, no project code changed.</li>
-  <li>Direct dependency; unrelated indirect siblings (<code>github.com/evanphx/json-patch/v5</code>, <code>gopkg.in/evanphx/json-patch.v4</code>) are untouched by this bump.</li>
-</ul>
-
+<li>Dependabot bump of <code>github.com/evanphx/json-patch</code> from <code>v5.9.0+incompatible</code> to <code>v5.9.11+incompatible</code>.
+</li>
+<li>Dep-only change: touches only <code>go.mod</code> (1 line) and <code>go.sum</code> (2 lines). No vendoring in this repo, no project code changed.
+</li>
+<li>Direct dependency; unrelated indirect siblings (<code>github.com/evanphx/json-patch/v5</code>, <code>gopkg.in/evanphx/json-patch.v4</code>) are untouched by this bump.
+</li></ul>
 <h2>Dependency analysis</h2>
-<p><strong>Freshness:</strong> new version <code>v5.9.11+incompatible</code> tagged 2025-01-28 (commit <code>84a4bb1</code>, real git tag, not a pseudo-version). Well over a year old as of review date &mdash; fine, no soak-time concern.</p>
-<p><strong>Usage:</strong> direct dep. Imported in exactly one place: <code>pkg/pjutil/abort.go:26,135</code>, via <code>jsonpatch.CreateMergePatch</code> to build a merge patch when aborting in-flight ProwJobs. Operates on Prow's own internal <code>ProwJob</code> objects, not untrusted external input. Light exposure, non-sensitive path (no auth/crypto/exec/deserialization of external data).</p>
-<p><strong>Changelog (v5.9.0 &rarr; v5.9.11):</strong> three substantive upstream commits &mdash; export previously-unexported error variables (<code>errBadJSONDoc</code>, <code>errBadJSONPatch</code>), drop a stale <code>gopkg.in</code> reference in the v5 module declaration, remove the unmaintained <code>github.com/pkg/errors</code> dependency. No CVE/security fix, no behavior change to <code>CreateMergePatch</code>.</p>
-<p><strong>Take:</strong> safe to take now. Old release, non-behavioral changelog, single light-touch non-sensitive call site.</p>
-
+<p><strong>Freshness</strong>: new version <code>v5.9.11+incompatible</code> tagged 2025-01-28 (commit <code>84a4bb1</code>, real git tag, not a pseudo-version). Well over a year old as of review date — fine, no soak-time concern.</p>
+<p><strong>Usage</strong>: direct dep. Imported in exactly one place: <code>pkg/pjutil/abort.go:26,135</code>, via <code>jsonpatch.CreateMergePatch</code> to build a merge patch when aborting in-flight ProwJobs. Operates on Prow's own internal <code>ProwJob</code> objects, not untrusted external input. Light exposure, non-sensitive path (no auth/crypto/exec/deserialization of external data).</p>
+<p><strong>Changelog (v5.9.0 → v5.9.11)</strong>: three substantive upstream commits — export previously-unexported error variables (<code>errBadJSONDoc</code>, <code>errBadJSONPatch</code>), drop a stale <code>gopkg.in</code> reference in the v5 module declaration, remove the unmaintained <code>github.com/pkg/errors</code> dependency. No CVE/security fix, no behavior change to <code>CreateMergePatch</code>.</p>
+<p><strong>Take</strong>: safe to take now. Old release, non-behavioral changelog, single light-touch non-sensitive call site.</p>
 <h2>Findings</h2>
 <p>None.</p>
-
-<h2>Things I checked and was fine with</h2>
+<h2>Checked</h2>
 <ul>
-  <li>Diff scope: <code>go.mod</code>/<code>go.sum</code> only, no vendored/generated files, no project code.</li>
-  <li>Only import site (<code>pkg/pjutil/abort.go</code>) and how <code>CreateMergePatch</code> is used there.</li>
-  <li>Upstream commit range v5.9.0..v5.9.11 for behavior/security-relevant changes.</li>
-  <li>Release age/provenance via <code>proxy.golang.org</code> (real tag, not pseudo-version).</li>
-</ul>
-
-<h2>Open questions for the author</h2>
+<li>Diff scope: <code>go.mod</code>/<code>go.sum</code> only, no vendored/generated files, no project code.
+</li>
+<li>Only import site (<code>pkg/pjutil/abort.go</code>) and how <code>CreateMergePatch</code> is used there.
+</li>
+<li>Upstream commit range v5.9.0..v5.9.11 for behavior/security-relevant changes.
+</li>
+<li>Release age/provenance via <code>proxy.golang.org</code> (real tag, not pseudo-version).
+</li></ul>
+<h2>Open questions</h2>
 <p>None.</p>
-
-</body>
-</html>
+<h2>Dependency followups</h2>
+<p>Examined on 2026-10-21. PR #899 merged on 2026-08-26 as <code>c395925e86cc5ba81c6d07230322129616aeddf6</code>.</p>
+<p>No concrete improvement opportunities were identified; no followup items or handoff prompts were created.</p>
+<ul>
+<li><strong>Module range:</strong> direct Go dependency <code>github.com/evanphx/json-patch</code>, <code>v5.9.0+incompatible</code> → <code>v5.9.11+incompatible</code>. The complete manifest/checksum diff contains no transitive module version changes; <code>github.com/evanphx/json-patch/v5</code> and <code>gopkg.in/evanphx/json-patch.v4</code> are unchanged.
+</li>
+<li><strong>Our usage:</strong> the sole import is <code>pkg/pjutil/abort.go:26</code>; <code>PatchProwjob</code> calls <code>jsonpatch.CreateMergePatch</code> at line 135 on JSON marshaled from two ProwJobs and already wraps errors with <code>fmt.Errorf</code> and <code>%w</code>.
+</li>
+<li><strong>Reason:</strong> the legacy module's <code>merge.go</code>, including <code>CreateMergePatch</code>, is unchanged across the range. Replacing <code>github.com/pkg/errors</code> wrapping in JSON Patch operations provides no useful call-site migration here. The newly exported <code>ErrBadJSONDoc</code>/<code>ErrBadJSONPatch</code> symbols affect the separate <code>/v5</code> module; documentation and <code>/v5</code> dependency changes also provide no applicable improvement. No relevant deprecations, replacement APIs, or new features were found.
+</li>
+<li><strong>Source:</strong> <a href="https://github.com/evanphx/json-patch/compare/v5.9.0...v5.9.11">complete upstream v5.9.0…v5.9.11 comparison</a>, covering all eight intervening commits, cross-checked against the PR diff and Prow's import/call site.
+</li></ul>
+</main></body></html>

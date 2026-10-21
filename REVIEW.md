@@ -37,3 +37,14 @@ None.
 ## Open questions
 
 None.
+
+## Dependency followups
+
+Examined on 2026-10-21. PR #899 merged on 2026-08-26 as `c395925e86cc5ba81c6d07230322129616aeddf6`.
+
+No concrete improvement opportunities were identified; no followup items or handoff prompts were created.
+
+- **Module range:** direct Go dependency `github.com/evanphx/json-patch`, `v5.9.0+incompatible` → `v5.9.11+incompatible`. The complete manifest/checksum diff contains no transitive module version changes; `github.com/evanphx/json-patch/v5` and `gopkg.in/evanphx/json-patch.v4` are unchanged.
+- **Our usage:** the sole import is `pkg/pjutil/abort.go:26`; `PatchProwjob` calls `jsonpatch.CreateMergePatch` at line 135 on JSON marshaled from two ProwJobs and already wraps errors with `fmt.Errorf` and `%w`.
+- **Reason:** the legacy module's `merge.go`, including `CreateMergePatch`, is unchanged across the range. Replacing `github.com/pkg/errors` wrapping in JSON Patch operations provides no useful call-site migration here. The newly exported `ErrBadJSONDoc`/`ErrBadJSONPatch` symbols affect the separate `/v5` module; documentation and `/v5` dependency changes also provide no applicable improvement. No relevant deprecations, replacement APIs, or new features were found.
+- **Source:** [complete upstream v5.9.0…v5.9.11 comparison](https://github.com/evanphx/json-patch/compare/v5.9.0...v5.9.11), covering all eight intervening commits, cross-checked against the PR diff and Prow's import/call site.

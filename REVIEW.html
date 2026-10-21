@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#971</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>Avoid aws-chunked 501 error on S3-compatible stores</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/971">kubernetes-sigs/prow#971</a> · base <code>main</code> · head_sha <code>33bee48b0d9c</code> · reviewed_at <code>2026-10-19T12:57:18Z</code></div>
+<div class="badges"><span class="badge c-red">verdict: request-changes</span><span class="badge c-red">gate: do-not-merge</span></div>
+<details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#971
+title: &quot;Avoid aws-chunked 501 error on S3-compatible stores&quot;
+head_sha: 33bee48b0d9c19b96170dbb63c9a7b9af7d1d70e
+base: main
+reviewed_at: 2026-10-19T12:57:18Z
+verdict: request-changes
+refresh_log:
+  - old_sha: 4dc604d56097e0566f9138475e12abd463284586
+    new_sha: 33bee48b0d9c19b96170dbb63c9a7b9af7d1d70e
+    summary: &quot;The PR now makes request checksum mode configurable, but the Go CDK upload path is unchanged and the blocking finding remains.&quot;
+gate:
+  decision: do-not-merge
+  gated_at: 2026-10-19T13:08:59Z
+  gated_head_sha: 33bee48b0d9c19b96170dbb63c9a7b9af7d1d70e
+  reviewed_head_sha: 33bee48b0d9c19b96170dbb63c9a7b9af7d1d70e</code></pre></details>
+<h2>Gate</h2>
+<p><strong>Decision: do-not-merge.</strong> PR #971 is open at <code>33bee48b</code>, the same head recorded in this review. Its blocking finding remains: the configured client checksum mode does not prevent the Go CDK transfer manager from sending <code>aws-chunked</code> on the actual upload path.</p>
+<h3>Gating items</h3>
+<ul>
+<li><strong>Not addressed — blocking (<code>REVIEW.md</code>, <code>pkg/io/providers/aws.go:48-49,79-89</code>):</strong> <code>newS3Client</code> applies <code>request_checksum_calculation</code>, but <code>getS3Bucket</code> still calls <code>s3blob.OpenBucketV2(ctx, client, bucketName, nil)</code>. With the pinned Go CDK transfer manager, the writer explicitly selects CRC32 for <code>PutObject</code>, overriding this client setting; the request-level reproduction recorded above still applies. The added tests inspect client options and do not send an upload request. <strong>Disposition:</strong> blocks merge until an upload through <code>providers.GetBucket</code> omits the optional checksum trailer and a request-level test verifies it.
+</li></ul>
+<h3>Independent merge risk</h3>
+<ul>
+<li><strong>Additive exported Go API:</strong> <code>pkg/io/providers.S3Credentials</code> gains the exported <code>RequestChecksumCalculation</code> field. JSON users and keyed struct literals remain compatible, but external Go callers using unkeyed composite literals of this type will need to add a value. The field is documented in code and is opt-in; an empty value preserves the SDK and environment policy, so existing deployments do not get a new checksum default. This source-compatibility edge is not independently merge-blocking.
+</li>
+<li>No other default or configuration behavior changes were found in the PR diff. No substantive PR reviews or inline comments were submitted; the issue comments are bot notifications.
+</li></ul>
+<h2>Verdict</h2>
+<p>Request changes: the upload still sends <code>aws-chunked</code> to custom S3 endpoints.</p>
+<p>The new setting is present on the S3 client, but the Go CDK upload path uses a transfer manager that explicitly selects CRC32. A request-level reproduction through <code>providers.GetBucket</code> still produced the checksum trailer and the reported <code>501 NotImplemented</code>. The new unit tests inspect client options and therefore cannot catch this failure.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Adds the optional <code>request_checksum_calculation</code> S3 credential field, accepting <code>when_supported</code> or <code>when_required</code> and rejecting other values.
+</li>
+<li>Applies an explicit field value to the AWS SDK client; when unset, preserves the SDK default and <code>AWS_REQUEST_CHECKSUM_CALCULATION</code> behavior.
+</li>
+<li>Documents <code>when_required</code> for S3-compatible stores and adds client-option tests for field and environment precedence.
+</li></ul>
+<p>Since previous review:</p>
+<ul>
+<li>Replaced the automatic custom-endpoint default with an opt-in JSON setting and added validation and an OCI/Swift example (<code>pkg/io/providers/aws.go</code>, <code>pkg/io/providers/providers.go</code>).
+</li>
+<li>Expanded the client configuration tests (<code>pkg/io/providers/aws_test.go</code>). The Go CDK bucket-opening and transfer-manager upload path did not change, so the prior blocking finding remains unresolved.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-red">blocking</span>The actual upload still uses aws-chunked encoding</h3>
+<ul>
+<li>where: <code>pkg/io/providers/aws.go:48-49,79-89</code>
+</li>
+<li>concern: The new <code>request_checksum_calculation</code> field sets the SDK client mode, but <code>getS3Bucket</code> still opens Go CDK's S3 bucket with nil options. With the pinned <code>gocloud.dev v0.46.0</code> and <code>feature/s3/transfermanager v0.2.3</code>, its writer explicitly selects CRC32 for <code>PutObject</code>, overriding this client setting. The prior local TLS reproduction observed <code>Content-Encoding: aws-chunked</code>, <code>X-Amz-Trailer: x-amz-checksum-crc32</code>, and <code>X-Amz-Sdk-Checksum-Algorithm: CRC32</code>, then returned the same <code>501 NotImplemented</code> described in <a href="https://github.com/kubernetes-sigs/prow/issues/970">issue #970</a>. This commit changes only client configuration, tests, and documentation; it does not address the upload path. The <a href="https://github.com/aws/aws-sdk-go-v2/pull/3470">AWS transfer-manager fix</a> and <a href="https://github.com/google/go-cloud/pull/3766">Go CDK propagation fix</a> remain absent from the pinned versions.
+</li>
+<li>excerpt:<pre><code>bkt, err := s3blob.OpenBucketV2(ctx, client, bucketName, nil)
+}</code></pre>
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li><code>go test ./pkg/io/providers -run &#x27;Test_newS3Client&#x27; -count=1</code> passed.
+</li>
+<li>The new unit cases assert S3 client option values, field validation, and environment precedence; they do not send an upload request.
+</li>
+<li>A streamed upload through <code>providers.GetBucket</code> to a local TLS server reproduced the <code>aws-chunked</code> headers and simulated <code>501</code> failure.
+</li>
+<li>The new field is opt-in and unset preserves the SDK/environment policy; setting it does not alter the Go CDK bucket writer's checksum selection.
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>Could you update the upload path so that the transfer manager receives <code>when_required</code> for custom endpoints, then add a request-level test asserting that the resulting <code>PutObject</code> omits <code>aws-chunked</code>?
+</li></ul>
+</main></body></html>

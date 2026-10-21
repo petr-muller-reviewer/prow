@@ -3,8 +3,13 @@ pr: kubernetes-sigs/prow#799
 title: "feat(label): support configurable exclusive label sets"
 head_sha: bd9671c139db78a6d381e40b2c3ff2ca4deaf108
 base: main
-reviewed_at: 2026-07-26T23:25:04Z
+reviewed_at: 2026-10-21T11:40:38Z
 verdict: request-changes
+refresh_log:
+  - old_sha: bd9671c139db78a6d381e40b2c3ff2ca4deaf108
+    new_sha: bd9671c139db78a6d381e40b2c3ff2ca4deaf108
+    summary: "No code changes; recorded the inactivity triage comment and lifecycle/stale label activity."
+    at: 2026-10-21T11:40:38Z
 ---
 
 ## Summary
@@ -12,6 +17,10 @@ verdict: request-changes
 Adds `ExclusiveLabelPrefixes` to the `label` plugin config. When a label matching a configured prefix is added, existing labels sharing that prefix are queued for removal. Touches `pkg/plugins/config.go` (field + merge), `pkg/plugins/label/label.go` (core logic), tests, generated docs.
 
 Confirmed via independent multi-perspective review (code-quality, maintainability, deployment-risk reviewers + advisor synthesis): all three independently converged on the hardcoded-defaults issue as the primary blocker, and code-quality independently rated the case-sensitivity bug as critical.
+
+Since previous review (2026-07-26):
+- No code changes: the reviewed and current PR heads are both `bd9671c139db78a6d381e40b2c3ff2ca4deaf108`.
+- On 2026-10-19, `k8s-triage-robot` posted inactivity guidance and `kubernetes-prow[bot]` applied `lifecycle/stale`; no inline comments or reviews were added. The PR remains open.
 
 ## Findings
 

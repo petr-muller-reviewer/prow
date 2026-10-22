@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#908</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1><code>override</code>: abort in-flight jobs so they cannot clobber <code>/override</code> or <code>/override-sticky</code></h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/908">kubernetes-sigs/prow#908</a> · base <code>main</code> · head_sha <code>a3936e14f4cd</code> · reviewed_at <code>2026-08-31T16:04:33Z</code></div>
+<div class="badges"><span class="badge c-red">verdict: request-changes</span></div>
+<h2>What this PR does</h2>
+<ul>
+<li>Adds <code>abortActiveJob</code> (and helper <code>prowJobSelectorForPR</code>) in <code>pkg/plugins/override/override.go</code>, which lists ProwJobs for a PR by org/repo/pull/type label selector, filters by job name, and sets <code>AbortedState</code> on any that aren't yet complete.
+</li>
+<li>Wires <code>abortActiveJob</code> into the commit-status override loop (<code>handleOverride</code>, called right after the override's synthetic success <code>ProwJob</code> is created for a context) so a still-running real job for that context can't later have crier report its actual result over the override.
+</li>
+<li>Leaves <code>AbortedState</code> set but does not call <code>SetComplete</code>, deliberately, so Plank/Jenkins still owns tearing down the running pod/build and completing the job — comment at override.go:186-190 documents this.
+</li>
+<li>No changes to the Checks-API (App-auth) branch of <code>handleOverride</code>, which creates <code>CheckRun</code>s for <code>checkrunContexts</code> independently of the <code>statuses</code>/<code>abortActiveJob</code> loop.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-red">blocking</span>Checks-API override path never aborts in-flight jobs</h3>
+<ul>
+<li>where: <code>pkg/plugins/override/override.go:632-658</code>
+</li>
+<li>concern: The new abort protection is only invoked from the commit-status loop (<code>abortActiveJob</code> call at line 623, inside the loop iterating <code>statuses</code>). The separate <code>if oc.UsesAppAuth()</code> block that follows (632-658) marks checkrun contexts as successful via <code>oc.CreateCheckRun</code> but never creates a ProwJob or calls <code>abortActiveJob</code> for them. For a repo where <code>oc.UsesAppAuth()</code> is true, <code>/override</code>ing a checkrun-backed context whose presubmit is still running leaves that ProwJob running; when it completes, crier reports its real result via the Checks API and overwrites the override's success checkrun — the exact clobbering bug this PR's commit message says it fixes, just left unfixed for App-auth repos.
+</li>
+<li>excerpt:<pre><code>if oc.UsesAppAuth() {
+	for _, checkrun := range checkrunContexts {
+		if overrides.Has(checkrun.Context) {
+			prowOverrideCR := github.CheckRun{
+				Name:       checkrun.Context,
+				...
+			}
+			if _, err := oc.CreateCheckRun(org, repo, prowOverrideCR); err != nil {
+				...
+			}
+			done.Insert(checkrun.Context)
+		}
+	}
+}</code></pre>
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>Duplicates existing job-abort helper from the trigger package</h3>
+<ul>
+<li>where: <code>pkg/plugins/override/override.go:174-186</code>
+</li>
+<li>concern: <code>prowJobSelectorForPR</code> + <code>abortActiveJob</code> reimplement the same org/repo/pull/type selector and List+Complete()-check+Update+IsConflict-swallow pattern as <code>labelSelectorForPR</code> + <code>abortAllJobs</code> in <code>pkg/plugins/trigger/pull-request.go</code>. Two near-identical implementations now have to be kept in sync; a future change to selector construction or conflict handling (e.g. adding a job-name label instead of client-side filtering) risks drifting between the two packages.
+</li>
+<li>excerpt:<pre><code>func prowJobSelectorForPR(org, repo string, number int) (klabels.Selector, error) {
+	set := klabels.Set{
+		kube.OrgLabel:         org,
+		kube.RepoLabel:        repo,
+		kube.PullLabel:        strconv.Itoa(number),
+		kube.ProwJobTypeLabel: string(prowapi.PresubmitJob),
+	}
+	...
+}</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">nit</span>Redundant List() per overridden context</h3>
+<ul>
+<li>where: <code>pkg/plugins/override/override.go:623</code> (call site inside the <code>for _, status := range statuses</code> loop)
+</li>
+<li>concern: <code>abortActiveJob</code> issues a fresh <code>List()</code> call (plus one <code>Update()</code> per matching job) on every loop iteration, i.e. once per overridden context, instead of listing the PR's presubmit ProwJobs once per invocation and filtering by job name in memory. Overriding several contexts on the same PR multiplies API calls proportionally to the number of contexts for no functional benefit.
+</li>
+<li>excerpt:<pre><code>contextsWithCreatedJobs.Insert(status.Context)
+abortActiveJob(oc, log, org, repo, number, pre.Name)</code></pre>
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li><code>abortActiveJob</code> correctly skips completed jobs (<code>pj.Complete()</code> check) and swallows <code>IsConflict</code> errors from concurrent updates without failing the override.
+</li>
+<li>The comment at override.go:183-190 explaining why <code>SetComplete</code> is deliberately not called (leaves teardown to Plank/Jenkins) is accurate against the implementation.
+</li>
+<li>The commit-status loop's placement of <code>abortActiveJob</code> (only after a new override ProwJob was successfully created, via <code>contextsWithCreatedJobs</code>) avoids aborting jobs when no override job exists yet.
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>Is the omission of <code>abortActiveJob</code> from the <code>UsesAppAuth()</code>/checkrun branch intentional (e.g. Checks-API repos handle in-flight jobs differently elsewhere) or an oversight? If checkrun-backed repos are in scope for this fix, that branch needs the same treatment.
+</li>
+<li>Given the duplication with <code>pkg/plugins/trigger/pull-request.go</code>'s <code>abortAllJobs</code>/<code>labelSelectorForPR</code>, would extracting a shared helper be worth doing now rather than after a second consumer appears?
+</li></ul>
+<h2>Followups</h2>
+<p>Accepted: 4 (2 deliver, 2 probe). Skipped: 0.</p>
+<p>Context: PR #908 merged on 2026-08-31 at <code>5765df26189ddc41cb9c975e89d613f6c26282ef</code>. The override files at that merge match reviewed head <code>a3936e14f4cde303f9d6faea039c6345097a3c2b</code>. No deferred implementation requests were found in the PR discussion. Followup agents must work on the current default branch and check whether later changes have already addressed each task.</p>
+<p>Validation note: the saved Checks-API blocker above is not substantiated by the inspected reporting path. <code>pkg/github/report/report.go:86</code> posts commit statuses, not check runs, and <code>pkg/tide/tide.go:2266</code> prefers successful duplicate check runs. The branch's missing abort call is real, but the asserted crier check-run overwrite is not established. Followup 1 validates this before proposing a behavior change; the historical finding and frontmatter are preserved.</p>
+<h3>1. Validate the saved Checks-API finding</h3>
+<ul>
+<li>Category: tests
+</li>
+<li>Necessity: should — establish whether a real lifecycle gap exists before changing behavior.
+</li>
+<li>Mode: probe
+</li>
+<li>Where: <code>pkg/plugins/override/override.go:638-658</code>, <code>pkg/github/report/report.go</code>, <code>pkg/tide/tide.go</code>.
+<pre><code>In kubernetes-sigs/prow, following PR #908 — &quot;`override`: abort in-flight jobs so they cannot clobber `/override` or `/override-sticky`&quot; (merge 5765df26189ddc41cb9c975e89d613f6c26282ef), work on the current default branch and first check whether subsequent changes already addressed this task.
+
+Mode: probe. Write temporary tests exercising check-run-only overrides, matching Prow presubmits, required-context fallback, and subsequent job completion for both /override and /override-sticky. Trace crier&#x27;s actual reporting API and Tide&#x27;s duplicate-check selection. Establish whether an active ProwJob can invalidate an accepted override. Do not assume UsesAppAuth changes crier to Checks API reporting: at the merge, crier posts commit statuses and Tide prefers successful duplicate check runs. The saved REVIEW.md blocker is a hypothesis to validate, not an established bug.
+
+Acceptance criteria: exercise each named behavior and classify every failure with evidence, distinguishing implementation bugs from incorrect expectations or test mistakes. Report evidence confirming or correcting the saved finding. Apply only minimal fixes for demonstrated bugs. Remove all exploratory tests before finishing; if no bug exists, leave no files changed. Report each failing scenario so the maintainer can choose whether to retain regression coverage separately.
+
+Scope: exclude external check-run cancellation, unrelated override semantics, and cosmetic cleanup. Do not publish changes without an explicit user request.</code></pre>
+</li></ul>
+<h3>2. Share the PR selector and job-abort mechanics</h3>
+<ul>
+<li>Category: tech-debt
+</li>
+<li>Necessity: could — reduce maintenance drift; duplication alone is not a demonstrated failure.
+</li>
+<li>Mode: deliver
+</li>
+<li>Where: <code>pkg/plugins/override/override.go:175-217</code>, <code>pkg/plugins/trigger/pull-request.go:171-219</code>.
+<pre><code>In kubernetes-sigs/prow, following PR #908 — &quot;`override`: abort in-flight jobs so they cannot clobber `/override` or `/override-sticky`&quot; (merge 5765df26189ddc41cb9c975e89d613f6c26282ef), work on the current default branch and first check whether subsequent changes already addressed this task.
+
+Mode: deliver. Extract the shared PR presubmit selector and narrowly reusable abort mechanics from pkg/plugins/override/override.go and pkg/plugins/trigger/pull-request.go into an appropriate shared package, such as pkg/pjutil. Preserve caller policies: override filters by job name and sets Report=false; trigger handles all incomplete PR presubmits without changing Report. Neither should set CompletionTime; controllers retain workload teardown ownership. Preserve existing error/conflict behavior in this cleanup.
+
+Acceptance criteria: both callers use the shared mechanics, their distinct selection/reporting/error behavior is preserved, and focused tests for override and trigger pass. Coordinate with any separately accepted multi-context batching change; preserve that behavior if already implemented.
+
+Scope: avoid a generic job-management framework, unrelated behavior changes, or speculative conflict-handling fixes. Do not publish changes without an explicit user request.</code></pre>
+</li></ul>
+<h3>3. List PR jobs once for a multi-context override</h3>
+<ul>
+<li>Category: cleanup
+</li>
+<li>Necessity: could — reduce API calls; no current bottleneck was demonstrated.
+</li>
+<li>Mode: deliver
+</li>
+<li>Where: <code>pkg/plugins/override/override.go:598-623</code>.
+<pre><code>In kubernetes-sigs/prow, following PR #908 — &quot;`override`: abort in-flight jobs so they cannot clobber `/override` or `/override-sticky`&quot; (merge 5765df26189ddc41cb9c975e89d613f6c26282ef), work on the current default branch and first check whether subsequent changes already addressed this task.
+
+Mode: deliver. Refactor pkg/plugins/override/override.go so a multi-context command lists the PR&#x27;s presubmit ProwJobs once and reuses that result when aborting selected jobs. Preserve partial-success behavior: abort a job only after its synthetic override ProwJob was successfully created, retain processing already completed if a later creation fails, and publish each success status after its abort attempt. Preserve Report=false, AbortedState, controller-owned completion, and isolation from unrelated jobs and PRs.
+
+Acceptance criteria: focused coverage asserts one List call for multiple overridden contexts, correct job-name/context mapping, and correct partial progress when a later synthetic-job creation fails. Verify both /override and /override-sticky continue to work. Run focused override tests. Coordinate with any accepted shared-helper refactor and retain its caller-policy distinctions.
+
+Scope: exclude caching across commands, conflict-handling changes, and unrelated override semantics. Do not publish changes without an explicit user request.</code></pre>
+</li></ul>
+<h3>4. Exercise abort conflicts and controller races</h3>
+<ul>
+<li>Category: reliability
+</li>
+<li>Necessity: should — determine which races can still allow a real job to report over an override.
+</li>
+<li>Mode: probe
+</li>
+<li>Where: <code>pkg/plugins/override/override.go:201-215</code>, adjacent controller/reporting paths.
+<pre><code>In kubernetes-sigs/prow, following PR #908 — &quot;`override`: abort in-flight jobs so they cannot clobber `/override` or `/override-sticky`&quot; (merge 5765df26189ddc41cb9c975e89d613f6c26282ef), work on the current default branch and first check whether subsequent changes already addressed this task.
+
+Mode: probe. Write temporary tests exercising deterministic interleavings in the override abort path: an unrelated resource-version update between List and Update; job completion before the abort update; List/Update failures; and a reporter holding an older job snapshot while the override is published. Cover both /override and /override-sticky. At the merge, Update conflicts are silently dropped and other abort API failures only logged while the handler can still report override success.
+
+Acceptance criteria: exercise every named scenario and classify failures with evidence, distinguishing real API/reporting behavior from fake-client artifacts or incorrect test expectations. For demonstrated bugs, apply the smallest fix, using bounded re-read/retry where appropriate while preserving controller-owned completion and workload teardown. Never retry by blindly overwriting newer job state. Report residual races that cannot be fixed locally and each failing scenario so the maintainer can choose whether to retain regression coverage separately. Remove all exploratory tests before finishing; if no bug exists, leave no files changed.
+
+Scope: exclude broad controller/reporting redesign, unrelated trigger behavior, and cosmetic cleanup. Preserve any already-landed shared-helper or batching refactor. Do not publish changes without an explicit user request.</code></pre>
+</li></ul>
+</main></body></html>

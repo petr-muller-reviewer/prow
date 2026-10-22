@@ -5,9 +5,28 @@ head_sha: b2578bcd0ce3a1f9da4e22a933c8dfcc34c05a53
 base: main
 reviewed_at: 2026-10-19T11:06:15Z
 verdict: approve
+gate:
+  decision: merge
+  gated_at: 2026-10-22T00:08:39Z
+  gated_head_sha: b2578bcd0ce3a1f9da4e22a933c8dfcc34c05a53
+  reviewed_head_sha: b2578bcd0ce3a1f9da4e22a933c8dfcc34c05a53
 ---
 
 # Review
+
+## Gate
+
+**Verdict: merge.**
+
+The reviewed head is unchanged (`b2578bcd0ce3a1f9da4e22a933c8dfcc34c05a53`), and there are no prior reviewer findings, change requests, or substantive PR comments to disposition. The change is confined to the internal ghcache coalescing key, its regression test, and documentation, and introduces no API, configuration, persistence-format, or deployment-ordering changes. Its behavioral effect is the intended correction: same-URL GETs with different `Accept` values now make separate upstream requests instead of sharing the first response.
+
+Gating list:
+
+- None. `REVIEW.md` records no findings, and the PR has no non-pending reviews, inline comments, or substantive issue comments.
+
+Area-2 risks:
+
+- No notable merge risk. Existing deployments need no migration or coordinated rollout; the only affected callers are overlapping GETs for the same URL with different `Accept` values, which previously received the wrong representation.
 
 ## Verdict
 
@@ -38,3 +57,27 @@ No actionable findings.
 ## Open questions
 
 None.
+
+## Followups
+
+### Make the persistent ghcache key Accept-aware
+
+- Category: bugfix
+- Necessity: should
+- Mode: deliver
+
+```text
+In kubernetes-sigs/prow, following PR #1023 — "ghcache: key coalesced requests by URL and Accept header" at head b2578bcd0ce3a1f9da4e22a933c8dfcc34c05a53, fix the remaining representation-mixing path in ghcache's persistent cache.
+
+PR #1023 makes the in-flight request coalescer key by URL and all Accept header values, but NewFromCache still uses github.com/cjwagner/httpcache.Transport, whose GET cache key is only req.URL.String(). As a result, sequential GETs for the same pull-request URL with JSON, diff, and patch Accept values can reuse the wrong cached response.
+
+Implement an Accept-aware GET cache key for the full ghcache transport chain while preserving existing token-partition behavior. This will likely require a ghcache-owned transport or an upstream-compatible extension instead of directly relying on httpcache.Transport's URL-only key.
+
+Acceptance criteria:
+- Add a regression test through NewFromCache that exercises same-URL GETs with application/vnd.github.v3+json, application/vnd.github.v3.diff, and application/vnd.github.patch Accept values.
+- Cover both sequential requests and overlapping requests, and verify each caller receives the response body corresponding to its Accept header.
+- Verify distinct Accept representations are cached and revalidated separately under the same token partition.
+- Run the focused ghcache tests and any broader package tests needed to validate the transport change.
+
+Scope guard: do not change exported APIs, configuration, token-partition semantics, throttling, or unrelated coalescer behavior.
+```

@@ -32,7 +32,29 @@ details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-si
 </style></head><body><main>
 <h1>ghcache: key coalesced requests by URL and Accept header</h1>
 <div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1023">kubernetes-sigs/prow#1023</a> · base <code>main</code> · head_sha <code>b2578bcd0ce3</code> · reviewed_at <code>2026-10-19T11:06:15Z</code></div>
-<div class="badges"><span class="badge c-green">verdict: approve</span></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span><span class="badge c-green">gate: merge</span></div>
+<details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#1023
+title: &quot;ghcache: key coalesced requests by URL and Accept header&quot;
+head_sha: b2578bcd0ce3a1f9da4e22a933c8dfcc34c05a53
+base: main
+reviewed_at: 2026-10-19T11:06:15Z
+verdict: approve
+gate:
+  decision: merge
+  gated_at: 2026-10-22T00:08:39Z
+  gated_head_sha: b2578bcd0ce3a1f9da4e22a933c8dfcc34c05a53
+  reviewed_head_sha: b2578bcd0ce3a1f9da4e22a933c8dfcc34c05a53</code></pre></details>
+<h2>Gate</h2>
+<p><strong>Verdict: merge.</strong></p>
+<p>The reviewed head is unchanged (<code>b2578bcd0ce3a1f9da4e22a933c8dfcc34c05a53</code>), and there are no prior reviewer findings, change requests, or substantive PR comments to disposition. The change is confined to the internal ghcache coalescing key, its regression test, and documentation, and introduces no API, configuration, persistence-format, or deployment-ordering changes. Its behavioral effect is the intended correction: same-URL GETs with different <code>Accept</code> values now make separate upstream requests instead of sharing the first response.</p>
+<p>Gating list:</p>
+<ul>
+<li>None. <code>REVIEW.md</code> records no findings, and the PR has no non-pending reviews, inline comments, or substantive issue comments.
+</li></ul>
+<p>Area-2 risks:</p>
+<ul>
+<li>No notable merge risk. Existing deployments need no migration or coordinated rollout; the only affected callers are overlapping GETs for the same URL with different <code>Accept</code> values, which previously received the wrong representation.
+</li></ul>
 <h2>Verdict</h2>
 <p>Approve.</p>
 <p>The implementation separates concurrent GET responses by URL and all <code>Accept</code> values, addressing issue #1020's representation mix-up. Code Quality and Maintainability both recommend approval; maintenance burden and deployment risk are low, with no actionable findings. The regression test explicitly overlaps requests and verifies their response bodies, and the targeted tests passed. A normal rolling deployment needs no configuration changes or migration; distinct representations now make separate upstream requests, so slightly lower coalescing is expected.</p>
@@ -64,4 +86,26 @@ details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-si
 </li></ul>
 <h2>Open questions</h2>
 <p>None.</p>
+<h2>Followups</h2>
+<h3>Make the persistent ghcache key Accept-aware</h3>
+<ul>
+<li>Category: bugfix
+</li>
+<li>Necessity: should
+</li>
+<li>Mode: deliver
+<pre><code>In kubernetes-sigs/prow, following PR #1023 — &quot;ghcache: key coalesced requests by URL and Accept header&quot; at head b2578bcd0ce3a1f9da4e22a933c8dfcc34c05a53, fix the remaining representation-mixing path in ghcache&#x27;s persistent cache.
+
+PR #1023 makes the in-flight request coalescer key by URL and all Accept header values, but NewFromCache still uses github.com/cjwagner/httpcache.Transport, whose GET cache key is only req.URL.String(). As a result, sequential GETs for the same pull-request URL with JSON, diff, and patch Accept values can reuse the wrong cached response.
+
+Implement an Accept-aware GET cache key for the full ghcache transport chain while preserving existing token-partition behavior. This will likely require a ghcache-owned transport or an upstream-compatible extension instead of directly relying on httpcache.Transport&#x27;s URL-only key.
+
+Acceptance criteria:
+- Add a regression test through NewFromCache that exercises same-URL GETs with application/vnd.github.v3+json, application/vnd.github.v3.diff, and application/vnd.github.patch Accept values.
+- Cover both sequential requests and overlapping requests, and verify each caller receives the response body corresponding to its Accept header.
+- Verify distinct Accept representations are cached and revalidated separately under the same token partition.
+- Run the focused ghcache tests and any broader package tests needed to validate the transport change.
+
+Scope guard: do not change exported APIs, configuration, token-partition semantics, throttling, or unrelated coalescer behavior.</code></pre>
+</li></ul>
 </main></body></html>

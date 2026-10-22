@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Review of kubernetes-sigs/prow#878</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; line-height: 1.55; color: #1a1a1a; max-width: 860px; margin: 2rem auto; padding: 0 1.5rem; }
+  code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  code { background: #f2f2f2; padding: 0.1em 0.35em; border-radius: 3px; font-size: 0.92em; }
+  pre { background: #f7f7f7; border: 1px solid #e2e2e2; border-radius: 6px; padding: 0.9rem 1rem; overflow-x: auto; font-size: 0.88em; }
+  h1 { font-size: 1.4rem; margin-bottom: 0.2rem; }
+  h2 { font-size: 1.1rem; border-bottom: 1px solid #ddd; padding-bottom: 0.25rem; margin-top: 2.2rem; }
+  h3 { font-size: 1rem; margin-bottom: 0.3rem; }
+  .meta { color: #555; font-size: 0.9rem; margin-bottom: 1.5rem; }
+  .verdict { background: #fff6e5; border: 1px solid #f0d78c; border-radius: 6px; padding: 0.9rem 1.1rem; }
+  .verdict .tag { font-weight: 700; text-transform: uppercase; letter-spacing: 0.02em; }
+  .finding { border: 1px solid #e2e2e2; border-radius: 6px; padding: 0.9rem 1.1rem; margin-bottom: 1.1rem; }
+  .finding.should-fix { border-left: 4px solid #d98c00; }
+  .sev { font-weight: 700; text-transform: uppercase; font-size: 0.78rem; letter-spacing: 0.03em; color: #d98c00; }
+  .where { color: #444; font-size: 0.88rem; margin: 0.3rem 0; }
+  ul { padding-left: 1.3rem; }
+  a { color: #0a5cb8; }
+</style>
+</head>
+<body>
+
+<h1>Review of prow#878</h1>
+<div class="meta">
+  <div><strong>Title:</strong> test/integration: deflake TestDeck against parallel deck restarts</div>
+  <div><strong>Base:</strong> main &middot; <strong>Head SHA:</strong> <code>43e5937599c01c879013cba2064edff47282ffce</code></div>
+  <div><strong>Reviewed:</strong> 2026-08-27T10:31:27Z</div>
+  <div><a href="https://github.com/kubernetes-sigs/prow/pull/878">github.com/kubernetes-sigs/prow/pull/878</a></div>
+</div>
+
+<div class="verdict">
+  <div class="tag">Verdict: Request changes</div>
+  <p>Solid, well-scoped flake fix with a clear root-cause story and one commit per change. Two should-fix issues before merge: the new <code>TestDeck</code> poll doesn't actually bind its HTTP call to the timeout it advertises, and widening <code>refreshProwPods</code>'s lock hold to cover the full readiness wait can now serialize two parallel tests for up to 2 minutes in the worst case &mdash; worth confirming that's truly absorbed rather than just asserted.</p>
+</div>
+
+<h2>What this PR does</h2>
+<ul>
+  <li>Fixes a real intermittent CI flake: <code>TestDeck</code> raced <code>TestRerun</code>'s parallel deck-deployment restart and lost when the ingress was still returning 5xx.</li>
+  <li>Makes <code>TestDeck</code>'s front-page fetch poll for up to 180s (mirroring <code>TestDeckTenantIDs</code>) instead of failing on the first non-200/error.</li>
+  <li>Fixes a nil-pointer deref in <code>TestRerun</code>'s retry helper: a transport-level error left <code>res</code> nil, and <code>res.Body.Close()</code> panicked instead of retrying.</li>
+  <li>Makes <code>refreshProwPods</code> wait (poll up to 2 min) for the old pods to be gone and a replacement to report Ready before returning, instead of returning immediately after issuing deletes.</li>
+  <li>Lowers deck's <code>readinessProbe.timeoutSeconds</code> from 600 to 3 (kubelet runs probes serially per container; a single hung probe could freeze the Ready condition for 10 minutes).</li>
+</ul>
+
+<h2>Findings</h2>
+
+<div class="finding should-fix">
+  <div class="sev">Should fix</div>
+  <h3>TestDeck's poll doesn't bind the underlying HTTP call to the context/deadline</h3>
+  <div class="where"><code>test/integration/test/deck_test.go:227-243</code></div>
+  <p>The scraper passed to <code>wait.PollUntilContextTimeout</code> calls <code>http.Get(url)</code> (no context), instead of <code>http.NewRequestWithContext(ctx, ...)</code> + <code>http.DefaultClient.Do</code>. <code>PollUntilContextTimeout</code> only checks the deadline between condition-function calls, not while one is in flight. If the ingress/deck ever black-holes the connection (a TCP-level hang, as opposed to a quick connection-refused or 5xx), <code>http.Get</code> can block indefinitely and the intended 180s ceiling is not actually enforced &mdash; the test hangs until the outer <code>go test</code> binary timeout kills the whole suite rather than failing this test cleanly.</p>
+  <pre>scraper := func(ctx context.Context) (bool, error) {
+    resp, err := http.Get("http://localhost/deck")
+    ...
+}
+if waitErr := wait.PollUntilContextTimeout(context.Background(), 1*time.Second, 180*time.Second, true, scraper); waitErr != nil {</pre>
+</div>
+
+<div class="finding should-fix">
+  <div class="sev">Should fix</div>
+  <h3>refreshProwPods now holds prowComponentsMux for the entire readiness wait, serializing independent parallel restarts</h3>
+  <div class="where"><code>test/integration/test/setup.go:132-175</code></div>
+  <p>The PR description acknowledges the lock is now held longer ("~10-15s for deck") and calls it absorbed by callers' minute-scale budgets, but the wait is bounded at up to 2 minutes, not 10-15s in the worst case. <code>TestLaunchProwJob</code> and <code>TestRerun</code> both call <code>refreshProwPods</code> and both run via <code>t.Parallel()</code>; with the wider critical section, one test's restart-and-wait can now fully serialize behind the other's for up to 2 minutes in the unhappy path &mdash; a meaningfully different (and untested) failure mode from the previous brief list+delete lock hold.</p>
+  <pre>prowComponentsMux.Lock()
+defer prowComponentsMux.Unlock()
+...
+return wait.PollUntilContextTimeout(ctx, 2*time.Second, 2*time.Minute, true, func(ctx context.Context) (bool, error) {</pre>
+</div>
+
+<h2>Things I checked and was fine with</h2>
+<ul>
+  <li><code>TestRerun</code> nil-deref fix: <code>res</code> is genuinely nil only on transport-level errors (confirmed <code>http.DefaultClient.Do</code> contract), so skipping <code>res.Body.Close()</code> on that branch and retrying instead is correct.</li>
+  <li><code>labels.Parse</code> error handling fix (previously silently discarded via <code>_</code>) is a straightforward correctness improvement, no concerns.</li>
+  <li>Readiness-probe <code>timeoutSeconds</code> change (600 &rarr; 3) matches <code>periodSeconds: 3</code> already in place; deck's <code>/healthz/ready</code> is cheap, flapping risk is low as claimed.</li>
+  <li>The <code>&lt;title&gt;Prow Status&lt;/title&gt;</code> assertion in <code>TestDeck</code> intentionally stays outside the poll loop, so a served-but-wrong page still fails immediately &mdash; correct per the stated intent.</li>
+</ul>
+
+<h2>Open questions for the author</h2>
+<ul>
+  <li>For the <code>refreshProwPods</code> lock-hold widening: was serialization between <code>TestLaunchProwJob</code> and <code>TestRerun</code> (rather than just parallelism within each) actually exercised in a flaky-CI repro, or is the "absorbed by minute-scale budgets" claim untested? Worth confirming the worst case (both tests' deck/horologium restarts landing back-to-back) still fits comfortably under the suite's 10-minute binary timeout mentioned in "known limitations".</li>
+  <li>Any reason not to bind the <code>TestDeck</code> scraper's <code>http.Get</code> to the poll's <code>ctx</code> (via <code>http.NewRequestWithContext</code>) so a network-level hang is actually bounded by the 180s, matching the intent stated in the fatal message?</li>
+</ul>
+
+</body>
+</html>

@@ -1,76 +1,121 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>Review of kubernetes-sigs/prow#902</title>
-<style>
-  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; line-height: 1.6; max-width: 860px; margin: 2rem auto; padding: 0 1rem; color: #1a1a1a; }
-  code, pre { font-family: "SF Mono", Consolas, Monaco, monospace; background: #f4f4f4; padding: 0.1em 0.35em; border-radius: 3px; }
-  pre { padding: 0.75em; overflow-x: auto; }
-  h1, h2, h3 { line-height: 1.3; }
-  header { border-bottom: 1px solid #ddd; padding-bottom: 1rem; margin-bottom: 1.5rem; }
-  .verdict { font-weight: 600; padding: 0.5rem 0.75rem; border-radius: 4px; background: #e6f4ea; color: #1e7b34; display: inline-block; }
-  .meta { color: #666; font-size: 0.9em; }
-  ul { padding-left: 1.4em; }
-  .section { margin-top: 2rem; }
-</style>
-</head>
-<body>
-
-<header>
-<h1>Review of <a href="https://github.com/kubernetes-sigs/prow/pull/902">kubernetes-sigs/prow#902</a></h1>
-<div class="meta">
-  chore(deps): bump github.com/google/ko from 0.18.1 to 0.19.1 in /hack/tools<br>
-  head_sha: <code>00ca0969b4245e14b873439e4c8cb4513542b8cb</code> · base: <code>main</code><br>
-  reviewed_at: 2026-09-01T00:01:19Z
-</div>
-</header>
-
-<div class="section">
-<h2>Verdict</h2>
-<p><span class="verdict">Approve</span></p>
-<p>Dep-only bump of a build-time-only tool (<code>google/ko</code>, used in the separate <code>hack/tools</code> module) to a release that's had two months of soak time, with no CVEs and only minor bug fixes in the changelog. No project code changed.</p>
-</div>
-
-<div class="section">
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#902</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>chore(deps): bump github.com/google/ko from 0.18.1 to 0.19.1 in /hack/tools</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/902">kubernetes-sigs/prow#902</a> · base <code>main</code> · head_sha <code>00ca0969b424</code> · reviewed_at <code>2026-09-01T00:01:19Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span></div>
 <h2>What this PR does</h2>
 <ul>
-<li>Dependabot bump of <code>github.com/google/ko</code> <code>v0.18.1 → v0.19.1</code> in the separate <code>hack/tools</code> go module (build tooling, not the shipped Prow binaries).</li>
-<li>Only <code>hack/tools/go.mod</code> and <code>hack/tools/go.sum</code> change; no project source touched. Dep-only PR.</li>
-<li>Drags a large sweep of transitive/indirect version bumps in <code>ko</code>'s own dependency graph (cosign v2→v3, docker/moby, sigstore family, go-openapi, otel, etc.) — normal <code>go mod tidy</code> churn from the direct bump, nothing independently notable.</li>
-<li><code>ko</code> is used as a blank import in <code>hack/tools/tools.go:43</code> and built as a standalone binary by <code>hack/tools/prowimagebuilder/main.go:74</code> (<code>go build -o _bin/ko github.com/google/ko</code>), used only in the image-build pipeline.</li>
-</ul>
-</div>
-
-<div class="section">
+<li>Dependabot bump of <code>github.com/google/ko</code> <code>v0.18.1 → v0.19.1</code> in the separate <code>hack/tools</code> go module (build tooling, not the shipped Prow binaries).
+</li>
+<li>Only <code>hack/tools/go.mod</code> and <code>hack/tools/go.sum</code> change; no project source touched. Dep-only PR.
+</li>
+<li>Drags a large sweep of transitive/indirect version bumps in <code>ko</code>'s own dependency graph (cosign v2→v3, docker/moby, sigstore family, go-openapi, otel, etc.) — normal <code>go mod tidy</code> churn from the direct bump, nothing independently notable.
+</li>
+<li><code>ko</code> is used as a blank import in <code>hack/tools/tools.go:43</code> and built as a standalone binary by <code>hack/tools/prowimagebuilder/main.go:74</code> (<code>go build -o _bin/ko github.com/google/ko</code>), used only in the image-build pipeline.
+</li></ul>
 <h2>Dependency analysis</h2>
 <ul>
-<li><strong>Freshness</strong>: <code>v0.19.1</code> released 2026-06-29 (proxy.golang.org / GitHub release). ~2 months old at review time — fine, well past soak time.</li>
-<li><strong>Usage</strong>: direct dependency of <code>hack/tools</code> only, a separate go.mod for build tooling. Not linked into any Prow runtime component. Exposure limited to the image-build pipeline (CI/release tooling), not a sensitive runtime path.</li>
-<li><strong>Changelog (v0.18.1 → v0.19.1)</strong>: v0.19.0 added a repeatable <code>--ldflags</code> flag, fixed <code>defaultFlags</code> in <code>.ko.yaml</code> being silently ignored, and fixed missing directory headers in kodata tar archives (some strict tar implementations failed extraction) — plus routine dep bumps. v0.19.1 added one fix: skip YAML encoding when a selector filters out all documents. No CVEs/security advisories in range.</li>
-<li><strong>Exposure verdict</strong>: light. Build-time tool only, no change to how we invoke it.</li>
-<li><strong>Take</strong>: safe to take, already merged with no reported issues.</li>
-</ul>
-</div>
-
-<div class="section">
+<li><strong>Freshness</strong>: <code>v0.19.1</code> released 2026-06-29 (proxy.golang.org / GitHub release). ~2 months old at review time — fine, well past soak time.
+</li>
+<li><strong>Usage</strong>: direct dependency of <code>hack/tools</code> only, a separate go.mod for build tooling. Not linked into any Prow runtime component. Exposure limited to the image-build pipeline (CI/release tooling), not a sensitive runtime path.
+</li>
+<li><strong>Changelog (v0.18.1 → v0.19.1)</strong>: v0.19.0 added a repeatable <code>--ldflags</code> flag, fixed <code>defaultFlags</code> in <code>.ko.yaml</code> being silently ignored, and fixed missing directory headers in kodata tar archives (some strict tar implementations failed extraction) — plus routine dep bumps. v0.19.1 added one fix: skip YAML encoding when a selector filters out all documents. No CVEs/security advisories in range.
+</li>
+<li><strong>Exposure verdict</strong>: light. Build-time tool only, no change to how we invoke it.
+</li>
+<li><strong>Take</strong>: safe to take, already merged with no reported issues.
+</li></ul>
 <h2>Findings</h2>
 <p>None.</p>
-</div>
-
-<div class="section">
-<h2>Things I checked and was fine with</h2>
+<h2>Checked</h2>
 <ul>
-<li>Confirmed no project source files (only <code>hack/tools/go.mod</code>/<code>go.sum</code>) changed between base <code>995ff1ae3</code> and head <code>00ca0969b</code>.</li>
-<li>Confirmed <code>ko</code> import surface: <code>hack/tools/tools.go:43</code> (blank import) and <code>hack/tools/prowimagebuilder/main.go:74</code> (built as <code>_bin/ko</code>).</li>
-<li>Confirmed release age and changelog contents for v0.19.0/v0.19.1 via GitHub releases and commit compare.</li>
-</ul>
-</div>
-
-<div class="section">
-<h2>Open questions for the author</h2>
+<li>Confirmed no project source files (only <code>hack/tools/go.mod</code>/<code>go.sum</code>) changed between base <code>995ff1ae3</code> and head <code>00ca0969b</code>.
+</li>
+<li>Confirmed <code>ko</code> import surface: <code>hack/tools/tools.go:43</code> (blank import) and <code>hack/tools/prowimagebuilder/main.go:74</code> (built as <code>_bin/ko</code>).
+</li>
+<li>Confirmed release age and changelog contents for v0.19.0/v0.19.1 via GitHub releases and commit compare.
+</li></ul>
+<h2>Open questions</h2>
 <p>None.</p>
-</div>
+<h2>Dependency followups</h2>
+<p>Examined at 2026-10-22T16:16:19Z. PR #902 merged at 2026-08-26T06:19:39Z as <code>9a587d94024f159171ab0d71c8482cf2b064bc16</code>. One opportunity accepted; none skipped.</p>
+<h3><span class="tag c-green">accepted</span>Centralize linker flags in prowimagebuilder</h3>
+<ul>
+<li>Category: simplification. Necessity: could — optional maintenance cleanup.
+</li>
+<li>Unlocking dependency: <code>github.com/google/ko</code> <code>v0.18.1 → v0.19.1</code>; repeatable <code>--ldflags</code> added in v0.19.0.
+</li>
+<li>Release note: "Add repeatable --ldflags flag for go build" (<a href="https://github.com/ko-build/ko/releases/tag/v0.19.0">v0.19.0</a>). The <a href="https://github.com/ko-build/ko/pull/1680">implementation and documentation</a> establish that CLI linker flags override the complete YAML linker configuration.
+</li>
+<li>Where: <code>.ko.yaml:55</code> (35 repetitive build entries), <code>hack/tools/prowimagebuilder/main.go:247</code> (per-image publish arguments), and <code>hack/tools/prowimagebuilder/main_test.go:416</code> (mocked ko command capture).
+</li>
+<li>Benefit: derive the component name from the already-known image directory and define common linker flags once instead of maintaining a separate build entry for each component.
+</li>
+<li>Tradeoff accepted: removing those YAML entries changes direct ko invocations; the followup must document explicit linker flags for users who need the current embedded metadata.
+</li>
+<li>Decision: accepted by the user in this session. Mode: deliver. Implementation is delegated by the following prompt; no implementation performed here.
+<pre><code>In kubernetes-sigs/prow, now that merged PR #902 — &quot;chore(deps): bump github.com/google/ko from 0.18.1 to 0.19.1 in /hack/tools&quot; — upgraded github.com/google/ko v0.18.1 → v0.19.1, simplify the image builder&#x27;s linker configuration. Work from the current default branch containing merge commit 9a587d94024f159171ab0d71c8482cf2b064bc16.
 
-</body>
-</html>
+ko v0.19.0 added a repeatable --ldflags option. Its documentation states: &quot;When set, --ldflags takes precedence over ldflags in .ko.yaml&quot; (https://github.com/ko-build/ko/pull/1680). The current .ko.yaml:55 builds section has 35 entries repeating -s -w, -X sigs.k8s.io/prow/pkg/version.Version={{.Env.VERSION}}, and -X sigs.k8s.io/prow/pkg/version.Name=&lt;component&gt;. Every configured component name equals the basename of its main path. hack/tools/prowimagebuilder/main.go:247 constructs one ko publish command per image and can derive that name from imageDef.Dir.
+
+Task: construct the complete repeated --ldflags arguments in prowimagebuilder&#x27;s buildAndPush path, deriving the name from the image directory and preserving the existing VERSION value. ko&#x27;s CLI flags replace all configured ldflags, so supply stripping, version, and name together. Remove the redundant per-image builds entries from .ko.yaml while retaining all baseImageOverrides. Update the existing command assertions in hack/tools/prowimagebuilder/main_test.go and document the supported build entry point plus the explicit flags needed by direct ko invocations to retain version/name metadata. Avoid global environment mutation per image because image builds run concurrently.
+
+Acceptance criteria:
+- Each of the 35 previously configured components receives the same stripping options and embedded Version/Name values as before, including external plugins and builds for multiple platforms.
+- The 35 duplicate build entries are removed, base image selection is preserved, and registry, tag, platform, tarball, and push behavior is preserved.
+- Explicitly account for cmd/webhook-server, which is in .prow-images.yaml but currently has no builds entry; document any resulting change in stripping or metadata rather than assuming it previously had those flags.
+- Existing mocked command assertions cover the complete linker arguments for representative regular and external-plugin images. Run the focused image-builder tests using the repository&#x27;s supported tooling.
+- Build documentation explains the effect on direct ko users and shows how to retain their metadata without the removed YAML entries.
+
+Scope: limit changes to linker flag construction, removal of duplicate YAML build entries, focused existing tests, and relevant build documentation. Do not bump dependencies, change base images or publishing policy, or refactor unrelated image-building logic. Do not publish changes without an explicit request.</code></pre>
+</li></ul>
+<h3>Scope and evidence</h3>
+<ul>
+<li>The local HEAD contains a saved-review commit on top of the PR head. <code>git merge-base HEAD upstream/main</code> equals the already-merged PR head, so the dependency inventory uses GitHub's recorded PR base <code>995ff1ae3758f326568553c5f1684e11b460c241</code> and head <code>00ca0969b4245e14b873439e4c8cb4513542b8cb</code>, avoiding an empty post-merge comparison.
+</li>
+<li>Reviewed the complete ko v0.18.1 → v0.19.1 commit comparison and both intermediate release notes (v0.19.0 and v0.19.1). Prow already uses YAML linker flags; the new CLI option is actionable because its image builder already knows the component path.
+</li>
+<li>The defaultFlags fix changes build flags, not linker flags, and <code>.ko.yaml</code> has no defaultFlags to migrate. Prow invokes <code>ko publish</code>, so the YAML-selector fix does not expose a relevant call site. There are no tracked symlinks or production GOFLAGS/toolexec overrides indicating a regression from the kodata boundary or GOFLAGS changes; Deck stages kodata with rsync in <code>cmd/deck/gather-static.sh:34</code>.
+</li>
+<li>Cross-referenced every changed manifest/checksum module against non-vendor Go imports. The only affected-module import in the tools module is the ko tracking import (<code>hack/tools/tools.go:43</code>); its binary is built at <code>hack/tools/prowimagebuilder/main.go:74</code>. Other changed transitive modules have no owned call sites under the bumped module.
+</li>
+<li>Matching imports outside hack/tools belong to the unchanged root module: fsnotify, googleapis/api annotations, google.golang.org/api, the parent genproto module, client-go, and go-test/deep. Root versions remain independently pinned (for example fsnotify v1.10.1, google.golang.org/api v0.293.0, client-go v0.36.4). Their tools-module changes do not unlock root-code API migrations. Pure transitive changes were screened for applicability rather than treated as independently reviewed changelogs.
+</li>
+<li>No additional dependency followups identified. No tests or image builds were run for this handoff-only task.
+</li></ul>
+<h3>Dependency inventory</h3>
+<p>Go tools module: 49 manifest changes (38 version changes, 5 additions, 6 removals), plus 43 checksum-only changes. The Go directive changes <code>1.26.0 → 1.26.3</code>. Additions/removals include module-path migrations such as cosign v2 → v3 and Docker → Moby.</p>
+<p>| Module | Old | New | Role in hack/tools | |---|---|---|---| | <code>github.com/aws/aws-sdk-go-v2/service/ecr</code> | <code>v1.54.4</code> | <code>v1.56.0</code> | indirect | | <code>github.com/aws/aws-sdk-go-v2/service/ecrpublic</code> | <code>v1.38.8</code> | <code>v1.38.11</code> | indirect | | <code>github.com/awslabs/amazon-ecr-credential-helper/ecr-login</code> | <code>v0.11.0</code> | <code>v0.12.0</code> | indirect | | <code>github.com/containerd/stargz-snapshotter/estargz</code> | <code>v0.18.1</code> | <code>—</code> | indirect | | <code>github.com/coreos/go-oidc/v3</code> | <code>v3.17.0</code> | <code>v3.18.0</code> | indirect | | <code>github.com/docker/cli</code> | <code>v29.2.0+incompatible</code> | <code>v29.5.3+incompatible</code> | indirect | | <code>github.com/docker/distribution</code> | <code>v2.8.3+incompatible</code> | <code>—</code> | indirect | | <code>github.com/docker/docker</code> | <code>v28.5.2+incompatible</code> | <code>—</code> | indirect | | <code>github.com/docker/docker-credential-helpers</code> | <code>v0.9.4</code> | <code>v0.9.5</code> | indirect | | <code>github.com/docker/go-connections</code> | <code>v0.6.0</code> | <code>v0.7.0</code> | indirect | | <code>github.com/dprotaso/go-yit</code> | <code>v0.0.0-20250513223454-5ece0c5aa76c</code> | <code>v0.0.0-20260209000607-dfb86291624d</code> | indirect | | <code>github.com/fsnotify/fsnotify</code> | <code>v1.10.0</code> | <code>v1.10.1</code> | indirect | | <code>github.com/go-openapi/analysis</code> | <code>v0.25.0</code> | <code>v0.25.2</code> | indirect | | <code>github.com/go-openapi/jsonreference</code> | <code>v0.21.5</code> | <code>v0.21.6</code> | indirect | | <code>github.com/go-openapi/runtime</code> | <code>v0.31.0</code> | <code>v0.32.3</code> | indirect | | <code>github.com/go-openapi/spec</code> | <code>v0.22.4</code> | <code>v0.22.5</code> | indirect | | <code>github.com/go-openapi/strfmt</code> | <code>v0.26.2</code> | <code>v0.26.3</code> | indirect | | <code>github.com/go-openapi/swag/conv</code> | <code>v0.26.0</code> | <code>v0.26.1</code> | indirect | | <code>github.com/go-openapi/swag/typeutils</code> | <code>v0.26.0</code> | <code>v0.26.1</code> | indirect | | <code>github.com/go-openapi/validate</code> | <code>v0.25.2</code> | <code>v0.25.3</code> | indirect | | <code>github.com/google/certificate-transparency-go</code> | <code>v1.3.2</code> | <code>v1.3.3</code> | indirect | | <code>github.com/google/go-containerregistry</code> | <code>v0.20.7</code> | <code>v0.21.7</code> | indirect | | <code>github.com/google/ko</code> | <code>v0.18.1</code> | <code>v0.19.1</code> | direct | | <code>github.com/grpc-ecosystem/grpc-gateway/v2</code> | <code>v2.27.7</code> | <code>v2.29.0</code> | indirect | | <code>github.com/in-toto/attestation</code> | <code>v1.1.2</code> | <code>v1.2.0</code> | indirect | | <code>github.com/moby/moby/api</code> | <code>—</code> | <code>v1.55.0</code> | indirect | | <code>github.com/moby/moby/client</code> | <code>—</code> | <code>v0.5.0</code> | indirect | | <code>github.com/secure-systems-lab/go-securesystemslib</code> | <code>v0.10.0</code> | <code>v0.11.0</code> | indirect | | <code>github.com/sigstore/cosign/v2</code> | <code>v2.6.2</code> | <code>—</code> | indirect | | <code>github.com/sigstore/cosign/v3</code> | <code>—</code> | <code>v3.1.1</code> | indirect | | <code>github.com/sigstore/protobuf-specs</code> | <code>v0.5.0</code> | <code>v0.5.1</code> | indirect | | <code>github.com/sigstore/rekor</code> | <code>v1.5.0</code> | <code>v1.5.2</code> | indirect | | <code>github.com/sigstore/rekor-tiles/v2</code> | <code>v2.0.1</code> | <code>v2.2.2-0.20260601073857-5d098a2b6443</code> | indirect | | <code>github.com/sigstore/sigstore</code> | <code>v1.10.6</code> | <code>v1.10.8</code> | indirect | | <code>github.com/sigstore/sigstore-go</code> | <code>v1.1.4</code> | <code>v1.2.0</code> | indirect | | <code>github.com/sigstore/timestamp-authority/v2</code> | <code>v2.1.0</code> | <code>v2.1.2</code> | indirect | | <code>github.com/theupdateframework/go-tuf/v2</code> | <code>v2.4.1</code> | <code>v2.4.2</code> | indirect | | <code>github.com/transparency-dev/formats</code> | <code>v0.0.0-20251208091212-1378f9e1b1b7</code> | <code>v0.1.1</code> | indirect | | <code>github.com/vbatts/tar-split</code> | <code>v0.12.2</code> | <code>—</code> | indirect | | <code>github.com/youmark/pkcs8</code> | <code>—</code> | <code>v0.0.0-20240726163527-a2c0da244d78</code> | indirect | | <code>go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp</code> | <code>v0.67.0</code> | <code>v0.68.0</code> | indirect | | <code>go.opentelemetry.io/otel</code> | <code>v1.43.0</code> | <code>v1.44.0</code> | indirect | | <code>go.opentelemetry.io/otel/metric</code> | <code>v1.43.0</code> | <code>v1.44.0</code> | indirect | | <code>go.opentelemetry.io/otel/trace</code> | <code>v1.43.0</code> | <code>v1.44.0</code> | indirect | | <code>go.uber.org/automaxprocs</code> | <code>v1.6.0</code> | <code>—</code> | indirect | | <code>go.yaml.in/yaml/v4</code> | <code>—</code> | <code>v4.0.0-rc.6</code> | indirect | | <code>google.golang.org/genproto/googleapis/api</code> | <code>v0.0.0-20260414002931-afd174a4e478</code> | <code>v0.0.0-20260526163538-3dc84a4a5aaa</code> | indirect | | <code>google.golang.org/genproto/googleapis/rpc</code> | <code>v0.0.0-20260427160629-7cedc36a6bc4</code> | <code>v0.0.0-20260523011958-0a33c5d7ca68</code> | indirect | | <code>sigs.k8s.io/kind</code> | <code>v0.30.0</code> | <code>v0.32.0</code> | indirect |</p>
+<p>Checksum-only entries below are a checksum inventory, not evidence of the selected build-list version.</p>
+<p>| Module | Old checksum versions | New checksum versions | |---|---|---| | <code>cloud.google.com/go/iam</code> | <code>v1.7.0</code> | <code>v1.11.0</code> | | <code>cloud.google.com/go/longrunning</code> | <code>v0.9.0</code> | <code>v1.0.0</code> | | <code>filippo.io/mldsa</code> | <code>—</code> | <code>v0.0.0-20260215214346-43d0283efc3e</code> | | <code>github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azkeys</code> | <code>v1.4.0</code> | <code>v1.5.0</code> | | <code>github.com/AzureAD/microsoft-authentication-library-for-go</code> | <code>v1.6.0</code> | <code>v1.7.2</code> | | <code>github.com/aws/aws-sdk-go</code> | <code>v1.55.8</code> | <code>—</code> | | <code>github.com/aws/aws-sdk-go-v2/service/kms</code> | <code>v1.51.1</code> | <code>v1.52.0</code> | | <code>github.com/containerd/log</code> | <code>v0.1.0</code> | <code>—</code> | | <code>github.com/creack/pty</code> | <code>v1.1.18</code> | <code>v1.1.24</code> | | <code>github.com/go-chi/chi</code> | <code>v4.1.2+incompatible</code> | <code>—</code> | | <code>github.com/go-chi/chi/v5</code> | <code>v5.2.5</code> | <code>v5.3.0</code> | | <code>github.com/go-openapi/testify/enable/yaml/v2</code> | <code>v2.5.0</code> | <code>v2.5.1</code> | | <code>github.com/go-openapi/testify/v2</code> | <code>v2.5.0</code> | <code>v2.5.1</code> | | <code>github.com/go-sql-driver/mysql</code> | <code>v1.9.3</code> | <code>—</code> | | <code>github.com/go-test/deep</code> | <code>—</code> | <code>v1.1.1</code> | | <code>github.com/google/pprof</code> | <code>v0.0.0-20260115054156-294ebfa9ad83</code> | <code>v0.0.0-20260402051712-545e8a4df936</code> | | <code>github.com/google/trillian</code> | <code>v1.7.2</code> | <code>v1.7.3</code> | | <code>github.com/googleapis/enterprise-certificate-proxy</code> | <code>v0.3.15</code> | <code>v0.3.16</code> | | <code>github.com/jackc/pgpassfile</code> | <code>v1.0.0</code> | <code>—</code> | | <code>github.com/jackc/pgservicefile</code> | <code>v0.0.0-20240606120523-5a60cdf6a761</code> | <code>—</code> | | <code>github.com/jackc/pgx/v5</code> | <code>v5.7.5</code> | <code>—</code> | | <code>github.com/jackc/puddle/v2</code> | <code>v2.2.2</code> | <code>—</code> | | <code>github.com/jmespath/go-jmespath</code> | <code>v0.4.1-0.20220621161143-b0104c826a24</code> | <code>—</code> | | <code>github.com/letsencrypt/boulder</code> | <code>v0.20260223.0</code> | <code>v0.20260309.0</code> | | <code>github.com/moby/sys/atomicwriter</code> | <code>v0.1.0</code> | <code>—</code> | | <code>github.com/moby/sys/sequential</code> | <code>v0.6.0</code> | <code>—</code> | | <code>github.com/morikuni/aec</code> | <code>v1.0.0</code> | <code>—</code> | | <code>github.com/prashantv/gostub</code> | <code>v1.1.0</code> | <code>—</code> | | <code>github.com/sergi/go-diff</code> | <code>v1.3.1</code> | <code>v1.4.0</code> | | <code>github.com/sigstore/sigstore/pkg/signature/kms/aws</code> | <code>v1.10.6</code> | <code>v1.10.8</code> | | <code>github.com/sigstore/sigstore/pkg/signature/kms/azure</code> | <code>v1.10.6</code> | <code>v1.10.8</code> | | <code>github.com/sigstore/sigstore/pkg/signature/kms/gcp</code> | <code>v1.10.6</code> | <code>v1.10.8</code> | | <code>github.com/sigstore/sigstore/pkg/signature/kms/hashivault</code> | <code>v1.10.6</code> | <code>v1.10.8</code> | | <code>github.com/tink-crypto/tink-go-awskms/v2</code> | <code>v2.1.0</code> | <code>—</code> | | <code>go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc</code> | <code>v0.67.0</code> | <code>v0.68.0</code> | | <code>go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp</code> | <code>v1.33.0</code> | <code>—</code> | | <code>go.opentelemetry.io/otel/sdk</code> | <code>v1.43.0</code> | <code>v1.44.0</code> | | <code>go.opentelemetry.io/otel/sdk/metric</code> | <code>v1.43.0</code> | <code>v1.44.0</code> | | <code>go.step.sm/crypto</code> | <code>v0.81.0</code> | <code>v0.77.7</code> | | <code>google.golang.org/api</code> | <code>v0.277.0</code> | <code>v0.283.0</code> | | <code>google.golang.org/genproto</code> | <code>v0.0.0-20260319201613-d00831a3d3e7</code> | <code>v0.0.0-20260406210006-6f92a3bedf2d</code> | | <code>k8s.io/client-go</code> | <code>v0.36.0</code> | <code>v0.36.1</code> | | <code>pgregory.net/rapid</code> | <code>—</code> | <code>v1.2.0</code> |</p>
+</main></body></html>

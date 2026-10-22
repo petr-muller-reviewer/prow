@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#1023</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>ghcache: key coalesced requests by URL and Accept header</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1023">kubernetes-sigs/prow#1023</a> · base <code>main</code> · head_sha <code>b2578bcd0ce3</code> · reviewed_at <code>2026-10-19T11:06:15Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span></div>
+<h2>Verdict</h2>
+<p>Approve.</p>
+<p>The implementation separates concurrent GET responses by URL and all <code>Accept</code> values, addressing issue #1020's representation mix-up. Code Quality and Maintainability both recommend approval; maintenance burden and deployment risk are low, with no actionable findings. The regression test explicitly overlaps requests and verifies their response bodies, and the targeted tests passed. A normal rolling deployment needs no configuration changes or migration; distinct representations now make separate upstream requests, so slightly lower coalescing is expected.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Adds the full <code>Accept</code> value list to the request coalescing key.
+</li>
+<li>Covers overlapping same-URL requests for JSON, diff, and patch representations.
+</li>
+<li>Updates ghcache documentation to describe the new coalescing condition.
+</li></ul>
+<h2>Findings</h2>
+<p>No actionable findings.</p>
+<h2>Checked</h2>
+<ul>
+<li>Compared the change with issue #1020; the implementation and test cover the requested behavior without unrelated scope.
+</li>
+<li>The request key includes every <code>Accept</code> field value, not only the first, while coalescing remains limited to GET requests.
+</li>
+<li>Reviewed the complete diff, the surrounding coalescer logic, cache construction, and GitHub client Accept header handling; no concrete regression was identified.
+</li>
+<li>Code Quality: the key includes every Accept value, and the test verifies overlapping upstream requests and each caller's response body. No improvements or critical issues identified.
+</li>
+<li>Maintainability: the change is proportional to the bug, preserves existing interfaces and synchronization, and explains the revised behavior in comments and documentation. No concerns or suggestions identified.
+</li>
+<li>Deployment Risk: configuration, persistent cache format, authorization partitions, throttling, and request cleanup remain compatible. No migration or deployment ordering requirements; older replicas retain the original bug until replaced.
+</li>
+<li>Passed <code>go test ./pkg/ghcache -run &#x27;^(TestRoundTripDifferentAccept|TestRoundTrip|TestCacheModeHeader)$&#x27; -count=1</code>.
+</li></ul>
+<h2>Open questions</h2>
+<p>None.</p>
+</main></body></html>

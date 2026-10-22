@@ -105,9 +105,10 @@ abortActiveJob(oc, log, org, repo, number, pre.Name)</code></pre>
 <li>Given the duplication with <code>pkg/plugins/trigger/pull-request.go</code>'s <code>abortAllJobs</code>/<code>labelSelectorForPR</code>, would extracting a shared helper be worth doing now rather than after a second consumer appears?
 </li></ul>
 <h2>Followups</h2>
-<p>Accepted: 4 (2 deliver, 2 probe). Skipped: 0.</p>
+<p>Accepted: 4 (2 deliver, 2 probe; retained from the previous walkthrough). Skipped: 1.</p>
 <p>Context: PR #908 merged on 2026-08-31 at <code>5765df26189ddc41cb9c975e89d613f6c26282ef</code>. The override files at that merge match reviewed head <code>a3936e14f4cde303f9d6faea039c6345097a3c2b</code>. No deferred implementation requests were found in the PR discussion. Followup agents must work on the current default branch and check whether later changes have already addressed each task.</p>
 <p>Validation note: the saved Checks-API blocker above is not substantiated by the inspected reporting path. <code>pkg/github/report/report.go:86</code> posts commit statuses, not check runs, and <code>pkg/tide/tide.go:2266</code> prefers successful duplicate check runs. The branch's missing abort call is real, but the asserted crier check-run overwrite is not established. Followup 1 validates this before proposing a behavior change; the historical finding and frontmatter are preserved.</p>
+<p>Revisited at 2026-10-22T16:14:28Z: the four accepted handoffs below remain applicable to the inspected PR head. No deferred implementation requests or added TODOs were found in the PR discussion/diff. Skipped the additional documentation candidate: explain active Prow job abortion, reporting suppression, and cancellation without automatic restart in <code>site/content/en/docs/jobs.md</code> and override command help. This inspection does not establish whether later changes on the default branch have addressed the handoffs; each prompt retains that prerequisite.</p>
 <h3>1. Validate the saved Checks-API finding</h3>
 <ul>
 <li>Category: tests

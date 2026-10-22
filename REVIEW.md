@@ -69,11 +69,13 @@ verdict: request-changes
 
 ## Followups
 
-Accepted: 4 (2 deliver, 2 probe). Skipped: 0.
+Accepted: 4 (2 deliver, 2 probe; retained from the previous walkthrough). Skipped: 1.
 
 Context: PR #908 merged on 2026-08-31 at `5765df26189ddc41cb9c975e89d613f6c26282ef`. The override files at that merge match reviewed head `a3936e14f4cde303f9d6faea039c6345097a3c2b`. No deferred implementation requests were found in the PR discussion. Followup agents must work on the current default branch and check whether later changes have already addressed each task.
 
 Validation note: the saved Checks-API blocker above is not substantiated by the inspected reporting path. `pkg/github/report/report.go:86` posts commit statuses, not check runs, and `pkg/tide/tide.go:2266` prefers successful duplicate check runs. The branch's missing abort call is real, but the asserted crier check-run overwrite is not established. Followup 1 validates this before proposing a behavior change; the historical finding and frontmatter are preserved.
+
+Revisited at 2026-10-22T16:14:28Z: the four accepted handoffs below remain applicable to the inspected PR head. No deferred implementation requests or added TODOs were found in the PR discussion/diff. Skipped the additional documentation candidate: explain active Prow job abortion, reporting suppression, and cancellation without automatic restart in `site/content/en/docs/jobs.md` and override command help. This inspection does not establish whether later changes on the default branch have addressed the handoffs; each prompt retains that prerequisite.
 
 ### 1. Validate the saved Checks-API finding
 

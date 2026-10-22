@@ -47,3 +47,11 @@ None.
 ## Open questions
 
 None.
+
+## Dependency followups
+
+Examined 2026-10-22 for PR #901, merged 2026-08-26 as `8f2ff6ae2c6e13a980e8c8ef354a0ff0399e7577`. No actionable opportunities identified; no candidates or handoff prompts.
+
+- **`google.golang.org/api` v0.287.1 → v0.293.0 (direct):** Reviewed all six intermediate release entries in the [tagged changelog](https://github.com/googleapis/google-api-go-client/blob/v0.293.0/CHANGES.md). They announce “Auto-regenerate discovery clients” and the v0.291.0 transport fix, “Use ds.GetUniverseDomain() instead of raw ds.UniverseDomain field.” Prow imports only `option`, `googleapi`, and `iterator`; relevant uses include `option.WithAuthCredentials` (`pkg/io/credentials.go:39`), `googleapi.DefaultUploadChunkSize` (`pkg/io/option.go:63`), `iterator.NewPager` (`pkg/googlecloudbuild/client/client.go:138`), and `iterator.Done` (`pkg/io/iterator.go:58`, `cmd/webhook-server/secretmanager/secretmanager.go:140`). These releases offer no new replacement or deprecation affecting those calls. No explicit universe-domain configuration or transport workaround was found to adjust.
+- **`github.com/googleapis/enterprise-certificate-proxy` v0.3.17 → v0.3.20 (indirect):** The [13-commit range](https://github.com/googleapis/enterprise-certificate-proxy/compare/v0.3.17...v0.3.20) includes fixes for OpenSSL keychain import, mTLS hostname routing, PKCS11 serialization, and internal logging changes. Prow has no imports or configuration references to this module, so there is no concrete adoption or migration target in our code.
+- **`google.golang.org/genproto/googleapis/rpc` v0.0.0-20260630182238-925bb5da69e7 → v0.0.0-20260807164820-c8921c73eeea (indirect):** Examined the [upstream range](https://github.com/googleapis/go-genproto/compare/925bb5da69e7...c8921c73eeea) and compared both module archives from `proxy.golang.org`: all nine module files are byte-for-byte identical. Prow also has no direct imports of this module; this bump unlocks no API changes to adopt.

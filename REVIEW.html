@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#1016</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>chore(deps): bump the golang-x group across 1 directory with 2 updates</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1016">kubernetes-sigs/prow#1016</a> · base <code>main</code> · head_sha <code>c56126d16698</code> · reviewed_at <code>2026-10-22T01:02:38Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span></div>
+<h2>Verdict</h2>
+<p>Approve. This is a dep-only bump to the current latest tagged <code>golang.org/x/net v0.61.0</code> and <code>golang.org/x/text v0.43.0</code>, both released on 2026-10-09. The <code>x/net</code> update fixes five known HTTP/2 advisories that are reachable in the current build, while the <code>x/text</code> update is a small, unrelated performance fix with no advisory exposure.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Bumps <code>golang.org/x/net</code> from <code>v0.59.0</code> to <code>v0.61.0</code> in the root and <code>hack/tools</code> modules.
+</li>
+<li>Bumps <code>golang.org/x/text</code> from <code>v0.42.0</code> to <code>v0.43.0</code> in the root and <code>hack/tools</code> modules.
+</li>
+<li>Moves the required companion versions of <code>golang.org/x/crypto</code>, <code>golang.org/x/sys</code>, <code>golang.org/x/term</code>, and <code>golang.org/x/tools</code> forward as demanded by <code>x/net v0.61.0</code>.
+</li>
+<li>Changes only <code>go.mod</code>, <code>go.sum</code>, <code>hack/tools/go.mod</code>, and <code>hack/tools/go.sum</code>; no project source is touched.
+</li></ul>
+<h2>Findings</h2>
+<p>None.</p>
+<h2>Checked</h2>
+<ul>
+<li><strong>Classification:</strong> dep-only. Every changed file is a Go module manifest or lockfile.
+</li>
+<li><strong>Freshness:</strong> <code>x/net v0.61.0</code> and <code>x/text v0.43.0</code> are the latest tags on the Go module proxy, both tagged 2026-10-09; they are 13 days old as of this review.
+</li>
+<li><strong><code>golang.org/x/net</code> usage:</strong> Direct in the root module. Our own imports are <code>pkg/githuboauth/githuboauth.go:33</code> (<code>xsrftoken</code>) and <code>pkg/spyglass/lenses/html/html.go:27</code> (<code>html</code>). The upstream changes are concentrated in <code>http2</code> and <code>internal/http3</code>, not in those directly imported subpackages.
+</li>
+<li><strong><code>golang.org/x/net</code> vulnerabilities:</strong> <code>v0.59.0</code> is affected by five HTTP/2 advisories—CVE-2026-78659, CVE-2026-78660, CVE-2026-78669, CVE-2026-78663, and CVE-2026-97032—all fixed in <code>v0.60.0</code> and therefore included in <code>v0.61.0</code>. At the merge base, <code>govulncheck</code> found reachable traces from <code>pkg/spyglass/lenses/buildlog/lens.go:310</code>, <code>pkg/spyglass/lenses/common/common.go:320</code>, <code>pkg/spyglass/lenses/fake/fake.go:65</code>, and <code>pkg/spyglass/lenses/links/links.go:176</code>; at head, those findings are gone.
+</li>
+<li><strong><code>golang.org/x/text</code> usage:</strong> Direct in the root module, imported only in <code>pkg/plugins/golint/suggestion/golint_suggestion.go:26</code> and <code>pkg/spyglass/lenses/links/links.go:31</code> for <code>cases</code> and <code>language</code>. No OSV advisories affect either version. The changes fix quadratic behavior in <code>unicode/bidi</code> and make <code>secure/bidirule</code> lazy; neither affects the subpackages we import.
+</li>
+<li><strong>Companion dependencies:</strong> <code>x/crypto</code>, <code>x/sys</code>, <code>x/term</code>, and <code>x/tools</code> move only as far as <code>x/net v0.61.0</code> requires. <code>x/crypto</code> still carries the pre-existing <code>GO-2026-5932</code> advisory for the unmaintained <code>openpgp</code> package, but it is imported-only and its reachability is unchanged.
+</li>
+<li><strong>Validation:</strong> <code>go mod tidy</code> is clean in both the root and <code>hack/tools</code> modules. Targeted tests pass for <code>pkg/githuboauth</code>, <code>pkg/spyglass/lenses/html</code>, <code>pkg/spyglass/lenses/links</code>, and <code>pkg/plugins/golint/suggestion</code>.
+</li></ul>
+<h2>Open questions</h2>
+<p>None.</p>
+<h2>Dependency followups</h2>
+<p>No opportunities were identified.</p>
+<p>Modules and ranges examined:</p>
+<ul>
+<li><code>golang.org/x/net v0.59.0 → v0.61.0</code>
+</li>
+<li><code>golang.org/x/text v0.42.0 → v0.43.0</code>
+</li>
+<li><code>golang.org/x/crypto v0.57.0 → v0.58.0</code>
+</li>
+<li><code>golang.org/x/sys v0.48.0 → v0.49.0</code>
+</li>
+<li><code>golang.org/x/term v0.46.0 → v0.47.0</code>
+</li>
+<li><code>golang.org/x/tools v0.49.0 → v0.51.0</code>
+</li></ul>
+<p>Reason: the changelogs are confined to HTTP/2, HTTP/3, QUIC, bidi handling, or tooling packages that this repository does not call directly, and no new API or deprecation affects the subpackages we actually import.</p>
+</main></body></html>

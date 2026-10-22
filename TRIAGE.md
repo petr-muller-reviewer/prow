@@ -4,8 +4,12 @@ title: "Enhancement: Allow combining `run_if_changed` and `skip_if_only_changed`
 state: open
 labels: kind/feature, area/plugins
 main_sha: e601a1ffafd7d8d3a781238a4c5f4233d6248f68
-triaged_at: 2026-07-27T00:20:48Z
+triaged_at: 2026-10-22T13:12:13Z
 verdict: wontfix
+refresh_log:
+  - at: 2026-10-22T13:11:44Z
+    since: 2026-07-27T00:20:48Z
+    summary: "k8s-triage-robot marked the issue stale on 2026-10-22; kaovilai removed the stale label shortly afterward; no substantive discussion or PR references were added."
 ---
 
 ## Verdict
@@ -20,6 +24,10 @@ Close as wontfix. The proposal is well-formed and in-scope, but two maintainers 
 - Follow-up discussion established Go's RE2 engine has no lookahead/lookbehind, so a single-regex "match X except under dir Y" is awkward — directory enumeration is the only single-regex workaround.
 - Two maintainers rejected the proposal on risk grounds rather than technical infeasibility.
 
+Since previous triage:
+- `k8s-triage-robot` marked the issue stale on 2026-10-22 at 00:09:29Z; `kaovilai` removed the stale lifecycle marker at 02:14:06Z.
+- The issue remains open with labels `kind/feature` and `area/plugins`; no new technical comments or linked PR references appeared.
+
 ## Analysis
 
 ### Probable outcome / maintainer position
@@ -28,7 +36,7 @@ Close as wontfix. The proposal is well-formed and in-scope, but two maintainers 
 
 `BenTheElder` (2025-10-07), independently: agrees combination would make the feature "even more of a footgun"; `skip_if_only_changed` alone is the safer, easier-to-audit primitive, and `run_if_changed` is already prone to misuse (e.g. missing `go.sum`/`go.work`/`Makefile` as inputs) without adding combinatorial surface.
 
-No comment since 2025-10-07 has addressed this objection; the thread since is only `k8s-triage-robot` stale/unstale cycling (3 rounds, most recently unstaled 2026-07-06).
+No comment since 2025-10-07 has addressed this objection; the thread since is only `k8s-triage-robot` stale/unstale cycling (four rounds, most recently unstaled by `kaovilai` on 2026-10-22).
 
 ### Related code
 
@@ -132,6 +140,7 @@ Mechanically small (Level 1-2: ~3-5 files, straightforward struct/logic split, b
 
 - Confirmed `validateTriggering` and `RegexpChangeMatcher` in current `pkg/config` match what the issue describes, at HEAD `e601a1ff`.
 - Read full comment thread (13 comments): maintainer objections, author's real-world use case (`konflux/` exclusion), RE2 lookahead/lookbehind limitation discussion, repeated stale-bot cycling.
+- Refreshed issue activity through 2026-10-22: one stale-bot comment and `kaovilai`'s `/remove-lifecycle stale`; no new timeline cross-references. Current state and labels match the triage baseline.
 - Searched for a linked/implementing PR — none exists.
 - Checked `Brancher.ShouldRun` as a structural precedent for combined allow/deny matching.
 

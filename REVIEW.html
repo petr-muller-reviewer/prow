@@ -1,74 +1,131 @@
 <!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Review of kubernetes-sigs/prow#900</title>
-  <style>
-    :root { color-scheme: light dark; }
-    body { font-family: system-ui, sans-serif; line-height: 1.55; margin: 0; padding: 2rem; }
-    main { max-width: 860px; margin: 0 auto; }
-    header { border-bottom: 1px solid #8886; margin-bottom: 2rem; padding-bottom: 1rem; }
-    h1, h2, h3 { line-height: 1.2; }
-    h2 { margin-top: 2rem; }
-    code, pre { font-family: ui-monospace, monospace; }
-    .metadata { display: grid; grid-template-columns: max-content 1fr; gap: .25rem 1rem; }
-    .approve { border-left: .3rem solid #2a7; padding-left: 1rem; }
-    .empty { color: #666; font-style: italic; }
-  </style>
-</head>
-<body>
-<main>
-  <header>
-    <h1>Review of <a href="https://github.com/kubernetes-sigs/prow/pull/900">kubernetes-sigs/prow#900</a></h1>
-    <div class="metadata">
-      <strong>Title</strong><span>chore(deps): bump github.com/GoogleCloudPlatform/testgrid from 0.0.123 to 0.0.176</span>
-      <strong>Head</strong><code>6913b7d77120370d6757e7f0e5ea77b7d7891a76</code>
-      <strong>Base</strong><code>main</code>
-      <strong>Reviewed</strong><time datetime="2026-09-01T00:50:49Z">2026-09-01T00:50:49Z</time>
-    </div>
-  </header>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#900</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>chore(deps): bump github.com/GoogleCloudPlatform/testgrid from 0.0.123 to 0.0.176</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/900">kubernetes-sigs/prow#900</a> · base <code>main</code> · head_sha <code>6913b7d77120</code> · reviewed_at <code>2026-09-01T00:50:49Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span></div>
+<h2>Verdict</h2>
+<p>Approve. This dependency-only update is adequately soaked, remains API-compatible with Prow's usage, and passed the repository's unit, integration, image-build, lint, and race-detector checks.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Updates the direct <code>github.com/GoogleCloudPlatform/testgrid</code> dependency from <code>v0.0.123</code> to <code>v0.0.176</code>.
+</li>
+<li>Updates indirect dependencies <code>bitbucket.org/creachadair/stringset</code> from <code>v0.0.9</code> to <code>v0.0.11</code> and <code>github.com/fvbommel/sortorder</code> from <code>v1.0.1</code> to <code>v1.1.0</code>.
+</li>
+<li>Removes obsolete <code>go.sum</code> entries produced by dependency resolution.
+</li>
+<li>Changes no Prow source code.
+</li></ul>
+<h2>Findings</h2>
+<p>No findings.</p>
+<h2>Checked</h2>
+<ul>
+<li><code>v0.0.176</code> is a tagged release from 2026-08-10, giving it 22 days of soak time at review.
+</li>
+<li>Testgrid is a direct dependency imported by 20 Prow files across 11 packages; 14 imports are in production files.
+</li>
+<li>Prow exercises Testgrid metadata models, JUnit parsing, configuration protobufs, and GCS utilities in artifact upload, reporting, Deck, and Spyglass paths.
+</li>
+<li>The 889-commit upstream range primarily adds configuration and ResultStore capabilities, extends JUnit metadata parsing, and updates GCS/config internals; the APIs Prow exercises remain compatible.
+</li>
+<li>The configuration protobuf changes are additive for Prow's usage.
+</li>
+<li>Prow does not directly import either updated indirect dependency.
+</li>
+<li>GitHub CI passed unit, integration, image-build, lint, and nonblocking race-detector jobs for head <code>6913b7d77120370d6757e7f0e5ea77b7d7891a76</code>.
+</li></ul>
+<h2>Open questions</h2>
+<p>None.</p>
+<h2>Dependency followups</h2>
+<p>Examined at: 2026-10-22T16:15:39Z. Accepted: 2. Skipped: 0. Both items are Mode: deliver.</p>
+<p>PR #900 was merged on 2026-08-26 at <code>1078c911f25784c44cd6b200706af4e7794eebe2</code>. Execute these followups from the merged default branch (<code>main</code>), rechecking the current implementation before changing it.</p>
+<h3>Ranges and exposure examined</h3>
+<ul>
+<li>Direct: <code>github.com/GoogleCloudPlatform/testgrid v0.0.123 → v0.0.176</code>. Examined all 53 intermediate release notes, the 889-commit comparison, and source changes against Prow's metadata, JUnit, configuration, GCS-path, and ResultStore usage. The original PR parent <code>2677f075a487a800c949d06e24305b1d7301c456</code> identifies the manifest diff; the merge-base with current <code>upstream/main</code> already includes this merged PR.
+</li>
+<li>Indirect: <code>bitbucket.org/creachadair/stringset v0.0.9 → v0.0.11</code>. Compared the versioned source and module metadata. Prow has no imports; Testgrid's bump removes a dependency on the unavailable <code>github.com/creachadair/staticfile</code> repository. No Prow migration identified.
+</li>
+<li>Indirect: <code>github.com/fvbommel/sortorder v1.0.1 → v1.1.0</code>. Compared the versioned source and README. The new capability is case-insensitive natural ordering in <code>casefolded</code>; Prow has no imports, and its Testgrid GCS-path usage does not call the sorting API. No Prow migration identified.
+</li>
+<li>Testgrid's other changes chiefly affect its updater, tabulator, API, and frontend. No new deprecation affecting a Prow call site or regression introduced by this bump was identified. <code>metadata.Finished.DeprecatedRevision</code> was already deprecated before this range.
+</li>
+<li>Sources: <a href="https://github.com/GoogleCloudPlatform/testgrid/compare/v0.0.123...v0.0.176">complete Testgrid comparison</a>, <a href="https://github.com/GoogleCloudPlatform/testgrid/releases/tag/v0.0.166">v0.0.166 release</a>, <a href="https://github.com/GoogleCloudPlatform/testgrid/commit/c268e49dbcf42b840a1483478d5193806b63e8c3">JUnit metadata change c268e49</a>, <a href="https://github.com/GoogleCloudPlatform/testgrid/commit/1efa84c2d2">stringset dependency rationale</a>.
+</li></ul>
+<h3>1. Classify status-only skipped JUnit tests correctly</h3>
+<ul>
+<li>Decision: accepted.
+</li>
+<li>Category: api-upgrade.
+</li>
+<li>Necessity: should — a supported upstream fixture with <code>status=&quot;skipped&quot;</code> and no <code>&lt;skipped&gt;</code> element is currently displayed as passed. This behavior predates the bump; it is not a regression introduced by PR #900.
+</li>
+<li>Unlocked by: <code>github.com/GoogleCloudPlatform/testgrid v0.0.123 → v0.0.176</code>; <code>Result.Status</code> was added in v0.0.166.
+</li>
+<li>Changelog: “Update junit.go to allow more data to be extracted.” Commit <code>c268e49</code> adds the status attribute and a status-only skipped fixture.
+</li>
+<li>Where: <code>pkg/spyglass/lenses/junit/lens.go:218</code> (<code>JunitResult.Status</code>), <code>classifyTests</code>, and <code>pkg/spyglass/lenses/junit/lens_test.go</code>.
+<pre><code>Mode: deliver
 
-  <section class="approve">
-    <h2>Verdict: Approve</h2>
-    <p>This dependency-only update is adequately soaked, remains API-compatible with Prow's usage, and passed the repository's unit, integration, image-build, lint, and race-detector checks.</p>
-  </section>
+In kubernetes-sigs/prow, PR #900 — &quot;chore(deps): bump github.com/GoogleCloudPlatform/testgrid from 0.0.123 to 0.0.176&quot; — bumped github.com/GoogleCloudPlatform/testgrid v0.0.123 → v0.0.176 and merged at 1078c911f25784c44cd6b200706af4e7794eebe2. Work from the merged default branch, main, and first check whether this followup has already been addressed.
 
-  <section>
-    <h2>What this PR does</h2>
-    <ul>
-      <li>Updates the direct <code>github.com/GoogleCloudPlatform/testgrid</code> dependency from <code>v0.0.123</code> to <code>v0.0.176</code>.</li>
-      <li>Updates indirect dependencies <code>bitbucket.org/creachadair/stringset</code> from <code>v0.0.9</code> to <code>v0.0.11</code> and <code>github.com/fvbommel/sortorder</code> from <code>v1.0.1</code> to <code>v1.1.0</code>.</li>
-      <li>Removes obsolete <code>go.sum</code> entries produced by dependency resolution.</li>
-      <li>Changes no Prow source code.</li>
-    </ul>
-  </section>
+Use the newly available junit.Result.Status in pkg/spyglass/lenses/junit/lens.go to classify &lt;testcase status=&quot;skipped&quot;&gt; as skipped when it has no explicit outcome element. Testgrid v0.0.166&#x27;s changelog says &quot;Update junit.go to allow more data to be extracted&quot;; commit c268e49dbcf42b840a1483478d5193806b63e8c3 adds Result.Status and a fixture for exactly this input. JunitResult.Status currently examines only Skipped, Failure, and Errored, so it classifies that input as passed. Access the embedded field as jr.Result.Status because jr.Status is the wrapper method.
 
-  <section>
-    <h2>Findings</h2>
-    <h3>Blocking</h3><p class="empty">None.</p>
-    <h3>Should fix</h3><p class="empty">None.</p>
-    <h3>Nits</h3><p class="empty">None.</p>
-    <h3>Questions</h3><p class="empty">None.</p>
-  </section>
+Acceptance: honor the exact &quot;skipped&quot; attribute only when Skipped, Failure, and Errored are all absent; preserve existing explicit-element precedence and missing/unknown-attribute behavior. Add focused tests in pkg/spyglass/lenses/junit/lens_test.go for parsing through junit.Parse, default and configured-group counts, conflicting explicit elements, and repeated runs, preserving current rerun classification rules. Run go test ./pkg/spyglass/lenses/junit.
 
-  <section>
-    <h2>Things I checked and was fine with</h2>
-    <ul>
-      <li><code>v0.0.176</code> is a tagged release from 2026-08-10, giving it 22 days of soak time at review.</li>
-      <li>Testgrid is a direct dependency imported by 20 Prow files across 11 packages; 14 imports are in production files.</li>
-      <li>Prow exercises Testgrid metadata models, JUnit parsing, configuration protobufs, and GCS utilities in artifact upload, reporting, Deck, and Spyglass paths.</li>
-      <li>The 889-commit upstream range primarily adds configuration and ResultStore capabilities, extends JUnit metadata parsing, and updates GCS/config internals; the APIs Prow exercises remain compatible.</li>
-      <li>The configuration protobuf changes are additive for Prow's usage.</li>
-      <li>Prow does not directly import either updated indirect dependency.</li>
-      <li>GitHub CI passed unit, integration, image-build, lint, and nonblocking race-detector jobs for head <code>6913b7d77120370d6757e7f0e5ea77b7d7891a76</code>.</li>
-    </ul>
-  </section>
+Scope: change only this classification behavior and its tests; do not add speculative mappings for other status strings, change the Testgrid dependency, or redesign grouping or rendering.</code></pre>
+</li></ul>
+<h3>2. Let JUnit groups use suite-level properties</h3>
+<ul>
+<li>Decision: accepted.
+</li>
+<li>Category: new-feature.
+</li>
+<li>Necessity: could — enables existing grouping to use metadata emitted once on a suite rather than requiring each testcase to repeat it.
+</li>
+<li>Unlocked by: <code>github.com/GoogleCloudPlatform/testgrid v0.0.123 → v0.0.176</code>; <code>Suite.Properties</code> was added in v0.0.166.
+</li>
+<li>Changelog: “Update junit.go to allow more data to be extracted.” The upstream commit explains: “Properties is available for testsuite, not for result in all prow jobs I checked.”
+</li>
+<li>Where: <code>pkg/spyglass/lenses/junit/lens.go:158</code> (<code>selectorPredicate.matches</code>), <code>lens.go:393</code> (recursive suite traversal), <code>GroupConfig</code>, <code>lens_test.go</code>, and <code>site/content/en/docs/spyglass/lenses/junit.md</code>.
+<pre><code>Mode: deliver
 
-  <section>
-    <h2>Open questions for the author</h2>
-    <p class="empty">None.</p>
-  </section>
-</main>
-</body>
-</html>
+In kubernetes-sigs/prow, PR #900 — &quot;chore(deps): bump github.com/GoogleCloudPlatform/testgrid from 0.0.123 to 0.0.176&quot; — bumped github.com/GoogleCloudPlatform/testgrid v0.0.123 → v0.0.176 and merged at 1078c911f25784c44cd6b200706af4e7794eebe2. Work from the merged default branch, main, and first check whether this followup has already been addressed.
+
+Add an opt-in way for JUnit lens groups to include enclosing suite properties. Testgrid v0.0.166 adds junit.Suite.Properties in commit c268e49dbcf42b840a1483478d5193806b63e8c3 (&quot;Update junit.go to allow more data to be extracted&quot;). Its rationale says: &quot;Properties is available for testsuite, not for result in all prow jobs I checked.&quot; In pkg/spyglass/lenses/junit/lens.go, getJvd recursively visits suites but retains only junit.Result data; selectorPredicate.matches reads only Result.Properties.
+
+Expose an optional include_suite_properties boolean on each GroupConfig, defaulting to false. For an opted-in group, match against effective properties inherited through enclosing suites: testcase values override suite values with the same name, and nearer suites override ancestors. Preserve testcase-only behavior for other groups. Keep inherited metadata separate from the original parsed testcase properties so one group&#x27;s option cannot affect another group.
+
+Acceptance: existing configurations retain their behavior; opted-in groups match suite-only properties, including nested suites, with the documented precedence and existing first-matching-group order. Add tests in pkg/spyglass/lenses/junit/lens_test.go for absent properties, conflicts, sibling isolation, mixed opted-in and ordinary groups, repeated tests, and group counts. Document the option and a suite-property XML example in site/content/en/docs/spyglass/lenses/junit.md. Run go test ./pkg/spyglass/lenses/junit.
+
+Scope: limit changes to optional property inheritance for grouping, documentation, and focused tests; preserve selector syntax, status classification, deduplication rules, and unconfigured rendering.</code></pre>
+</li></ul>
+</main></body></html>

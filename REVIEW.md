@@ -35,3 +35,61 @@ No findings.
 ## Open questions
 
 None.
+
+## Dependency followups
+
+Examined at: 2026-10-22T16:15:39Z. Accepted: 2. Skipped: 0. Both items are Mode: deliver.
+
+PR #900 was merged on 2026-08-26 at `1078c911f25784c44cd6b200706af4e7794eebe2`. Execute these followups from the merged default branch (`main`), rechecking the current implementation before changing it.
+
+### Ranges and exposure examined
+
+- Direct: `github.com/GoogleCloudPlatform/testgrid v0.0.123 → v0.0.176`. Examined all 53 intermediate release notes, the 889-commit comparison, and source changes against Prow's metadata, JUnit, configuration, GCS-path, and ResultStore usage. The original PR parent `2677f075a487a800c949d06e24305b1d7301c456` identifies the manifest diff; the merge-base with current `upstream/main` already includes this merged PR.
+- Indirect: `bitbucket.org/creachadair/stringset v0.0.9 → v0.0.11`. Compared the versioned source and module metadata. Prow has no imports; Testgrid's bump removes a dependency on the unavailable `github.com/creachadair/staticfile` repository. No Prow migration identified.
+- Indirect: `github.com/fvbommel/sortorder v1.0.1 → v1.1.0`. Compared the versioned source and README. The new capability is case-insensitive natural ordering in `casefolded`; Prow has no imports, and its Testgrid GCS-path usage does not call the sorting API. No Prow migration identified.
+- Testgrid's other changes chiefly affect its updater, tabulator, API, and frontend. No new deprecation affecting a Prow call site or regression introduced by this bump was identified. `metadata.Finished.DeprecatedRevision` was already deprecated before this range.
+- Sources: [complete Testgrid comparison](https://github.com/GoogleCloudPlatform/testgrid/compare/v0.0.123...v0.0.176), [v0.0.166 release](https://github.com/GoogleCloudPlatform/testgrid/releases/tag/v0.0.166), [JUnit metadata change c268e49](https://github.com/GoogleCloudPlatform/testgrid/commit/c268e49dbcf42b840a1483478d5193806b63e8c3), [stringset dependency rationale](https://github.com/GoogleCloudPlatform/testgrid/commit/1efa84c2d2).
+
+### 1. Classify status-only skipped JUnit tests correctly
+
+- Decision: accepted.
+- Category: api-upgrade.
+- Necessity: should — a supported upstream fixture with `status="skipped"` and no `<skipped>` element is currently displayed as passed. This behavior predates the bump; it is not a regression introduced by PR #900.
+- Unlocked by: `github.com/GoogleCloudPlatform/testgrid v0.0.123 → v0.0.176`; `Result.Status` was added in v0.0.166.
+- Changelog: “Update junit.go to allow more data to be extracted.” Commit `c268e49` adds the status attribute and a status-only skipped fixture.
+- Where: `pkg/spyglass/lenses/junit/lens.go:218` (`JunitResult.Status`), `classifyTests`, and `pkg/spyglass/lenses/junit/lens_test.go`.
+
+```text
+Mode: deliver
+
+In kubernetes-sigs/prow, PR #900 — "chore(deps): bump github.com/GoogleCloudPlatform/testgrid from 0.0.123 to 0.0.176" — bumped github.com/GoogleCloudPlatform/testgrid v0.0.123 → v0.0.176 and merged at 1078c911f25784c44cd6b200706af4e7794eebe2. Work from the merged default branch, main, and first check whether this followup has already been addressed.
+
+Use the newly available junit.Result.Status in pkg/spyglass/lenses/junit/lens.go to classify <testcase status="skipped"> as skipped when it has no explicit outcome element. Testgrid v0.0.166's changelog says "Update junit.go to allow more data to be extracted"; commit c268e49dbcf42b840a1483478d5193806b63e8c3 adds Result.Status and a fixture for exactly this input. JunitResult.Status currently examines only Skipped, Failure, and Errored, so it classifies that input as passed. Access the embedded field as jr.Result.Status because jr.Status is the wrapper method.
+
+Acceptance: honor the exact "skipped" attribute only when Skipped, Failure, and Errored are all absent; preserve existing explicit-element precedence and missing/unknown-attribute behavior. Add focused tests in pkg/spyglass/lenses/junit/lens_test.go for parsing through junit.Parse, default and configured-group counts, conflicting explicit elements, and repeated runs, preserving current rerun classification rules. Run go test ./pkg/spyglass/lenses/junit.
+
+Scope: change only this classification behavior and its tests; do not add speculative mappings for other status strings, change the Testgrid dependency, or redesign grouping or rendering.
+```
+
+### 2. Let JUnit groups use suite-level properties
+
+- Decision: accepted.
+- Category: new-feature.
+- Necessity: could — enables existing grouping to use metadata emitted once on a suite rather than requiring each testcase to repeat it.
+- Unlocked by: `github.com/GoogleCloudPlatform/testgrid v0.0.123 → v0.0.176`; `Suite.Properties` was added in v0.0.166.
+- Changelog: “Update junit.go to allow more data to be extracted.” The upstream commit explains: “Properties is available for testsuite, not for result in all prow jobs I checked.”
+- Where: `pkg/spyglass/lenses/junit/lens.go:158` (`selectorPredicate.matches`), `lens.go:393` (recursive suite traversal), `GroupConfig`, `lens_test.go`, and `site/content/en/docs/spyglass/lenses/junit.md`.
+
+```text
+Mode: deliver
+
+In kubernetes-sigs/prow, PR #900 — "chore(deps): bump github.com/GoogleCloudPlatform/testgrid from 0.0.123 to 0.0.176" — bumped github.com/GoogleCloudPlatform/testgrid v0.0.123 → v0.0.176 and merged at 1078c911f25784c44cd6b200706af4e7794eebe2. Work from the merged default branch, main, and first check whether this followup has already been addressed.
+
+Add an opt-in way for JUnit lens groups to include enclosing suite properties. Testgrid v0.0.166 adds junit.Suite.Properties in commit c268e49dbcf42b840a1483478d5193806b63e8c3 ("Update junit.go to allow more data to be extracted"). Its rationale says: "Properties is available for testsuite, not for result in all prow jobs I checked." In pkg/spyglass/lenses/junit/lens.go, getJvd recursively visits suites but retains only junit.Result data; selectorPredicate.matches reads only Result.Properties.
+
+Expose an optional include_suite_properties boolean on each GroupConfig, defaulting to false. For an opted-in group, match against effective properties inherited through enclosing suites: testcase values override suite values with the same name, and nearer suites override ancestors. Preserve testcase-only behavior for other groups. Keep inherited metadata separate from the original parsed testcase properties so one group's option cannot affect another group.
+
+Acceptance: existing configurations retain their behavior; opted-in groups match suite-only properties, including nested suites, with the documented precedence and existing first-matching-group order. Add tests in pkg/spyglass/lenses/junit/lens_test.go for absent properties, conflicts, sibling isolation, mixed opted-in and ordinary groups, repeated tests, and group counts. Document the option and a suite-property XML example in site/content/en/docs/spyglass/lenses/junit.md. Run go test ./pkg/spyglass/lenses/junit.
+
+Scope: limit changes to optional property inheritance for grouping, documentation, and focused tests; preserve selector syntax, status classification, deduplication rules, and unconfigured rendering.
+```

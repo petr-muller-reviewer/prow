@@ -76,3 +76,47 @@ Approve with suggestions. The three maintainer perspectives found no blocking co
 None.
 
 Standards: 0 findings; Spec: 0 findings. Maintainer perspectives: 2 nonblocking test suggestions, 0 blocking concerns.
+
+## Followups
+
+### Cover disabling `delete_branch_on_merge`
+
+- Category: tests
+- Mode: probe
+- Where: `cmd/peribolos/main_test.go:4861`
+
+```text
+In kubernetes-sigs/prow, following PR #1024 — “peribolos: support delete_branch_on_merge repo setting” at head 3ad2362395c5d629b9880194d4ffe6df7e3428f5, add a focused regression test in cmd/peribolos/main_test.go.
+
+Extend TestNewRepoUpdateRequest with a case where current.DeleteBranchOnMerge is true and newState.DeleteBranchOnMerge is false. Assert that newRepoUpdateRequest returns a RepoUpdateRequest whose RepoRequest.DeleteBranchOnMerge points to false.
+
+Run go test ./cmd/peribolos -run TestNewRepoUpdateRequest. Do not change production behavior or unrelated tests.
+```
+
+### Exercise the GitHub request-model boundary
+
+- Category: tests
+- Mode: probe
+- Where: `pkg/github/types.go:438`
+
+```text
+In kubernetes-sigs/prow, following PR #1024 — “peribolos: support delete_branch_on_merge repo setting” at head 3ad2362395c5d629b9880194d4ffe6df7e3428f5, add focused pkg/github tests for the new repository request field.
+
+Cover RepoRequest.ToRepo preserving DeleteBranchOnMerge for true and false pointers, RepoRequest.Defined returning true when only DeleteBranchOnMerge is set, and JSON serialization of create/update requests including delete_branch_on_merge while omitting it when nil.
+
+Run go test ./pkg/github. Do not change production behavior or unrelated tests.
+```
+
+### Document Peribolos repository settings
+
+- Category: docs
+- Mode: deliver
+- Where: `site/content/en/docs/components/cli-tools/peribolos.md:18`
+
+```text
+In kubernetes-sigs/prow, following PR #1024 — “peribolos: support delete_branch_on_merge repo setting” at head 3ad2362395c5d629b9880194d4ffe6df7e3428f5, document the new repository setting in site/content/en/docs/components/cli-tools/peribolos.md.
+
+Add a concise repository-settings example under the org configuration documentation showing a repo with delete_branch_on_merge: true. Explain that omitted repo fields are not managed, while explicitly setting delete_branch_on_merge: false disables automatic head-branch deletion. Match the existing documentation tone and do not attempt to exhaustively document every repository field.
+
+No production code changes are expected.
+```

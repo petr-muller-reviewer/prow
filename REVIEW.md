@@ -11,7 +11,7 @@ refresh_log:
     summary: "No code changes; recorded Prucek's approval and the approval notifier comment."
 gate:
   decision: hold
-  gated_at: 2026-10-19T12:49:05Z
+  gated_at: 2026-10-22T00:12:40Z
   gated_head_sha: 08363f55b0395c6a04f19069b7ad638947915a9a
   reviewed_head_sha: 08363f55b0395c6a04f19069b7ad638947915a9a
 ---
@@ -21,7 +21,7 @@ gate:
 
 **Verdict: HOLD**
 
-The existing-cluster migration remains a should-fix finding. The PR description gives users the teardown and custom-config steps, but the durable setup guide does not; setup reuses clusters with the stale mapping. Hold until the guide documents the one-time migration, or the maintainer explicitly accepts this documentation gap.
+The existing-cluster migration remains a should-fix finding. The PR head has not changed since the review, the PR description gives users the teardown and custom-config steps, but the durable setup guide does not; setup reuses clusters with the stale mapping. Hold until the guide documents the one-time migration, or the maintainer explicitly accepts this documentation gap.
 
 ### Gating list
 
@@ -67,3 +67,22 @@ Since previous review:
 ## Open questions
 
 None.
+
+## Followups
+
+### Detect stale Kind port mappings
+
+- category: reliability
+- where: `test/integration/setup-kind-cluster.sh:120`
+- necessity: should — turn a confusing post-migration Gangway failure into actionable setup guidance.
+- mode: deliver
+
+```text
+In kubernetes-sigs/prow, following PR #1022 — “integration: move gangway's NodePort into the static band” at head 08363f55b0395c6a04f19069b7ad638947915a9a, harden the existing-cluster path in test/integration/setup-kind-cluster.sh.
+
+Task: before reusing the integration Kind cluster, verify that its control-plane container maps container port 30000/tcp to host port 32000. If that mapping is absent or still maps 32000/tcp to host port 32000, fail before installing Prow components with a clear remediation message: run ./test/integration/teardown.sh -kind-cluster, update custom Kind configs from containerPort 32000 to 30000 while retaining hostPort 32000, then rerun setup-kind-cluster.sh.
+
+Acceptance criteria: setup proceeds unchanged for a cluster created with the new mapping; setup exits nonzero before component installation for a stale mapping and prints the remediation steps; custom Kind configs are not silently modified or torn down. Run bash syntax checking and the narrowest available shell/static check; run the integration suite only if needed to validate the changed path.
+
+Scope guard: do not change Gangway’s NodePort or host-port values, automatically recreate the cluster, alter unrelated setup behavior, or expand this into broader Kind migration tooling.
+```

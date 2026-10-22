@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Review: kubernetes-sigs/prow#896</title>
+  <style>
+    body { color: #1f2937; background: #fff; font: 16px/1.6 system-ui, -apple-system, sans-serif; margin: 0; }
+    main { max-width: 880px; margin: 3rem auto; padding: 0 1.5rem; }
+    h1, h2 { line-height: 1.25; color: #111827; }
+    .meta { color: #4b5563; }
+    .verdict { border-left: 4px solid #16803c; background: #f0fdf4; padding: 1rem 1.25rem; }
+    code { background: #f3f4f6; border-radius: .25rem; padding: .1rem .25rem; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Review: <a href="https://github.com/kubernetes-sigs/prow/pull/896">kubernetes-sigs/prow#896</a></h1>
+      <p class="meta">chore(deps): bump github.com/clarketm/json from 1.13.4 to 1.17.1<br>
+      Head: <code>6098ff515ed14120f0c0613762b0a9b1578c37e3</code> · Base: <code>main</code> · Reviewed: 2026-09-01T09:34:11Z</p>
+    </header>
+
+    <section>
+      <h2>Verdict: approve</h2>
+      <div class="verdict">Approve. This is a direct but narrowly used JSON encoder bump; the upstream changes are well-soaked and the only affected package tests successfully.</div>
+    </section>
+
+    <section>
+      <h2>What this PR does</h2>
+      <ul>
+        <li>Updates <code>github.com/clarketm/json</code> from <code>v1.13.4</code> to <code>v1.17.1</code> in <code>go.mod</code> and <code>go.sum</code>.</li>
+        <li>Retains the existing direct dependency used by <code>pkg/genyaml</code>.</li>
+        <li>Picks up JSON decoder nesting-depth protection, encoder cycle detection, and encoding fixes.</li>
+        <li>Adds zero-value struct <code>omitempty</code> behavior used by this project's custom JSON fork.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Findings</h2>
+      <h3>Blocking</h3><p>None.</p>
+      <h3>Should fix</h3><p>None.</p>
+      <h3>Nits</h3><p>None.</p>
+      <h3>Questions</h3><p>None.</p>
+    </section>
+
+    <section>
+      <h2>Things I checked and were fine with</h2>
+      <ul>
+        <li>Dependency-only diff: <code>go.mod</code> and <code>go.sum</code>; no project source changes.</li>
+        <li><code>v1.17.1</code> is a non-pseudo tagged version released 2021-09-14, with ample soak time.</li>
+        <li>Direct import surface is one package: <code>pkg/genyaml</code>; <code>marshal</code> uses <code>json.Marshal</code> at <code>pkg/genyaml/genyaml.go:164</code>, and diagnostics use <code>json.MarshalIndent</code> at <code>pkg/genyaml/genyaml.go:460</code>.</li>
+        <li>Upstream range contains decoder nesting-depth protection, cycle detection, corrected encoding behavior, and zero-value struct <code>omitempty</code> support; no published repository advisory was returned.</li>
+        <li><code>go test ./pkg/genyaml</code> passed.</li>
+        <li>PR CI checks passed before merge.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Open questions for the author</h2>
+      <p>None.</p>
+    </section>
+  </main>
+</body>
+</html>

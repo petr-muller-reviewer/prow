@@ -34,3 +34,14 @@ No findings.
 ## Open questions
 
 None.
+
+## Dependency followups
+
+No concrete followup opportunities identified for PR #896, merged as `2677f075a487a800c949d06e24305b1d7301c456`.
+
+- Examined Go module `github.com/clarketm/json` (direct), `v1.13.4` → `v1.17.1`. The manifest and checksum diff changes no other module versions, so there are no transitive bumps to investigate.
+- Reviewed all 27 commits in the [upstream version range](https://github.com/clarketm/json/compare/v1.13.4...v1.17.1), including intermediate changes and their reverts, plus the [v1.17.1 feature documentation](https://github.com/clarketm/json/blob/v1.17.1/README.md). No GitHub release notes or separate changelog were available.
+- Cross-referenced the only project import, `pkg/genyaml/genyaml.go:82`, and its two calls: `json.Marshal` at line 166 and `json.MarshalIndent` at line 460. Cycle detection and encoding corrections take effect through those existing calls without a migration. Decoder changes do not apply: `jsonToYaml` deliberately uses YAML decoding to preserve numeric types (`pkg/genyaml/genyaml.go:183`). The proposed `errors.Is` APIs were reverted within the range.
+- The new feature, “Support zero values of structs with omitempty,” does not replace `PopulateStruct`: that helper deliberately creates nonempty examples so fields remain visible in generated documentation (`pkg/genyaml/populate_struct.go:57-71`). Removing its placeholder strings or recursive population would undermine that purpose. No deprecated calls, replacement APIs, or concrete redundant workaround were identified.
+
+No items or handoff prompts recorded. This was changelog and source inspection; no tests were run for this followup pass.

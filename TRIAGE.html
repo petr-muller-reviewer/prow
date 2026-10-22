@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Triage: kubernetes-sigs/prow#502</title>
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+    color: #1a1a1a;
+    background: #fff;
+    margin: 0;
+    padding: 2.5rem 1.5rem;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; }
+  code, pre {
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 0.9em;
+  }
+  pre {
+    background: #f6f8fa;
+    border: 1px solid #e1e4e8;
+    border-radius: 6px;
+    padding: 1rem;
+    overflow-x: auto;
+    line-height: 1.45;
+  }
+  code {
+    background: #f0f0f0;
+    padding: 0.15em 0.35em;
+    border-radius: 4px;
+  }
+  pre code { background: none; padding: 0; }
+  h1 { font-size: 1.5rem; margin-bottom: 0.25rem; }
+  h2 {
+    font-size: 1.15rem;
+    margin-top: 2.2rem;
+    border-bottom: 1px solid #e1e4e8;
+    padding-bottom: 0.3rem;
+  }
+  h3 { font-size: 1rem; margin-top: 1.4rem; }
+  .meta {
+    background: #f6f8fa;
+    border: 1px solid #e1e4e8;
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    margin: 1rem 0 2rem;
+    font-size: 0.92rem;
+  }
+  .meta dl { display: grid; grid-template-columns: max-content 1fr; gap: 0.3rem 1rem; margin: 0; }
+  .meta dt { color: #57606a; font-weight: 600; }
+  .meta dd { margin: 0; }
+  .verdict-box {
+    border-left: 4px solid #9a6700;
+    background: #fff8e6;
+    padding: 1rem 1.25rem;
+    border-radius: 0 6px 6px 0;
+    margin: 1rem 0 2rem;
+  }
+  .verdict-box .label {
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+    letter-spacing: 0.03em;
+    color: #9a6700;
+  }
+  .finding {
+    border: 1px solid #e1e4e8;
+    border-radius: 8px;
+    padding: 0.9rem 1.1rem;
+    margin: 0.9rem 0;
+  }
+  .finding .tag {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding: 0.15em 0.5em;
+    border-radius: 4px;
+    background: #ddf4ff;
+    color: #0969da;
+    margin-bottom: 0.4rem;
+  }
+  .finding .tag.cause { background: #ffebe9; color: #cf222e; }
+  .finding .tag.related-issue { background: #fbefff; color: #8250df; }
+  ul { padding-left: 1.4rem; }
+  a { color: #0969da; }
+  .quote-author { font-weight: 600; }
+  .comment-date { color: #57606a; font-size: 0.88em; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Triage: kubernetes-sigs/prow#502</h1>
+<p><a href="https://github.com/kubernetes-sigs/prow/issues/502" target="_blank">Enhancement: Allow combining <code>run_if_changed</code> and <code>skip_if_only_changed</code> for more flexible job triggering</a></p>
+
+<div class="meta">
+<dl>
+  <dt>Issue</dt><dd>kubernetes-sigs/prow#502</dd>
+  <dt>State</dt><dd>open</dd>
+  <dt>Labels</dt><dd>kind/feature, area/plugins</dd>
+  <dt>Main SHA</dt><dd><code>e601a1ffafd7d8d3a781238a4c5f4233d6248f68</code></dd>
+  <dt>Triaged at</dt><dd>2026-07-27T00:20:48Z</dd>
+  <dt>Verdict</dt><dd>wontfix</dd>
+</dl>
+</div>
+
+<div class="verdict-box">
+<div class="label">Verdict: wontfix</div>
+<p>Close as wontfix. The proposal is well-formed and in-scope, but two maintainers (<span class="quote-author">petr-muller</span>, <span class="quote-author">BenTheElder</span>) already gave substantive, unrebutted technical objections in-thread: combining the two fields reintroduces a &ldquo;silent job never triggers&rdquo; footgun that the current mutual-exclusivity check exists to prevent, and the same outcome is generally achievable today with <code>skip_if_only_changed</code> alone. No new argument has appeared since 2025-10-07; the issue has only been kept alive by stale-bot cycling.</p>
+</div>
+
+<h2>What the issue reports</h2>
+<ul>
+  <li><code>run_if_changed</code> and <code>skip_if_only_changed</code> are mutually exclusive on a job, enforced by <code>validateTriggering</code> in <code>pkg/config/config.go</code>.</li>
+  <li>Author wants to combine both with AND semantics: run if <code>run_if_changed</code> matches something, unless everything also falls under <code>skip_if_only_changed</code>.</li>
+  <li>Motivating case: matching broad file types (<code>*.yaml</code>, <code>*.go</code>, etc.) via <code>run_if_changed</code> while excluding a specific directory (<code>konflux/</code>) that also contains those file types.</li>
+  <li>Follow-up discussion established Go's RE2 engine has no lookahead/lookbehind, so a single-regex &ldquo;match X except under dir Y&rdquo; is awkward &mdash; directory enumeration is the only single-regex workaround.</li>
+  <li>Two maintainers rejected the proposal on risk grounds rather than technical infeasibility.</li>
+</ul>
+
+<h2>Analysis</h2>
+
+<h3>Maintainer position</h3>
+<p><span class="quote-author">petr-muller</span> <span class="comment-date">(2025-08-05)</span>: the example given is already achievable with <code>run_if_changed</code> alone; the only real use case (using <code>skip_if_only_changed</code> to carve an exception out of <code>run_if_changed</code>) is a footgun, since a misconfiguration between the two fields could silently make a job never trigger &mdash; exactly what the current check prevents.</p>
+<p><span class="quote-author">BenTheElder</span> <span class="comment-date">(2025-10-07)</span>, independently: agrees combination would make the feature &ldquo;even more of a footgun&rdquo;; <code>skip_if_only_changed</code> alone is the safer, easier-to-audit primitive, and <code>run_if_changed</code> is already prone to misuse (e.g. missing <code>go.sum</code>/<code>go.work</code>/<code>Makefile</code> as inputs) without adding combinatorial surface.</p>
+<p>No comment since 2025-10-07 has addressed this objection; the thread since is only <code>k8s-triage-robot</code> stale/unstale cycling (3 rounds, most recently unstaled 2026-07-06).</p>
+
+<h3>Related code</h3>
+
+<p><code>pkg/config/config.go:3121-3131</code> &mdash; the exact check the issue asks to remove:</p>
+<pre><code>func validateTriggering(job Presubmit) error {
+	...
+	if job.RunIfChanged != "" &amp;&amp; job.SkipIfOnlyChanged != "" {
+		return fmt.Errorf("job %s declares run_if_changed and skip_if_only_changed, which are mutually exclusive", job.Name)
+	}
+	...
+}</code></pre>
+
+<p><code>pkg/config/jobs.go:374-386</code> &mdash; <code>RegexpChangeMatcher</code> struct holds a single compiled regex <code>reChanges</code>, populated from whichever of <code>RunIfChanged</code>/<code>SkipIfOnlyChanged</code> is set (<code>setChangeRegexes</code>, <code>pkg/config/config.go:3312-3327</code>). Supporting combination would require splitting this into two fields.</p>
+
+<p><code>pkg/config/jobs.go:461-472</code> &mdash; <code>RunsAgainstChanges</code>, the OR-style matcher that would need to become an AND across two separate regexes:</p>
+<pre><code>func (cm RegexpChangeMatcher) RunsAgainstChanges(changes []string) bool {
+	for _, change := range changes {
+		if cm.RunIfChanged != "" &amp;&amp; cm.reChanges.MatchString(change) {
+			return true
+		} else if cm.SkipIfOnlyChanged != "" &amp;&amp; !cm.reChanges.MatchString(change) {
+			return true
+		}
+	}
+	return false
+}</code></pre>
+
+<p><code>pkg/config/jobs.go:401-415</code> &mdash; <code>Brancher.ShouldRun</code>, a structurally similar allow/deny pair (<code>Branches</code>/<code>SkipBranches</code>) that <em>does</em> combine, with <code>SkipBranches</code> given precedence over <code>Branches</code>. Internal precedent for a combined mechanism, though its semantics (precedence override) differ from the issue's proposed AND-combination:</p>
+<pre><code>func (br Brancher) ShouldRun(branch string) bool {
+	if br.RunsAgainstAllBranch() { return true }
+	if len(br.SkipBranches) != 0 &amp;&amp; br.reSkip.MatchString(branch) { return false }
+	if len(br.Branches) == 0 || br.re.MatchString(branch) { return true }
+	return false
+}</code></pre>
+
+<h3>Effort if ever reconsidered</h3>
+<p>Mechanically small (Level 1-2: ~3-5 files, straightforward struct/logic split, backward compatible, existing test patterns in <code>pkg/config/jobs_test.go</code> / <code>pkg/config/config_test.go</code> to extend). The blocker is not implementation difficulty &mdash; it's that the design itself was already rejected by two maintainers on risk grounds. A PR implementing this would need to overturn that recorded position to be mergeable.</p>
+
+<h3>Related issues / PRs</h3>
+<ul>
+  <li><a href="https://github.com/kubernetes-sigs/prow/issues/151" target="_blank">#151</a> &mdash; referenced by the issue author as prior related discussion on file-change-based job triggering.</li>
+</ul>
+
+<h2>What I checked</h2>
+<ul>
+  <li>Confirmed <code>validateTriggering</code> and <code>RegexpChangeMatcher</code> in current <code>pkg/config</code> match what the issue describes, at HEAD <code>e601a1ff</code>.</li>
+  <li>Read full comment thread (13 comments): maintainer objections, author's real-world use case (<code>konflux/</code> exclusion), RE2 lookahead/lookbehind limitation discussion, repeated stale-bot cycling.</li>
+  <li>Searched for a linked/implementing PR &mdash; none exists.</li>
+  <li>Checked <code>Brancher.ShouldRun</code> as a structural precedent for combined allow/deny matching.</li>
+</ul>
+
+<h2>Recommended next steps</h2>
+<ul>
+  <li>Post the closing comment below and <code>/close</code> the issue.</li>
+  <li>If a future report shows a concrete case that <code>skip_if_only_changed</code> alone truly cannot express, file it as a new issue rather than reopening this one.</li>
+</ul>
+
+<h3>Suggested closing comment</h3>
+<pre><code>Closing as wontfix. Two maintainers (@petr-muller, @BenTheElder) raised the same core concern above: combining run_if_changed and skip_if_only_changed reintroduces a footgun that the current mutual-exclusivity check exists to prevent — a misconfiguration between the two fields would silently cause jobs to never trigger, and the same outcome is generally achievable today with skip_if_only_changed alone.
+
+If you have a use case that genuinely can't be expressed with either field alone (not just the docs-carve-out case discussed here, which RE2's lack of lookahead/lookbehind makes awkward but isn't unique to this proposal), please open a new issue describing it — happy to reconsider with a concrete example that shows the existing primitives are insufficient.
+
+/close</code></pre>
+
+<h2>Open questions</h2>
+<ul>
+  <li>None requiring author input &mdash; the technical objection is already fully articulated in-thread by two maintainers.</li>
+</ul>
+
+</div>
+</body>
+</html>

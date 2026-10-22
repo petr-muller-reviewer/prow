@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#1022</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>integration: move gangway's NodePort into the static band</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1022">kubernetes-sigs/prow#1022</a> · base <code>main</code> · head_sha <code>08363f55b039</code> · reviewed_at <code>2026-10-21T23:15:46Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span><span class="badge c-amber">gate: hold</span></div>
+<details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#1022
+title: &quot;integration: move gangway&#x27;s NodePort into the static band&quot;
+head_sha: 08363f55b0395c6a04f19069b7ad638947915a9a
+base: main
+reviewed_at: 2026-10-21T23:15:46Z
+verdict: approve
+refresh_log:
+  - old_sha: 08363f55b0395c6a04f19069b7ad638947915a9a
+    new_sha: 08363f55b0395c6a04f19069b7ad638947915a9a
+    summary: &quot;No code changes; recorded Prucek&#x27;s approval and the approval notifier comment.&quot;
+gate:
+  decision: hold
+  gated_at: 2026-10-19T12:49:05Z
+  gated_head_sha: 08363f55b0395c6a04f19069b7ad638947915a9a
+  reviewed_head_sha: 08363f55b0395c6a04f19069b7ad638947915a9a</code></pre></details>
+<h2>Gate</h2>
+<p><strong>Verdict: HOLD</strong></p>
+<p>The existing-cluster migration remains a should-fix finding. The PR description gives users the teardown and custom-config steps, but the durable setup guide does not; setup reuses clusters with the stale mapping. Hold until the guide documents the one-time migration, or the maintainer explicitly accepts this documentation gap.</p>
+<h3>Gating list</h3>
+<ul>
+<li>REVIEW.md should-fix finding at site/content/en/docs/local-dev-two-machines.md:160-161 remains unaddressed. Add the teardown command and custom Kind mapping update.
+</li></ul>
+<h3>Area 2 — Independent merge risk</h3>
+<p>There are no production-facing API or configuration changes. Existing developer/test Kind clusters retain the old host-port mapping because setup-kind-cluster.sh reuses running clusters (lines 120-125) and only applies the new container-port mapping when creating a cluster (lines 183-191). This can leave Gangway unreachable to local integration clients until users recreate the cluster. The PR description documents the manual migration, so the risk is limited to contributors who miss that note or use a custom Kind config.</p>
+<h2>Verdict</h2>
+<p>Approve. The change moves Gangway’s fixed NodePort into the static band and keeps the existing host port used by integration clients. Code Quality found no correctness issues; Maintainability and Deployment Risk independently recommend documenting the one-time migration for existing Kind clusters.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Assigns Gangway NodePort 30000 while retaining Service and container port 32000.
+</li>
+<li>Maps Kind container port 30000 to host port 32000 for the integration cluster.
+</li>
+<li>Updates the two-machine development Kind example to use the same mapping.
+</li>
+<li>Restricts CI fakepubsub random NodePorts to 30001–30085.
+</li></ul>
+<p>Since previous review:</p>
+<ul>
+<li>No code changes; the PR head remains <code>08363f55b0395c6a04f19069b7ad638947915a9a</code>.
+</li>
+<li>Prucek submitted an <code>APPROVED</code> review at 2026-10-19 20:05:18 UTC. <code>kubernetes-prow[bot]</code> posted an approval workflow comment at 20:05:25 UTC, noting that approval from <code>droslean</code> is still required; the PR remains open and currently has the <code>lgtm</code> label.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-amber">should-fix</span>Document the existing-cluster migration</h3>
+<ul>
+<li>where: <code>site/content/en/docs/local-dev-two-machines.md:160-161</code>
+</li>
+<li>concern: The PR description explains that existing Kind clusters need recreation and custom configs need the new container port, but the durable setup guide only shows the new mapping. Add the one-time teardown and custom-config instructions so developers using a reused cluster know how to restore Gangway connectivity.
+</li>
+<li>excerpt:<pre><code>- containerPort: 30000 # gangway&#x27;s NodePort
+  hostPort: 32000 # flexible based on your machine</code></pre>
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>Issue #1021’s collision scenario and requested static-band allocation.
+</li>
+<li>Gangway Service and Deployment ports, integration client connections on port 32000, and Kind host-to-container port mappings.
+</li>
+<li>fakepubsub’s randomized port selection excludes Gangway’s 30000.
+</li>
+<li>setup-kind-cluster.sh reuses a running cluster, so existing clusters retain their old port mapping until recreated.
+</li>
+<li>No production-facing configuration changes were identified.
+</li>
+<li>git diff --check passed. The integration suite was not run during this review.
+</li></ul>
+<h2>Open questions</h2>
+<p>None.</p>
+</main></body></html>

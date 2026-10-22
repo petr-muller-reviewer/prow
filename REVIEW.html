@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#1014</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>chore(deps): bump the prometheus group across 1 directory with 2 updates</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1014">kubernetes-sigs/prow#1014</a> · base <code>main</code> · head_sha <code>d423aceaf55e</code> · reviewed_at <code>2026-10-22T01:00:26Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span></div>
+<h2>Verdict</h2>
+<p>Approve and take now.</p>
+<p>The reachable <code>golang.org/x/net</code> security fixes outweigh the 11–14 day freshness window, the Prometheus changes do not touch Prow’s unused API surface, and the focused packages that import the changed direct dependencies pass.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Bumps <code>github.com/prometheus/client_golang</code> from <code>v1.24.1</code> to <code>v1.25.0</code> and <code>github.com/prometheus/common</code> from <code>v0.72.0</code> to <code>v0.72.1</code> in the root module.
+</li>
+<li>Advances <code>golang.org/x/net</code> from <code>v0.59.0</code> to <code>v0.61.0</code> and <code>golang.org/x/text</code> from <code>v0.42.0</code> to <code>v0.43.0</code> as direct companion updates.
+</li>
+<li>Moves several indirect <code>golang.org/x/*</code> and <code>github.com/prometheus/procfs</code> versions in the root and <code>hack/tools</code> modules.
+</li>
+<li>Changes only dependency manifests and lockfiles, with no project source edits.
+</li></ul>
+<h2>Findings</h2>
+<p>None.</p>
+<h2>Checked</h2>
+<ul>
+<li><strong>Freshness:</strong> All four direct bumps are real tagged releases, 11–14 days old as of 2026-10-22; none is a pseudo-version.
+</li>
+<li><strong><code>github.com/prometheus/client_golang</code>:</strong> Direct in 50 files / 36 packages. <code>v1.25.0</code> raises the minimum Go version to 1.26 and changes <code>api/prometheus/v1</code>, but Prow does not import that package and already targets Go 1.26. The <code>promhttp</code> nil-URL panic fix is relevant; <code>AcceptedFormats</code> is opt-in. OSV is clean at both versions and <code>govulncheck</code> reports no Prometheus findings at base or head.
+</li>
+<li><strong><code>github.com/prometheus/common</code>:</strong> Direct in one file, <code>pkg/metrics/push.go:31</code>, using <code>expfmt</code> and <code>model</code>. The <code>v0.72.1</code> header deep-copy fix is outside Prow’s usage. OSV is clean and exposure is light.
+</li>
+<li><strong><code>golang.org/x/net</code>:</strong> Direct imports are only 3 files / 2 packages, but reachability is heavy through HTTP/2 and gRPC. Base <code>govulncheck</code> reports five called advisories—<code>GO-2026-6603</code>, <code>GO-2026-6610</code>, <code>GO-2026-6611</code>, <code>GO-2026-6612</code>, and <code>GO-2026-6617</code>—and head reports none. Entry points include <code>pkg/github.RoundTrip</code>, <code>pkg/jira.RoundTrip</code>, and gRPC serving in <code>cmd/gangway</code>.
+</li>
+<li><strong><code>golang.org/x/text</code>:</strong> Direct in 2 files / 2 packages, using <code>cases</code> and <code>language</code>. The <code>v0.43.0</code> changes are in <code>secure/bidirule</code> and <code>unicode/bidi</code>, which Prow does not exercise. OSV is clean and exposure is light.
+</li>
+<li><strong>Indirect tail:</strong> <code>x/crypto</code>, <code>x/sys</code>, <code>x/term</code>, <code>x/tools</code>, and <code>procfs</code> move without introducing Prometheus findings. The imported-only <code>GO-2026-5932</code> in <code>x/crypto</code> remains unchanged.
+</li>
+<li><strong>Verification:</strong> Focused <code>go test</code> passed for <code>./pkg/metrics/...</code>, <code>./pkg/githuboauth/...</code>, <code>./pkg/spyglass/lenses/html/...</code>, <code>./pkg/plugins/golint/suggestion/...</code>, and <code>./pkg/spyglass/lenses/links/...</code>.
+</li></ul>
+<h2>Open questions</h2>
+<p>None.</p>
+<h2>Dependency followups</h2>
+<ul>
+<li><strong><code>github.com/prometheus/client_golang</code> <code>v1.24.1 → v1.25.0</code> — use the supported process-collector constructor</strong>
+<ul>
+<li>category: <code>api-upgrade</code>
+</li>
+<li>necessity: <code>should</code>
+</li>
+<li>where: <code>pkg/metrics/metrics.go:59</code>
+</li>
+<li>unlocked by: <code>github.com/prometheus/client_golang v1.25.0</code>
+</li>
+<li>prompt:<pre><code>In `kubernetes-sigs/prow`, PR #1014 bumps `github.com/prometheus/client_golang` to `v1.25.0`. Replace the deprecated `prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{})` call at `pkg/metrics/metrics.go:59` with `collectors.NewProcessCollector(collectors.ProcessCollectorOpts{})`, and remove the now-unneeded `//nolint:staticcheck` and stale comment explaining the deprecated call. Keep the controller-runtime registry unregistration semantics unchanged. Run the focused metrics tests and confirm no deprecated Prometheus constructor remains at that call site.</code></pre>
+</li></ul>
+</li></ul>
+</main></body></html>

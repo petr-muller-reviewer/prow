@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#906</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>entrypoint: de-flake interrupt tests and fix SIGKILL-path data race</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/906">kubernetes-sigs/prow#906</a> · base <code>main</code> · head_sha <code>9a34b2ed01df</code> · reviewed_at <code>2026-08-27T10:31:14Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span></div>
+<h2>What this PR does</h2>
+<ul>
+<li>Fixes a data race on <code>command.ProcessState</code>: after a timeout/interrupt, the code used to read <code>ProcessState.ExitCode()</code> unconditionally even when the <code>Wait()</code> goroutine hadn't necessarily finished writing it.
+</li>
+<li>Introduces an <code>exited</code> flag, set only when the code actually received from <code>done</code>, and routes exit-code propagation through a new <code>propagatedExitCode(command, exited)</code> helper that returns <code>-1</code> (matching <code>ExitCode()</code>'s own signal-killed convention) when <code>exited</code> is false, instead of racing the read.
+</li>
+<li>Makes <code>done</code> a buffered channel (<code>chan error, 1</code>) so the <code>Wait()</code> goroutine's send can never block/leak once the main goroutine stops receiving after the grace period.
+</li>
+<li>Adds a bounded second wait (<code>sigkillDrainTimeout</code>, hardcoded 1s) after <code>SIGKILL</code> in <code>gracefullyTerminate</code>, to avoid blocking forever if an orphaned descendant is still holding the log pipe open; <code>gracefullyTerminate</code> now returns a <code>bool</code> indicating whether <code>Wait()</code> actually completed (i.e., whether <code>ProcessState</code> is safe to read).
+</li>
+<li>De-flakes <code>run_test.go</code>'s interrupt tests, replacing EXIT-trap/background-job test scaffolding that was itself flake-prone.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-gray">nit</span><code>sigkillDrainTimeout</code> is a hardcoded constant, unlike the other timeouts</h3>
+<ul>
+<li>where: <code>pkg/entrypoint/run.go:68</code>
+</li>
+<li>concern: <code>Timeout</code> and <code>GracePeriod</code> are both user-tunable via <code>Options</code> fields (defaulted via <code>optionOrDefault</code>), but <code>sigkillDrainTimeout</code> is a bare 1s constant with no override. A wrapped process whose legitimate (non-buggy) child takes slightly over 1s to release the log pipe after SIGKILL will have its real exit code silently replaced by <code>-1</code>, with no way for the job author to raise this window the way they can already raise <code>GracePeriod</code>/<code>Timeout</code>.
+</li>
+<li>excerpt:<pre><code>// sigkillDrainTimeout bounds how long we wait for Wait to return
+// after SIGKILL. Death and reap of the killed process are
+// near-instant; if this expires, an orphaned descendant is holding
+// the log pipe open and Wait may block arbitrarily long.
+sigkillDrainTimeout = 1 * time.Second</code></pre>
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li><code>propagatedExitCode</code>'s race-safety: only a receive from <code>done</code> (setting <code>exited</code>) synchronizes-before the <code>Wait()</code> goroutine's write to <code>ProcessState</code>; the <code>-1</code> fallback path is correctly race-free.
+</li>
+<li><code>done</code> channel buffering: change from unbuffered to <code>chan error, 1</code> correctly prevents the <code>Wait()</code> goroutine leaking/blocking after the main goroutine stops selecting on it.
+</li>
+<li><code>gracefullyTerminate</code>'s new <code>bool</code> return value is threaded correctly through both call sites (timeout and interrupt paths) into <code>propagatedExitCode</code>.
+</li>
+<li>Removed EXIT-trap/background-job test behavior in <code>run_test.go</code> is pure flake-inducing test scaffolding, not a production-behavior regression; no invariant was dropped.
+</li>
+<li>No duplicated logic or hot-path cost introduced; nothing to simplify.
+</li>
+<li>No repo CLAUDE.md/convention governs this path.
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>Would you consider making <code>sigkillDrainTimeout</code> configurable (or at least documented as a known limitation) for wrapped commands with legitimately slower log-pipe teardown?
+</li></ul>
+<h2>Followups</h2>
+<p>PR #906 merged on 2026-08-26 as <code>b9f26284d47bc7e7ba0b726c3b13144b4982ab29</code>. The reviewed implementation, tests, configuration, and user guide were checked against the merged change. No deferred human review discussion was found.</p>
+<p>Accepted: 1 (probe). Skipped: 1 (documenting the fixed SIGKILL drain deadline). The skipped candidate came from the existing configurability nit; that finding remains open.</p>
+<h3>Probe both SIGKILL drain outcomes with controlled pipe lifetimes</h3>
+<ul>
+<li>Category: tests
+</li>
+<li>Necessity: should — verify that both post-kill drain outcomes are exercised reliably.
+</li>
+<li>Mode: probe
+</li>
+<li>Where: <code>pkg/entrypoint/run_test.go:340</code>, <code>pkg/entrypoint/run.go:163</code>, and <code>pkg/entrypoint/run.go:277</code>.
+</li>
+<li>Why followup: the retained-pipe fixture uses <code>sleep 3</code>, so scheduling and readiness delays can allow the descendant to exit before the drain deadline. The successful-drain case checks the propagated code but does not assert that the timeout diagnostic is absent. Probe both cases with controlled fixtures to investigate the production guarantees.
+<pre><code>Mode: probe
+
+In kubernetes-sigs/prow, following PR #906 — &quot;entrypoint: de-flake interrupt tests and fix SIGKILL-path data race&quot; (merged as b9f26284d47bc7e7ba0b726c3b13144b4982ab29), probe both SIGKILL drain outcomes in pkg/entrypoint/run.go, especially Options.ExecuteProcess, gracefullyTerminate, and propagatedExitCode. Use TestExecuteProcess_KillPath in pkg/entrypoint/run_test.go as context. Start from the current default branch containing that merge and check whether later changes already cover this work.
+
+Create temporary tests with explicitly synchronized subprocesses. Establish readiness after signal handlers are installed. Control the lifetime of descendants holding inherited stdout/stderr pipes through a handshake and explicit release, rather than a fixed sleep. Arrange cleanup for every fixture process on success and failure.
+
+Exercise these paths:
+1. The wrapped process ignores SIGINT/SIGTERM, survives the grace period, is SIGKILLed, and all pipe holders terminate promptly. Confirm the post-kill Wait completes, no drain-timeout diagnostic appears, and the propagated return code and marker both equal -1.
+2. The wrapped process is SIGKILLed while a descendant demonstrably retains the pipe until the test releases it. Confirm entrypoint returns before that release, emits the drain-timeout diagnostic, and returns and writes -1. Use an independent generous deadline to detect hangs, then release the descendant and let fixture work finish.
+
+Run the focused probes repeatedly under the Go race detector. Treat a reproducible ProcessState data race, an incorrect propagated code or marker, or failure to return while the descendant retains the pipe beyond the bounded drain window as a potential production bug. Classify each failure with evidence; fixture flakiness or mistaken expectations alone do not justify a production change.
+
+Acceptance criteria: both outcomes were demonstrably exercised; report commands, results, and failure classifications. If a real production bug is demonstrated, apply only its minimal fix and report the precise reproducing case. If none is found, leave no repository files changed.
+
+Scope: discard all temporary probe tests and fixtures. Deliver only a demonstrated production fix, if any. Preserve signal forwarding, the fixed one-second drain policy, and public configuration. Do not submit test-only fixes, retained regression tests, documentation changes, or unrelated refactoring. Report enough reproduction detail for the maintainer to decide whether to retain a regression test separately.</code></pre>
+</li></ul>
+</main></body></html>

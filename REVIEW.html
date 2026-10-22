@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#1018</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>chore(deps): bump github.com/maxbrunsfeld/counterfeiter/v6 from 6.12.2 to 6.14.0</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1018">kubernetes-sigs/prow#1018</a> · base <code>main</code> · head_sha <code>a229510b78b0</code> · reviewed_at <code>2026-10-22T00:30:25Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span></div>
+<h2>Verdict</h2>
+<p><strong>Approve.</strong> The bump is safe to take now: the new release is 26 days old, has no OSV advisories, and Prow uses <code>counterfeiter</code> only as a build-tagged test-double generator rather than as a runtime dependency. The one follow-up is to regenerate the three affected fakes so the committed generated code matches the new generator.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Classification: <strong>dep-only</strong>. The PR changes only <code>go.mod</code> and <code>go.sum</code>; it does not touch project source.
+</li>
+<li>Bumps <code>github.com/maxbrunsfeld/counterfeiter/v6</code> from <code>v6.12.2</code> to <code>v6.14.0</code> in <code>go.mod:49</code>.
+</li>
+<li>Updates transitive lockfile entries for <code>golang.org/x/tools</code> (<code>v0.49.0</code> → <code>v0.50.0</code>) and <code>github.com/onsi/gomega</code> (<code>v1.39.1</code> → <code>v1.43.1</code>).
+</li>
+<li>Leaves the three generated fakes unchanged even though <code>v6.14.0</code> changes generated fake output.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-amber">should-fix</span>Regenerate the counterfeiter fakes with the new generator</h3>
+<ul>
+<li>where: <code>pkg/plugins/testfreeze/testfreezefakes/fake_verifier.go:12</code>, <code>pkg/plugins/testfreeze/checker/checkerfakes/fake_checker.go:13</code>, <code>pkg/plugins/cherrypickapproved/cherrypickapprovedfakes/fake_impl.go:11</code>
+</li>
+<li><code>v6.14.0</code> changes the generated fake API and output: per-method argument records become exported struct types, fakes gain <code>Args()</code> and <code>CallOrder()</code>, and the race in void methods is fixed. Regenerating the three fakes produces <strong>262 insertions and 166 deletions</strong> across those files.
+</li>
+<li>The current fakes still compile and the affected package tests pass, so this is repository hygiene rather than a runtime break. Still, the PR bumps the generator without updating the code that generator owns.
+</li>
+<li>Regenerating in a scratch worktree and running <code>go test ./pkg/plugins/testfreeze/... ./pkg/plugins/cherrypickapproved/...</code> passes.
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li><strong>Freshness:</strong> <code>v6.14.0</code> was tagged on <strong>2026-09-26</strong>, 26 days before this review. It is a real tagged release, not a pseudo-version.
+</li>
+<li><strong>Usage:</strong> Direct tool dependency only. Prow imports it solely from the build-tagged <code>tools</code> packages at <code>pkg/plugins/testfreeze/tools/tools.go:26</code> and <code>pkg/plugins/cherrypickapproved/tools/tools.go:26</code>, and uses <code>go:generate</code> directives in <code>pkg/plugins/testfreeze/testfreeze.go:103</code>, <code>pkg/plugins/testfreeze/checker/checker.go:83</code>, and <code>pkg/plugins/cherrypickapproved/cherrypickapproved.go:77</code>. There are no runtime imports.
+</li>
+<li><strong>Exposure:</strong> Light and test-only. The dependency generates three fakes in two plugin areas; it is not threaded through production code.
+</li>
+<li><strong>Vulnerabilities:</strong> OSV reports no advisories for <code>v6.12.2</code> or <code>v6.14.0</code>. <code>govulncheck</code> reports no counterfeiter findings at either the merge-base or PR head. The pre-existing findings in <code>x/net</code>, <code>x/crypto</code>, and <code>tektoncd/pipeline</code> are unchanged by this PR.
+</li>
+<li><strong>Changelog:</strong> <code>v6.13.0</code> adds same-package and test-package fake generation, global <code>-generate</code> flags, and large performance improvements. <code>v6.14.0</code> adds <code>Args()</code> and <code>CallOrder()</code>, fixes a race in void methods, and updates transitive dependencies.
+</li>
+<li><strong>Compatibility:</strong> <code>v6.13.0</code> requires Go 1.26; the repository already uses Go 1.26.4 in <code>go.mod:3</code> and pins Go 1.26.0 in <code>.go-version</code>.
+</li>
+<li><strong>Indirect churn:</strong> <code>golang.org/x/tools</code> and <code>github.com/onsi/gomega</code> are transitive and not directly imported by Prow source. <code>x/tools</code> is reached through <code>golang.org/x/lint</code>, and <code>gomega</code> through controller-runtime test code.
+</li>
+<li><strong>Validation:</strong> <code>go mod tidy -diff</code> is clean. The PR’s unit, integration, lint, and image-build checks pass.
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>None.
+</li></ul>
+<h2>Dependency followups</h2>
+<ol>
+<li><strong>Accepted: 1 / Skipped: 0.</strong>
+</li></ol>
+<h3>Regenerate counterfeiter fakes after the v6.14.0 bump</h3>
+<ul>
+<li><strong>Unlocked by:</strong> <code>github.com/maxbrunsfeld/counterfeiter/v6</code> <code>v6.12.2</code> → <code>v6.14.0</code>
+</li>
+<li><strong>Category:</strong> simplification
+</li>
+<li><strong>Where:</strong> <code>pkg/plugins/testfreeze/testfreezefakes/fake_verifier.go:12</code>, <code>pkg/plugins/testfreeze/checker/checkerfakes/fake_checker.go:13</code>, <code>pkg/plugins/cherrypickapproved/cherrypickapprovedfakes/fake_impl.go:11</code>
+</li>
+<li><strong>Necessity:</strong> should — keeps committed generated code aligned with the generator version and picks up the void-method race fix.
+</li>
+<li><strong>Prompt:</strong>
+<pre><code>In kubernetes-sigs/prow, now that PR #1018 bumped github.com/maxbrunsfeld/counterfeiter/v6 from v6.12.2 to v6.14.0, regenerate the three affected fakes so the committed generated code matches the new generator.
+
+Files:
+- pkg/plugins/testfreeze/testfreezefakes/fake_verifier.go
+- pkg/plugins/testfreeze/checker/checkerfakes/fake_checker.go
+- pkg/plugins/cherrypickapproved/cherrypickapprovedfakes/fake_impl.go
+
+Run:
+go generate ./pkg/plugins/testfreeze/... ./pkg/plugins/cherrypickapproved/...
+
+Acceptance criteria:
+- The diff is limited to the three generated fake files listed above.
+- The new generated code compiles and the affected package tests pass:
+  go test ./pkg/plugins/testfreeze/... ./pkg/plugins/cherrypickapproved/...
+
+Scope guard:
+- Do not adopt the new Args() or CallOrder() APIs in this followup.
+- Do not change production code or unrelated tests.</code></pre>
+</li></ul>
+<p>No other opportunities were identified. The new <code>Args()</code> and <code>CallOrder()</code> fake APIs were examined, but the four existing <code>ArgsForCall</code> call sites are already minimal and there are no call-order assertions to simplify.</p>
+</main></body></html>

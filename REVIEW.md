@@ -1,19 +1,23 @@
 ---
 pr: kubernetes-sigs/prow#1017
 title: "chore(deps): bump github.com/tektoncd/pipeline from 1.16.0 to 1.17.0"
-head_sha: 3841f98a9c56e604aa60dc9aeba675b5515532ad
+head_sha: bab4347ace9e20f1e65da4bacb5ee51ff6d4a168
 base: main
-reviewed_at: 2026-10-22T00:53:14Z
+reviewed_at: 2026-10-22T12:42:52Z
 verdict: request-changes
+refresh_log:
+  - old_sha: 3841f98a9c56e604aa60dc9aeba675b5515532ad
+    new_sha: bab4347ace9e20f1e65da4bacb5ee51ff6d4a168
+    summary: "Refreshed against the current main base: Go is pinned to 1.27.3 and gzip expectations are updated, while Jira vet failures remain."
 ---
 
 # Review
 
 ## Verdict
 
-Request changes. This is a dep-only bump of `github.com/tektoncd/pipeline` from `v1.16.0` to `v1.17.0`, but it also raises the module’s Go requirement to `1.27.0` while the repo is still pinned to Go `1.26.0`. That toolchain move breaks unit, race, and lint CI and introduces reachable Go `1.27.0` standard-library vulnerabilities. The dependency itself is reasonably fresh and Prow’s use is mostly API types and generated client machinery, so the bump is not inherently unsafe once the toolchain and tests are updated.
+Request changes. This is a dep-only bump of `github.com/tektoncd/pipeline` from `v1.16.0` to `v1.17.0` and raises the module’s Go requirement to `1.27.0`. The current base pins Go `1.27.3`, resolving the toolchain security concern, but unit and race CI still fail because vet rejects the `*JiraError` operands to `%w`, and verify-lint fails its `go` check. Prow’s use of Tekton is mostly API types and generated client machinery, so the bump is not inherently unsafe once the test issue and failing checks are resolved.
 
-Take: wait until Go is moved to at least `1.27.3` and the two test failures are fixed.
+Take: fix the Jira vet errors and get the required checks green before merging.
 
 ## What this PR does
 
@@ -21,19 +25,23 @@ Take: wait until Go is moved to at least `1.27.3` and the two test failures are 
 - Raises the Go directive from `1.26.4` to `1.27.0`.
 - Updates the indirect dependency graph and `go.sum`; no project source changes.
 
+Since previous review:
+- The PR head changed from `3841f98a9c56e604aa60dc9aeba675b5515532ad` to `bab4347ace9e20f1e65da4bacb5ee51ff6d4a168` and now shares current `main` at `3f5cc7178d5a85a64fcf32c9cab401c937ee7218`; the PR diff remains limited to `go.mod` and `go.sum`.
+- The base now pins Go `1.27.3` and updates gzip expectations. Unit and race CI still fail on the Jira `%w` vet errors; verify-lint also fails its `go` check.
+
 ## Findings
 
-### [blocking] Go 1.27.0 breaks the repo’s current test suite
-- where: `go.mod:3`, `.go-version:1`
-- concern: The module now requires Go `1.27.0`, but the repo still pins Go `1.26.0`. Under Go `1.27.0`, `pkg/jira/jira_test.go:42` and `pkg/jira/jira_test.go:59` fail vet because `%w` now rejects a `*JiraError` operand, and `pkg/plugins/updateconfig/updateconfig_test.go:1616` fails because gzip output differs. Unit, race, and lint CI all fail on this head.
+### [blocking] Jira vet errors still fail unit and race CI
+- where: `go.mod:3`, `pkg/jira/jira_test.go:42`, `pkg/jira/jira_test.go:59`
+- concern: The base now pins Go `1.27.3` and updates the gzip expectations, but the current unit and race jobs still fail because vet rejects the `*JiraError` operands to `%w` at lines 42 and 59. The verify-lint job also fails its `go` check. Resolve the Jira vet errors and get the required checks green before merging.
 - excerpt: |
     go 1.27.0
 
-### [blocking] Go 1.27.0 is a security regression at this pin
-- where: `go.mod:3`
-- concern: `govulncheck` reports 15 reachable findings at head versus 6 at base. The new findings are Go `1.27.0` standard-library issues fixed in Go `1.27.2` or `1.27.3`. Taking this bump as-is therefore moves the build onto an older, vulnerable toolchain. Update to at least Go `1.27.3` before merging, or keep Go `1.26.x` until the repo is ready.
-- excerpt: |
-    go 1.27.0
+
+## Resolved
+
+### Go 1.27.0 toolchain security regression
+- The updated base pins `.go-version` to Go `1.27.3`, and the current CI logs report Go `1.27.3`. This addresses the prior finding about the repo building with vulnerable Go `1.27.0`; the `go 1.27.0` directive remains the module minimum version.
 
 ## Checked
 

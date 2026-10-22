@@ -31,11 +31,21 @@ ul, ol { padding-left:1.5rem; }
 details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
 </style></head><body><main>
 <h1>chore(deps): bump github.com/tektoncd/pipeline from 1.16.0 to 1.17.0</h1>
-<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1017">kubernetes-sigs/prow#1017</a> · base <code>main</code> · head_sha <code>3841f98a9c56</code> · reviewed_at <code>2026-10-22T00:53:14Z</code></div>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1017">kubernetes-sigs/prow#1017</a> · base <code>main</code> · head_sha <code>bab4347ace9e</code> · reviewed_at <code>2026-10-22T12:42:52Z</code></div>
 <div class="badges"><span class="badge c-red">verdict: request-changes</span></div>
+<details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#1017
+title: &quot;chore(deps): bump github.com/tektoncd/pipeline from 1.16.0 to 1.17.0&quot;
+head_sha: bab4347ace9e20f1e65da4bacb5ee51ff6d4a168
+base: main
+reviewed_at: 2026-10-22T12:42:52Z
+verdict: request-changes
+refresh_log:
+  - old_sha: 3841f98a9c56e604aa60dc9aeba675b5515532ad
+    new_sha: bab4347ace9e20f1e65da4bacb5ee51ff6d4a168
+    summary: &quot;Refreshed against the current main base: Go is pinned to 1.27.3 and gzip expectations are updated, while Jira vet failures remain.&quot;</code></pre></details>
 <h2>Verdict</h2>
-<p>Request changes. This is a dep-only bump of <code>github.com/tektoncd/pipeline</code> from <code>v1.16.0</code> to <code>v1.17.0</code>, but it also raises the module’s Go requirement to <code>1.27.0</code> while the repo is still pinned to Go <code>1.26.0</code>. That toolchain move breaks unit, race, and lint CI and introduces reachable Go <code>1.27.0</code> standard-library vulnerabilities. The dependency itself is reasonably fresh and Prow’s use is mostly API types and generated client machinery, so the bump is not inherently unsafe once the toolchain and tests are updated.</p>
-<p>Take: wait until Go is moved to at least <code>1.27.3</code> and the two test failures are fixed.</p>
+<p>Request changes. This is a dep-only bump of <code>github.com/tektoncd/pipeline</code> from <code>v1.16.0</code> to <code>v1.17.0</code> and raises the module’s Go requirement to <code>1.27.0</code>. The current base pins Go <code>1.27.3</code>, resolving the toolchain security concern, but unit and race CI still fail because vet rejects the <code>*JiraError</code> operands to <code>%w</code>, and verify-lint fails its <code>go</code> check. Prow’s use of Tekton is mostly API types and generated client machinery, so the bump is not inherently unsafe once the test issue and failing checks are resolved.</p>
+<p>Take: fix the Jira vet errors and get the required checks green before merging.</p>
 <h2>What this PR does</h2>
 <ul>
 <li>Bumps <code>github.com/tektoncd/pipeline</code> from <code>v1.16.0</code> to <code>v1.17.0</code>.
@@ -44,22 +54,25 @@ details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-si
 </li>
 <li>Updates the indirect dependency graph and <code>go.sum</code>; no project source changes.
 </li></ul>
-<h2>Findings</h2>
-<h3><span class="tag c-red">blocking</span>Go 1.27.0 breaks the repo’s current test suite</h3>
+<p>Since previous review:</p>
 <ul>
-<li>where: <code>go.mod:3</code>, <code>.go-version:1</code>
+<li>The PR head changed from <code>3841f98a9c56e604aa60dc9aeba675b5515532ad</code> to <code>bab4347ace9e20f1e65da4bacb5ee51ff6d4a168</code> and now shares current <code>main</code> at <code>3f5cc7178d5a85a64fcf32c9cab401c937ee7218</code>; the PR diff remains limited to <code>go.mod</code> and <code>go.sum</code>.
 </li>
-<li>concern: The module now requires Go <code>1.27.0</code>, but the repo still pins Go <code>1.26.0</code>. Under Go <code>1.27.0</code>, <code>pkg/jira/jira_test.go:42</code> and <code>pkg/jira/jira_test.go:59</code> fail vet because <code>%w</code> now rejects a <code>*JiraError</code> operand, and <code>pkg/plugins/updateconfig/updateconfig_test.go:1616</code> fails because gzip output differs. Unit, race, and lint CI all fail on this head.
+<li>The base now pins Go <code>1.27.3</code> and updates gzip expectations. Unit and race CI still fail on the Jira <code>%w</code> vet errors; verify-lint also fails its <code>go</code> check.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-red">blocking</span>Jira vet errors still fail unit and race CI</h3>
+<ul>
+<li>where: <code>go.mod:3</code>, <code>pkg/jira/jira_test.go:42</code>, <code>pkg/jira/jira_test.go:59</code>
+</li>
+<li>concern: The base now pins Go <code>1.27.3</code> and updates the gzip expectations, but the current unit and race jobs still fail because vet rejects the <code>*JiraError</code> operands to <code>%w</code> at lines 42 and 59. The verify-lint job also fails its <code>go</code> check. Resolve the Jira vet errors and get the required checks green before merging.
 </li>
 <li>excerpt:<pre><code>go 1.27.0</code></pre>
 </li></ul>
-<h3><span class="tag c-red">blocking</span>Go 1.27.0 is a security regression at this pin</h3>
+<h2>Resolved</h2>
+<h3>Go 1.27.0 toolchain security regression</h3>
 <ul>
-<li>where: <code>go.mod:3</code>
-</li>
-<li>concern: <code>govulncheck</code> reports 15 reachable findings at head versus 6 at base. The new findings are Go <code>1.27.0</code> standard-library issues fixed in Go <code>1.27.2</code> or <code>1.27.3</code>. Taking this bump as-is therefore moves the build onto an older, vulnerable toolchain. Update to at least Go <code>1.27.3</code> before merging, or keep Go <code>1.26.x</code> until the repo is ready.
-</li>
-<li>excerpt:<pre><code>go 1.27.0</code></pre>
+<li>The updated base pins <code>.go-version</code> to Go <code>1.27.3</code>, and the current CI logs report Go <code>1.27.3</code>. This addresses the prior finding about the repo building with vulnerable Go <code>1.27.0</code>; the <code>go 1.27.0</code> directive remains the module minimum version.
 </li></ul>
 <h2>Checked</h2>
 <ul>

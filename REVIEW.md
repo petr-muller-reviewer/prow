@@ -39,3 +39,50 @@ None.
 ## Open questions
 
 None — PR already merged (2026-08-26) as `fbca53b5a`.
+
+## Dependency followups
+
+### [deprecation] Migrate `fakestorage.NewServer` to `NewServerWithOptions`
+
+- **Unlocked by:** `github.com/fsouza/fake-gcs-server` v1.19.4 → v1.56.1 (PR #897, merged as `fbca53b5a`).
+- **Where:** `pkg/spyglass/spyglass_test.go:86`, `pkg/spyglass/spyglass_test.go:1620`, `cmd/deck/job_history_test.go:363`, `cmd/deck/pr_history_test.go:582`, `pkg/pod-utils/gcs/upload_test.go:345` — five test-only call sites, all in files this bump already rewrote.
+- **Necessity:** should — `fakestorage/server.go:68` in v1.56.1 carries `// Deprecated: use NewServerWithOptions.`; the marker already existed at v1.19.4, so the bump does not introduce it, but it is the only in-range deprecation that hits code we call (test-only, no behavior change, eventual-removal risk).
+- **Mode:** deliver
+- **Handoff prompt:**
+
+```text
+In `kubernetes-sigs/prow`, now that PR #897 ("chore(deps): bump
+github.com/fsouza/fake-gcs-server from 1.19.4 to 1.56.1", merged as `fbca53b5a`)
+has moved the module to v1.56.1, migrate the five remaining uses of the deprecated
+`fakestorage.NewServer` to `fakestorage.NewServerWithOptions`.
+
+Context: v1.56.1's `fakestorage/server.go` marks
+`NewServer(objects []Object) *Server` with `// Deprecated: use NewServerWithOptions.`;
+the wrapper just calls `NewServerWithOptions(Options{InitialObjects: objects})` and
+discards the returned error.
+
+Call sites (all test-only):
+- `pkg/spyglass/spyglass_test.go:86` (inside `TestMain`)
+- `pkg/spyglass/spyglass_test.go:1620`
+- `cmd/deck/job_history_test.go:363`
+- `cmd/deck/pr_history_test.go:582`
+- `pkg/pod-utils/gcs/upload_test.go:345`
+
+Task: replace each `fakestorage.NewServer(x)` with
+`fakestorage.NewServerWithOptions(fakestorage.Options{InitialObjects: x})` and handle
+the returned `error`:
+- In `TestMain` (spyglass), log and exit non-zero (`log.Fatalf` or
+  `fmt.Fprintln(os.Stderr, err); os.Exit(1)`), matching the file's existing style.
+- In the four `Test*` functions, fail the test with `t.Fatalf` on error.
+
+Acceptance criteria:
+- `go build ./...` and `go vet ./pkg/spyglass/... ./cmd/deck/... ./pkg/pod-utils/gcs/...` pass.
+- `go test ./pkg/spyglass/... ./cmd/deck/... ./pkg/pod-utils/gcs/...` passes.
+- `rg 'fakestorage\.NewServer\(' --glob '!vendor/**'` returns no matches
+  (only `NewServerWithOptions` remains).
+
+Scope guard: no behavior changes; do not touch the `fakestorage.Object`/`ObjectAttrs`
+literals, `defer …Stop()` lifecycle, or non-test code; no `NoListener` or other
+`Options` changes; no other deprecation cleanup (`CreateBucket`, `ListObjects` are out
+of scope); no dependency bumps.
+```

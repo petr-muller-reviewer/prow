@@ -1,117 +1,155 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>Review of kubernetes-sigs/prow#798</title>
-<style>
-  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; line-height: 1.6; color: #1a1a1a; max-width: 900px; margin: 2rem auto; padding: 0 1.5rem; background: #fdfdfd; }
-  code, pre { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; font-size: 0.9em; }
-  pre { background: #f4f4f4; padding: 0.75rem 1rem; border-radius: 6px; overflow-x: auto; border: 1px solid #e0e0e0; }
-  code.inline { background: #f0f0f0; padding: 0.1em 0.35em; border-radius: 4px; }
-  header { border-bottom: 2px solid #ddd; padding-bottom: 1rem; margin-bottom: 1.5rem; }
-  header table { border-collapse: collapse; }
-  header td { padding: 0.15rem 0.6rem 0.15rem 0; vertical-align: top; color: #444; }
-  header td.key { font-weight: 600; color: #111; white-space: nowrap; }
-  h1 { font-size: 1.4rem; margin-bottom: 0.3rem; }
-  h2 { font-size: 1.15rem; margin-top: 2rem; border-bottom: 1px solid #eee; padding-bottom: 0.3rem; }
-  .verdict { display: inline-block; padding: 0.3rem 0.8rem; border-radius: 6px; font-weight: 600; background: #d4edda; color: #155724; }
-  .finding { border: 1px solid #e5e5e5; border-radius: 8px; padding: 1rem 1.2rem; margin: 1rem 0; }
-  .finding h3 { margin: 0 0 0.5rem 0; font-size: 1.02rem; }
-  .badge { display: inline-block; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; padding: 0.15em 0.5em; border-radius: 4px; margin-right: 0.5em; }
-  .badge.should-fix { background: #fff3cd; color: #856404; }
-  .badge.nit { background: #e2e3e5; color: #383d41; }
-  .badge.question { background: #d1ecf1; color: #0c5460; }
-  .loc { color: #666; }
-  ul { padding-left: 1.4rem; }
-  .hl { background: #ffe9a8; }
-  .convergence { background: #f0f7ff; border: 1px solid #cfe2ff; border-radius: 8px; padding: 0.9rem 1.2rem; margin: 1rem 0; }
-</style>
-</head>
-<body>
-
-<header>
-  <h1>Review of kubernetes-sigs/prow#798</h1>
-  <table>
-    <tr><td class="key">Title</td><td>fix(trigger): fall back to rerun when approve fails for non-fork PRs</td></tr>
-    <tr><td class="key">Head SHA</td><td><code>dd76a90690dded89117e44ed6def9417fd0d44d7</code></td></tr>
-    <tr><td class="key">Base</td><td>main</td></tr>
-    <tr><td class="key">Reviewed at</td><td>2026-07-26T23:07:09Z</td></tr>
-    <tr><td class="key">Link</td><td><a href="https://github.com/kubernetes-sigs/prow/pull/798">github.com/kubernetes-sigs/prow/pull/798</a></td></tr>
-  </table>
-</header>
-
-<h2>Verdict</h2>
-<p><span class="verdict">Approve (with suggestions)</span></p>
-<p>The core fix — falling back to the rerun endpoint on a 403 from approve — is small, correct, well-tested, and gated behind the existing opt-in <code class="inline">trigger_github_workflows</code> flag. This conclusion is now backed by three independent specialist review passes (code quality, maintainability, deployment risk) plus this direct read, all converging on the same assessment. The only ask before merge is trimming the unrelated gofmt/whitespace churn and stray doc-regen diff that rode along — not a reason to block, but worth cleaning up.</p>
-
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#798</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>fix(trigger): fall back to rerun when approve fails for non-fork PRs</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/798">kubernetes-sigs/prow#798</a> · base <code>main</code> · head_sha <code>dd76a90690dd</code> · reviewed_at <code>2026-10-25T13:25:32Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span></div>
+<details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#798
+title: &quot;fix(trigger): fall back to rerun when approve fails for non-fork PRs&quot;
+head_sha: dd76a90690dded89117e44ed6def9417fd0d44d7
+base: main
+reviewed_at: 2026-10-25T13:25:32Z
+verdict: approve
+refresh_log:
+  - at: 2026-10-25T13:25:32Z
+    old_sha: dd76a90690dded89117e44ed6def9417fd0d44d7
+    new_sha: dd76a90690dded89117e44ed6def9417fd0d44d7
+    summary: &quot;No code changes; recorded approval activity and the PR&#x27;s merge on 2026-08-26.&quot;</code></pre></details>
 <h2>What this PR does</h2>
+<p>Fixes <code>/ok-to-test</code> silently no-oping for GitHub Actions workflow runs on same-repo (non-fork) PRs opened by bots (e.g. <code>github-actions[bot]</code>). The approve-workflow-run endpoint only works for fork PRs and returns 403 for same-repo bot PRs; previously swallowed as a token-scope warning. On 403 from approve, falls back to the rerun endpoint (<code>TriggerGitHubWorkflow</code>), which changes <code>triggering_actor</code> and bypasses the approval gate. <code>approveGitHubActionsWorkflowRuns</code> now returns a <code>*sync.WaitGroup</code> (using Go 1.25's <code>wg.Go</code>) so the new test can synchronize on goroutine completion deterministically instead of sleeping. Entire feature is gated behind the pre-existing opt-in <code>trigger_github_workflows</code> config flag. ~10 of 14 changed files are unrelated gofmt/whitespace churn plus a stray <code>plugin-config-documented.yaml</code> doc-regen addition, confirmed cosmetic/no-op by three independent reviewer passes (code quality, maintainability, deployment risk).</p>
+<p>Since previous review:</p>
 <ul>
-  <li>Fixes <code class="inline">/ok-to-test</code> silently failing to unblock GitHub Actions workflow runs for same-repo PRs opened by bots (e.g. <code class="inline">github-actions[bot]</code>), where the approve endpoint 403s because it only supports fork PRs.</li>
-  <li>On 403 from approve, falls back to <code class="inline">TriggerGitHubWorkflow</code> (the rerun endpoint), which changes <code class="inline">triggering_actor</code> and bypasses the approval gate.</li>
-  <li><code class="inline">approveGitHubActionsWorkflowRuns</code> now returns a <code class="inline">*sync.WaitGroup</code> (using Go 1.25's <code class="inline">wg.Go</code>) so the new test can deterministically wait for goroutines instead of sleeping.</li>
-  <li>Adds <code class="inline">TestApproveWorkflowRunsFallback</code>, a thorough table-driven test covering success, 404, 403→rerun-success, 403→rerun-failure, generic-error, and multi-run scenarios.</li>
-  <li>Entire feature is gated behind the pre-existing opt-in <code class="inline">trigger_github_workflows</code> config flag — zero impact on installations that don't use it.</li>
-  <li>~10 of 14 changed files are unrelated gofmt/whitespace churn plus a stray <code class="inline">plugin-config-documented.yaml</code> doc-regen addition, confirmed cosmetic/no-op.</li>
-</ul>
-
-<div class="convergence">
-  <strong>Convergence note:</strong> code-quality, maintainability, and deployment-risk reviewer passes all independently flagged the unrelated gofmt/whitespace churn and doc drift as the only notable issue with this PR — a high-confidence signal it should be trimmed before merge, even though it's not blocking.
-</div>
-
+<li>No code changes: the PR head remains <code>dd76a90690dded89117e44ed6def9417fd0d44d7</code>.
+</li>
+<li>Prucek submitted an approval on 2026-08-10; cblecker approved via <code>/approve</code> on 2026-08-26, and the PR was merged on 2026-08-26 at 17:03:39 UTC.
+</li></ul>
 <h2>Findings</h2>
-
-<div class="finding">
-  <h3><span class="badge should-fix">should-fix</span>Unrelated gofmt/doc churn bloats the diff</h3>
-  <p class="loc"><code>8+ files outside pkg/plugins/trigger/* and pkg/github/fakegithub/fakegithub.go</code> (e.g. <code>cmd/deck/main.go</code>, <code>pkg/plugins/jira/jira.go</code>, <code>pkg/tide/tide_test.go</code>, <code>pkg/spyglass/**</code>), plus <code>pkg/plugins/plugin-config-documented.yaml</code> (+11, <code>invalid_commit_msg</code> block)</p>
-  <pre>-	Reporter:           config.Reporter{Context: "ci/prow/test"},
-+	Reporter:            config.Reporter{Context: "ci/prow/test"},</pre>
-  <p>Confirmed by three independent reviewers as pure gofmt/whitespace churn and unrelated generated-docs drift (the yaml block documents a pre-existing <code class="inline">InvalidCommitMsg</code> struct, not a new feature). Zero behavioral effect, but muddies git blame/backport history and inflates the diff (239+/44- vs. ~40 lines of actual fix). Likely a stale-rebase artifact given the separate "Update gofmt" commit already on <code class="inline">main</code>.</p>
-</div>
-
-<div class="finding">
-  <h3><span class="badge nit">nit</span>Discarded WaitGroup return value undocumented at call site</h3>
-  <p class="loc"><code>pkg/plugins/trigger/generic-comment.go:153</code></p>
-  <p>The only production call site discards the new <code class="inline">*sync.WaitGroup</code> return value — correct (fire-and-forget is intended there; the WaitGroup exists solely for test determinism), but a one-line comment would prevent a future reader from wondering if the discard is an oversight.</p>
-</div>
-
-<div class="finding">
-  <h3><span class="badge nit">nit</span>Pre-existing weak positive-path assertion left unfixed</h3>
-  <p class="loc"><code>pkg/plugins/trigger/generic-comment_test.go:1852-1864</code></p>
-  <p><code class="inline">TestApproveGitHubActionsWorkflowRuns</code>'s positive case still only does <code class="inline">t.Logf(...)</code> with no real assertion (pre-existing, not introduced here). Now trivial to tighten given the new <code class="inline">wg.Wait()</code> plumbing — not blocking.</p>
-</div>
-
-<div class="finding">
-  <h3><span class="badge question">question</span>403 fallback scoped broadly</h3>
-  <p class="loc"><code>pkg/plugins/trigger/generic-comment.go:322-332</code></p>
-  <pre>} else if github.IsForbidden(err) {
-    log.Infof("<span class="hl">approve endpoint returned 403 (likely non-fork PR)</span>, falling back to rerun: %v", err)</pre>
-  <p>Falls back to rerun on <em>any</em> 403, not only confirmed non-fork PRs. A genuine token-scope 403 on a fork PR would also attempt (and likely fail) a rerun instead of clearly surfacing the real problem. Soft risk only — fails safely and logs an error — but the log message asserts an unverified cause.</p>
-</div>
-
-<div class="finding">
-  <h3><span class="badge question">question</span>Log level change may silence existing alerts</h3>
-  <p class="loc"><code>pkg/plugins/trigger/generic-comment.go:329</code></p>
-  <p>403 case moved from <code class="inline">Warnf</code> to <code class="inline">Infof</code>. Any operator alerting on the old warning-level string will stop seeing it — likely desired, but worth a deliberate confirmation.</p>
-</div>
-
-<h2>Things I checked and was fine with</h2>
+<h3><span class="tag c-amber">should-fix</span>unrelated gofmt/doc churn bloats the diff</h3>
 <ul>
-  <li><code class="inline">TriggerGitHubWorkflow</code> (pkg/github/client.go:2240) correctly hits <code class="inline">POST /repos/{org}/{repo}/actions/runs/{id}/rerun</code>, matching the PR's description.</li>
-  <li><code class="inline">sync.WaitGroup.Go</code> is valid — go.mod requires go 1.25.8.</li>
-  <li>Fallback correctly scoped to <code class="inline">IsForbidden</code> only; <code class="inline">IsNotFound</code> and generic errors do not trigger a rerun.</li>
-  <li><code class="inline">TestApproveWorkflowRunsFallback</code> covers success, 404, 403→rerun-success, 403→rerun-failure, generic-error, multi-run, and mixed cases, synchronized via <code class="inline">wg.Wait()</code>.</li>
-  <li><code class="inline">fakegithub.FakeClient</code> additions follow existing conventions and reuse the existing lock.</li>
-  <li>Entire code path gated behind the pre-existing opt-in <code class="inline">trigger_github_workflows</code> flag.</li>
-  <li>No config struct fields renamed/removed, no breaking JSON/YAML tag changes; rollback is safe; no new GitHub App permissions needed.</li>
-  <li>Three independent specialist review passes (code-quality, maintainability, deployment-risk) all converged on approve/low-risk for the functional fix.</li>
-</ul>
-
-<h2>Open questions for the author</h2>
+<li>where: 8+ files outside <code>pkg/plugins/trigger/*</code> and <code>pkg/github/fakegithub/fakegithub.go</code> (e.g. <code>cmd/deck/main.go</code>, <code>cmd/checkconfig/main_test.go</code>, <code>pkg/plugins/jira/jira.go</code>, <code>pkg/tide/tide_test.go</code>, <code>pkg/spyglass/**</code>, <code>cmd/external-plugins/cherrypicker/server_test.go</code>), plus <code>pkg/plugins/plugin-config-documented.yaml</code> (+11, <code>invalid_commit_msg</code> block)
+</li>
+<li>concern: Confirmed by three independent reviewers (code-quality, maintainability, deployment-risk) as pure gofmt/whitespace churn and unrelated generated-docs drift (the yaml block documents a pre-existing <code>InvalidCommitMsg</code> config struct already in <code>pkg/plugins/config.go</code>, not a new feature). Zero behavioral effect, but muddies <code>git blame</code>/backport history for files this PR has no functional business touching, and inflates the diff (239+/44- vs. ~40 lines of actual fix). Likely a stale-rebase artifact given the repo's separate "Update gofmt" commit already on <code>main</code>.
+</li>
+<li>excerpt:<pre><code>-	Reporter:           config.Reporter{Context: &quot;ci/prow/test&quot;},
++	Reporter:            config.Reporter{Context: &quot;ci/prow/test&quot;},</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">nit</span>discarded WaitGroup return value undocumented at call site</h3>
 <ul>
-  <li>Can the gofmt/doc-drift-only file changes be dropped or rebased out so this PR stays scoped to the trigger fix?</li>
-  <li>Should the 403→rerun fallback be narrowed to confirmed non-fork PRs (e.g. via <code class="inline">pr.Head.Repo.Fork</code>) to avoid masking genuine permission errors on fork PRs?</li>
-  <li>Is silencing the old <code class="inline">Warnf</code> "permission denied" log line for this path intentional for any existing log-based alerting?</li>
-</ul>
+<li>where: <code>pkg/plugins/trigger/generic-comment.go:153</code>
+</li>
+<li>concern: <code>approveGitHubActionsWorkflowRuns</code> now returns <code>*sync.WaitGroup</code>, but the only production call site discards it (<code>approveGitHubActionsWorkflowRuns(c, org, repo, pr.Head.Ref, headSHA)</code>). Correct behavior (fire-and-forget is intended in production — the WaitGroup exists solely so <code>TestApproveWorkflowRunsFallback</code> can <code>wg.Wait()</code>), but a one-line comment would prevent a future reader from wondering if the discard is an oversight.
+</li></ul>
+<h3><span class="tag c-gray">nit</span>pre-existing weak positive-path assertion left unfixed</h3>
+<ul>
+<li>where: <code>pkg/plugins/trigger/generic-comment_test.go:1852-1864</code>
+</li>
+<li>concern: <code>TestApproveGitHubActionsWorkflowRuns</code>'s <code>expectApprovalAttempt: true</code> case still only does <code>t.Logf(...)</code> with no real assertion (pre-existing, not introduced here). Now that <code>wg.Wait()</code> plumbing exists via the new test, tightening this would be trivial — not blocking since the new <code>TestApproveWorkflowRunsFallback</code> covers the added behavior properly.
+</li></ul>
+<h3><span class="tag c-blue">question</span>403 fallback scoped broadly</h3>
+<ul>
+<li>where: <code>pkg/plugins/trigger/generic-comment.go:322-332</code>
+</li>
+<li>concern: Falls back to rerun on any 403, not only when the PR is confirmed non-fork. A genuine token-scope 403 on a fork PR would also attempt (and likely fail) a rerun instead of clearly surfacing the real permission problem. Soft risk only — the rerun attempt fails safely and logs an error — but the info log ("likely non-fork PR") bakes in an unverified assumption.
+</li>
+<li>excerpt:<pre><code>} else if github.IsForbidden(err) {
+    log.Infof(&quot;approve endpoint returned 403 (likely non-fork PR), falling back to rerun: %v&quot;, err)</code></pre>
+</li></ul>
+<h3><span class="tag c-blue">question</span>log level change may silence existing alerts</h3>
+<ul>
+<li>where: <code>pkg/plugins/trigger/generic-comment.go:329</code>
+</li>
+<li>concern: 403 case moved from <code>Warnf(&quot;permission denied approving workflow run (check token scopes): %v&quot;, err)</code> to <code>Infof(...)</code>. Any operator with alerting keyed to the old warning-level string will stop seeing it. Likely desired (the old message was misleading), but worth a deliberate confirmation.
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li><code>TriggerGitHubWorkflow</code> (<code>pkg/github/client.go:2240</code>) correctly hits <code>POST /repos/{org}/{repo}/actions/runs/{id}/rerun</code>, matching the PR description.
+</li>
+<li><code>sync.WaitGroup.Go</code> is valid — go.mod requires go 1.25.8 (method added in Go 1.25).
+</li>
+<li>Fallback correctly scoped to <code>IsForbidden</code> only; <code>IsNotFound</code> (race with another approver) and generic errors do not trigger a rerun.
+</li>
+<li><code>TestApproveWorkflowRunsFallback</code> is thorough: success, 404, 403→rerun-success, 403→rerun-failure, generic-error-no-rerun, multiple runs, mixed success/fallback — all synchronized via <code>wg.Wait()</code>, using <code>sets.New[string]</code> for order-independent slice comparison.
+</li>
+<li><code>fakegithub.FakeClient</code> additions (<code>ApproveWorkflowRunErrors</code>, <code>ReranWorkflowRuns</code>, <code>ReranWorkflowRunErrors</code>) follow the existing <code>map[&quot;org/repo/id&quot;]error</code> convention and reuse the existing lock.
+</li>
+<li>Entire code path gated behind the pre-existing opt-in <code>trigger_github_workflows</code> config flag — no impact on installations not using it.
+</li>
+<li>No config struct fields renamed/removed, no JSON/YAML tag changes, no new required fields; rollback is safe (no state to unwind); no new GitHub App permissions/scopes required.
+</li>
+<li>Three independent specialist review passes (code-quality, maintainability, deployment-risk) all converged on APPROVE/LOW-RISK for the functional fix, with the only shared concern being the unrelated churn noted above.
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>Can the gofmt/doc-drift-only file changes be dropped or rebased out so this PR stays scoped to the trigger fix?
+</li>
+<li>Should the 403→rerun fallback be narrowed to cases where the PR is confirmed non-fork (e.g. via <code>pr.Head.Repo.Fork</code>) to avoid masking genuine permission errors on fork PRs?
+</li>
+<li>Is silencing the old <code>Warnf</code> "permission denied" log line for this path intentional for any existing log-based alerting?
+</li></ul>
+<h2>Followups</h2>
+<p>Post-merge followup to PR #798, merged on 2026-08-26 as <code>1daa92775867c044e465e11efb6b6269c3e7618a</code>. These are handoffs for work from the current default branch; no implementation was performed during this walkthrough.</p>
+<p>Accepted: 3 (one probe, two deliverables). Skipped: 1 (documenting the intentional WaitGroup discard).</p>
+<p>The unrelated formatting/generated-document churn is retained as review history: reversing already-merged cosmetic changes would add churn without improving behavior. The two 403/logging questions are combined in the permission-handling handoff below.</p>
+<h3>1. Probe the /ok-to-test workflow integration and configuration gates</h3>
+<p>Category: tests. Necessity: should.</p>
+<pre><code>Mode: probe
 
-</body>
-</html>
+In kubernetes-sigs/prow, following merged PR #798 — &quot;fix(trigger): fall back to rerun when approve fails for non-fork PRs&quot; (merge commit 1daa92775867c044e465e11efb6b6269c3e7618a), probe the command-to-workflow integration in pkg/plugins/trigger/generic-comment.go and TestApproveGitHubActionsWorkflowRuns in pkg/plugins/trigger/generic-comment_test.go. Work from the current default branch and first check whether this gap has already been addressed.
+
+Task: Write temporary tests that exercise handleGenericComment with a trusted /ok-to-test commenter, trigger_github_workflows enabled, and pending workflow runs for the exact PR head. Verify exact run IDs for successful approval, 403-to-rerun fallback, and multiple pending runs. Verify that disabling the flag, enabling IgnoreOkToTest, or using /test all or /retest does not invoke the pending-approval path. Distinguish that approval path from the separate failed-workflow retry path. Use a narrow observing fake or wrapper with channels/synchronization to await asynchronous completion; avoid arbitrary sleeps and unsynchronized reads of fake-client slices. Keep production asynchronous behavior intact.
+
+Acceptance criteria: Exercise every named behavior and classify each failure as an implementation bug or a wrong test expectation. A real bug means that an eligible command fails to approve/rerun the intended run, targets the wrong PR head/run, or invokes pending approval despite a disabled command/configuration gate. Apply the minimal fix only for confirmed implementation bugs. Run the focused probe tests, including the race detector where practical. Delete all probe tests and scaffolding before finishing; if no real bug is found, leave no files changed. Report the cases exercised and the evidence for any bug found.
+
+Scope guard: Do not submit the probe tests, refactor the workflow helper, change the 403 policy, change GitHub API semantics, or alter public handler interfaces merely to enable testing. Do not push, create issues, or open a PR.</code></pre>
+<h3>2. Distinguish fork permission errors from same-repo approval fallback</h3>
+<p>Category: deferred-review. Necessity: could.</p>
+<pre><code>Mode: deliver
+
+In kubernetes-sigs/prow, following merged PR #798 — &quot;fix(trigger): fall back to rerun when approve fails for non-fork PRs&quot; (merge commit 1daa92775867c044e465e11efb6b6269c3e7618a), clarify 403 handling in pkg/plugins/trigger/generic-comment.go, with focused coverage in generic-comment_test.go. Work from the current default branch and re-check the code before changing it.
+
+Task: Classify the PR as confirmed same-repo, confirmed fork, or unknown by comparing populated head/base repository identities. Do not use the head repository&#x27;s Fork flag alone: a PR within a repository that is itself a fork is still a same-repo PR. Carry the classification into approveGitHubActionsWorkflowRuns. On an approval 403, preserve the rerun fallback for confirmed same-repo PRs; for confirmed fork PRs, log a permission-denied warning and do not rerun. When metadata is insufficient, preserve the existing fallback behavior and use neutral wording rather than claiming the PR is likely non-fork. If fallback also fails, emit a diagnostic containing both the original approval error and the rerun error, retaining run/repository context. Keep successful fallback at informational level.
+
+Acceptance criteria: Focused tests cover same-repo 403 -&gt; rerun, fork 403 -&gt; warning/no rerun, unknown metadata 403 -&gt; existing fallback, and failed fallback diagnostics. Account for the same-repo-within-a-fork case. Preserve success, 404, and non-403 behavior, the trigger_github_workflows opt-in gate, and asynchronous production handling. Run the focused trigger tests with deterministic synchronization.
+
+Scope guard: Limit changes to PR classification, approval fallback decisions, diagnostics, and directly related tests. Add no configuration flags or dependencies, do not change workflow discovery or REST endpoint implementations, and do not revert cosmetic changes from PR #798. Do not push, create issues, or open a PR.</code></pre>
+<h3>3. Document GitHub Actions approval and rerun behavior in trigger help</h3>
+<p>Category: docs. Necessity: could.</p>
+<pre><code>Mode: deliver
+
+In kubernetes-sigs/prow, following merged PR #798 — &quot;fix(trigger): fall back to rerun when approve fails for non-fork PRs&quot; (merge commit 1daa92775867c044e465e11efb6b6269c3e7618a), document the GitHub Actions integration in pkg/plugins/trigger/trigger.go&#x27;s helpProvider and the TriggerGitHubWorkflows comment in pkg/plugins/config.go. Work from the current default branch and inspect its actual behavior first; a separate accepted followup may have refined fork-versus-same-repo 403 handling.
+
+Task: Extend the existing trigger plugin help to explain that, when trigger_github_workflows is enabled and /ok-to-test is honored for a trusted command, /ok-to-test attempts to approve pending GitHub Actions runs for the PR head and may rerun after approval returns 403, according to the current implementation. Distinguish this from /retest and /test all retrying failed workflows. Explain that workflow API work completes asynchronously and that failures are reported in hook/plugin logs. Expand the configuration field comment accordingly, then regenerate pkg/plugins/plugin-config-documented.yaml using the repository&#x27;s documented generator.
+
+Acceptance criteria: Both command help and configuration reference describe the opt-in gate, pending approval, applicable 403 fallback, and failure reporting accurately. Use wording that reflects current fork/same-repo handling and does not promise that rerunning resolves all permission errors or changes the original actor&#x27;s privileges. Generated documentation agrees with the source comment; inspect the generated diff for unrelated drift. Run only the relevant documentation/help checks required by the repository.
+
+Scope guard: Update the existing help and configuration documentation, plus directly related help expectations if required. Do not change production behavior, add a new flag or a separate documentation subsystem, or include unrelated formatting/generated-document drift. Do not push, create issues, or open a PR.</code></pre>
+</main></body></html>

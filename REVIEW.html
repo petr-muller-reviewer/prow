@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#878</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>test/integration: deflake TestDeck against parallel deck restarts</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/878">kubernetes-sigs/prow#878</a> · base <code>main</code> · head_sha <code>43e5937599c0</code> · reviewed_at <code>2026-08-27T10:31:27Z</code></div>
+<div class="badges"><span class="badge c-red">verdict: request-changes</span></div>
+<h2>What this PR does</h2>
+<ul>
+<li>Fixes a real intermittent CI flake: <code>TestDeck</code> raced <code>TestRerun</code>'s parallel deck-deployment restart and lost when the ingress was still returning 5xx.
+</li>
+<li>Makes <code>TestDeck</code>'s front-page fetch poll for up to 180s (mirroring <code>TestDeckTenantIDs</code>) instead of failing on the first non-200/error.
+</li>
+<li>Fixes a nil-pointer deref in <code>TestRerun</code>'s retry helper: a transport-level error left <code>res</code> nil, and <code>res.Body.Close()</code> panicked instead of retrying.
+</li>
+<li>Makes <code>refreshProwPods</code> wait (poll up to 2 min) for the old pods to be gone and a replacement to report Ready before returning, instead of returning immediately after issuing deletes.
+</li>
+<li>Lowers deck's <code>readinessProbe.timeoutSeconds</code> from 600 to 3 (kubelet runs probes serially per container; a single hung probe could freeze the Ready condition for 10 minutes).
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-amber">should-fix</span>TestDeck's poll doesn't bind the underlying HTTP call to the context/deadline</h3>
+<ul>
+<li>where: <code>test/integration/test/deck_test.go:227-243</code>
+</li>
+<li>concern: The scraper passed to <code>wait.PollUntilContextTimeout</code> calls <code>http.Get(url)</code> (no context), instead of <code>http.NewRequestWithContext(ctx, ...)</code> + <code>http.DefaultClient.Do</code>. <code>PollUntilContextTimeout</code> only checks the deadline between condition-function calls, not while one is in flight. If the ingress/deck ever black-holes the connection (TCP-level hang, as opposed to a quick connection-refused or 5xx), <code>http.Get</code> can block indefinitely and the intended 180s ceiling is not actually enforced — the test hangs until the outer <code>go test</code> binary timeout kills the whole suite rather than failing this test cleanly.
+</li>
+<li>excerpt:<pre><code>scraper := func(ctx context.Context) (bool, error) {
+    resp, err := http.Get(&quot;http://localhost/deck&quot;)
+    ...
+}
+if waitErr := wait.PollUntilContextTimeout(context.Background(), 1*time.Second, 180*time.Second, true, scraper); waitErr != nil {</code></pre>
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>refreshProwPods now holds prowComponentsMux for the entire readiness wait, serializing independent parallel restarts</h3>
+<ul>
+<li>where: <code>test/integration/test/setup.go:132-175</code>
+</li>
+<li>concern: The PR description acknowledges the lock is now held longer ("~10-15s for deck") and calls it absorbed by callers' minute-scale budgets, but the wait is bounded at up to 2 minutes, not 10-15s in the worst case. <code>TestLaunchProwJob</code> and <code>TestRerun</code> both call <code>refreshProwPods</code> and both run via <code>t.Parallel()</code>; with the wider critical section, one test's restart-and-wait can now fully serialize behind the other's for up to 2 minutes in the unhappy path, which is a meaningfully different (and untested) failure mode from the previous brief list+delete lock hold.
+</li>
+<li>excerpt:<pre><code>prowComponentsMux.Lock()
+defer prowComponentsMux.Unlock()
+...
+return wait.PollUntilContextTimeout(ctx, 2*time.Second, 2*time.Minute, true, func(ctx context.Context) (bool, error) {</code></pre>
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li><code>TestRerun</code> nil-deref fix: <code>res</code> is genuinely nil only on transport-level errors (confirmed <code>http.DefaultClient.Do</code> contract), so skipping <code>res.Body.Close()</code> on that branch and retrying instead is correct.
+</li>
+<li><code>labels.Parse</code> error handling fix (previously silently discarded via <code>_</code>) is a straightforward correctness improvement, no concerns.
+</li>
+<li>Readiness-probe <code>timeoutSeconds</code> change (600 → 3) matches <code>periodSeconds: 3</code> already in place; deck's <code>/healthz/ready</code> is cheap, flapping risk is low as claimed.
+</li>
+<li>The <code>&lt;title&gt;Prow Status&lt;/title&gt;</code> assertion in <code>TestDeck</code> intentionally stays outside the poll loop, so a served-but-wrong page still fails immediately — correct per the stated intent.
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>For the <code>refreshProwPods</code> lock-hold widening: was serialization between <code>TestLaunchProwJob</code> and <code>TestRerun</code> (rather than just parallelism within each) actually exercised in a flaky-CI repro, or is the "absorbed by minute-scale budgets" claim untested? Worth confirming the worst case (both tests' deck/horologium restarts landing back-to-back) still fits comfortably under the suite's 10-minute binary timeout mentioned in "known limitations".
+</li>
+<li>Any reason not to bind the <code>TestDeck</code> scraper's <code>http.Get</code> to the poll's <code>ctx</code> (via <code>http.NewRequestWithContext</code>) so a network-level hang is actually bounded by the 180s, matching the intent stated in the fatal message?
+</li></ul>
+<h2>Followups</h2>
+<p>Accepted: 3 (2 deliver, 1 probe). Skipped: 0.</p>
+<p>PR #878 merged on 2026-08-26 at <code>3dab1c8551d4cd9272f7491472bcd18f470d2a6d</code>. The opportunities below were checked against the merged files. The first two carry forward the unresolved review findings; the third addresses adjacent retry cleanup. No implementation work was performed during this followup walk.</p>
+<h3>Enforce Deck scraper deadlines</h3>
+<ul>
+<li>Category: reliability
+</li>
+<li>Necessity: should — stalled HTTP requests can outlive the advertised 180-second poll deadline.
+</li>
+<li>Where: <code>test/integration/test/deck_test.go:235</code> and <code>test/integration/test/deck_test.go:315</code>.
+</li>
+<li>Why followup: the merge handles transient 5xx responses, but both the new front-page scraper and the existing tenant scraper still omit the poll context from their HTTP requests.
+</li>
+<li>Decision: accepted.
+</li>
+<li>Mode: deliver
+<pre><code>In kubernetes-sigs/prow, following PR #878 — &quot;test/integration: deflake TestDeck against parallel deck restarts&quot; (merge commit 3dab1c8551d4cd9272f7491472bcd18f470d2a6d), work from the merged default branch. Recheck the current code before editing because later changes may have addressed this followup.
+
+In test/integration/test/deck_test.go, bind the GET requests in TestDeck and TestDeckTenantIDs to each poll callback&#x27;s context using http.NewRequestWithContext and the HTTP client. Ensure cancellation covers both waiting for headers and reading the response body. Preserve retries for transient request, status, and body-read failures; close response bodies; keep tenant assertions as they are and the front-page title assertion outside the poll.
+
+Acceptance criteria: focused validation demonstrates cancellation during stalled headers and stalled body reads, plus a transient failure followed by success. The existing 180-second polling budgets remain effective and the current assertions retain their meaning. Account for the package TestMain&#x27;s --run-integration-test gate when running focused tests so they actually execute; avoid requiring a live cluster for controlled HTTP cases where practical.
+
+Scope guard: limit changes to these two scrapers and necessary focused coverage. Do not change global HTTP defaults, other integration tests, or suite timeouts. If already addressed on the default branch, report the existing fix instead of duplicating it.</code></pre>
+</li></ul>
+<h3>Probe restart readiness and contention</h3>
+<ul>
+<li>Category: tests
+</li>
+<li>Necessity: should — resolve the saved concern about readiness waits and restart serialization with evidence.
+</li>
+<li>Where: <code>test/integration/test/setup.go:132</code>, <code>test/integration/test/horologium_test.go:72</code>, and <code>test/integration/test/deck_test.go:409</code>.
+</li>
+<li>Why followup: the merged helper holds the global component mutex throughout the readiness wait. Same-component coordination is intentional, but queued waits and their effect on caller deadlines and the suite budget remain unverified.
+</li>
+<li>Decision: accepted as probe.
+</li>
+<li>Mode: probe
+<pre><code>In kubernetes-sigs/prow, following PR #878 — &quot;test/integration: deflake TestDeck against parallel deck restarts&quot; (merge commit 3dab1c8551d4cd9272f7491472bcd18f470d2a6d), work from the merged default branch. Recheck the current refreshProwPods implementation and callers before starting.
+
+Use temporary focused tests with controlled client responses to exercise refreshProwPods in test/integration/test/setup.go. Cover an old pod UID still present, no replacement, an unready replacement, a terminating replacement, and a ready replacement after all old pods disappear. Exercise overlapping horologium/horologium and horologium/deck calls, slow readiness, and cancellation while queued. Measure mutex queue time separately from the two-minute readiness poll. Inspect TestLaunchProwJob in horologium_test.go, TestRerun in deck_test.go, and the actual runner configuration to assess whether supported overlapping restart scenarios threaten the suite&#x27;s ten-minute budget. Account for TestMain&#x27;s --run-integration-test gate so focused tests actually execute.
+
+Acceptance criteria: exercise every named case and classify each failure as an implementation bug or an incorrect test expectation, with evidence. Real bugs include returning ready while old pods remain or without a usable ready replacement, unsafe overlapping deletion, or a demonstrated violation of the intended cancellation or runtime contract. Serialization and queue time alone do not establish a bug; distinguish deliberate same-component protection from demonstrated failures. If a real bug is found, apply only its minimal fix and report the failing case. If none is found, leave no files changed.
+
+Scope guard: the tests are a probe, not the deliverable. Delete all temporary probe tests and instrumentation before finishing. Preserve protection against overlapping restarts of the same component. Do not blindly release the mutex before readiness, weaken readiness checks, increase suite timeouts, fix test-only problems, or refactor unrelated code. Submit changes only for a demonstrated implementation defect; otherwise report the evidence and leave the checkout unchanged.</code></pre>
+</li></ul>
+<h3>Finish rerun retry resource handling</h3>
+<ul>
+<li>Category: cleanup
+</li>
+<li>Necessity: could — close successful response bodies and remove 40 seconds of avoidable delay after the final failed attempt.
+</li>
+<li>Where: <code>test/integration/test/deck_test.go:461</code>.
+</li>
+<li>Why followup: the merge fixes the transport-error panic, while adjacent pre-existing response cleanup and backoff behavior remain in the same loop.
+</li>
+<li>Decision: accepted.
+</li>
+<li>Mode: deliver
+<pre><code>In kubernetes-sigs/prow, following PR #878 — &quot;test/integration: deflake TestDeck against parallel deck restarts&quot; (merge commit 3dab1c8551d4cd9272f7491472bcd18f470d2a6d), work from the merged default branch. Recheck the current code before editing because later changes may have addressed this followup.
+
+Update TestRerun&#x27;s local retry helper in test/integration/test/deck_test.go so every received response body is closed, including after a successful read, and backoff occurs only when another attempt remains. Preserve three attempts, the current delays between attempts, retries for transport errors and non-200 responses, and the existing treatment of body-read failures. The current loop sleeps for 10, 20, and 40 seconds on three consecutive failures; retain the first two delays and eliminate the final sleep.
+
+Acceptance criteria: focused validation demonstrates successful-body closure, correct cleanup on failure paths, and exhausted retries without a final sleep. Transport errors with a nil response must remain safe. Account for TestMain&#x27;s --run-integration-test gate when running focused tests so they actually execute.
+
+Scope guard: keep changes within the rerun retry lifecycle and necessary focused coverage. Do not redesign rerun semantics, broaden retry policy, change suite timeouts, or refactor other integration tests. If already addressed on the default branch, report the existing fix instead of duplicating it.</code></pre>
+</li></ul>
+</main></body></html>

@@ -141,4 +141,115 @@ configAgent.Subscribe(configChanges)</code></pre>
 <ul>
 <li>None — the change is small, well-contained, and the reasoning is spelled out clearly in the <code>deliverDelta</code> doc comment.
 </li></ul>
+<h2>Followups</h2>
+<p>Recorded by <code>/review:followup</code> on 2026-10-25T13:54:44Z for merged PR #870 (<code>b4d923a1a60cedd794f9461c529df11ebd8e1abc</code>). Two of six candidates accepted:</p>
+<h3><span class="tag c-gray">tests</span>Probe coalescing edge cases and <code>Load()</code> chaining</h3>
+<ul>
+<li>category: tests
+</li>
+<li>necessity: could
+</li>
+<li>mode: probe
+</li>
+<li>where: <code>pkg/config/agent.go:454-470</code>, <code>pkg/statusreconciler/status.go:57-70</code>
+</li>
+<li>why followup: merged tests cover coalescing, chained delivery, concurrent receive, and independent subscribers, but the <code>deliverDelta</code> branch taken when the subscriber drains the slot between the failed send and the drain attempt (<code>pkg/config/agent.go:466-467</code>) has no deterministic exercise, and nothing stresses <code>statusController.Load()</code> when config is rewritten repeatedly during startup. A probe is cheap and its only deliverable is a bug fix.
+</li>
+<li>handoff prompt:
+<pre><code>In kubernetes-sigs/prow (default branch `main`), following PR #870 &quot;statusreconciler: never
+drop config deltas&quot; (merged as b4d923a1a60cedd794f9461c529df11ebd8e1abc), run a throwaway
+test probe over the new config-delta coalescing code and hunt for real bugs.
+
+Context: `pkg/config/agent.go` implements `Agent.Subscribe() DeltaChan` (single-slot buffer)
+and `deliverDelta` (try-send; if full, drain the pending delta and merge it, preserving its
+`Before`; then a final send). `Set` holds `ca.mut` while delivering, and the receive-only
+`DeltaChan` alias prevents subscribers from writing. Existing tests live in
+`pkg/config/agent_test.go`; `pkg/statusreconciler/status_test.go` covers
+`statusController.Load`.
+
+Task: write throwaway tests (uncommitted, in the normal test locations) exercising:
+1. The no-pending-delta branch of `deliverDelta` (subscriber drained between the failed send
+   attempt and the drain attempt). Drive it with a start barrier and many iterations under
+   `-race`, asserting the consumer sees a continuous chain — every `Before` equals the
+   previous `After`, with no delta lost or duplicated.
+2. A subscriber that never drains across many `Set` calls and then drains once. Assert
+   `Set` never blocks and the reader receives exactly one delta, `{first Before, last
+   After}`.
+3. `statusController.Load()` while the config files are rewritten repeatedly, so several
+   `Set` calls happen before the first receive. Assert the returned delta&#x27;s `Before` is the
+   persisted state and `After` is the final config.
+Run `go test -race -count=20 ./pkg/config/... ./pkg/statusreconciler/...` and classify each
+failure as a real implementation bug or a wrong test expectation, with evidence.
+
+Acceptance criteria:
+- All three behaviours are exercised; every failure is classified with the failing case and
+  the observed vs. expected delta.
+- If a real bug is found: apply the minimal fix only, and report the failing case so it can
+  be kept as a regression test.
+- If no real bug is found: no files changed; delete the probe tests.
+
+Scope guard: the deliverable is a bug fix, never the probe tests; do not refactor
+`deliverDelta` or `Subscribe` for style; do not touch unrelated tests or packages; do not
+change coalescing semantics unless a concrete correctness failure proves them wrong.</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">tech-debt</span>Dedupe the two config-watch loops</h3>
+<ul>
+<li>category: tech-debt
+</li>
+<li>necessity: could
+</li>
+<li>mode: deliver
+</li>
+<li>where: <code>pkg/moonraker/moonraker.go:100-140</code>, <code>pkg/pubsub/subscriber/server.go:151-200</code>
+</li>
+<li>why followup: #870 touched both call sites and left two structurally identical loops — subscribe, snapshot the watched sections, select on context/channel, <code>reflect.DeepEqual</code>, restart the worker. The only differences are which sections are watched and moonraker's extra <code>SetWithoutBroadcast</code> step. The duplication predates the PR; the shared <code>DeltaChan</code> API is what makes extracting it natural now.
+</li>
+<li>handoff prompt:
+<pre><code>In kubernetes-sigs/prow (default branch `main`), following PR #870 &quot;statusreconciler: never
+drop config deltas&quot; (merged as b4d923a1a60cedd794f9461c529df11ebd8e1abc), remove the
+duplicated config-watch loops in moonraker and the pubsub subscriber by extracting a shared
+helper.
+
+Context: `config.Agent.Subscribe()` now returns an agent-owned, receive-only
+`config.DeltaChan` whose single-slot buffer coalesces undrained updates. Both
+`(*Moonraker).RunConfigWatcher` (`pkg/moonraker/moonraker.go:100-140`) and
+`(*PullServer).Run` (`pkg/pubsub/subscriber/server.go:151-200`) follow the same shape:
+subscribe; snapshot the sections they care about (`configSectionsToWatch` embeds
+`config.InRepoConfig`; `configToWatch` embeds `config.PubSubTriggers` and
+`config.PubsubSubscriptions`); loop on `ctx.Done()`, the delta channel, and — for the pull
+server — a derived context; rebuild the snapshot on each delta and restart the worker only
+when `reflect.DeepEqual` reports a change. Moonraker additionally calls
+`mr.ConfigAgent.SetWithoutBroadcast(&amp;event.After)` before recording its new snapshot.
+
+Task:
+1. Add a reusable helper in `pkg/config` that encapsulates subscribe -&gt; snapshot -&gt; select
+   -&gt; compare -&gt; notify. Because the snapshots contain maps, compare with
+   `reflect.DeepEqual` on `any` (or take a caller-supplied equality func) rather than a
+   `comparable` constraint. It must:
+   - return on caller context cancellation,
+   - watch the latest config only (the channel already coalesces; do not try to replay
+     intermediate transitions),
+   - accept an optional extra done-channel for the pull server&#x27;s derived context,
+   - invoke a caller-provided post-change hook before recording the new snapshot, so
+     moonraker can keep its `SetWithoutBroadcast` step,
+   - propagate hook errors to the caller.
+2. Migrate both call sites to the helper with no behaviour change, and delete the duplicated
+   loops. Keep log lines equivalent (`Received new config`, `New config found, ...`).
+
+Acceptance criteria:
+- `go build ./pkg/...` and `go vet ./pkg/config/... ./pkg/moonraker/... ./pkg/pubsub/...`
+  pass; `go test ./pkg/config/... ./pkg/moonraker/... ./pkg/pubsub/...` passes.
+- Unit tests for the helper: an unchanged-snapshot delta does not fire the hook; a changed
+  snapshot does; caller context cancellation returns; the extra done-channel returns; hook
+  errors propagate.
+- Moonraker still re-sets the agent config without broadcasting when `InRepoConfig`
+  changes and still ignores changes to unrelated sections.
+- Neither old loop remains; no duplicated subscribe/compare code is left in either package.
+
+Scope guard: do not change `Agent.Subscribe`, `Set`, `SetWithoutBroadcast`, or the
+coalescing semantics; do not change which sections each component watches or when it
+restarts; do not touch other config consumers (status-reconciler, prow-controller-manager);
+keep the helper&#x27;s exported surface minimal since `pkg/config` is imported widely; do not
+reformat unrelated code.</code></pre>
+</li></ul>
 </main></body></html>

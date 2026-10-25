@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#1027</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>chore: update go to 1.27.3</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1027">kubernetes-sigs/prow#1027</a> · base <code>main</code> · head_sha <code>4b994a5c2818</code> · reviewed_at <code>2026-10-22T13:03:21Z</code></div>
+<div class="badges"><span class="badge c-red">verdict: request-changes</span></div>
+<h2>Verdict</h2>
+<p>Request changes for one compatibility issue: the generated code now imports a standard-library package that is unavailable by default with Go 1.26, while the module still declares Go 1.26.4 as its minimum. The toolchain pin and PR CI use Go 1.27.3, but downstream builds that honor the module's declared minimum can fail.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Pins the repository's build toolchain to Go 1.27.3.
+</li>
+<li>Updates golangci-lint to v2.15.0 and refreshes its tool dependencies.
+</li>
+<li>Regenerates the config deepcopy code and applies Go 1.27 formatting.
+</li>
+<li>Updates expected gzip bytes in the updateconfig tests.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-amber">should-fix</span>Declare the Go 1.27 minimum required by the generated import</h3>
+<ul>
+<li>where: <code>pkg/config/zz_generated.deepcopy.go:25</code>
+</li>
+<li>concern: This generated import requires the Go 1.27 standard library behavior, but the root <code>go.mod</code> still declares <code>go 1.26.4</code>. Under Go 1.26.9, <code>encoding/json/jsontext</code> is excluded by default build constraints, so consumers using Go 1.26 cannot build the module despite its declared minimum; raise the module directive to reflect the new requirement.
+</li>
+<li>excerpt:<pre><code>import (
+	jsontext &quot;encoding/json/jsontext&quot;
+
+	pipelinev1 &quot;github.com/tektoncd/pipeline/pkg/apis/pipeline/v1&quot;</code></pre>
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li><code>.go-version</code> is consumed by <code>hack/build/setup-go.sh</code>.
+</li>
+<li>The root <code>go.mod</code> directive remains <code>go 1.26.4</code>; only the tools module's dependency graph changes.
+</li>
+<li>The changed deepcopy import is not available by default in the local Go 1.26.9 toolchain (<code>go list encoding/json/jsontext</code> reports that build constraints exclude all files).
+</li>
+<li>PR CI reported unit, integration, image-build, race-detector, and lint jobs passing. No local tests were run.
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>Could the root module's minimum Go version be raised to match the new generated standard-library import?
+</li></ul>
+<h2>Followups</h2>
+<p>Accepted: 2; skipped: 0.</p>
+<h3><span class="tag c-gray">deferred-review</span>Declare the Go 1.27 minimum required by the generated import</h3>
+<p><strong>Necessity:</strong> should <strong>Where:</strong> <code>go.mod:3</code>, <code>pkg/config/zz_generated.deepcopy.go:25</code></p>
+<pre><code>Mode: deliver
+
+In `kubernetes-sigs/prow`, following PR #1027 — “chore: update go to 1.27.3” (merge commit `3f5cc7178d5a85a64fcf32c9cab401c937ee7218`), update the root `go.mod` Go directive to the earliest Go release that supports the generated `encoding/json/jsontext` import in `pkg/config/zz_generated.deepcopy.go` by default.
+
+Acceptance criteria:
+- The root module&#x27;s Go directive no longer claims Go 1.26 compatibility while this import is required.
+- The config package builds with the repository-pinned Go toolchain.
+- The change does not alter runtime behavior.
+
+Scope guard: keep the change to Go-version metadata and required validation; do not modify runtime code or regenerate unrelated files.</code></pre>
+<h3><span class="tag c-gray">test-maintenance</span>Assert gzip content instead of Go-version-specific bytes</h3>
+<p><strong>Necessity:</strong> could <strong>Where:</strong> <code>pkg/plugins/updateconfig/updateconfig_test.go:892</code> and the other gzip expected ConfigMap cases</p>
+<pre><code>Mode: deliver
+
+In `kubernetes-sigs/prow`, following PR #1027 — “chore: update go to 1.27.3” (merge commit `3f5cc7178d5a85a64fcf32c9cab401c937ee7218`), revise the gzip expectations in `pkg/plugins/updateconfig/updateconfig_test.go` so they validate gzip semantics rather than exact compressed bytes.
+
+Acceptance criteria:
+- The existing gzip cases still verify ConfigMap keys, binary-versus-text storage, and decoded payload content.
+- Assertions reject invalid gzip data and a valid gzip stream with the wrong payload.
+- Expected results no longer depend on a particular Go compressor byte stream.
+
+Scope guard: keep changes to the updateconfig test assertions; do not change production compression behavior or unrelated tests.</code></pre>
+</main></body></html>

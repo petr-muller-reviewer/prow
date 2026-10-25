@@ -1,208 +1,308 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<title>Review: kubernetes-sigs/prow#787</title>
-<style>
-  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; line-height: 1.6; color: #24292f; max-width: 900px; margin: 2rem auto; padding: 0 1rem; }
-  h1 { font-size: 1.5rem; border-bottom: 1px solid #d0d7de; padding-bottom: 0.5rem; }
-  h2 { font-size: 1.25rem; margin-top: 2rem; border-bottom: 1px solid #d0d7de; padding-bottom: 0.3rem; }
-  h3 { font-size: 1rem; margin-top: 1.5rem; }
-  code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; font-size: 0.875em; background: #f6f8fa; padding: 0.15em 0.4em; border-radius: 3px; }
-  pre { background: #f6f8fa; padding: 1rem; overflow-x: auto; border-radius: 6px; font-size: 0.85em; line-height: 1.5; }
-  .header-meta { background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 6px; padding: 1rem; margin-bottom: 1.5rem; }
-  .header-meta p { margin: 0.2rem 0; }
-  .verdict { padding: 0.75rem 1rem; border-radius: 6px; margin: 1rem 0; }
-  .verdict-request-changes { background: #fff1e5; border-left: 4px solid #d1242f; }
-  .verdict-approve { background: #dafbe1; border-left: 4px solid #1a7f37; }
-  .verdict-needs-discussion { background: #fff8c5; border-left: 4px solid #9a6700; }
-  .severity { display: inline-block; font-size: 0.75rem; font-weight: 600; padding: 0.15em 0.5em; border-radius: 3px; text-transform: uppercase; margin-right: 0.5em; }
-  .blocking { background: #ffebe9; color: #cf222e; }
-  .should-fix { background: #fff8c5; color: #9a6700; }
-  .nit { background: #ddf4ff; color: #0969da; }
-  .question { background: #f6f8fa; color: #57606a; }
-  .resolved { background: #dafbe1; color: #1a7f37; }
-  .finding { margin-bottom: 1.5rem; padding-left: 0.5rem; border-left: 3px solid #d0d7de; }
-  .finding-blocking { border-left-color: #cf222e; }
-  .finding-should-fix { border-left-color: #bf8700; }
-  .finding-nit { border-left-color: #0969da; }
-  .finding-question { border-left-color: #57606a; }
-  .finding-resolved { border-left-color: #1a7f37; }
-  ul { padding-left: 1.5rem; }
-  a { color: #0969da; text-decoration: none; }
-  a:hover { text-decoration: underline; }
-  .checked li { color: #57606a; }
-  .refresh-note { background: #ddf4ff; border: 1px solid #54aeff; border-radius: 6px; padding: 0.75rem 1rem; margin: 1rem 0; font-size: 0.9em; }
-</style>
-</head>
-<body>
-
-<h1>Review: rifle: smart reviewer selection; alternative to blunderbuss</h1>
-
-<div class="header-meta">
-  <p><strong>PR:</strong> <a href="https://github.com/kubernetes-sigs/prow/pull/787">kubernetes-sigs/prow#787</a></p>
-  <p><strong>Author:</strong> smg247</p>
-  <p><strong>Base:</strong> main</p>
-  <p><strong>Head SHA:</strong> <code>76856c96e99c09c35cafce2e1998d6781db5da88</code></p>
-  <p><strong>Reviewed:</strong> 2026-08-25T23:12:00Z</p>
-  <p><strong>Previous head:</strong> <code>6bb540ddd</code> (2026-08-21T11:59:37Z)</p>
-  <p><strong>PR state:</strong> MERGED</p>
-</div>
-
-<div class="refresh-note">
-  <strong>Refresh (2026-07-03):</strong> 2 new commits. Fixed handleStatus err shadowing and return-nil-vs-continue in both plugins. Improved validateMutuallyExclusivePlugins to handle org/repo conflicts and ExcludedRepos, with tests. Improved blame_test.go. The infinite loop bug remained open &mdash; Prucek also flagged it in an inline comment.
-</div>
-
-<div class="refresh-note">
-  <strong>Refresh (2026-07-26):</strong> 2 new commits since previous review. Fixed the infinite-loop bug (<code>944dde12e</code>) by adding <code>else { break }</code> to both selector loops in <code>GetReviewers</code>. Added rifle documentation to the reviewers/approvers doc, including an API quota note. PR was self-approved by the author (<code>kubernetes-prow[bot]</code> APPROVALNOTIFIER). No blocking findings remain.
-</div>
-
-<div class="refresh-note">
-  <strong>Refresh (2026-08-21):</strong> No code changes (head SHA unchanged). New inline review comment from Prucek flags that <code>GetBlame</code> is called with <code>pr.Base.Ref</code> (current base tip) while diff hunk line numbers are relative to the merge-base, risking line misalignment when the base branch has advanced since the PR branched. Added as a new should-fix finding; verdict downgraded pending author response.
-</div>
-
-<div class="refresh-note">
-  <strong>Refresh (2026-08-25):</strong> 1 new commit (<code>76856c96e</code>) fixes the merge-base finding &mdash; added <code>GetMergeBase</code> (REST compare API) to the GitHub client and fakegithub, and rifle now blames at the PR's merge-base SHA instead of the base branch tip, falling back to the base ref on error/empty. New test coverage for the fix and its fallback paths. Author acknowledged the finding; Prucek <code>/lgtm</code>'d. <strong>PR merged.</strong> No blocking or should-fix findings remain unresolved except the pre-existing structural ones noted below.
-</div>
-
-<h2>Verdict</h2>
-
-<div class="verdict verdict-approve">
-  <strong>Approve.</strong>
-  <p>The merge-base finding is fixed with test coverage for the fix and its fallback paths, and the PR has merged. The two remaining should-fix items (availability-check bypass in the fallback path, structural duplication between rifle and blunderbuss) and the insertion-sort nit are non-blocking and can be tracked as follow-ups.</p>
-</div>
-
-<h2>What this PR does</h2>
-
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Review</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>Review</h1>
+<div class="meta"></div>
+<p>--- pr: kubernetes-sigs/prow#787 title: "rifle: smart reviewer selection; alternative to blunderbuss" head_sha: 76856c96e99c09c35cafce2e1998d6781db5da88 base: main reviewed_at: 2026-08-25T23:12:00Z verdict: approve refresh_log:</p>
 <ul>
-  <li>Introduces a new <strong>rifle</strong> plugin that selects PR reviewers by scoring OWNERS candidates against git blame data (lines touched &times; 10 + recency &times; 5 + owner bonus), rather than blunderbuss's random selection.</li>
-  <li>Extracts shared reviewer-selection logic (the <code>getReviewers</code>/<code>findReviewer</code>/<code>isUserBusy</code> functions, interfaces, and the <code>/auto-cc</code> regex) from blunderbuss into a new <code>pkg/reviewer</code> package.</li>
-  <li>Adds a <code>GetBlame</code> method to the GitHub client using the GraphQL blame API with GitHub Apps auth support.</li>
-  <li>Adds a smart fallback: when not enough reviewers are found in the per-file OWNERS scope, searches broader <code>AllOwners()</code> ranked by blame scores, then fills remaining slots randomly.</li>
-  <li>Adds config validation ensuring blunderbuss and rifle are mutually exclusive on the same repo.</li>
-</ul>
-
-<p><strong>Since previous review (2026-07-01):</strong></p>
+<li>from: 8d69f902bcd18cfaf02cb90c26b097286278cdd4 to: e67069f07a0361184518631dec1321bd5599e0f3 summary: "2 new commits fix handleStatus err shadowing/return-nil in both plugins, improve validateMutuallyExclusivePlugins to handle org/repo conflicts and ExcludedRepos, add tests, improve blame_test.go. Infinite loop bug still open."
+</li>
+<li>from: e67069f07a0361184518631dec1321bd5599e0f3 to: 6bb540ddd3b64c06b752ee2d10aa43d0f6dd89cd summary: "Fixed the infinite-loop bug (blocking finding) by adding else{break} to both GetReviewers loops in reviewer.go. Added documentation for rifle to the reviewers/approvers doc. PR self-approved by author. No remaining blocking findings."
+</li>
+<li>from: 6bb540ddd3b64c06b752ee2d10aa43d0f6dd89cd to: 6bb540ddd3b64c06b752ee2d10aa43d0f6dd89cd summary: "No code change. New inline review comment from Prucek (2026-08-21) flags that GetBlame uses pr.Base.Ref (current base tip) while diff hunk line numbers are relative to the merge-base, causing potential line misalignment when base has advanced. Added as a new should-fix finding; verdict downgraded to needs-discussion pending author response."
+</li>
+<li>from: 6bb540ddd3b64c06b752ee2d10aa43d0f6dd89cd to: 76856c96e99c09c35cafce2e1998d6781db5da88 summary: "Fixed the merge-base finding: added GetMergeBase (REST compare API) to the GitHub client and fakegithub, and rifle now resolves the PR's merge-base SHA and blames at that ref instead of pr.Base.Ref, falling back to the base ref if the lookup errors or returns empty. Added client_test.go and rifle_test.go coverage including the fallback paths. Author (smg247) acknowledged the finding inline. Prucek /lgtm'd. PR merged."
+</li></ul>
+<h2>Summary</h2>
+<p>Adds a new <code>rifle</code> plugin that selects PR reviewers using git blame scoring instead of random selection. Extracts shared reviewer logic from blunderbuss into <code>pkg/reviewer/reviewer.go</code>. Adds <code>GetBlame</code> GraphQL method to the GitHub client. Adds mutual-exclusion validation preventing both plugins on the same repo.</p>
+<p>Since previous review (2026-07-01):</p>
 <ul>
-  <li>Fixed <code>handleStatus</code> err shadowing and <code>return nil</code> vs <code>continue</code> in both rifle and blunderbuss, using <code>utilerrors.NewAggregate</code> to collect errors.</li>
-  <li>Improved <code>validateMutuallyExclusivePlugins</code> to detect org-vs-repo conflicts and respect <code>ExcludedRepos</code>. Added 6 test cases.</li>
-  <li>Improved <code>TestReviewerScorer</code> to actually call <code>scorer.scoreReviewers()</code> instead of duplicating scoring logic inline.</li>
-  <li>Fixed import ordering, added <code>BlameData</code> field to <code>FakeClient</code>.</li>
-</ul>
-
-<p><strong>Since previous review (2026-07-03):</strong></p>
+<li>Fixed <code>handleStatus</code> err shadowing and <code>return nil</code> vs <code>continue</code> in both rifle and blunderbuss, using <code>utilerrors.NewAggregate</code> to collect errors.
+</li>
+<li>Improved <code>validateMutuallyExclusivePlugins</code> to detect org-vs-repo conflicts and respect <code>ExcludedRepos</code>. Added 6 test cases.
+</li>
+<li>Improved <code>TestReviewerScorer</code> to actually call <code>scorer.scoreReviewers()</code> instead of duplicating scoring logic inline.
+</li>
+<li>Fixed import ordering, added <code>BlameData</code> field to <code>FakeClient</code>.
+</li></ul>
+<p>Since previous review (2026-07-03):</p>
 <ul>
-  <li>Fixed the infinite-loop bug in <code>GetReviewers</code> (<code>pkg/reviewer/reviewer.go:121-136</code>) by adding <code>else { break }</code> to both selector loops.</li>
-  <li>Added documentation for the rifle plugin to <code>site/content/en/docs/components/plugins/approve/approvers/_index.md</code>, including algorithm description and API quota note.</li>
-</ul>
-
-<p><strong>Since previous review (2026-08-25):</strong></p>
-<ul>
-  <li>Fixed the merge-base finding: added <code>GetMergeBase</code> to the GitHub client (REST compare-two-commits API) and <code>fakegithub.FakeClient</code>. Rifle's <code>handle</code> resolves the PR's merge-base SHA and blames at that ref, falling back to <code>pr.Base.Ref</code> if the lookup errors or returns empty.</li>
-  <li>PR merged.</li>
-</ul>
-
+<li>Fixed the infinite-loop bug in <code>GetReviewers</code> (<code>pkg/reviewer/reviewer.go:121-136</code>) by adding <code>else { break }</code> to both selector loops.
+</li>
+<li>Added documentation for the rifle plugin to <code>site/content/en/docs/components/plugins/approve/approvers/_index.md</code>, including algorithm description and API quota note.
+</li></ul>
+<p>Since previous review (2026-08-21): no code changes; new inline review comment surfaces a potential blame/diff line-number misalignment (see findings).</p>
+<p>Since previous review (2026-08-25): merge-base finding fixed; PR merged (see Resolved).</p>
 <h2>Findings</h2>
-
-<h3>Should fix</h3>
-
-<div class="finding finding-should-fix">
-  <p><span class="severity should-fix">Should fix</span> <strong>findFallbackReviewers bypasses UseStatusAvailability</strong></p>
-  <p><code>pkg/plugins/rifle/rifle.go:411-460</code></p>
-  <p>The primary selection path correctly checks <code>IsUserBusy</code> for each candidate, but <code>findFallbackReviewers</code> picks from <code>AllOwners()</code> purely by blame score or randomly &mdash; no availability check. A user whose busy status was correctly respected during initial selection can still be assigned via the fallback path. This is novel to rifle (blunderbuss has no all-owners fallback).</p>
-</div>
-
-<div class="finding finding-should-fix">
-  <p><span class="severity should-fix">Should fix</span> <strong>Massive code duplication between rifle and blunderbuss</strong></p>
-  <p><code>pkg/plugins/rifle/rifle.go:89-353</code>, <code>pkg/plugins/config.go:228-259</code></p>
-  <p><code>handlePullRequest</code>, <code>handleGenericComment</code>, <code>handleStatus</code>, and <code>handle</code> in rifle are near-identical copies of blunderbuss (only the config type and selector strategy differ). The <code>Rifle</code> config struct is identical to <code>Blunderbuss</code>. <code>validateRifle</code> is identical to <code>validateBlunderbuss</code>. The handleStatus fix was applied identically to both plugins &mdash; a concrete example of the duplication cost.</p>
-</div>
-
-<h3>Nits</h3>
-
-<div class="finding finding-nit">
-  <p><span class="severity nit">Nit</span> <strong>Hand-rolled insertion sort in selectBestReviewer</strong></p>
-  <p><code>pkg/plugins/rifle/rifle.go:380-384</code></p>
-  <p>Manual insertion sort after shuffle. <code>sort.SliceStable</code> after shuffle achieves the same stable-sort-with-random-tiebreaking in one line and is more readable:</p>
-  <pre>// Current:
-for i := 1; i &lt; len(ranked); i++ {
-    for j := i; j > 0 &amp;&amp; ranked[j].score > ranked[j-1].score; j-- {
+<h3><span class="tag c-amber">should-fix</span>findFallbackReviewers bypasses UseStatusAvailability</h3>
+<ul>
+<li>where: <code>pkg/plugins/rifle/rifle.go:411-460</code>
+</li>
+<li>concern: Primary selection respects <code>IsUserBusy</code>, but <code>findFallbackReviewers</code> picks from <code>AllOwners()</code> by blame score or randomly without any availability check. A user correctly skipped as busy during initial selection can be assigned via fallback. Novel to rifle — blunderbuss has no all-owners fallback.
+</li>
+<li>excerpt:<pre><code>// No IsUserBusy call anywhere in findFallbackReviewers
+for i := 0; i &lt; len(candidates) &amp;&amp; len(result) &lt; needed; i++ {
+    result = append(result, candidates[i].login)
+}</code></pre>
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>Massive code duplication between rifle and blunderbuss</h3>
+<ul>
+<li>where: <code>pkg/plugins/rifle/rifle.go:89-353</code>, <code>pkg/plugins/config.go:228-259</code>
+</li>
+<li>concern: <code>handlePullRequest</code>, <code>handleGenericComment</code>, <code>handleStatus</code>, and <code>handle</code> in rifle are near-identical copies of blunderbuss (only config type and selector differ). The <code>Rifle</code> config struct is identical to <code>Blunderbuss</code>. <code>validateRifle</code> is identical to <code>validateBlunderbuss</code>. The handleStatus fix was applied identically to both plugins — a concrete example of the duplication cost.
+</li></ul>
+<h3><span class="tag c-gray">nit</span>Hand-rolled insertion sort in selectBestReviewer</h3>
+<ul>
+<li>where: <code>pkg/plugins/rifle/rifle.go:380-384</code>
+</li>
+<li>concern: Manual insertion sort after shuffle. <code>sort.SliceStable</code> after shuffle achieves the same stable-sort-with-random-tiebreaking in one line.
+</li>
+<li>excerpt:<pre><code>for i := 1; i &lt; len(ranked); i++ {
+    for j := i; j &gt; 0 &amp;&amp; ranked[j].score &gt; ranked[j-1].score; j-- {
         ranked[j], ranked[j-1] = ranked[j-1], ranked[j]
     }
-}
-
-// Simpler:
-sort.SliceStable(ranked, func(i, j int) bool {
-    return ranked[i].score > ranked[j].score
-})</pre>
-</div>
-
-<h3>Resolved</h3>
-
-<div class="finding finding-resolved">
-  <p><span class="severity resolved">Resolved</span> <strong>GetBlame ref may not match the base the diff hunks were computed against</strong></p>
-  <p>Resolved in <code>76856c96e</code>. Added <code>GetMergeBase(org, repo, base, head string) (string, error)</code> to <code>pkg/github/client.go</code> (REST compare-two-commits API) and to <code>fakegithub.FakeClient</code> (configurable <code>MergeBaseSHA</code>). <code>handle</code> in <code>rifle.go:276-286</code> now resolves the merge-base of <code>pr.Base.Ref</code>/<code>pr.Head.SHA</code> and blames at that SHA instead of the base branch tip, logging a warning and falling back to <code>pr.Base.Ref</code> if the lookup errors or returns empty. <code>TestHandleRifleBlamesMergeBase</code> covers the success, error, and empty-merge-base fallback paths. Author (smg247) acknowledged: "this would definitely have led to incorrect results, especially as PRs age." Prucek <code>/lgtm</code>'d after the fix; PR merged.</p>
-</div>
-
-<div class="finding finding-resolved">
-  <p><span class="severity resolved">Resolved</span> <strong>Infinite loop when all candidates are busy</strong></p>
-  <p>Resolved in <code>944dde12e</code>. <code>GetReviewers</code> (<code>pkg/reviewer/reviewer.go:121-136</code>) now breaks out of both selector loops when <code>selector()</code> returns <code>""</code>, instead of spinning while <code>unusedLeaves.Len() &gt; 0</code>/<code>fileReviewers.Len() &gt; 0</code> stays true. This was independently flagged by Prucek in an inline review comment on 2026-07-03.</p>
-  <pre>for reviewers.Len() &lt; minReviewers &amp;&amp; unusedLeaves.Len() &gt; 0 {
-    if r := selector(&amp;unusedLeaves); r != "" {
+}</code></pre>
+</li></ul>
+<h2>Resolved</h2>
+<h3><span class="tag c-amber">should-fix</span>GetBlame ref may not match the base the diff hunks were computed against</h3>
+<ul>
+<li>resolved_in: <code>76856c96e</code>
+</li>
+<li>resolution: Added <code>GetMergeBase(org, repo, base, head string) (string, error)</code> to <code>pkg/github/client.go</code> (uses the REST compare-two-commits API) and to <code>fakegithub.FakeClient</code> (returns configurable <code>MergeBaseSHA</code>). <code>handle</code> in <code>pkg/plugins/rifle/rifle.go:276-286</code> now resolves <code>pr.Base.Ref</code>/<code>pr.Head.SHA</code>'s merge-base and blames at that SHA instead of the base branch tip, logging a warning and falling back to <code>pr.Base.Ref</code> if the lookup errors or returns empty. <code>rifle_test.go</code> adds <code>TestHandleRifleBlamesMergeBase</code> covering the success, error, and empty-merge-base fallback paths, plus asserts on <code>blameRefs</code> in the existing blame-scoring test. Author (smg247) acknowledged: "this would definitely have led to incorrect results, especially as PRs age." Reviewer (Prucek) <code>/lgtm</code>'d after the fix; PR merged.
+</li></ul>
+<h3><span class="tag c-red">blocking</span>Infinite loop when all candidates are busy</h3>
+<ul>
+<li>resolved_in: <code>944dde12e</code>
+</li>
+<li>resolution: <code>GetReviewers</code> (<code>pkg/reviewer/reviewer.go:121-136</code>) now breaks out of both selector loops when <code>selector()</code> returns <code>&quot;&quot;</code>, instead of spinning while <code>unusedLeaves.Len() &gt; 0</code>/<code>fileReviewers.Len() &gt; 0</code> stays true. This was independently flagged by Prucek in an inline review comment on 2026-07-03.
+</li>
+<li>excerpt:<pre><code>for reviewers.Len() &lt; minReviewers &amp;&amp; unusedLeaves.Len() &gt; 0 {
+    if r := selector(&amp;unusedLeaves); r != &quot;&quot; {
         reviewers.Insert(1, r)
     } else {
         break
     }
-}</pre>
-</div>
-
-<div class="finding finding-resolved">
-  <p><span class="severity resolved">Resolved</span> <strong>err shadowing in handleStatus silently drops handle() errors</strong></p>
-  <p>Resolved in <code>45d08fc6b</code>. Both rifle and blunderbuss now use <code>if err := handle(...); err != nil</code> (block-scoped <code>:=</code> that doesn't shadow) and collect errors via <code>utilerrors.NewAggregate</code>. Also changed <code>return nil</code> to <code>continue</code> for draft/ignored/already-reviewed PRs, fixing the early-exit issue.</p>
-</div>
-
-<div class="finding finding-resolved">
-  <p><span class="severity resolved">Resolved</span> <strong>validateMutuallyExclusivePlugins with old-format configs</strong></p>
-  <p>Resolved in <code>45d08fc6b</code>. Now detects org-vs-repo conflicts (e.g. org has blunderbuss, org/repo has rifle) and respects <code>ExcludedRepos</code>. Six test cases added covering no-conflict, same-entry conflict, org/repo cross-conflict, excluded-repo, and separate-orgs scenarios.</p>
-</div>
-
-<h2>Things I checked and was fine with</h2>
-
-<ul class="checked">
-  <li><code>GetBlame</code> GraphQL query structure and nil-safe <code>User</code> handling in <code>client.go:4459-4491</code></li>
-  <li><code>FallbackReviewersClient</code> correctly delegates <code>RequiredReviewers</code> (unlike old unexported version)</li>
-  <li><code>repoowners.RepoOwner</code> implements <code>AllOwners()</code> required by <code>reviewer.OwnersClient</code></li>
-  <li><code>fakegithub.FakeClient.GetBlame</code> satisfies <code>CommitClient</code> interface</li>
-  <li><code>diverseFileSelection</code> round-robin logic and removed-file filtering</li>
-  <li><code>parseDiffHunks</code> regex and range computation including pure-addition (count=0) case</li>
-  <li><code>intersectBlameWithChanges</code> overlap math and empty-login filtering</li>
-  <li>Plugin registration for rifle (PullRequest, GenericComment, StatusEvent handlers)</li>
-  <li><code>BlameRange</code> type in <code>types.go</code></li>
-  <li>Test coverage for <code>selectBestReviewer</code>, <code>findFallbackReviewers</code>, <code>diverseFileSelection</code>, blame scoring</li>
-  <li>handleStatus error handling fix: correct use of <code>utilerrors.NewAggregate</code>, <code>continue</code> instead of <code>return nil</code></li>
-  <li><code>validateMutuallyExclusivePlugins</code> org/repo cross-check logic and ExcludedRepos handling</li>
-  <li><code>TestValidateMutuallyExclusivePlugins</code> covers all relevant scenarios</li>
-  <li><code>else { break }</code> fix in <code>GetReviewers</code> correctly terminates both selector loops</li>
-  <li>New documentation for rifle in <code>approve/approvers/_index.md</code>: algorithm description, API quota note, mutual-exclusion note</li>
-  <li><code>GetMergeBase</code> REST call path (<code>/repos/{org}/{repo}/compare/{base}...{head}</code>), error handling, and empty-SHA guard in <code>client.go</code></li>
-  <li>Merge-base resolution and fallback-to-base-ref logic in <code>handle</code> (<code>rifle.go:276-286</code>)</li>
-  <li><code>TestHandleRifleBlamesMergeBase</code> covers success, error, and empty-merge-base fallback scenarios; <code>TestGetMergeBase</code> covers the REST client call</li>
-</ul>
-
-<h2>Open questions for the author</h2>
-
+}</code></pre>
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>err shadowing in handleStatus silently drops handle() errors</h3>
 <ul>
-  <li>Would it make more sense to add blame-based scoring as a mode within blunderbuss rather than a separate plugin? The event-handling code is identical; only the selector strategy differs. (Not addressed before merge; low priority now that the plugin has shipped.)</li>
-</ul>
-
+<li>resolved_in: <code>45d08fc6b</code>
+</li>
+<li>resolution: Both rifle and blunderbuss now use <code>if err := handle(...); err != nil</code> (block-scoped <code>:=</code> that doesn't shadow) and collect errors via <code>utilerrors.NewAggregate</code>. Also changed <code>return nil</code> to <code>continue</code> for draft/ignored/already-reviewed PRs, fixing the early-exit issue raised in open questions.
+</li></ul>
+<h3><span class="tag c-blue">question</span>validateMutuallyExclusivePlugins with old-format configs</h3>
+<ul>
+<li>resolved_in: <code>45d08fc6b</code>
+</li>
+<li>resolution: <code>validateMutuallyExclusivePlugins</code> now detects org-vs-repo conflicts (e.g. org has blunderbuss, org/repo has rifle) and respects <code>ExcludedRepos</code>. Six test cases added covering no-conflict, same-entry conflict, org/repo cross-conflict, excluded-repo, and separate-orgs scenarios.
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li><code>GetBlame</code> GraphQL query structure and nil-safe User handling in <code>client.go:4459-4491</code>
+</li>
+<li><code>FallbackReviewersClient</code> correctly delegates <code>RequiredReviewers</code> (unlike old unexported version)
+</li>
+<li><code>repoowners.RepoOwner</code> implements <code>AllOwners()</code> required by <code>reviewer.OwnersClient</code>
+</li>
+<li><code>fakegithub.FakeClient.GetBlame</code> satisfies <code>CommitClient</code> interface
+</li>
+<li><code>diverseFileSelection</code> round-robin logic and removed-file filtering in <code>blame.go</code>
+</li>
+<li><code>parseDiffHunks</code> regex and range computation including pure-addition (count=0) case
+</li>
+<li><code>intersectBlameWithChanges</code> overlap math and empty-login filtering
+</li>
+<li>Plugin registration for rifle (PullRequest, GenericComment, StatusEvent handlers)
+</li>
+<li><code>BlameRange</code> type in <code>types.go</code>
+</li>
+<li>Test coverage for <code>selectBestReviewer</code>, <code>findFallbackReviewers</code>, <code>diverseFileSelection</code>, blame scoring
+</li>
+<li>handleStatus error handling fix: correct use of <code>utilerrors.NewAggregate</code>, <code>continue</code> instead of <code>return nil</code>
+</li>
+<li><code>validateMutuallyExclusivePlugins</code> org/repo cross-check logic and ExcludedRepos handling
+</li>
+<li><code>TestValidateMutuallyExclusivePlugins</code> covers all relevant scenarios
+</li>
+<li><code>else { break }</code> fix in <code>GetReviewers</code> correctly terminates both selector loops
+</li>
+<li>New documentation for rifle in <code>approve/approvers/_index.md</code>: algorithm description, API quota note, mutual-exclusion note
+</li>
+<li><code>GetMergeBase</code> REST call path (<code>/repos/{org}/{repo}/compare/{base}...{head}</code>), error handling, and empty-SHA guard in <code>client.go</code>
+</li>
+<li>Merge-base resolution and fallback-to-base-ref logic in <code>handle</code> (<code>rifle.go:276-286</code>)
+</li>
+<li><code>TestHandleRifleBlamesMergeBase</code> covers success, error, and empty-merge-base fallback scenarios; <code>TestGetMergeBase</code> covers the REST client call
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>Would it make more sense to add blame-based scoring as a mode within blunderbuss rather than a separate plugin? The event-handling code is identical; only the selector strategy differs. (Not addressed before merge; low priority now that the plugin has shipped.)
+</li></ul>
 <h2>Discussion (informational, no action needed)</h2>
-
 <ul>
-  <li>stevekuznetsov asked about additional GitHub API quota load (2026-07-22). Author (smg247) answered: up to 20 additional REST <code>GetBlame</code> calls per PR (capped by <code>maxBlameFiles</code>), <code>IsUserBusy</code> GraphQL calls unchanged from blunderbuss and deduplicated via <code>busyReviewers</code>. Now also documented in the doc update. (Note: merge-base resolution adds one further REST call per PR event, on top of this estimate.)</li>
-  <li>PR self-approved by author (<code>kubernetes-prow[bot]</code> APPROVALNOTIFIER, 2026-07-22T16:51:23Z).</li>
-  <li>Prucek left an inline comment on <code>pkg/plugins/rifle/rifle.go:279</code> (2026-08-21T07:58:04Z) and a COMMENTED review (2026-08-21T09:14:19Z, no body) raising the base-ref/merge-base line-number concern, resolved in <code>76856c96e</code> (see Resolved).</li>
-  <li>Prucek commented <code>/test pull-prow-integration</code> and <code>/lgtm</code> (2026-08-21T14:53:44Z) after the fix landed. PR merged at <code>76856c96e99c09c35cafce2e1998d6781db5da88</code>.</li>
-</ul>
+<li>stevekuznetsov asked about additional GitHub API quota load (2026-07-22). Author (smg247) answered: up to 20 additional REST <code>GetBlame</code> calls per PR (capped by <code>maxBlameFiles</code>), <code>IsUserBusy</code> GraphQL calls unchanged from blunderbuss and deduplicated via <code>busyReviewers</code>. This is now also documented in the doc update. (Note: merge-base resolution adds one further REST call per PR event, on top of this estimate.)
+</li>
+<li>PR self-approved by author (kubernetes-prow bot APPROVALNOTIFIER, 2026-07-22T16:51:23Z).
+</li>
+<li>Prucek left an inline comment on <code>pkg/plugins/rifle/rifle.go:279</code> (2026-08-21T07:58:04Z) and a COMMENTED review (2026-08-21T09:14:19Z, no body) raising the base-ref/merge-base line-number concern, resolved in <code>76856c96e</code> (see Resolved).
+</li>
+<li>Prucek commented <code>/test pull-prow-integration</code> and <code>/lgtm</code> (2026-08-21T14:53:44Z) after the fix landed. PR merged at <code>76856c96e99c09c35cafce2e1998d6781db5da88</code>.
+</li></ul>
+<h2>Followups</h2>
+<p>Post-merge opportunities recorded by <code>/review:followup</code> on 2026-10-25 for PR #787 (merged to <code>main</code> as <code>a619408973827f5a8846fc61b4731156bde5fb0c</code>). Five accepted — four <code>deliver</code>, one <code>probe</code> — and one skipped (the <code>approvers/_index.md</code> fallback/API-quota wording, candidate 4).</p>
+<h3><span class="tag c-gray">should</span>deferred-review: make findFallbackReviewers respect use_status_availability</h3>
+<ul>
+<li>where: <code>pkg/plugins/rifle/rifle.go:425-474</code>, called from <code>handle</code> at <code>:343-351</code>
+</li>
+<li>mode: deliver
+</li>
+<li>why: the unresolved <code>should-fix</code> finding above. With <code>use_status_availability: true</code>, <code>selectBestReviewer</code> skips busy users but <code>findFallbackReviewers</code> assigns them, so the setting silently stops working when OWNERS yields too few reviewers.
+<pre><code>In `kubernetes-sigs/prow`, following PR #787 (&quot;rifle: smart reviewer selection; alternative to blunderbuss&quot;, merged to `main` as a619408973827f5a8846fc61b4731156bde5fb0c), make rifle&#x27;s reviewer fallback honour `use_status_availability`.
 
-</body>
-</html>
+Background: `pkg/plugins/rifle/rifle.go` has two selection paths. `selectBestReviewer` (around lines 369-414) skips candidates already in `busyReviewers` and, when `useStatusAvailability` is true, calls `reviewer.IsUserBusy`, caching the answer in `busyReviewers`. `findFallbackReviewers` (around lines 425-474), called from `handle` at around lines 343-351 when OWNERS-based selection yields fewer than `request_count` reviewers, performs no availability check at all: it ranks `oc.AllOwners()` by blame score, then fills the remainder uniformly at random.
+
+Task:
+1. Pass the GitHub client, the `useStatusAvailability` value, and the `*sets.Set[string]` busy cache into `findFallbackReviewers` (or restructure both paths behind one shared availability filter).
+2. In both the blame-ranked loop and the uniform-random fill loop, skip users already in `busyReviewers`; when `useStatusAvailability` is true, call `reviewer.IsUserBusy` for each candidate considered, mirroring `selectBestReviewer` (log a warning on error and treat that user as available; insert busy users into `busyReviewers` so they are never queried twice).
+3. Return fewer than `needed` reviewers rather than assigning a busy user — `handle` already tolerates a short list.
+4. Keep the user-facing behaviour otherwise unchanged: blame-ranked candidates first, then random fill.
+
+Acceptance criteria:
+- With `use_status_availability: true` and the top-scored fallback candidates answering `IsUserBusy` as busy, `handle` requests reviews only from unbusy owners.
+- New unit tests in `pkg/plugins/rifle/rifle_test.go` cover the all-candidates-busy case (no fallback reviewers) and the mixed case (busy skipped, unbusy assigned).
+- No additional `IsUserBusy` call is issued for a user already present in `busyReviewers`.
+- `go test ./pkg/plugins/rifle/...` and `go build ./pkg/plugins/rifle/...` pass.
+
+Scope guard: do not change blunderbuss, the scoring weights, or the blame pipeline; do not add a config option; do not restructure the event handlers.</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">should</span>codegen: document the rifle config in plugin-config-documented.yaml</h3>
+<ul>
+<li>where: <code>pkg/plugins/plugin-config-documented.yaml</code> (generated by <code>hack/gen-prow-documented/main.go</code>)
+</li>
+<li>mode: deliver
+</li>
+<li>why: <code>plugins.Rifle</code> was added without regenerating the config reference, so there is no top-level <code>rifle:</code> key. The same regeneration also adds the missing <code>max_request_count</code> to the <code>blunderbuss:</code> block. CI missed it because <code>hack/make-rules/verify/codegen.sh</code> copies <code>pkg/plugins</code> but never diffs it.
+<pre><code>In `kubernetes-sigs/prow`, following PR #787 (&quot;rifle: smart reviewer selection; alternative to blunderbuss&quot;, merged to `main` as a619408973827f5a8846fc61b4731156bde5fb0c), regenerate the auto-generated plugin config reference so the new `rifle` section is documented.
+
+Background: `pkg/plugins/plugin-config-documented.yaml` is generated by `go run ./hack/gen-prow-documented` (invoked from `hack/make-rules/update/codegen.sh`). PR #787 added the `plugins.Rifle` struct in `pkg/plugins/config.go` but did not regenerate, so the YAML has no top-level `rifle:` key. The same file is also missing `max_request_count` in its `blunderbuss:` block even though `plugins.Blunderbuss.MaxReviewerCount` exists.
+
+Task:
+1. From the repo root, run `go run ./hack/gen-prow-documented`.
+2. Inspect the resulting diff of `pkg/plugins/plugin-config-documented.yaml`. Do not hand-edit the file.
+3. Keep only genuinely regenerated content (`pkg/config/prow-config-documented.yaml` should come back unchanged).
+
+Acceptance criteria:
+- `pkg/plugins/plugin-config-documented.yaml` has a top-level `rifle:` block, alphabetically between `require_matching_label:` and `size:`, documenting the same fields as `blunderbuss:` (`exclude_approvers`, `ignore_authors`, `ignore_drafts`, `max_request_count`, `request_count`, `use_status_availability`, `wait_for_status`).
+- The `blunderbuss:` block now also shows `max_request_count`.
+- A second `go run ./hack/gen-prow-documented` produces no further diff.
+- No Go source changes are made.
+
+Scope guard: do not change the generator, the plugin structs, the docs page, or the set of config fields. Mention the `verify/codegen.sh` diff gap in the PR description only, not as a code change.</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">should</span>tech-debt: deduplicate the rifle/blunderbuss event plumbing and config</h3>
+<ul>
+<li>where: <code>pkg/plugins/rifle/rifle.go:91-367</code>, <code>pkg/plugins/blunderbuss/blunderbuss.go:81-353</code>, <code>pkg/plugins/config.go:197-283</code>, <code>:1444-1456</code>, <code>:1699-1712</code>
+</li>
+<li>mode: deliver
+</li>
+<li>why: the other unresolved <code>should-fix</code>. Handler bodies, config structs, validation and <code>WaitForStatus</code> regexp compilation are duplicated verbatim, so every fix must be applied twice — candidate 1 being the latest example.
+<pre><code>In `kubernetes-sigs/prow`, following PR #787 (&quot;rifle: smart reviewer selection; alternative to blunderbuss&quot;, merged to `main` as a619408973827f5a8846fc61b4731156bde5fb0c), deduplicate the code shared by the `blunderbuss` and `rifle` plugins.
+
+Background: `pkg/plugins/rifle/rifle.go` (lines ~91-367) and `pkg/plugins/blunderbuss/blunderbuss.go` (lines ~81-353) contain near-identical `handlePullRequestEvent`/`handlePullRequest`, `handleGenericCommentEvent`/`handleGenericComment`, `handleStatusEvent`/`handleStatus`, and `handle` implementations. The only differences are the config type (`plugins.Rifle` vs `plugins.Blunderbuss`) and the selector strategy handed to `reviewer.GetReviewers`. In `pkg/plugins/config.go` the `Rifle` struct (~245-283) is field-for-field identical to `Blunderbuss` (~197-244), `validateRifle` (~1451) is identical to `validateBlunderbuss` (~1444), and `compileRegexpsAndDurations` compiles the same `WaitForStatus` description regexp twice (~1699-1712). The mutual-exclusion validator exists only because the plugin names stay separate.
+
+Task:
+1. Extract the shared event plumbing into a reusable place — prefer `pkg/reviewer` (which already hosts `GetReviewers`, `FindReviewer`, `FallbackReviewersClient`) or a new small package under `pkg/plugins/`. Parameterize it by the plugin config and by a selector/strategy: blunderbuss supplies `reviewer.FindReviewer`, rifle supplies its blame scorer with the random fallback. Rifle&#x27;s `GetMergeBase`/`GetBlame` work stays in rifle.
+2. Collapse the duplicated config shape into one shared struct (type alias or an embedded `ReviewerSelectionConfig`) while keeping every JSON key (`request_count`, `max_request_count`, `exclude_approvers`, `use_status_availability`, `ignore_drafts`, `ignore_authors`, `wait_for_status`) and the generated docs identical. Keep the `Configuration.Blunderbuss` and `Configuration.Rifle` field names.
+3. Replace the duplicated validation and regexp-compilation blocks with one code path each.
+4. Keep both plugin names, registration, help providers, and the mutual-exclusion validation.
+
+Acceptance criteria:
+- `rifle.go` and `blunderbuss.go` are reduced to registration, help, and strategy wiring — no duplicated event-handler bodies.
+- `go test ./pkg/plugins/... ./pkg/reviewer/... ./cmd/checkconfig/...` passes, including blunderbuss&#x27;s handler tests (`TestHandlePullRequest`, `TestHandleGenericComment`, `TestHandleStatus`, `TestHandle*Event`) and rifle&#x27;s scoring tests.
+- `go run ./hack/gen-prow-documented` yields no config-shape diff (JSON keys unchanged).
+- No behaviour change: same events handled, same gating, same log messages where practical.
+
+Scope guard: do not merge rifle into blunderbuss as a single plugin (separate product decision), do not change selection algorithms or scoring, do not add features. Keep the diff mechanical and reviewable.</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">could</span>tests: probe rifle's copied event-handler paths</h3>
+<ul>
+<li>where: <code>pkg/plugins/rifle/rifle.go:91-257</code>, <code>pkg/plugins/rifle/rifle_test.go</code>
+</li>
+<li>mode: probe
+</li>
+<li>why: rifle tests the blame/scoring core but none of the ~150 duplicated handler lines (<code>/cc</code> skip, <code>wait_for_status</code> suppression, draft/ignore-authors, <code>/auto-cc</code>, status-event matching, non-head-SHA and already-requested-reviewer skips, multi-PR error aggregation) that blunderbuss covers.
+<pre><code>In `kubernetes-sigs/prow`, following PR #787 (&quot;rifle: smart reviewer selection; alternative to blunderbuss&quot;, merged to `main` as a619408973827f5a8846fc61b4731156bde5fb0c), probe rifle&#x27;s event-handler paths for bugs.
+
+Context: `pkg/plugins/rifle/rifle.go` copies blunderbuss&#x27;s handlers — `handlePullRequestEvent`/`handlePullRequest` (~91-124), `handleGenericCommentEvent`/`handleGenericComment` (~126-166), `handleStatusEvent`/`handleStatus` (~168-257), `handle` (~258-367) — but only the blame/scoring paths are tested (`pkg/plugins/rifle/rifle_test.go:416,511`). Blunderbuss covers all of them; use `pkg/plugins/blunderbuss/blunderbuss_test.go` (`TestHandlePullRequest`, `TestHandleGenericComment`, `TestHandleStatus`, `TestHandleGenericCommentEvent`, `TestHandlePullRequestEvent`, `TestHandleStatusEvent`) as the reference for fake setup.
+
+This is a probe. Write throwaway Go tests (in `pkg/plugins/rifle/` or a scratch package, using `fakegithub` and the existing rifle fake owners client) covering:
+- `handlePullRequest`: opened vs. `synchronize`; `/cc` in the PR body suppresses; `WaitForStatus != nil` suppresses immediate handling; draft + `ignore_drafts`; `ignore_authors`.
+- `handleGenericComment`: created vs. edited; non-PR; closed PR; `/auto-cc` present vs. absent.
+- `handleStatus`: matching vs. non-matching context, state, and description regexp; PR found for the SHA vs. `pr.Head.SHA` mismatch; `RequestedReviewers` already populated; draft and `ignore_authors`; two matching PRs where one `GetPullRequest` errors (error aggregated, the other still handled).
+- `handle` end-to-end with every reviewer candidate busy, proving the selection loops terminate and request no reviews (regression net for the infinite-loop bug fixed before merge).
+
+Run them with `go test ./pkg/plugins/rifle/... -count=1`. For each failure decide whether it is a real implementation bug or a wrong expectation/test mistake, and show the evidence from the code path. Apply only the minimal fix for a confirmed real bug.
+
+Acceptance criteria:
+- Every behaviour above is exercised; every failure is classified with evidence.
+- If a real bug is found, the minimal fix is applied and nothing else.
+- If no real bug is found, no files are changed.
+- Probe tests are deleted before finishing.
+
+Scope guard: do not submit the probe tests, do not refactor, do not fix test-only or style problems, do not touch blunderbuss. Report each failing case (input, expected, actual) so it can be kept as a regression test if wanted.</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">could</span>nit: replace the hand-rolled insertion sort in selectBestReviewer</h3>
+<ul>
+<li>where: <code>pkg/plugins/rifle/rifle.go:391-398</code>
+</li>
+<li>mode: deliver
+</li>
+<li>why: the last open review finding; a four-line reimplementation of <code>sort.SliceStable</code> with a descending comparator, in a file that already imports <code>sort</code>.
+<pre><code>In `kubernetes-sigs/prow`, following PR #787 (&quot;rifle: smart reviewer selection; alternative to blunderbuss&quot;, merged to `main` as a619408973827f5a8846fc61b4731156bde5fb0c), simplify ranking in `selectBestReviewer`.
+
+Background: in `pkg/plugins/rifle/rifle.go` around lines 391-398, candidates are shuffled with `rand.Shuffle` and then ordered with a hand-written insertion sort:
+
+    for i := 1; i &lt; len(ranked); i++ {
+        for j := i; j &gt; 0 &amp;&amp; ranked[j].score &gt; ranked[j-1].score; j-- {
+            ranked[j], ranked[j-1] = ranked[j-1], ranked[j]
+        }
+    }
+
+Task: replace that loop with `sort.SliceStable(ranked, func(i, j int) bool { return ranked[i].score &gt; ranked[j].score })`, keeping the `rand.Shuffle` before it so equal scores stay randomly ordered.
+
+Acceptance criteria:
+- `TestSelectBestReviewer`, `TestSelectBestReviewerSkipsBusy`, and `TestSelectBestReviewerNoScores` pass unchanged with `go test ./pkg/plugins/rifle/...`.
+- `go vet ./pkg/plugins/rifle/...` and gofmt are clean.
+
+Scope guard: change only that sorting loop; do not touch `findFallbackReviewers`, scoring, or the handler code.</code></pre>
+</li></ul>
+</main></body></html>

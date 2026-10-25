@@ -1,80 +1,144 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>Review: prow#843</title>
-<style>
-  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; line-height: 1.6; max-width: 900px; margin: 2rem auto; padding: 0 1.5rem; color: #1a1a1a; }
-  code, pre { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; }
-  header { border-bottom: 2px solid #333; padding-bottom: 1rem; margin-bottom: 1.5rem; }
-  header dl { display: grid; grid-template-columns: max-content 1fr; gap: 0.25rem 1rem; margin: 0.5rem 0; }
-  header dt { font-weight: 600; color: #555; }
-  h1 { font-size: 1.4rem; margin-bottom: 0.25rem; }
-  h2 { font-size: 1.15rem; border-bottom: 1px solid #ddd; padding-bottom: 0.3rem; margin-top: 2rem; }
-  .verdict { font-size: 1.05rem; font-weight: 600; padding: 0.75rem 1rem; border-radius: 6px; background: #fff3cd; border: 1px solid #ffe69c; }
-  .finding { border: 1px solid #ddd; border-radius: 6px; padding: 1rem; margin: 1rem 0; }
-  .finding h3 { margin: 0 0 0.5rem 0; font-size: 1rem; }
-  .sev { display: inline-block; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; padding: 0.15rem 0.5rem; border-radius: 4px; margin-right: 0.5rem; }
-  .sev.should-fix { background: #ffe8cc; color: #8a4b00; }
-  .loc { color: #555; font-size: 0.9rem; }
-  pre.excerpt { background: #f6f8fa; padding: 0.75rem 1rem; border-radius: 6px; overflow-x: auto; font-size: 0.88rem; }
-  ul { padding-left: 1.3rem; }
-</style>
-</head>
-<body>
-
-<header>
-  <h1>fix(deck): replace gorilla/csrf with net/http.CrossOriginProtection</h1>
-  <dl>
-    <dt>PR</dt><dd><a href="https://github.com/kubernetes-sigs/prow/pull/843">kubernetes-sigs/prow#843</a></dd>
-    <dt>Head SHA</dt><dd><code>7953d2b1d708f6f44bad88ac423223ca64fae42c</code></dd>
-    <dt>Base</dt><dd><code>main</code></dd>
-    <dt>Reviewed at</dt><dd>2026-08-27T11:07:01Z</dd>
-    <dt>PR state</dt><dd>MERGED (2026-08-26)</dd>
-  </dl>
-</header>
-
-<h2>Verdict</h2>
-<div class="verdict">Needs discussion. The migration itself is clean and correct, but one operational gap — no trusted-origin configuration and no escape hatch for reverse-proxy/ingress deployments — should be resolved or explicitly accepted before merge.</div>
-
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#843</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>fix(deck): replace gorilla/csrf with net/http.CrossOriginProtection</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/843">kubernetes-sigs/prow#843</a> · base <code>main</code> · head_sha <code>7953d2b1d708</code> · reviewed_at <code>2026-08-27T11:07:01Z</code></div>
+<div class="badges"><span class="badge c-amber">verdict: needs-discussion</span></div>
+<details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#843
+title: &quot;fix(deck): replace gorilla/csrf with net/http.CrossOriginProtection&quot;
+head_sha: 7953d2b1d708f6f44bad88ac423223ca64fae42c
+base: main
+reviewed_at: 2026-08-27T11:07:01Z
+verdict: needs-discussion
+refresh_log:
+  - old_head: 43b33864a72e472ca89f9f038506a9fe97239eea
+    new_head: 7953d2b1d708f6f44bad88ac423223ca64fae42c
+    summary: &quot;PR merged (squash/rebase-merge to main). Only change vs previous review: csrf.md doc nit (kubectl -&gt; curl example) addressing BenTheElder&#x27;s inline comment; main_test.go delta is an unrelated apimachinery-bump rebase artifact, not part of this PR&#x27;s own change. cmd/deck/main.go unchanged.&quot;</code></pre></details>
 <h2>What this PR does</h2>
 <ul>
-  <li>Removes the <code>gorilla/csrf</code> dependency from deck and replaces it with Go 1.25's stdlib <code>net/http.CrossOriginProtection</code>.</li>
-  <li>Updates all call sites of <code>createAbortProwJobIcon</code>, <code>createRerunProwJobIcon</code>, <code>prepareBaseTemplate</code>, <code>renderSpyglass</code> for the new function signatures (no more <code>csrfToken</code>/<code>X-CSRF-Token</code> threading).</li>
-  <li>Drops the 32-byte cookie-secret validation that was specific to gorilla/csrf's token requirement; the OAuth session-cookie path keeps its own independent validation.</li>
-  <li>Removes the now-obsolete <code>--rerun-creates-job</code> fatal precondition requiring a 32-byte cookie secret, since CSRF protection is now always-on regardless of cookie-secret config.</li>
-  <li>Updates <code>csrf.md</code> and <code>github-oauth-setup.md</code> docs; cleans <code>go.mod</code>/<code>go.sum</code> of the <code>gorilla/csrf</code> dependency.</li>
-</ul>
-
-<p><strong>Since previous review:</strong></p>
+<li>Removes the <code>gorilla/csrf</code> dependency from deck and replaces it with Go 1.25's stdlib <code>net/http.CrossOriginProtection</code>.
+</li>
+<li>Updates all call sites of <code>createAbortProwJobIcon</code>, <code>createRerunProwJobIcon</code>, <code>prepareBaseTemplate</code>, <code>renderSpyglass</code> for the new function signatures (no more <code>csrfToken</code>/<code>X-CSRF-Token</code> threading).
+</li>
+<li>Drops the 32-byte cookie-secret validation that was specific to gorilla/csrf's token requirement; the OAuth session-cookie path keeps its own independent validation.
+</li>
+<li>Removes the now-obsolete <code>--rerun-creates-job</code> fatal precondition requiring a 32-byte cookie secret, since CSRF protection is now always-on regardless of cookie-secret config.
+</li>
+<li>Updates <code>csrf.md</code> and <code>github-oauth-setup.md</code> docs; cleans <code>go.mod</code>/<code>go.sum</code> of the <code>gorilla/csrf</code> dependency.
+</li></ul>
+<p>Since previous review:</p>
 <ul>
-  <li><code>site/content/en/docs/components/core/deck/csrf.md</code>: doc example changed <code>kubectl</code> to <code>curl</code> per BenTheElder's review comment (non-browser API client example was misleading since kubectl doesn't talk to deck).</li>
-  <li>PR merged 2026-08-26 with approvals from BenTheElder, cblecker (self-approve), michelle192837; the <code>/hold</code> BenTheElder placed for the doc nit was cancelled by cblecker after the fix landed.</li>
-  <li>The should-fix finding below (no trusted origins / no escape hatch) was not addressed before merge and was not raised by other reviewers.</li>
-</ul>
-
+<li><code>site/content/en/docs/components/core/deck/csrf.md</code>: doc example changed <code>kubectl</code> -&gt; <code>curl</code> per BenTheElder's review comment (non-browser API client example was misleading since kubectl doesn't talk to deck).
+</li>
+<li>PR merged 2026-08-26 with approvals from BenTheElder, cblecker (self-approve), michelle192837; <code>/hold</code> placed by BenTheElder for the doc nit was cancelled by cblecker after the fix landed.
+</li>
+<li>The should-fix finding below (no trusted origins / no escape hatch) was not addressed before merge and was not raised by other reviewers.
+</li></ul>
 <h2>Findings</h2>
-
-<div class="finding">
-  <h3><span class="sev should-fix">Should fix</span>CrossOriginProtection constructed with no trusted origins and no escape hatch</h3>
-  <div class="loc"><code>cmd/deck/main.go:467</code></div>
-  <pre class="excerpt">http.NewCrossOriginProtection()</pre>
-  <p><code>http.NewCrossOriginProtection()</code> is constructed with no trusted origins configured, and the diff drops the old escape-hatch flag the gorilla/csrf setup had. If deck sits behind a reverse proxy/ingress where the Host header doesn't match the public origin, or is hit by an old client lacking <code>Sec-Fetch-Site</code> support with a mismatched <code>Origin</code> header, legitimate same-origin POSTs (rerun/abort) will be rejected with 403. There is no flag in this diff to register a trusted origin as a workaround for such deployments.</p>
-</div>
-
-<h2>Things I checked and was fine with</h2>
+<h3><span class="tag c-amber">should-fix</span>CrossOriginProtection constructed with no trusted origins and no escape hatch</h3>
 <ul>
-  <li>All call sites of <code>createAbortProwJobIcon</code>/<code>createRerunProwJobIcon</code>/<code>prepareBaseTemplate</code>/<code>renderSpyglass</code> updated consistently for the new signatures; no leftover <code>csrfToken</code>/<code>X-CSRF-Token</code> references anywhere.</li>
-  <li>Removed 32-byte cookie-secret validation was specific to gorilla/csrf's token requirement; OAuth session-cookie path's independent validation untouched.</li>
-  <li>Removal of the <code>--rerun-creates-job</code> fatal precondition is correct, not an unsafe removal — CSRF protection is now always-on.</li>
-  <li>Docs (<code>csrf.md</code>, <code>github-oauth-setup.md</code>) updated accurately.</li>
-  <li><code>go.mod</code>/<code>go.sum</code> cleanly drop <code>gorilla/csrf</code> with no dangling references.</li>
-</ul>
-
-<h2>Open questions for the author</h2>
+<li>where: <code>cmd/deck/main.go:467</code>
+</li>
+<li>concern: <code>http.NewCrossOriginProtection()</code> is constructed with no trusted origins configured, and the diff drops the old escape-hatch flag the gorilla/csrf setup had. If deck sits behind a reverse proxy/ingress where the Host header doesn't match the public origin, or is hit by an old client lacking <code>Sec-Fetch-Site</code> support with a mismatched <code>Origin</code> header, legitimate same-origin POSTs (rerun/abort) will be rejected with 403. There is no flag in this diff to register a trusted origin as a workaround for such deployments.
+</li>
+<li>excerpt:<pre><code>http.NewCrossOriginProtection()</code></pre>
+</li></ul>
+<h2>Checked</h2>
 <ul>
-  <li>Should <code>CrossOriginProtection</code> be configured with <code>AddTrustedOrigin</code> for deployments behind a reverse proxy/ingress with a mismatched Host, given the old insecure-style escape hatch was dropped without replacement?</li>
-</ul>
+<li>All call sites of <code>createAbortProwJobIcon</code>/<code>createRerunProwJobIcon</code>/<code>prepareBaseTemplate</code>/<code>renderSpyglass</code> updated consistently for the new signatures; no leftover <code>csrfToken</code>/<code>X-CSRF-Token</code> references anywhere.
+</li>
+<li>Removed 32-byte cookie-secret validation was specific to gorilla/csrf's token requirement; OAuth session-cookie path's independent validation untouched.
+</li>
+<li>Removal of <code>--rerun-creates-job</code> fatal precondition is correct, not an unsafe removal — CSRF protection is now always-on.
+</li>
+<li>Docs (<code>csrf.md</code>, <code>github-oauth-setup.md</code>) updated accurately.
+</li>
+<li><code>go.mod</code>/<code>go.sum</code> cleanly drop <code>gorilla/csrf</code> with no dangling references.
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>Should <code>CrossOriginProtection</code> be configured with <code>AddTrustedOrigin</code> for deployments behind a reverse proxy/ingress with a mismatched Host, given the old insecure-style escape hatch was dropped without replacement?
+</li></ul>
+<h2>Followups</h2>
+<p>Recorded 2026-10-25, post-merge followup walk for PR #843 (merge commit <code>b4275468b7eb840792be88965a1f29e8d7884297</code>). Three opportunities were considered; one accepted (as a probe), two skipped.</p>
+<h3><span class="tag c-gray">probe</span>Exercise the new cross-origin middleware and audit safe-method routes</h3>
+<ul>
+<li>category: tests
+</li>
+<li>mode: probe
+</li>
+<li>where: <code>cmd/deck/main.go:467-468</code>, <code>cmd/deck/main_test.go</code>
+</li>
+<li>why: the PR's only evidence that same-origin POSTs pass and cross-origin POSTs get 403 was a manual test-plan checkbox; <code>cmd/deck/*_test.go</code> has no cross-origin coverage, and the handler is built inline in <code>main()</code> so it is not reachable from a test without a small seam.
+</li>
+<li>status: accepted 2026-10-25
+<pre><code>In `kubernetes-sigs/prow`, following PR #843 (&quot;fix(deck): replace gorilla/csrf with
+net/http.CrossOriginProtection&quot;, merged as `b4275468b7eb840792be88965a1f29e8d7884297`),
+write throwaway tests to probe the cross-origin protection that `cmd/deck/main.go:467-468`
+now wraps around the deck mux, and fix only real bugs you find.
 
-</body>
-</html>
+Context: `main()` installs `cop := http.NewCrossOriginProtection()` and
+`cop.Handler(traceHandler(mux))`. The handler is built inline in `main()`, so extract the
+minimal seam you need (for example a small unexported helper returning the wrapped
+handler) — no other refactoring.
+
+Exercise these behaviours with `httptest`:
+- POST with `Sec-Fetch-Site: same-origin` reaches the inner handler.
+- POST with `Sec-Fetch-Site: cross-site` or `same-site` is rejected with 403.
+- POST with `Sec-Fetch-Site: none` is allowed.
+- POST with neither `Sec-Fetch-Site` nor `Origin` (curl/CI style) is allowed.
+- POST with no `Sec-Fetch-Site` and `Origin` equal to the request Host is allowed;
+  a different `Origin` is rejected with 403.
+- Safe methods (GET, HEAD, OPTIONS) always reach the handler.
+- Proxy scenario: modern `Sec-Fetch-Site` present while the request Host is rewritten
+  (Host / X-Forwarded-Host mismatch) — confirm whether the request still passes and
+  report the result either way.
+
+Then audit the routes registered in `cmd/deck/main.go` (the `mux.Handle` / `HandleFunc`
+calls) for any state-mutating handler reachable via a safe method, since
+CrossOriginProtection only checks non-safe methods. Pay particular attention to
+`/github-login/redirect`, `/github-link`, and `/git-provider-link` (session-cookie writes
+on GET) and judge each on its own merits (OAuth `state`, cookie flags, etc.).
+
+Triage every failure: is it a real implementation bug, or a wrong test expectation?
+
+Acceptance criteria: every behaviour above exercised and its result recorded; each failure
+classified with evidence. If a real bug is found, apply the minimal fix (and nothing else)
+and describe the failing case so it can be kept as a regression test. If no real bug is
+found: no files changed.
+
+Scope guard: delete the probe tests and the extraction seam before finishing — the
+deliverable is a bug fix, never the tests. Do not fix test-only problems, style, or
+unrelated code. Do not change CSRF policy (no new flags, no bypass patterns) and do not
+touch documentation.</code></pre>
+</li></ul>
+</main></body></html>

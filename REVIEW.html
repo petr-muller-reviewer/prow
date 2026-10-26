@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#708</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>external-plugins: add netlify-preview plugin to retry deploy previews</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/708">kubernetes-sigs/prow#708</a> · base <code>main</code> · head_sha <code>e8849971aad1</code> · reviewed_at <code>2026-09-29T17:56:49Z</code></div>
+<div class="badges"><span class="badge c-red">verdict: request-changes</span><span class="badge c-red">gate: do-not-merge</span></div>
+<details><summary>Full metadata</summary><pre><code>pr: &quot;kubernetes-sigs/prow#708&quot;
+title: &quot;external-plugins: add netlify-preview plugin to retry deploy previews&quot;
+head_sha: e8849971aad14f136ab4b965d06a9fe679b9115b
+base: main
+reviewed_at: 2026-09-29T17:56:49Z
+verdict: request-changes
+gate:
+  decision: do-not-merge
+  gated_at: 2026-09-29T17:57:34Z
+  gated_head_sha: e8849971aad14f136ab4b965d06a9fe679b9115b
+  reviewed_head_sha: e8849971aad14f136ab4b965d06a9fe679b9115b</code></pre></details>
+<h2>Gate</h2>
+<p><strong>Do not merge.</strong> The PR head is unchanged since the saved review, and both blocking findings still exist in the current code. Fixing them is required before another gate pass; the remaining should-fix findings also need a disposition. No new compatibility risk for existing Prow deployments was found.</p>
+<h3>Gating list</h3>
+<ul>
+<li><strong>Unaddressed, blocks merge — <code>REVIEW.md</code>:</strong> The client follows an unvalidated pagination URL and adds the Netlify token ([<code>netlify/client.go:80-99</code>](cmd/external-plugins/netlify-preview/netlify/client.go)). Restrict authenticated requests to the configured HTTPS API origin.
+</li>
+<li><strong>Unaddressed, blocks merge — <code>REVIEW.md</code>:</strong> An untrusted comment author can force a rebuild when the PR author or <code>ok-to-test</code> label makes the PR trusted ([<code>server.go:197-207</code>](cmd/external-plugins/netlify-preview/server.go)). Require a trusted author for <code>/netlify-rebuild</code>.
+</li></ul>
+<h3>Other findings still open</h3>
+<ul>
+<li><strong>Unaddressed — <code>REVIEW.md</code>:</strong> The active-state guard covers only <code>building</code> and <code>enqueued</code> (<code>plugin/plugin.go:82-86</code>); case-insensitive parsing and first-command-only dispatch can ignore an explicit rebuild (<code>plugin/plugin.go:37-45</code>); and Netlify API failures leave an explicit rebuild unanswered (<code>server.go:154-159,177-181</code>). Resolve or explicitly disposition these behavior findings before merge.
+</li>
+<li><strong>Unaddressed — <code>REVIEW.md</code>:</strong> The docs omit the mapping restart and <code>--dry-run=false</code> requirement (<code>main.go:80,119</code>); asynchronous errors lack PR context (<code>server.go:86-89</code>); and Netlify operations have no concurrency limit (<code>server.go:86-90</code>). These are operational should-fix findings for the new plugin.
+</li>
+<li><strong>Borderline — <code>@petr-muller</code>:</strong> The request for live mapping reload was explicitly deferred as follow-up in the PR discussion. That deferral is acceptable for this opt-in plugin if the restart requirement is documented.
+</li></ul>
+<h3>Independent merge risk</h3>
+<ul>
+<li>The diff adds one image registration, a new external-plugin directory, and a new documentation page. It does not change existing exported packages, CRDs, configuration fields, flags, or ProwJob behavior; existing deployments have no direct compatibility impact.
+</li>
+<li>Operators who enable the new binary must provide its config and credentials and set <code>--dry-run=false</code> for actual retries. The unresolved authorization and request-volume issues affect those opt-in deployments and their shared Netlify account.
+</li>
+<li>Earlier inline feedback on command naming, quiet <code>/retest</code>, and deploy pagination was addressed in the current head; it does not add another gate.
+</li></ul>
+<h2>Verdict</h2>
+<p><strong>Request changes.</strong> Authenticated Netlify pagination can follow a cross-origin URL, and an untrusted commenter can repeatedly force rebuilds on a trusted PR. The existing command-handling and retry findings below also warrant attention. The later <a href="https://github.com/kubernetes-sigs/prow/pull/708#issuecomment-5097599488">PR discussion</a> establishes <code>/netlify-rebuild</code> and a quiet <code>/retest</code> as the intended behavior, superseding the older PR description.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Adds an external Prow plugin that responds to <code>/retest</code> and <code>/netlify-rebuild</code> on pull requests.
+</li>
+<li>Uses Prow's trigger trust rules, then finds the latest matching Netlify deploy preview for the PR.
+</li>
+<li>Lists up to ten pages of previews and retries eligible deploys through the Netlify API.
+</li>
+<li>Adds plugin configuration, image registration, documentation, and unit tests.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-red">blocking</span>Restrict authenticated pagination to the Netlify API origin</h3>
+<ul>
+<li>where: <code>cmd/external-plugins/netlify-preview/netlify/client.go:80-99</code>
+</li>
+<li>concern: <code>nextLink</code> can supply an arbitrary absolute URL, and <code>listDeploysPage</code> adds the Netlify bearer token before requesting it. If a <code>Link</code> header contains a cross-origin URL, the token is disclosed to that origin. Validate HTTPS and the configured API origin before following a pagination link.
+</li>
+<li>excerpt:<pre><code>pageDeploys, next, err := c.listDeploysPage(ctx, nextURL)
+// ...
+req, err := http.NewRequestWithContext(ctx, http.MethodGet, deploysURL, nil)
+// ...
+c.authorize(req)</code></pre>
+</li></ul>
+<h3><span class="tag c-red">blocking</span>Require a trusted commenter for force rebuilds</h3>
+<ul>
+<li>where: <code>cmd/external-plugins/netlify-preview/server.go:197-207</code>
+</li>
+<li>concern: When the comment author fails <code>TrustedUser</code>, this fallback still accepts a trusted PR author or an <code>ok-to-test</code> label. Thus any commenter can repeatedly invoke <code>/netlify-rebuild</code> on that PR, contrary to the plugin documentation's comment-author rule. Gate the force command on the comment author's trust.
+</li>
+<li>excerpt:<pre><code>if trustedResponse.IsTrusted {
+    return true, nil
+}
+_, trusted, err := trigger.TrustedPullRequest(s.ghc, triggerConfig, issueAuthor, org, repo, number, nil)
+return trusted, err</code></pre>
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>Skip retries for every active deploy state</h3>
+<ul>
+<li>where: <code>cmd/external-plugins/netlify-preview/plugin/plugin.go:82-86</code>
+</li>
+<li>concern: Netlify can report an in-progress deploy as <code>retrying</code>, <code>uploading</code>, <code>preparing</code>, or <code>processing</code>, but this guard recognizes only <code>building</code> and <code>enqueued</code>. A <code>/netlify-rebuild</code> comment during one of those states reaches <code>RetryDeploy</code> again, causing a duplicate request or an API rejection. Classify all active states before deciding to retry; the <a href="https://open-api.netlify.com/">Netlify API state list</a> includes these values.
+</li>
+<li>excerpt:<pre><code>if preview.State == &quot;building&quot; || preview.State == &quot;enqueued&quot; {
+    return Decision{Action: ActionAlreadyRunning}
+}
+if command == NetlifyRebuildCommand {
+    return Decision{Action: ActionRetry, ShouldRetry: true}
+}</code></pre>
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>Make accepted command casing consistent with dispatch</h3>
+<ul>
+<li>where: <code>cmd/external-plugins/netlify-preview/plugin/plugin.go:37-45</code>
+</li>
+<li>concern: The case-insensitive regex accepts <code>/NETLIFY-REBUILD</code> but returns that spelling unchanged. It does not equal <code>NetlifyRebuildCommand</code> later, so a ready preview gets no retry or reply. The same regex accepts <code>/ReTest</code>, while Prow's trigger uses a case-sensitive <code>/retest</code> regex, so Netlify can retry without CI. Either reject mixed-case commands or normalize them consistently with the trigger.
+</li>
+<li>excerpt:<pre><code>var commandRe = regexp.MustCompile(`(?mi)^/(retest|netlify-rebuild)\s*$`)
+
+func ParseCommand(body string) (Command, bool) {
+    body = markdown.DropCodeBlock(body)
+    matches := commandRe.FindStringSubmatch(body)
+    if len(matches) != 2 {
+        return &quot;&quot;, false
+    }
+    return Command(matches[1]), true
+}</code></pre>
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>Honor the rebuild command when a comment contains both commands</h3>
+<ul>
+<li>where: <code>cmd/external-plugins/netlify-preview/plugin/plugin.go:39-45</code>
+</li>
+<li>concern: <code>FindStringSubmatch</code> returns only the first command in a comment. For <code>/retest</code> followed by <code>/netlify-rebuild</code>, the plugin chooses <code>/retest</code>; when the preview is ready, it silently does nothing despite the explicit rebuild request. Parse all command lines or define and enforce an unambiguous priority.
+</li>
+<li>excerpt:<pre><code>matches := commandRe.FindStringSubmatch(body)
+if len(matches) != 2 {
+    return &quot;&quot;, false
+}
+return Command(matches[1]), true</code></pre>
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>Tell the user when the Netlify API rejects a rebuild</h3>
+<ul>
+<li>where: <code>cmd/external-plugins/netlify-preview/server.go:177-181</code>
+</li>
+<li>concern: <code>/netlify-rebuild</code> replies on successful retries and no-op decisions, but a failed <code>RetryDeploy</code> returns an error without posting a reply. A failed <code>ForEachDeployPage</code> at lines 154-159 has the same result. For a rate limit or API outage, the commenter sees a command with no response and cannot tell whether a retry happened.
+</li>
+<li>excerpt:<pre><code>if !s.dryRun {
+    if err := s.netlifyClient.RetryDeploy(ctx, preview.ID); err != nil {
+        return err
+    }
+}</code></pre>
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>Document the restart and production flag</h3>
+<ul>
+<li>where: <code>cmd/external-plugins/netlify-preview/main.go:80-83</code>
+</li>
+<li>concern: The site mapping is loaded only at startup, so changing it requires a restart. The binary also defaults to <code>--dry-run=true</code>, so an operator following the new plugin page will not trigger real retries until setting <code>--dry-run=false</code>. Document both steps in the deployment instructions.
+</li>
+<li>excerpt:<pre><code>fs.BoolVar(&amp;o.dryRun, &quot;dry-run&quot;, true, &quot;Dry run for testing. Uses API tokens but does not mutate.&quot;)
+fs.StringVar(&amp;o.configPath, &quot;config-path&quot;, &quot;/etc/netlify-preview/config.yaml&quot;, &quot;Path to the netlify-preview plugin config file.&quot;)</code></pre>
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>Include PR context in asynchronous failures</h3>
+<ul>
+<li>where: <code>cmd/external-plugins/netlify-preview/server.go:86-89</code>
+</li>
+<li>concern: The failure logger uses the original entry, which has only event type and GUID. Repository, PR number, and command fields are added to a separate entry inside <code>handleIssueComment</code>, so API failures are hard to trace back to the request. Carry those fields into the error log or wrap returned errors with them.
+</li>
+<li>excerpt:<pre><code>go func() {
+    if err := s.handleIssueComment(l, ic); err != nil {
+        s.log.WithError(err).WithFields(l.Data).Info(&quot;Failed to handle issue comment.&quot;)
+    }
+}()</code></pre>
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>Bound concurrent Netlify operations</h3>
+<ul>
+<li>where: <code>cmd/external-plugins/netlify-preview/server.go:86-90</code>
+</li>
+<li>concern: Each actionable comment starts an unrestricted goroutine and can list up to ten pages. A burst of comments can consume shared Netlify API capacity. Bound concurrent operations or add a per-PR cooldown.
+</li>
+<li>excerpt:<pre><code>go func() {
+    if err := s.handleIssueComment(l, ic); err != nil {
+        s.log.WithError(err).WithFields(l.Data).Info(&quot;Failed to handle issue comment.&quot;)
+    }
+}()</code></pre>
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>Compared the PR head <code>e8849971aad14f136ab4b965d06a9fe679b9115b</code> with its merge base on <code>upstream/main</code> and inspected all changed production code, tests, docs, and image registration.
+</li>
+<li>Confirmed webhook signature validation uses Prow's <code>github.ValidateWebhook</code> and trust checks use the trigger plugin's helpers.
+</li>
+<li>Confirmed the later PR discussion intentionally replaced <code>/rebuild-preview</code> with <code>/netlify-rebuild</code> and made <code>/retest</code> quiet on a ready preview; those are not current behavior defects.
+</li>
+<li>Existing Prow deployments are unaffected until they opt in to this external plugin; no existing configuration fields or ProwJob behavior changed.
+</li>
+<li><code>go test ./cmd/external-plugins/netlify-preview/...</code> passed.
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>None.
+</li></ul>
+</main></body></html>

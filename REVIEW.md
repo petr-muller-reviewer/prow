@@ -1,10 +1,10 @@
 ---
-pr: 698
+pr: kubernetes-sigs/prow#698
 title: "feat: manage non-k8s members assigning issues"
-head_sha: 773c479cad28d019abfabee63bdba190d2544280
+head_sha: 5a0e394dfd2e0f56718965ddb31d576ec76612b5
 base: main
-reviewed_at: 2026-07-26T23:00:46Z
-verdict: REQUEST_CHANGES
+reviewed_at: 2026-10-26T15:48:20Z
+verdict: request-changes
 refresh_log:
   - sha: 773c479cad28d019abfabee63bdba190d2544280
     refreshed_at: 2026-05-26T12:53:08Z
@@ -15,96 +15,66 @@ refresh_log:
   - sha: 773c479cad28d019abfabee63bdba190d2544280
     refreshed_at: 2026-07-26T23:00:46Z
     summary: "No code changes; 1 new comment from Amulyam24 clarifying GitHub's own assignee restrictions in response to soltysh's question"
+  - sha: 5a0e394dfd2e0f56718965ddb31d576ec76612b5
+    refreshed_at: 2026-10-26T15:48:20Z
+    summary: "Full re-review after force-push 773c479 -> 5a0e394 rewrote the feature (+199/-6 vs main)"
 ---
 
-# PR #698: feat: manage non-k8s members assigning issues
+# Review
 
-**Author:** TineoC | **Files:** `assign.go` (+53/-2), `assign_test.go` (+77/-3)
-**Reviewer verdicts:** Code Quality: REQUEST_CHANGES · Maintainability: REQUEST_CHANGES · Deployment Risk: MEDIUM
+## Verdict
 
-## Summary
+**Request changes.** The rewrite resolves every blocker from the earlier review and the package tests pass, but the self-assignment policy can be bypassed by writing one's own login with different capitalization: the commenter lookup and the self-strip compare raw logins, while GitHub logins are case-insensitive. That should be normalized before merge; the remaining items are a maintainability nit and scope questions.
 
-Post an educational comment when a non-org-member uses `/assign` on an issue without the `good-first-issue` label, directing them to beginner-friendly issues. Labels → membership → CONTRIBUTING.md lookup → comment with links. Assignment still proceeds regardless.
+## What this PR does
 
-### Since previous review (2026-05-26)
+- Blocks a non-member from self-assigning an issue that already has assignees, posting an explanation and a link to unassigned `triage/accepted` issues.
+- Posts guidance (assignment still proceeds) when a non-member self-assigns an issue lacking `triage/accepted`, `help wanted`, or `good first issue`.
+- Exempts PRs, org members, assignments of other users, and users already on the issue; membership and label lookups fail open.
+- Replaces hardcoded `github.com` links and `CONTRIBUTING.md` probing with `github.DefaultHost` and `pkg/labels` constants, and isolates the policy in `checkSelfAssign()`.
 
-- **TineoC** (author) linked a concrete motivation: [kubernetes/kubernetes#131724](https://github.com/kubernetes/kubernetes/issues/131724#issuecomment-3619565989) where 10+ non-members self-assigned a single issue in quick succession by exploiting the "has commented" loophole that allows assignment.
-- **Amulyam24** raised the design concern independently: the restriction may be too broad for `help-wanted` issues or minor bugs not labeled `good-first-issue`. Suggested a per-org/per-repo feature gate since `/assign` is commonly enabled at org level.
-- **lmktfy** proposed a more nuanced algorithm: (1) if an issue is already assigned, non-members can't reassign it; (2) if a non-member tries to assign an unaccepted issue, send an educational message but clarify work isn't forbidden; (3) if multiple users have already attempted assignment, flag it as contentious regardless of membership. **Amulyam24 endorsed this approach.**
+Since the previous review (`773c479`): the author force-pushed `5a0e394`, replacing the `good-first-issue` gate with the acceptance-label policy, adding the block-on-assigned behavior, and adding tests for the new matrix.
 
-These comments strengthen the "no opt-out mechanism" concern and the "PR description vs. code mismatch" concern, and surface a new design question about whether `good-first-issue` is the right gate or whether issue acceptance state / existing assignment should be the signal.
+## Findings
 
-- **soltysh** (2026-05-26, 14:15) — asked how this works when an org member assigns a non-org member to any issue. Notes from experience there are legitimate cases where a member needs to assign a non-member. This directly validates our **"Checks the commenter, not the target assignees"** blocker — the current code would incorrectly fire for this case since it only checks `e.User.Login`.
+### [should-fix] Case-variant self login bypasses the policy
+- where: `pkg/plugins/assign/assign.go:151`
+- concern: `users` is keyed by the raw logins parsed from the comment (`parseLogins` preserves case), while the gate looks up `e.User.Login` case-sensitively. GitHub logins are case-insensitive, so a non-member writing `/assign @NewBie` (canonical login `newbie`) never enters `checkSelfAssign` and is assigned to an already-assigned issue without a comment, skipping the unaccepted-issue guidance too. The same comparison at line 198 also fails to strip the commenter from `toAdd`, so `/assign @NewBie @newbie` posts "I didn't assign you" and then assigns them anyway. Normalize with `github.NormLogin` when building and looking up `users`, and in the strip filter.
+- excerpt: |
+    if h.userType == "assignee(s)" && users[e.User.Login] {
+    ...
+        for _, login := range toAdd {
+            if login != e.User.Login {
 
-### Since previous review (2026-05-30)
+### [nit] `userType` display string doubles as a control-flow discriminator
+- where: `pkg/plugins/assign/assign.go:151`
+- concern: `handle()` is shared by the assign and reviewer handlers and decides whether to run this assign-only policy by comparing `h.userType` with the human-facing literal `"assignee(s)"`, which is also used in log messages. Rewording that label silently disables the policy with no compile error. A dedicated field (e.g. `appliesSelfAssignPolicy bool`) or moving the hook into the assign handler would make the intent explicit.
+- excerpt: |
+    if h.userType == "assignee(s)" && users[e.User.Login] {
 
-- **Amulyam24** (2026-06-10) answered soltysh's question with GitHub's own current behavior: assigning a non-member/non-collaborator who hasn't commented already fails outright, with GitHub returning an explicit "GitHub didn't allow me to assign the following users" error and a link to the contributor guide. This means the "org member assigns a non-member" case soltysh raised is largely pre-filtered by GitHub's own assignee API restriction rather than reachable through this plugin's code path — it doesn't resolve the **"Checks the commenter, not the target assignees"** blocker (a non-member who *has* commented, and is thus assignable, can still be assigned by an org member without tripping the educational message incorrectly on the member), but it narrows the practical blast radius of that gap.
+## Resolved
 
-## Maintainer Advisor — Final Recommendation: REQUEST_CHANGES
+Prior-review blockers addressed by the rewrite:
 
-All three reviewers independently identified overlapping correctness and design issues. Two logic bugs (error swallowing on label fetch and wrong membership check target) cause the educational message to fire incorrectly in real-world scenarios. Combined with an unused interface method flagged by all three reviewers, these are functional defects that need fixing before merge.
+- Unused `GetRepo`/`GetFile` interface methods — removed; `GetFile`-based `CONTRIBUTING.md` probing dropped.
+- Membership checked the wrong subject — now gated on the commenter being in `toAdd`, with an `isAssignee` early return; member-assigns-non-member is tested.
+- `GetIssueLabels` error swallowed — membership and label lookups now fail open explicitly.
+- Hardcoded `github.com` links — `github.DefaultHost` is used throughout.
+- PR description/code mismatch — the PR body now describes blocking on assigned issues and fail-open behavior, matching the code.
+- Policy ran on PRs — `e.IsPR` gate plus test.
+- Inline logic in `handle()` — extracted into `checkSelfAssign()`.
+- Membership checked after the label fetch — reordered.
+- `"good-first-issue"` literal — replaced by `pkg/labels` constants.
+- Test assertions keyed off `tc.name` — replaced by `labels`/`assignees`/`isPR` fields.
 
-## Converging Concerns (flagged by 2+ reviewers)
+## Checked
 
-### Unused `GetRepo` in interface [3/3 reviewers] — BLOCKER
-Added to `githubClient` but never called in production code. Widens the interface contract and forces all implementations and mocks to satisfy it for no reason. Remove it.
-> `assign.go:76`
+- `e.Assignees` is populated for `issue_comment` events (`pkg/github/helpers.go:150`), so the assigned-issue check works on the real path.
+- `go test ./pkg/plugins/assign/...` passes at `5a0e394`.
+- Org members, non-self assignments, PRs, and already-assigned users bypass the policy as intended; a comment failure on the guidance path does not block assignment.
+- The generated search link uses `url.QueryEscape` and `github.DefaultHost`.
 
-### Wrong membership check target (self-assign guard missing) [2/3 reviewers] — BLOCKER
-`IsMember(org, e.User.Login)` checks the commenter, not the assignees. `/assign @org-member` by a non-member fires the message incorrectly. `/assign @non-member` by an org member skips it. The check must be scoped to self-assignment only — verify the commenter is actually in `toAdd`.
-> `assign.go:167`
+## Open questions
 
-### `GetIssueLabels` error swallowed — false positives [2/3 reviewers] — BLOCKER
-When label fetch fails, `hasGoodFirstIssue` defaults to `false` and the code proceeds to check membership and potentially post an incorrect educational comment. Should fail open: skip the educational path entirely on error.
-> `assign.go:154-156`
-
-### Hardcoded `github.com` URLs [3/3 reviewers] — BLOCKER
-Generated comment links use hardcoded `github.com` instead of `github.DefaultHost`. Prow installations on GitHub Enterprise get broken links. The default URL comparison at line 186 also creates hidden coupling to the help plugin's default.
-> `assign.go:180, 186, 190`
-
-## Additional Blockers
-
-### PR description vs. code behavior mismatch
-PR says "restrict self-assignment for non-organization members" but code still calls `h.add()` unconditionally — the user gets assigned and just sees a comment. Either the description is wrong or the code should skip assignment. Clarify intent.
-> `assign.go:197`
-
-### Triggers on PRs unnecessarily
-`userType == "assignee(s)"` doesn't exclude PRs. `/assign` on a PR calls `GetIssueLabels` + `IsMember` + `GetFile` for no reason — PRs don't carry `good-first-issue` labels. Gate on `!e.IsPR`.
-> `assign.go:153`
-
-## Concerns
-
-- **1–4 extra API calls per `/assign`, not cached:** `GetIssueLabels` on every assign, then conditionally `IsMember` + up to 2x `GetFile`. Consider checking membership first (often cached) to avoid label fetch for org members.
-- **No opt-out mechanism:** Every Prow installation using the assign plugin gets this behavior upon upgrade. No per-org or per-repo configuration flag.
-- **~45 lines of logic inlined in `handle()`** (`assign.go:153-196`): Breaks the generic handler's symmetry via `h.userType == "assignee(s)"` (display string as type discriminator). Should be extracted into a dedicated function or wired as a callback like `addFailureResponse`.
-- **`userType` string comparison for control flow** (`assign.go:153`): Using a display-oriented string as a type discriminator is fragile. Use a dedicated boolean or enum field on the `handler` struct.
-
-## Nits & Test Gaps
-
-- **`isMemberCalled` assertions keyed off `tc.name` strings** [2/3 reviewers] (`assign_test.go:513-522`): Add `expectIsMemberCalled *bool` to the test case struct and check inside the loop.
-- **Test setup uses `tc.name` for conditional state** [2/3 reviewers] (`assign_test.go:450`): Add a `labels` field to the test case struct so each case is self-contained.
-- **Missing test coverage:** No test for (1) `CONTRIBUTING.md` not found + `HelpGuidelinesURL` fallback, (2) `/assign @other-user` by a non-member, (3) `GetIssueLabels` error, (4) non-nil `config`.
-- **Hardcoded `"good-first-issue"` label:** No constant, no comment. Define as a package-level constant.
-- **Message tone:** "It looks like you're new!" may feel patronizing to contributors from other orgs.
-
-## Deployment Notes
-
-- Each `/assign` now makes 1–4 additional GitHub API calls. Not cached. At scale, increases API token consumption.
-- No opt-out mechanism — all orgs using the assign plugin get this behavior once deployed.
-- Hardcoded `github.com` URLs produce broken links for GitHub Enterprise installations.
-- Rollback is safe — reverting removes the educational messages with no state to clean up.
-
-## Required Changes Checklist
-
-- [ ] Remove unused `GetRepo` from interface
-- [ ] Fix self-assignment guard — only fire when commenter is in `toAdd`
-- [ ] Fail open on `GetIssueLabels` error — skip educational flow
-- [ ] Use `github.DefaultHost` instead of hardcoded `github.com`
-- [ ] Clarify: should assignment be blocked or just warned? Fix PR description accordingly
-- [ ] Gate on `!e.IsPR` to avoid unnecessary API calls on pull requests
-- [ ] Extract educational message logic into a dedicated function
-- [ ] Add configuration flag to enable/disable behavior per-org/repo
-- [ ] Reorder: check membership before labels to reduce API calls for members
-- [ ] Define `"good-first-issue"` as a named constant
-- [ ] Restructure test assertions to use struct fields instead of `tc.name`
-- [ ] Add test cases for fallback paths and error conditions
+- The algorithm quoted in the PR discussion had three rules; the third (flag repeated assignment attempts as contentious regardless of membership) is not implemented. Was it dropped from the agreed scope?
+- Should the acceptance labels (`triage/accepted`, `help wanted`, `good first issue`) be configurable? They are Kubernetes conventions, and every Prow installation that enables the assign plugin gets this behavior and these links.

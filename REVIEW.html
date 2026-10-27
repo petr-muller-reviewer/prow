@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#1034</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>add dry-run flag to bumper and fix an error in the bumper</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1034">kubernetes-sigs/prow#1034</a> · base <code>main</code> · head_sha <code>7b32f3d6fc56</code> · reviewed_at <code>2026-10-27T20:17:29Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span></div>
+<h2>Verdict</h2>
+<p>Correct fix for the actual CI breakage, plus a dry-run mode that is cleanly kept away from the commit/push/PR code; nothing here blocks. One wiring trap is worth following up — <code>dryRun: true</code> in the YAML config is silently overwritten by the flag default and would run the real bump — and the dry-run happy path deserves a test.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Adds <code>bumper.Options.DryRun</code> and the <code>--dry-run</code> flag; <code>Run</code> short-circuits into <code>processDryRun</code>, which applies the change funcs, then logs the would-be PR title/body and leaves the tree uncommitted.
+</li>
+<li>Relaxes <code>validateOptions</code> for dry runs: no GitHub App credentials, no fork token/remote name, no Gerrit cookiefile (Gerrit author/identifier/host stay required).
+</li>
+<li>Fixes the broken <code>ci-prow-autobump-base-images</code> job: <code>includedConfigPaths</code> is no longer mandatory when <code>extraFiles</code> is set, which is exactly the shape of <code>hack/autobump.yaml</code>.
+</li>
+<li>Rewrites the <code>includedConfigPaths</code> doc comment and adds validation tests for both the dry-run relaxations and the extraFiles-only case.
+</li>
+<li>Adds <code>TestRunDryRun</code>, covering error propagation from a change func.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-amber">should-fix</span><code>dryRun: true</code> in the config is silently discarded</h3>
+<ul>
+<li>where: <code>cmd/generic-autobumper/main.go:206-217</code>
+</li>
+<li>concern: <code>parseOptions</code> unmarshals the config into <code>bumper.Options</code> (line 206), and the new field carries <code>json:&quot;dryRun&quot;</code> (<code>bumper.go:69</code>); the docs send config authors to <code>bumper.Options</code>. But line 217 unconditionally overwrites it with the flag value, whose default is <code>false</code>. Anyone who sets <code>dryRun: true</code> in YAML gets a real bump — commit, push, PR — instead of a preview. Either keep the config value when the flag was not passed (mirroring the <code>labelsOverride != nil</code> guard at line 210) or make the option clearly CLI-only. <code>SkipPullRequest</code> and <code>Signoff</code> already have the same overwrite pattern, but for a safety switch the silent inversion matters more.
+</li>
+<li>excerpt:<pre><code>	if labelsOverride != nil {
+		pro.Labels = labelsOverride
+	}
+	if o.OncallGroup == &quot;&quot; {
+		o.OncallGroup = defaultOncallGroup
+	}
+	pro.SkipPullRequest = skipPullRequest
+	pro.DryRun = dryRun
+	pro.Signoff = signoff</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">nit</span>Dry-run happy path is untested</h3>
+<ul>
+<li>where: <code>cmd/generic-autobumper/bumper/bumper_test.go:215-231</code>
+</li>
+<li>concern: The only new <code>Run</code> test asserts that a change-func error is propagated. Nothing covers the advertised behavior — changes applied, <code>PRTitleBody</code> called, no commit produced. A <code>t.TempDir()</code> + <code>git init</code> fixture with a change func that writes a file would pin that down cheaply; right now the "does not commit" guarantee is only enforced by reading the code.
+</li>
+<li>excerpt:<pre><code>	prh := &amp;fakePRHandler{changeErr: sentinel}
+	o := &amp;Options{
+		GitHubOrg:  &quot;whatever-org&quot;,
+		GitHubRepo: &quot;whatever-repo&quot;,
+		DryRun:     true,
+	}
+
+	err := Run(context.Background(), o, prh)
+	if !errors.Is(err, sentinel) {
+		t.Fatalf(&quot;Expected Run to return the change func error, got %v&quot;, err)
+	}</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">nit</span>A dirty checkout makes the dry-run preview lie</h3>
+<ul>
+<li>where: <code>cmd/generic-autobumper/bumper/bumper.go:258-269</code>
+</li>
+<li>concern: <code>HasChanges()</code> is <code>git status --porcelain</code> over the whole repo, so a pre-existing dirty tree makes <code>changed</code> true even when the bump produced nothing, and the logged body (built from an empty <code>images</code> map) says "No &lt;prefix&gt; changes." while the title says the images would be updated. The normal path has the same weakness, but here it is the user-facing output of a preview mode. Consider recording/requiring a clean tree before the change funcs run, so a local dry run reports only the bump's own changes.
+</li>
+<li>excerpt:<pre><code>	changed, err := HasChanges()
+	if err != nil {
+		return fmt.Errorf(&quot;checking changes: %w&quot;, err)
+	}
+	if !changed {
+		logrus.Info(&quot;[Dryrun] Nothing changed from all functions.&quot;)
+		return nil
+	}
+
+	summary, body := prh.PRTitleBody()
+	logrus.Infof(&quot;[Dryrun] Changes left uncommitted in the working tree; skipping commit, push and PR creation.\nPR title: %s\nPR body:\n%s&quot;, summary, body)</code></pre>
+</li></ul>
+<h3><span class="tag c-blue">question</span><code>skip-if-no-oncall</code> short-circuits a dry run</h3>
+<ul>
+<li>where: <code>cmd/generic-autobumper/main.go:627-633</code>
+</li>
+<li>concern: <code>main</code> returns before <code>bumper.Run</code> when <code>SkipIfNoOncall</code> is set and nobody is oncall, so <code>--dry-run</code> produces no diff at all in that state. The field comment says read-only lookups still happen, which suggests the lookup is intended, but is exiting early the intended preview behavior? If not, gate this check on <code>!pro.DryRun</code>.
+</li>
+<li>excerpt:<pre><code>	if o.SkipIfNoOncall {
+		if !isOncallActive(o.OncallAddress, o.OncallGroup) {
+
+			logrus.Info(&quot;`skip-if-no-oncall` is configured and there is no active oncall. Skip bumping.&quot;)
+			return
+		}
+	}</code></pre>
+</li></ul>
+<h3><span class="tag c-blue">question</span>Dry run still requires fields it never uses</h3>
+<ul>
+<li>where: <code>cmd/generic-autobumper/bumper/bumper.go:197-202</code>
+</li>
+<li>concern: <code>processDryRun</code> uses neither org/repo nor git name/email, but they remain mandatory (and <code>bumper_test.go:109</code> enshrines the org requirement). <code>hack/autobump.yaml</code> supplies them, so this mostly affects ad-hoc configs. Is requiring the full production config shape deliberate, so <code>--dry-run</code> also validates what would run for real? If not, those checks could be skipped when <code>DryRun</code> is set.
+</li>
+<li>excerpt:<pre><code>	if (o.GitEmail == &quot;&quot;) != (o.GitName == &quot;&quot;) {
+		return fmt.Errorf(&quot;gitName and gitEmail must be specified together&quot;)
+	}
+	if o.GitHubOrg == &quot;&quot; || o.GitHubRepo == &quot;&quot; {
+		return fmt.Errorf(&quot;gitHubOrg and gitHubRepo are mandatory when skipPullRequest is false or unspecified&quot;)
+	}</code></pre>
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>Confirmed the reported failure is real: the linked build log ends with <code>error=&quot;includedConfigPaths is mandatory&quot;</code>, and <code>hack/autobump.yaml</code> (used by <code>ci-prow-autobump-base-images</code>) specifies only <code>extraFiles: [&quot;.ko.yaml&quot;]</code>. <code>updateReferences</code> loops over <code>IncludedConfigPaths</code> and then <code>ExtraFiles</code>, so an empty include list is a no-op — the fix is correct and sufficient.
+</li>
+<li><code>go test ./cmd/generic-autobumper/...</code> passes (all four packages).
+</li>
+<li>The dry-run branch runs before any GitHub client construction / <code>secret.Add</code>, so no token or App credentials are needed; <code>PRTitleBody</code>'s only external call is the read-only oncall HTTP GET.
+</li>
+<li>Gerrit mode: dry run skips the cookiefile requirement and never reaches <code>processGerrit</code>, so no git config or remote mutation happens.
+</li>
+<li>No other in-repo callers of <code>bumper.Run</code>/<code>bumper.Options</code> that would need the flag wired through.
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>Would it help for <code>--dry-run</code> to also log the per-change commit messages (or the resulting <code>git diff</code>), so the preview is self-contained instead of requiring a separate <code>git diff</code>?
+</li></ul>
+<h2>Followups</h2>
+<p>Post-merge followups for PR #1034 (merged as <code>860d730d7225d4c4203ed2e3b6e1faa906ca4aca</code>). Six candidates walked, six accepted: two probes, four deliverables. The one review round (cblecker) was fully addressed; the <code>dryRun</code> config-clobber finding above was an explicit review decision (flags authoritative), so it is recorded here as a tag/precedence cleanup rather than re-litigated.</p>
+<h3>tests: dry-run happy path is untested</h3>
+<ul>
+<li>Mode: probe
+</li>
+<li>Category: tests
+</li>
+<li>Necessity: should
+</li>
+<li>Where: <code>cmd/generic-autobumper/bumper/bumper_test.go:215</code> (unfixed from the review above)
+</li>
+<li>Why: nothing pins "changes applied, <code>PRTitleBody</code> called, nothing committed" — the property the flag exists for.
+</li>
+<li>Prompt:
+<pre><code>In kubernetes-sigs/prow, following PR #1034 (&quot;add dry-run flag to bumper and fix an error in the bumper&quot;, merged as 860d730d7225d4c4203ed2e3b6e1faa906ca4aca), write a throwaway probe test for the generic-autobumper dry-run path. The implementation is `processDryRun` in `cmd/generic-autobumper/bumper/bumper.go`, dispatched from `Run` when `Options.DryRun` is true; add the probe as uncommitted code in `cmd/generic-autobumper/bumper/bumper_test.go`.
+
+Exercise these behaviours against a temporary git repository (`t.TempDir()` + `git init`, chdir in the test and restore cwd afterwards):
+
+1. A change func that writes a file, with `DryRun: true`: after `Run`, the file is modified, `PRTitleBody` is called exactly once, and HEAD is unchanged (no commit created) — compare `git rev-parse HEAD` and `git log --oneline` counts before/after.
+2. A change func that returns a sentinel error: `Run` returns an error wrapping it, `PRTitleBody` is not called, and no commit exists.
+3. A change func that changes nothing: `Run` returns nil and `PRTitleBody` is not called.
+4. A repository that is already dirty before `Run` (one modified or untracked file) plus a change func that changes nothing: observe whether `Run` logs a would-be PR body even though the bump itself changed nothing.
+
+Triage every failure: classify it as a real implementation bug or a wrong test expectation, with evidence (actual vs expected). If you confirm a real bug, apply the minimal fix in the implementation and nothing else. If behaviour 4 reproduces, report it but do NOT fix it here — a separate followup owns that fix. If no real bug is found, delete the probe tests and change no files.
+
+Acceptance criteria: every behaviour above is exercised; each failure is classified with evidence; any confirmed bug gets a minimal implementation fix; if no real bug is found, `git status` shows no changed files. Report which behaviours passed and the observed outcome of behaviour 4 either way.
+
+Scope guard: this is a probe — do not commit the tests, delete them before finishing, and do not fix test-only problems, style, or unrelated code. Do not touch the non-dry-run paths. Do not add new public API. Do not fix the dirty-tree preview issue.</code></pre>
+</li></ul>
+<h3>tests: nothing validates the real autobump config</h3>
+<ul>
+<li>Mode: probe
+</li>
+<li>Category: tests
+</li>
+<li>Necessity: should
+</li>
+<li>Where: <code>hack/autobump.yaml</code>; <code>cmd/generic-autobumper/main_test.go</code>
+</li>
+<li>Why: the exact breakage this PR fixed (validator drift vs the config the periodic job runs) went unnoticed because no test ever loads <code>hack/autobump.yaml</code>.
+</li>
+<li>Prompt:
+<pre><code>In kubernetes-sigs/prow, following PR #1034 (merged as 860d730d7225d4c4203ed2e3b6e1faa906ca4aca), probe whether the production autobump config still validates. The config used by the periodic job `ci-prow-autobump-base-images` is `hack/autobump.yaml`; the validator that broke was `validateOptions` in `cmd/generic-autobumper/main.go`. Nothing in the repo loads that file today.
+
+Write uncommitted probe code in `cmd/generic-autobumper/main_test.go` that:
+
+1. Reads `../../hack/autobump.yaml` and unmarshals it into `options` and into `bumper.Options` (sigs.k8s.io/yaml).
+2. Asserts `validateOptions(&amp;opts)` returns nil.
+3. Exercises bumper-level validation without network: copy the resulting `bumper.Options`, force `DryRun = true`, and call `bumper.Run(context.Background(), &amp;opts, fakeHandler)` from a temporary git repo with a fake `PRHandler` that returns no change funcs, asserting no validation error. If that is not reachable without mutating the repo, say so instead of forcing it.
+4. Asserts the parsed config still has the expected shape: `ExtraFiles` contains `.ko.yaml`, `TargetVersion` is `latest`, and at least one prefix is present.
+
+Run the probe on the current tree. Triage each failure as a real config/validator mismatch or a wrong expectation, with evidence. If a real mismatch exists, apply the minimal fix in the validator or config and nothing else; if everything passes, delete the probe and change no files.
+
+Acceptance criteria: every check above was run; each failure is classified with evidence; a minimal fix only for a confirmed mismatch; otherwise no changed files. Report the commands used and their results.
+
+Scope guard: this is a probe — tests are throwaway and must be deleted before finishing. Do not add a permanent test in this run; do not change the periodic job definition; do not touch unrelated validators or config files.</code></pre>
+</li></ul>
+<h3>docs: <code>--dry-run</code> and <code>--skip-pullrequest</code> are undocumented</h3>
+<ul>
+<li>Mode: deliver
+</li>
+<li>Category: docs
+</li>
+<li>Necessity: should
+</li>
+<li>Where: <code>site/content/en/docs/components/cli-tools/generic-autobumper.md</code>; <code>cmd/generic-autobumper/main.go:189-190</code>
+</li>
+<li>Why: the new preview mode is undiscoverable, and the older <code>--skip-pullrequest</code> flag still has an empty help string despite different semantics.
+</li>
+<li>Prompt:
+<pre><code>In kubernetes-sigs/prow, following PR #1034 (merged as 860d730d7225d4c4203ed2e3b6e1faa906ca4aca), document the new generic-autobumper `--dry-run` mode. Relevant files: `site/content/en/docs/components/cli-tools/generic-autobumper.md` and the flag definitions in `cmd/generic-autobumper/main.go` (around lines 189-190).
+
+Do:
+
+1. Add a short &quot;Preview changes locally&quot; section to the docs page: `--dry-run` applies the bump to the working tree, logs the PR title/body it would use, and does not commit, push, or create a PR/CR; it needs no GitHub token or App credentials (read-only upstream-version and oncall lookups still happen); the working tree is left dirty so `git diff` shows the change; it is a CLI flag, not a YAML config key.
+2. In the same section, distinguish it from `--skip-pullrequest`: that one commits locally but skips push and PR creation, and still needs the token/org/repo/remote settings; `--dry-run` does not commit at all.
+3. Give `--skip-pullrequest` a real help string in `cmd/generic-autobumper/main.go` (currently `&quot;&quot;`), e.g. &quot;Commit the changes locally but do not push the branch or create/update the PR.&quot;
+4. Note in the docs that CLI flags take precedence over YAML config values.
+
+Acceptance criteria: the page is valid Hugo Markdown (headings/links intact), the help string is non-empty, every statement matches the code in `bumper.go`/`main.go` (verify each claim against the source before writing it), and `go build ./cmd/generic-autobumper/...` passes.
+
+Scope guard: docs plus the one flag help string only; do not change behaviour, do not document `dryRun`/`skipPullRequest` as working config keys, and do not touch unrelated docs.</code></pre>
+</li></ul>
+<h3>bugfix: a dirty checkout makes the dry-run preview lie</h3>
+<ul>
+<li>Mode: deliver
+</li>
+<li>Category: bugfix
+</li>
+<li>Necessity: could
+</li>
+<li>Where: <code>cmd/generic-autobumper/bumper/bumper.go:258-269</code>
+</li>
+<li>Why: repo-wide <code>HasChanges()</code> treats pre-existing local edits as the bump's changes, so the logged title/body can describe a bump that would not happen.
+</li>
+<li>Prompt:
+<pre><code>In kubernetes-sigs/prow, following PR #1034 (merged as 860d730d7225d4c4203ed2e3b6e1faa906ca4aca), fix the dry-run preview&#x27;s dependence on pre-existing working-tree dirt.
+
+Context: `processDryRun` in `cmd/generic-autobumper/bumper/bumper.go` runs the change funcs and then calls `HasChanges()` (repo-wide `git status --porcelain`). If the checkout was already dirty before the run, `changed` is true even when the bump changed nothing, and the code logs a would-be PR title/body built from empty replacement maps (&quot;Update ... images as necessary&quot; / &quot;No ... changes.&quot;).
+
+Do: snapshot `git status --porcelain` before running the change funcs and make dry-run report only changes it caused. Prefer failing fast with a clear error when the tree is not clean at the start (e.g. &quot;refusing to dry-run on a dirty working tree; commit or stash first&quot;), since that is unambiguous. If you find a concrete legitimate use that fail-fast breaks, instead subtract the pre-existing changed paths from the post-run status and treat only new paths as changes; say why you chose that route. Update the `--dry-run` help text / `DryRun` doc comment if the chosen behaviour is user-visible.
+
+Acceptance criteria: a unit test in `cmd/generic-autobumper/bumper/bumper_test.go` covering (a) dirty tree + change func that changes nothing → `Run` does not call `PRTitleBody` (fail-fast error or &quot;nothing changed&quot;, per your choice), and (b) clean tree + change func that writes a file → `PRTitleBody` called once and no commit created; `go test ./cmd/generic-autobumper/...` passes; the non-dry-run paths are untouched.
+
+Scope guard: only `processDryRun` plus its tests/help text; do not change `HasChanges`, the GitHub/Gerrit paths, or PR-title generation; pick one approach, do not add both.</code></pre>
+</li></ul>
+<h3>tech-debt: four copies of the change-apply loop</h3>
+<ul>
+<li>Mode: deliver
+</li>
+<li>Category: tech-debt
+</li>
+<li>Necessity: could
+</li>
+<li>Where: <code>cmd/generic-autobumper/bumper/bumper.go:252-256, 302-320, 376-392, 464-496</code>
+</li>
+<li>Why: the dry-run path added a fourth copy of the same loop; future changes to change detection/logging will only land in one copy.
+</li>
+<li>Prompt:
+<pre><code>In kubernetes-sigs/prow, following PR #1034 (merged as 860d730d7225d4c4203ed2e3b6e1faa906ca4aca), de-duplicate the change-apply loop that now exists four times in `cmd/generic-autobumper/bumper/bumper.go`: `processDryRun` (~252), `processGitHub` (~302), `processGitHubAppAuth` (~376), and `processGerrit` (~464).
+
+Do: extract a shared helper, e.g. `applyChanges(ctx context.Context, prh PRHandler, onChanged func(i int, msg string) error) (anyChange bool, err error)`, that iterates `prh.Changes()`, calls each func, checks `HasChanges()`, logs the &quot;Nothing changed, skip ...&quot; message, and invokes `onChanged(i, msg)` when something changed. The callback carries the mode-specific work (commit, or a no-op for dry-run). Use it from all four call sites and preserve current behaviour exactly; the three real paths already check `HasChanges` per function, so keep that ordering. If you unify dry-run onto per-function checks, verify the resulting log output is still sensible and that the final &quot;nothing changed&quot; / PR-body behaviour is unchanged.
+
+Acceptance criteria: `go test ./cmd/generic-autobumper/...` passes; no behavioural change (same commands, same order, same errors, same decisions); the diff only moves the loop logic and updates call sites.
+
+Scope guard: behaviour-preserving refactor only — no new features, no validation changes, no dry-run semantic changes, no unrelated functions.</code></pre>
+</li></ul>
+<h3>tech-debt: config keys the flag defaults always clobber</h3>
+<ul>
+<li>Mode: deliver
+</li>
+<li>Category: tech-debt
+</li>
+<li>Necessity: could
+</li>
+<li>Where: <code>cmd/generic-autobumper/bumper/bumper.go:61-69</code>; <code>cmd/generic-autobumper/main.go:206-218</code>; docs config example
+</li>
+<li>Why: the review decided flags are authoritative, but <code>dryRun</code>/<code>skipPullRequest</code>/<code>signoff</code> still carry JSON tags while the docs point config authors at <code>bumper.Options</code> — the schema advertises keys that are silently ignored.
+</li>
+<li>Prompt:
+<pre><code>In kubernetes-sigs/prow, following PR #1034 (merged as 860d730d7225d4c4203ed2e3b6e1faa906ca4aca), encode the reviewed precedence rule for option fields that exist both as YAML config keys and CLI flags.
+
+Context: `parseOptions` in `cmd/generic-autobumper/main.go` unmarshals the config into `bumper.Options` (line ~206) and then unconditionally assigns `pro.SkipPullRequest`, `pro.DryRun`, and `pro.Signoff` from flag variables (lines ~216-218). During PR #1034 review, cblecker asked for exactly this (flags authoritative) because a stray `dryRun: true` in a job config would otherwise turn the periodic bump into a silent no-op. But the three fields still carry `json:&quot;dryRun&quot;`, `json:&quot;skipPullRequest&quot;`, and `json:&quot;signoff&quot;` tags, and `site/content/en/docs/components/cli-tools/generic-autobumper.md` points config authors at `bumper.Options` and shows `skipPullRequest: false` in its example — so the config surface advertises keys that are silently ignored.
+
+Do: make the precedence explicit and consistent. Preferred: mark the three fields `json:&quot;-&quot;` (as `GitHubOptions` already is) so they cannot be set from YAML, and remove or annotate `skipPullRequest` in the docs example as flag-only. Keep the flag assignments as-is. If you instead believe config should be honoured when the flag is not explicitly passed, implement that with `flag.Visit`, document the precedence, and make sure a config `dryRun: true` cannot silently suppress a periodic job (log loudly at startup); say why you chose it.
+
+Acceptance criteria: `yaml.Unmarshal([]byte(&quot;dryRun: true\nskipPullRequest: true\nsignoff: true\n&quot;), &amp;bumper.Options{})` leaves all three false — add this as a unit test in `cmd/generic-autobumper/bumper/bumper_test.go`; the docs example and the Options Go doc comments no longer imply these are usable config keys; `go test ./cmd/generic-autobumper/...` passes.
+
+Scope guard: only these three fields, their docs, and one small test; do not change flag parsing, do not add config support for other fields, and do not touch other `Options` fields.</code></pre>
+</li></ul>
+</main></body></html>

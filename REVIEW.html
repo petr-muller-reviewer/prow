@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Review: kubernetes-sigs/prow#867</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+         line-height: 1.6; color: #1a1a1a; max-width: 860px; margin: 2rem auto; padding: 0 1.5rem; }
+  code, pre { font-family: "SF Mono", Consolas, Monaco, monospace; font-size: 0.92em; }
+  header { border-bottom: 2px solid #ddd; padding-bottom: 1rem; margin-bottom: 1.5rem; }
+  header h1 { margin-bottom: 0.3rem; font-size: 1.4rem; }
+  .meta { color: #555; font-size: 0.92em; }
+  .meta code { background: #f2f2f2; padding: 1px 5px; border-radius: 3px; }
+  .verdict { background: #eaf7ea; border-left: 4px solid #2e7d32; padding: 0.8rem 1.2rem; margin: 1.2rem 0; border-radius: 4px; }
+  .verdict .label { font-weight: 700; text-transform: uppercase; color: #2e7d32; }
+  h2 { border-bottom: 1px solid #eee; padding-bottom: 0.3rem; margin-top: 2.2rem; }
+  ul { padding-left: 1.4rem; }
+  .finding { border: 1px solid #eee; border-radius: 6px; padding: 0.9rem 1.1rem; margin-bottom: 1rem; }
+  .finding .where { color: #555; font-size: 0.88em; margin-bottom: 0.4rem; }
+  .none { color: #777; font-style: italic; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Review: chore(deps): bump github.com/yuin/goldmark from 1.8.2 to 1.8.5</h1>
+  <div class="meta">
+    PR: <a href="https://github.com/kubernetes-sigs/prow/pull/867">kubernetes-sigs/prow#867</a><br>
+    Head SHA: <code>3ea8fc6b6f74e76f2ff064edaaea244c7ee06f2d</code><br>
+    Base: <code>main</code><br>
+    Reviewed at: <code>2026-08-25T12:01:58Z</code><br>
+    PR state: <strong>MERGED</strong>
+  </div>
+</header>
+
+<div class="verdict">
+  <span class="label">Verdict: Approve</span>
+  <p>Dep-only bump of a direct dependency, correctly scoped (only <code>go.mod</code>/<code>go.sum</code> change).
+  The new version is ~28 days old and includes a real security-relevant fix (SVG-in-data-URI XSS)
+  that lands directly in the one code path where Prow uses this library — rendering job-artifact
+  markdown into HTML without escaping. Safe and worthwhile to merge.</p>
+</div>
+
+<h2>What this PR does</h2>
+<ul>
+  <li>Bumps <code>github.com/yuin/goldmark</code> from v1.8.2 to v1.8.5 in <code>go.mod</code>/<code>go.sum</code> (dependabot).</li>
+  <li>No project source, config, or test files change.</li>
+  <li>Pulls in three upstream fix commits spanning v1.8.3, v1.8.4, and v1.8.5.</li>
+</ul>
+
+<p><em>Since previous review:</em> PR merged (head now <code>3ea8fc6b6f74e76f2ff064edaaea244c7ee06f2d</code>). Head SHA changed only
+because dependabot rebased onto <code>main</code> (which had advanced with unrelated PR #859, pubsub v2 migration) before merge —
+the PR's own diff against its merge-base is unchanged, still only the goldmark bump. No new commits, comments, or reviews
+since the prior review.</p>
+
+<h2>Dependency analysis</h2>
+<ul>
+  <li><strong>Freshness:</strong> v1.8.5 tagged 2026-07-28T01:16:48Z — ~28 days old at review time. Real tagged release (not a pseudo-version). Fine.</li>
+  <li><strong>Direct/indirect:</strong> Direct (no <code>// indirect</code> marker).</li>
+  <li><strong>Usage:</strong> Single import site — <code>pkg/spyglass/lenses/markdown/markdown.go</code>. Renders a job artifact through
+      <code>goldmark.New(goldmark.WithExtensions(extension.GFM))</code> (default-safe mode, no <code>WithUnsafe()</code>) and injects the
+      result as <code>template.HTML</code> (bypasses Go's autoescaping) into the Spyglass UI.</li>
+  <li><strong>Changelog:</strong>
+    <ul>
+      <li>v1.8.3 — fix #556: fenced code block parsing degradation with nonzero block indent. Correctness only.</li>
+      <li>v1.8.4 — <em>"fix: disable svg in data:image urls"</em> (<code>renderer/html/html.go</code>): closes an XSS vector where
+          <code>![](data:image/svg+xml;base64,...)</code> images could carry a script/event-handler payload executed by the browser.
+          Directly relevant to Prow's usage.</li>
+      <li>v1.8.5 — fix #568: another fenced-code-block parser fix (<code>parser/fcode_block.go</code>). Correctness only.</li>
+    </ul>
+  </li>
+  <li><strong>Exposure:</strong> Light import surface (one call site), but sensitive: markdown comes from job artifacts (potentially
+      influenced by untrusted PR/CI content) and is rendered straight to HTML. The v1.8.4 fix is a genuine hardening for this exact path.</li>
+</ul>
+
+<h2>Findings</h2>
+<p class="none">None — dep-only PR, no project code to review.</p>
+
+<h2>Things I checked and was fine with</h2>
+<ul>
+  <li>Diff scope limited to <code>go.mod</code>/<code>go.sum</code> (2/4 lines changed).</li>
+  <li>No <code>// indirect</code> marker; confirmed direct dependency.</li>
+  <li>Grepped for import path outside <code>vendor/</code>; exactly one importer.</li>
+  <li>Confirmed goldmark is used without <code>WithUnsafe()</code> in that importer.</li>
+  <li>Read commit range v1.8.2..v1.8.5 via GitHub compare API and per-tag release notes.</li>
+  <li>Confirmed release timestamp via the Go module proxy.</li>
+</ul>
+
+<h2>Open questions for the author</h2>
+<p class="none">None.</p>
+
+</body>
+</html>

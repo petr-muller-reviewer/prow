@@ -30,24 +30,46 @@ ul, ol { padding-left:1.5rem; }
 .c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
 details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
 </style></head><body><main>
-<h1>chore(deps): bump cloud.google.com/go/cloudbuild from 1.34.0 to 1.35.0</h1>
-<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1031">kubernetes-sigs/prow#1031</a> · base <code>main</code> · head_sha <code>7a9bf0dd5d8b</code> · reviewed_at <code>2026-10-27T20:47:27Z</code></div>
+<h1>chore(deps): bump cloud.google.com/go/cloudbuild from 1.34.0 to 1.36.0</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1031">kubernetes-sigs/prow#1031</a> · base <code>main</code> · head_sha <code>eaf5ff3eaef6</code> · reviewed_at <code>2026-10-27T23:38:16Z</code></div>
 <div class="badges"><span class="badge c-green">verdict: approve</span></div>
+<details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#1031
+title: &quot;chore(deps): bump cloud.google.com/go/cloudbuild from 1.34.0 to 1.36.0&quot;
+head_sha: eaf5ff3eaef61510a8cd8e8658abb24040d7183f
+base: main
+reviewed_at: 2026-10-27T23:38:16Z
+verdict: approve
+refresh_log:
+  - old_sha: 7a9bf0dd5d8b0638521c87f09821384a39cbe845
+    new_sha: eaf5ff3eaef61510a8cd8e8658abb24040d7183f
+    summary: &quot;Updated the dependency target to v1.36.0; PR diff remains limited to go.mod and go.sum, and PR #1031 merged.&quot;</code></pre></details>
 <h2>Verdict</h2>
-<p>Approve — generated-API regeneration with additive-only proto fields, no advisories, and no behavioral change on any code path prow exercises.</p>
+<p>Approve — the updated PR diff only changes the selected Cloud Build module version and checksums; the v1.36.0 release notes list generated API updates, and Prow source files are unchanged.</p>
 <p>The only upstream commit touching the <code>cloudbuild</code> module between the two tags adds two optional string fields (<code>worker_release</code>, <code>resolved_worker_release</code>) to <code>BuildOptions</code>, <code>BuildOptions.PoolOption</code> and <code>PrivatePoolV1Config.WorkerConfig</code>. Prow's wrapper never constructs any of those messages — callers pass a fully-formed <code>*cloudbuildpb.Build</code> into <code>CreateBuild</code> — so nothing we call changes shape or behavior. OSV has no advisories for either version, <code>govulncheck</code> is clean at both merge-base and head, and the <code>go.sum</code> diff touches only the two <code>cloudbuild</code> lines, confirming no transitive drift.</p>
 <h2>What this PR does</h2>
 <ul>
-<li>Bumps the direct dependency <code>cloud.google.com/go/cloudbuild</code> from <code>v1.34.0</code> to <code>v1.35.0</code> in <code>go.mod</code>; <code>go.sum</code> changes only the two <code>cloudbuild</code> hash lines (3 insertions / 3 deletions total, no vendor directory in the repo).
+<li>Bumps the direct dependency <code>cloud.google.com/go/cloudbuild</code> from <code>v1.34.0</code> to <code>v1.36.0</code> in <code>go.mod</code>; the PR diff against its updated base changes the two <code>cloudbuild</code> hash lines in <code>go.sum</code> (3 insertions / 3 deletions total, no vendor directory in the repo).
 </li>
-<li>Upstream, the only <code>cloudbuild</code> change in the range is <code>005d7ce4</code> "feat: update API sources and regenerate (#20683)", which regenerates <code>cloudbuildpb/cloudbuild.pb.go</code> with the new <code>worker_release</code> / <code>resolved_worker_release</code> fields.
+<li>The prior review examined <code>v1.34.0</code>→<code>v1.35.0</code>: upstream commit <code>005d7ce4</code> "feat: update API sources and regenerate (#20683)" regenerated <code>cloudbuildpb/cloudbuild.pb.go</code> with the <code>worker_release</code> / <code>resolved_worker_release</code> fields.
 </li>
-<li>The module's own <code>go.mod</code> also moved <code>gax-go</code> <code>v2.23.0</code>→<code>v2.26.2</code>, <code>google.golang.org/api</code> <code>v0.287.1</code>→<code>v0.288.0</code>, <code>otel/trace</code> <code>v1.44.0</code>→<code>v1.45.0</code> and newer <code>genproto</code> snapshots, but prow already selects equal-or-newer versions of all of them, so the effective build list is unchanged.
+<li>The <code>v1.36.0</code> release notes list another API source regeneration (#20728); the <a href="https://github.com/googleapis/google-cloud-go/blob/cloudbuild/v1.36.0/cloudbuild/CHANGES.md">Cloud Build changelog</a> records this release on 2026-10-22.
+</li>
+<li>In <code>v1.35.0</code>, the module's own <code>go.mod</code> moved <code>gax-go</code> <code>v2.23.0</code>→<code>v2.26.2</code>, <code>google.golang.org/api</code> <code>v0.287.1</code>→<code>v0.288.0</code>, <code>otel/trace</code> <code>v1.44.0</code>→<code>v1.45.0</code> and newer <code>genproto</code> snapshots; the prior review found Prow already selected equal-or-newer versions of those modules.
+</li></ul>
+<p>Since previous review:</p>
+<ul>
+<li>Dependabot replaced the reviewed <code>v1.35.0</code> target with <code>v1.36.0</code>. The old reviewed head is not an ancestor of the new head because the PR now sits on a newer base; the effective PR diff is only <code>go.mod</code> and <code>go.sum</code>, with 3 insertions and 3 deletions.
+</li>
+<li><code>petr-muller</code> submitted an approval at 2026-10-27T23:14:33Z; <code>kubernetes-prow[bot]</code> posted the approval notification at 23:14:42Z. There were no new inline review comments. The PR merged at 2026-10-27T23:15:36Z.
 </li></ul>
 <h2>Findings</h2>
 <p>None.</p>
 <h2>Checked</h2>
 <ul>
+<li>Refresh scope at <code>eaf5ff3eaef61510a8cd8e8658abb24040d7183f</code>: inspected the effective PR diff and activity since the previous review. No Prow source files changed.
+</li>
+<li>The version-specific checks below were performed during the previous review at <code>7a9bf0dd5d8b0638521c87f09821384a39cbe845</code> against <code>v1.35.0</code>; they were not rerun for this refresh.
+</li>
 <li>Freshness: tagged release <code>cloudbuild/v1.35.0</code>, published <code>2026-10-15T17:46:48Z</code> — 12 days old at review time. Real tag, not a pseudo-version.
 </li>
 <li>OSV: no advisories for <code>v1.34.0</code> or <code>v1.35.0</code>.
@@ -67,5 +89,6 @@ details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-si
 <li><code>pkg/googlecloudbuild</code> has no in-repo consumers — is it maintained solely for downstream importers (e.g. test-infra), and if so should that be documented so dependabot bumps here are not mistaken for dead code?
 </li></ul>
 <h2>Dependency followups</h2>
-<p>No opportunities identified. Modules and ranges examined: <code>cloud.google.com/go/cloudbuild</code> <code>v1.34.0</code>→<code>v1.35.0</code> (direct), plus the requirement bumps inside that module's own <code>go.mod</code> (<code>gax-go</code> <code>v2.23.0</code>→<code>v2.26.2</code>, <code>google.golang.org/api</code> <code>v0.287.1</code>→<code>v0.288.0</code>, <code>otel/trace</code> <code>v1.44.0</code>→<code>v1.45.0</code>, <code>genproto</code> snapshots) — all already satisfied at equal-or-newer versions by prow's <code>go.mod</code>, so no effective transitive change reached our build list. The only changelog entry is a generated API regeneration adding optional <code>worker_release</code> / <code>resolved_worker_release</code> fields; prow constructs none of the affected messages (callers supply a complete <code>*cloudbuildpb.Build</code>), and the range contains no deprecations of symbols we call.</p>
+<p>No opportunities identified. Examined <code>cloud.google.com/go/cloudbuild</code> <code>v1.34.0</code>→<code>v1.36.0</code> (direct). The v1.35 and v1.36 changelog entries are API source regenerations; the generated API additions include worker-release fields and <code>BuildTrigger.ApprovalConfig</code>. Prow's Cloud Build wrapper imports the v1 client in <code>pkg/googlecloudbuild/client/client.go:25-26</code> and passes a caller-supplied <code>*cloudbuildpb.Build</code> to <code>CreateBuild</code> at <code>:156-159</code>. No in-repo code references <code>BuildOptions</code>, <code>BuildTrigger</code>, <code>ApprovalConfig</code>, worker-release fields, <code>PoolOption</code>, or <code>WorkerConfig</code>, so these additions have no concrete call site to adopt.</p>
+<p>The Cloud Build module's changed requirements from <code>v1.34.0</code> to <code>v1.36.0</code> are: <code>cloud.google.com/go/iam</code> <code>v1.11.0</code>→<code>v1.12.0</code>; <code>github.com/go-logr/logr</code> <code>v1.4.3</code>→<code>v1.4.4</code>; <code>github.com/googleapis/gax-go/v2</code> <code>v2.23.0</code>→<code>v2.26.2</code>; OpenTelemetry <code>otel</code>, <code>otel/metric</code>, and <code>otel/trace</code> <code>v1.44.0</code>→<code>v1.45.0</code>; <code>google.golang.org/api</code> <code>v0.287.1</code>→<code>v0.288.0</code>; and the <code>google.golang.org/genproto</code> root, <code>googleapis/api</code>, and <code>googleapis/rpc</code> snapshots advanced. Prow already selects equal-or-newer versions for all of them (<code>iam v1.13.0</code>, <code>go-logr v1.4.4</code>, <code>gax v2.26.2</code>, OTel v1.46.0, Google API v0.305.0, and newer genproto snapshots), so the bump causes no transitive version changes in Prow. The merged PR diff itself changes only the Cloud Build requirement and its two checksum entries.</p>
 </main></body></html>

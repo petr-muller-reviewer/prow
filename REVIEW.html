@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#1032</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>chore(deps): bump google.golang.org/api from 0.300.0 to 0.305.0</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1032">kubernetes-sigs/prow#1032</a> · base <code>main</code> · head_sha <code>81f2bf15be82</code> · reviewed_at <code>2026-10-27T20:43:30Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span></div>
+<h2>Verdict</h2>
+<p>Approve: dependency-only bump with no known CVEs, no reachable vulnerabilities at either revision, and negligible behavioral surface in the parts of <code>google.golang.org/api</code> that prow actually imports.</p>
+<p>v0.305.0 was released 2026-10-19, 8 days before this review — enough soak to be comfortable. Nearly all of the 0.301.0–0.305.0 changelog is discovery-client regeneration (generated per-API surface we do not import); the single feature, <code>option/internaloption.EnableDirectPathXdsOverInterconnect</code>, is internal-only and unused here. The indirect modules that move (s2a-go, enterprise-certificate-proxy, x/mod, genproto/googleapis/rpc) only activate through credential-file transport options prow never sets. The one sensitivity-adjacent piece is <code>cloud.google.com/go/auth</code>, which sits on the operator-supplied credentials path; its change since v0.24.0 is the same DirectPath-over-Interconnect plumbing, defaulted off. The only thing worth remarking on is that the <code>auth</code> requirement lands on a pre-release commit rather than the tagged v0.24.1.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Bumps <code>google.golang.org/api</code> 0.300.0 → 0.305.0 in <code>go.mod</code>.
+</li>
+<li>Carries <code>cloud.google.com/go/auth</code> along, because api v0.305.0's own <code>go.mod</code> requires <code>v0.24.1-0.20261001053825-dbc26066f70a</code>.
+</li>
+<li>Drags four indirect modules forward: <code>google/s2a-go</code> v0.1.11, <code>enterprise-certificate-proxy</code> v0.3.23, <code>golang.org/x/mod</code> v0.42.0, <code>genproto/googleapis/rpc</code> (2026-10-05 snapshot).
+</li>
+<li>Changes no project source; <code>go.sum</code> churn only.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-gray">nit</span>Direct dependency pinned to a pre-release commit while the tagged release exists</h3>
+<ul>
+<li>where: <code>go.mod:6</code>
+</li>
+<li>excerpt:<pre><code>cloud.google.com/go/auth v0.24.1-0.20261001053825-dbc26066f70a</code></pre>
+</li>
+<li>concern: <code>auth</code> is imported directly (<code>pkg/io/credentials.go:38</code>, <code>credentials.DetectDefault</code>), yet lands on an untagged 2026-10-01 commit. Tagged <code>v0.24.1</code> was cut 2026-10-08 and is a strict superset: it adds <code>fix(auth): return empty tls.Certificate on secureconnect helper failure</code> (#20632) on top of the same DirectPath commit. MVS picks v0.24.1 over the pseudo-version, so raising it in this PR is free and gets an auth-path dependency off a pseudo-version.
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>OSV: no advisories for <code>google.golang.org/api</code> 0.300.0/0.305.0, <code>cloud.google.com/go/auth</code> 0.24.0/pinned, <code>google/s2a-go</code> 0.1.10/0.1.11, <code>enterprise-certificate-proxy</code> 0.3.22/0.3.23.
+</li>
+<li><code>govulncheck ./pkg/io/...</code> (the packages importing both bumped direct deps) at merge-base <code>6c4d88e3b</code> and at head: zero findings at both. <code>./...</code> OOM-killed on this 32 GB box at both revisions, so the comparison is scoped rather than repo-wide, but symmetric.
+</li>
+<li>The local toolchain needs <code>GOEXPERIMENT=jsonv2</code> for the repo's Go 1.27-regenerated deepcopy code (<code>encoding/json/jsontext</code>); with it, the affected packages type-check at head.
+</li>
+<li>Import surface is small: 9 files use <code>google.golang.org/api</code>, and only through <code>option</code>, <code>iterator</code>, <code>googleapi</code> (<code>pkg/io/credentials.go</code>, <code>pkg/io/opener.go:550</code>, <code>pkg/io/option.go:63</code>, <code>pkg/io/iterator.go:58</code>, <code>pkg/googlecloudbuild/client/client.go:138</code>, <code>cmd/webhook-server/secretmanager/secretmanager.go:140</code>, plus tests). <code>cloud.google.com/go/auth</code> is a single call site in <code>pkg/io/credentials.go</code>.
+</li>
+<li>Changelog of v0.301.0–v0.305.0 (5 releases, 26 commits): discovery-client regeneration, one <code>internaloption</code> addition, and generator-pipeline changes that do not ship in the library. None of the packages prow imports changed behavior.
+</li>
+<li>auth diff v0.24.0 → pinned commit: <code>feat(auth/grpctransport): support DirectPath over Interconnect</code> plus gax/otel bumps; unreachable without <code>internaloption.EnableDirectPathXdsOverInterconnect</code>, which prow does not set.
+</li>
+<li>s2a-go v0.1.11 only changes ALPN <code>NextProtos</code> selection; ECP v0.3.23 is a version/toolchain bump. Both require an <code>external_account</code> credential configuration to activate.
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>Would you rather refresh the <code>cloud.google.com/go/auth</code> requirement to the tagged <code>v0.24.1</code> in this PR (<code>go get cloud.google.com/go/auth@v0.24.1 &amp;&amp; go mod tidy</code>)? It is strictly newer than what api v0.305.0 requires and carries the secureconnect <code>tls.Certificate</code> fix we would otherwise skip.
+</li></ul>
+<h2>Dependency followups</h2>
+<p>One accepted item. Nothing else in the same version ranges offered an adoptable change (see "Examined" below).</p>
+<h3>Followup 1: migrate off deprecated <code>credentials.DetectOptions.CredentialsFile</code></h3>
+<ul>
+<li>category: deprecation
+</li>
+<li>where: <code>pkg/io/credentials.go:33-45</code> (callers: <code>pkg/io/opener.go:144</code>, <code>pkg/googlecloudbuild/client/client.go:96</code>)
+</li>
+<li>module: <code>cloud.google.com/go/auth</code> <code>v0.24.1-0.20261001053825-dbc26066f70a</code> — the deprecation predates this bump (it is present in v0.24.0 too); recorded here because the bump re-confirmed it is the only deprecated Google-auth call left in the tree.
+</li>
+<li>necessity: should — upstream deprecates the field for a security reason (unvalidated credential type) and names the replacement; no removal date is published, so it is not urgent, but it is a suppressed <code>staticcheck</code> finding rather than a solved problem.
+</li>
+<li>what the bump offers: <code>// Deprecated: This field is deprecated because of a potential security risk. It does not validate the credential configuration. ... If you know that you will be loading credential configurations of a specific type, it is recommended to use a credential-type-specific NewCredentialsFromFile method.</code>
+</li>
+<li>handoff prompt:
+<pre><code>In kubernetes-sigs/prow, migrate pkg/io/credentials.go off the deprecated
+cloud.google.com/go/auth credentials.DetectOptions.CredentialsFile field, which
+upstream deprecated in favour of the credential-type-specific loaders because an
+unvalidated configuration can load an unexpected credential type.
+
+Current code (pkg/io/credentials.go:31-46) does:
+
+    creds, err := credentials.DetectDefault(&amp;credentials.DetectOptions{
+        CredentialsFile: file,
+        Scopes:          scopes,
+    })
+    if err != nil {
+        return nil, fmt.Errorf(&quot;load Google credentials from %q: %w&quot;, file, err)
+    }
+    return option.WithAuthCredentials(creds), nil
+
+wrapped in a //nolint:staticcheck whose rationale is &quot;callers legitimately pass
+any credential type, and the file is fed by an operator-supplied flag&quot;.
+
+Task: keep the &quot;any credential type&quot; contract but go through the typed loader.
+Read the file, unmarshal just the type discriminator
+(struct{ Type string `json:&quot;type&quot;` }), map it to the matching
+credentials.CredType constant (credentials.ServiceAccount,
+credentials.AuthorizedUser, credentials.ExternalAccount,
+credentials.ImpersonatedServiceAccount, credentials.GDCHServiceAccount,
+credentials.ExternalAccountAuthorizedUser), then call
+credentials.NewCredentialsFromFile(credType, file, &amp;credentials.DetectOptions{Scopes: scopes}).
+An empty, unknown or unsupported type must return an error wrapped the same way
+(&quot;load Google credentials from %q: ...&quot;), naming the type found.
+
+Acceptance criteria:
+- GoogleCredentialsFileOption&#x27;s signature and semantics are unchanged; its two
+  callers (pkg/io/opener.go:144, pkg/googlecloudbuild/client/client.go:96) need
+  no edits.
+- The //nolint:staticcheck directive and its explanatory comment are gone;
+  `staticcheck`/`golangci-lint` reports no deprecation warning for this file.
+- `go build ./...` and `go test ./pkg/io/... ./pkg/googlecloudbuild/...` pass
+  (on this repo the Go toolchain needs GOEXPERIMENT=jsonv2 for the regenerated
+  deepcopy code).
+- `grep -rn CredentialsFile --include=&#x27;*.go&#x27; . | grep -v vendor` finds no
+  remaining use in non-test code.
+- pkg/io/credentials_test.go is extended with a case for an unrecognised
+  credential type expecting an error.
+
+Scope guard: do not change the --google-credentials flag, the GCS/Cloud Build
+call sites, or any other Google-auth behaviour; do not start validating
+credential file contents beyond the type discriminator; do not touch other
+deprecated APIs elsewhere in the tree; no new dependencies.</code></pre>
+</li></ul>
+<h3>Examined (no opportunity)</h3>
+<ul>
+<li><code>google.golang.org/api</code> v0.300.0 → v0.305.0 (direct): the only new code in the packages we import is <code>option/internaloption.EnableDirectPathXdsOverInterconnect</code> (EXPERIMENTAL, documented as "should only be used internally by generated clients"); <code>option</code>, <code>iterator</code> and <code>googleapi</code> are otherwise identical between the two versions. The rest of the range is discovery-client regeneration for APIs we do not import.
+</li>
+<li><code>cloud.google.com/go/auth</code> v0.24.0 → <code>v0.24.1-0.20261001053825-dbc26066f70a</code> (direct): the <code>credentials</code> package is identical; all changes sit in <code>grpctransport/</code> and <code>internal/transport/{cba,s2a}.go</code> as DirectPath-over-Interconnect plumbing behind an option and the <code>GOOGLE_CLOUD_ENABLE_DIRECT_PATH_XDS_OVER_INTERCONNECT</code> env var, neither of which prow sets.
+</li>
+<li><code>github.com/google/s2a-go</code> v0.1.10 → v0.1.11, <code>github.com/googleapis/enterprise-certificate-proxy</code> v0.3.22 → v0.3.23, <code>golang.org/x/mod</code> v0.41.0 → v0.42.0, <code>genproto/googleapis/rpc</code> 2026-09-21 → 2026-10-05: transitive only — prow imports none of them, so there is no call site of ours that could adopt anything they add.
+</li></ul>
+</main></body></html>

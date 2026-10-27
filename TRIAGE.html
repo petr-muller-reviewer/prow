@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#800</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>publisher.Commit panics (nil pointer) when GitUser is unset, and GitHubOptions.GitClientFactory can't set it</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/issues/800">kubernetes-sigs/prow#800</a> · main_sha <code>e601a1ffafd7</code> · state <code>open</code> · labels <code>lifecycle/stale</code> · triaged_at <code>2026-10-26T15:45:47Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: accepted</span></div>
+<details><summary>Full metadata</summary><pre><code>issue: kubernetes-sigs/prow#800
+title: &quot;publisher.Commit panics (nil pointer) when GitUser is unset, and GitHubOptions.GitClientFactory can&#x27;t set it&quot;
+state: open
+labels: lifecycle/stale
+main_sha: e601a1ffafd7d8d3a781238a4c5f4233d6248f68
+triaged_at: 2026-10-26T15:45:47Z
+verdict: accepted
+refresh_log:
+  - at: 2026-10-26T15:45:47Z
+    since: 2026-07-27T00:05:00Z
+    summary: &quot;Folded in linked PR #801 (open, CHANGES_REQUESTED 2026-07-29) that the first triage missed, plus the 2026-10-22 lifecycle/stale label. Bug analysis unchanged; upstream main advanced 376 commits without touching the three referenced files.&quot;
+advice:
+  advised_at: 2026-10-26T15:50:03Z
+  based_on_triaged_at: 2026-10-26T15:45:47Z</code></pre></details>
+<h2>Verdict</h2>
+<p>Accepted: legitimate, precisely-diagnosed bug (nil-pointer panic) plus a small, well-scoped usability gap, both confirmed against current <code>main</code>. Effort level 1 (good-first-issue); author has volunteered a PR.</p>
+<h2>What the issue reports</h2>
+<ul>
+<li><code>RepoClient.Commit</code> panics with a nil pointer dereference when the underlying <code>GitUser</code> getter was never configured.
+</li>
+<li>The panic happens specifically for clients built via <code>flagutil.GitHubOptions.GitClientFactory(...)</code>, the common in-repo helper, which wires <code>Username</code>/<code>Token</code> for clone/push but never <code>GitUser</code> for commit.
+</li>
+<li><code>WithGitUser</code> (added in #507) exists and works, but is only reachable through the lower-level <code>gitv2.NewClientFactory</code>/<code>NewLocalClientFactory</code> constructors, not through <code>GitHubOptions.GitClientFactory</code>.
+</li>
+<li>Author's workaround: build two factories on the same working tree — the GitHub-authenticated one for clone/push, and a second manual <code>gitv2.NewClientFactory(WithGitUser(...))</code> used only for <code>.Commit()</code>.
+</li>
+<li>Author proposes: (1) nil-guard <code>publisher.Commit</code> to return an error instead of panicking, (2) let <code>GitHubOptions.GitClientFactory</code> accept/forward a <code>GitUser</code> getter. Offered to send a PR for both.
+</li></ul>
+<p>Since previous triage:</p>
+<ul>
+<li>No new reporter or maintainer discussion on the issue itself; the reproduction and cause analysis still hold.
+</li>
+<li>PR kubernetes-sigs/prow#801 (author StarMiner99, opened 2026-07-15) already implements both proposed fixes and was missed by the previous triage. It is still open and received a CHANGES_REQUESTED review on 2026-07-29.
+</li>
+<li>k8s-triage-robot applied <code>lifecycle/stale</code> on 2026-10-22 after 90 days of inactivity; the issue auto-closes once <code>lifecycle/rotten</code> lands and 30 more days pass with no activity.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-blue">reproducibility</span>Panic reproduces unconditionally, no timing dependency</h3>
+<ul>
+<li>detail: Any client built via <code>GitHubOptions.GitClientFactory(...)</code> has <code>GitUser</code> unset; calling <code>.Commit(...)</code> on it panics every time, deterministically — no special config or timing required beyond "don't have GitUser set," which is the only state reachable through that helper.
+</li>
+<li>evidence: <code>pkg/flagutil/github.go:340-365</code> (never sets <code>ClientFactoryOpts.GitUser</code>); <code>pkg/git/v2/publisher.go:53-64</code> (<code>Commit</code> calls <code>p.info()</code> unconditionally).
+</li></ul>
+<h3><span class="tag c-amber">cause</span><code>p.info()</code> called without nil check in <code>(*publisher).Commit</code></h3>
+<ul>
+<li>detail: <code>p.info</code> is a <code>GitUserGetter</code> (<code>func() (name, email string, err error)</code>). It is only non-nil if the owning <code>clientFactory.gitUser</code> was set. <code>ClientFactoryOpts.GitUser</code> (<code>client_factory.go:120</code>) is applied only <code>if cfo.GitUser != nil</code> (<code>client_factory.go:177-178</code>) — the whole chain is designed to tolerate an absent <code>GitUser</code>, deferring failure to first use. <code>Commit</code> violates that "fail-with-error" contract by panicking instead.
+</li>
+<li>evidence:<pre><code>```go
+// pkg/git/v2/publisher.go:53-56
+func (p *publisher) Commit(title, body string) error {
+    p.logger.Infof(&quot;Committing changes with title %q&quot;, title)
+    name, email, err := p.info()
+    if err != nil {
+```</code></pre>
+</li></ul>
+<h3><span class="tag c-amber">cause</span><code>GitHubOptions.GitClientFactory</code> has no way to set <code>GitUser</code></h3>
+<ul>
+<li>detail: The function sets <code>Censor</code>, <code>CookieFilePath</code>, <code>Host</code>, <code>Persist</code>, <code>SigningKeyPath</code>, and conditionally <code>Username</code>/<code>Token</code> (when using GitHub token/app auth) — never <code>GitUser</code>. There's no parameter or <code>GitHubOptions</code> field for it, so any caller wanting to use <code>Publisher.Commit</code> through this common entrypoint has no supported path.
+</li>
+<li>evidence: <code>pkg/flagutil/github.go:340-365</code>; contrast with <code>WithGitUser(getter GitUserGetter) ClientFactoryOpt</code> at <code>pkg/git/v2/client_factory.go:251-255</code>, which is unreachable from <code>GitClientFactory</code>.
+</li></ul>
+<h3><span class="tag c-blue">related-code</span><code>publisher.Commit</code> (panic site)</h3>
+<ul>
+<li>where: <code>pkg/git/v2/publisher.go:53-64</code>
+</li>
+<li>excerpt:<pre><code>func (p *publisher) Commit(title, body string) error {
+    p.logger.Infof(&quot;Committing changes with title %q&quot;, title)
+    name, email, err := p.info()
+    if err != nil {
+        return err
+    }
+    commands := [][]string{
+        {&quot;add&quot;, &quot;--all&quot;},
+        {&quot;commit&quot;, &quot;--message&quot;, title, &quot;--message&quot;, body, &quot;--author&quot;, fmt.Sprintf(&quot;%s &lt;%s&gt;&quot;, name, email)},
+    }</code></pre>
+</li></ul>
+<h3><span class="tag c-blue">related-code</span><code>ClientFactoryOpts.GitUser</code> and <code>WithGitUser</code></h3>
+<ul>
+<li>where: <code>pkg/git/v2/client_factory.go:102-120,177-178,251-255</code>
+</li>
+<li>excerpt:<pre><code>// client_factory.go:120
+GitUser GitUserGetter
+// client_factory.go:177-178
+if cfo.GitUser != nil {
+    target.GitUser = cfo.GitUser
+}
+// client_factory.go:251-255
+func WithGitUser(getter GitUserGetter) ClientFactoryOpt {
+    return func(o *clientFactoryOpts) {
+        o.GitUser = getter
+    }
+}</code></pre>
+</li></ul>
+<h3><span class="tag c-blue">related-code</span><code>GitHubOptions.GitClientFactory</code> — missing <code>GitUser</code> wiring</h3>
+<ul>
+<li>where: <code>pkg/flagutil/github.go:340-365</code>
+</li>
+<li>excerpt:<pre><code>func (o *GitHubOptions) GitClientFactory(cookieFilePath string, cacheDir *string, dryRun, persistCache bool) (gitv2.ClientFactory, error) {
+    opts := gitv2.ClientFactoryOpts{
+        Censor:         secret.Censor,
+        CookieFilePath: cookieFilePath,
+        Host:           o.Host,
+        Persist:        &amp;persistCache,
+        SigningKeyPath: o.SigningKeyPath,
+    }
+    ...
+    if cookieFilePath == &quot;&quot; &amp;&amp; (o.TokenPath != &quot;&quot; || o.AppPrivateKeyPath != &quot;&quot;) {
+        opts.Username = func() (string, error) { return user, nil }
+        opts.Token = generator
+    }
+    // GitUser is never set here</code></pre>
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>No caller currently hits the panic, but none can use Commit through this helper either</h3>
+<ul>
+<li>where: <code>pkg/git/v2/publisher_test.go:28-138</code> (<code>TestPublisher_Commit</code>, no <code>info == nil</code> case); <code>cmd/generic-autobumper/bumper/bumper.go:613,638</code> (<code>gitCommit</code>/<code>MakeGitCommit</code>)
+</li>
+<li>excerpt:<pre><code>// bumper.go bypasses Publisher.Commit entirely, using raw exec with
+// explicit name/email instead — the same style of workaround the
+// issue author describes, done independently.</code></pre>
+</li>
+<li>(Grep across <code>cmd/</code> and <code>pkg/</code> for <code>.Commit(</code> on a <code>GitClientFactory</code>-derived client returns no non-test hits — the 9+ existing callers of <code>GitHubOptions.GitClientFactory</code> never call <code>.Commit()</code>.)
+</li></ul>
+<h3><span class="tag c-blue">related-issue</span>Prior art for <code>GitUser</code> option</h3>
+<ul>
+<li>ref: kubernetes-sigs/prow#507
+</li>
+<li>relevance: Introduced <code>WithGitUser</code>/<code>GitUserGetter</code> on the lower-level <code>gitv2</code> constructors; issue #800 is about making that reachable from <code>GitHubOptions.GitClientFactory</code> too.
+</li></ul>
+<h3><span class="tag c-blue">related-pr</span>PR #801 implements both proposed fixes; open, blocked on review</h3>
+<ul>
+<li>ref: kubernetes-sigs/prow#801
+</li>
+<li>relevance: Touches only <code>pkg/git/v2/publisher.go</code> (nil guard) and <code>pkg/flagutil/github.go</code> (<code>opts.GitUser</code>), matching both recommended next steps from the previous triage. State <code>OPEN</code>, head <code>b8efacee1b5d98e1647b21dd97608647b8c6d301</code>, <code>ok-to-test</code> present, no test changes. ylink-lfs requested changes on 2026-07-29 at <code>publisher.go:56</code>: "Current the returned error doesn't explain the remedy for developers."
+</li></ul>
+<h3><span class="tag c-amber">cause</span>PR #801's <code>GitUser</code> wiring covers only token/App auth and leaves the author email empty</h3>
+<ul>
+<li>detail: The added getter returns <code>user, &quot;&quot;, nil</code>, so <code>Commit</code> builds <code>--author &quot;prow &lt;&gt;&quot;</code>; verified locally that git accepts this and records an author with a blank email, which no GitHub account can claim. The assignment also sits inside the existing <code>cookieFilePath == &quot;&quot; &amp;&amp; (o.TokenPath != &quot;&quot; || o.AppPrivateKeyPath != &quot;&quot;)</code> branch, so cookie-authenticated clients still get no <code>GitUser</code> at all — there the nil guard only converts the panic into an error instead of closing the usability gap that is half of this issue.
+</li>
+<li>evidence:<pre><code>```go
+// PR #801, pkg/flagutil/github.go
+opts.Username = func() (string, error) { return user, nil }
+opts.GitUser = func() (string, string, error) { return user, &quot;&quot;, nil } // pass empty email, git allows this
+opts.Token = generator
+```</code></pre>
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>All file/line references in the issue body verified against current <code>main</code> (HEAD <code>e601a1ffafd7d8d3a781238a4c5f4233d6248f68</code>) — accurate.
+</li>
+<li>Repo-wide grep of <code>GitHubOptions.GitClientFactory(</code> callers (<code>cmd/deck</code>, <code>cmd/external-plugins/cherrypicker</code>, <code>cmd/gerrit</code>, <code>cmd/generic-autobumper/bumper</code>, <code>cmd/hook</code>, <code>cmd/gangway</code>, <code>cmd/moonraker</code>, <code>cmd/sub</code>, <code>cmd/tide</code>, plus <code>pkg/pubsub/subscriber</code> tests) — none call <code>.Commit(...)</code>; no observed production impact yet, but blocks any new adopter (like the reporter's plugin).
+</li>
+<li><code>pkg/git/v2/publisher_test.go</code> — existing <code>TestPublisher_Commit</code> table covers success/<code>add</code>-fails/<code>info</code>-fails/<code>commit</code>-fails, but no nil-<code>info</code> case; confirms the panic path is untested.
+</li>
+<li><code>pkg/flagutil/github_test.go</code> — no test exercises <code>GitClientFactory</code> at all.
+</li>
+<li>Other <code>publisher</code>/<code>clientFactory</code> methods (<code>PushToFork</code>, <code>PushToNamedFork</code>, <code>PushToCentral</code>) get dependencies via resolver funcs always wired at construction time — <code>Commit</code>/<code>info</code> is the sole nil-dereference risk in this package.
+</li>
+<li>Refresh 2026-10-26: issue comments and timeline after <code>2026-07-27T00:05:00Z</code> hold only k8s-triage-robot's stale notice (<code>2026-10-22T21:20:28Z</code>) and the matching <code>lifecycle/stale</code> label event; no human comments.
+</li>
+<li>Refresh 2026-10-26: fetched upstream <code>main</code> over HTTPS (376 commits past <code>e601a1f</code>); none touch <code>pkg/git/v2/publisher.go</code>, <code>pkg/flagutil/github.go</code>, or <code>pkg/git/v2/client_factory.go</code>, so line references and the cause analysis remain accurate.
+</li>
+<li>Refresh 2026-10-26: inspected PR #801's diff, its single review comment, and its label/head state; no CI signal beyond <code>ok-to-test</code>.
+</li>
+<li>Refresh 2026-10-26: confirmed in a scratch repo that <code>git commit --author &quot;name &lt;&gt;&quot;</code> succeeds and records a blank-email author.
+</li></ul>
+<h2>Next steps</h2>
+<ul>
+<li>Unblock #801 rather than encouraging a competing PR: it is the reporter's own implementation of both proposals and already carries <code>ok-to-test</code>.
+</li>
+<li>Have the author address the open review comment at <code>publisher.go:56</code> — make the error name the remedy, e.g. <code>committing %q: client has no GitUser; pass gitv2.WithGitUser to the client factory</code>.
+</li>
+<li>Raise the two gaps #801 still leaves: <code>GitUser</code> is set only on the token/App auth path (cookie-auth clients still cannot commit), and <code>--author &quot;user &lt;&gt;&quot;</code> yields unattributable commits — require a real email or reuse the bot/app email.
+</li>
+<li>Still missing from #801: the <code>publisher_test.go</code> case for <code>info == nil</code> (expect error, not panic) and <code>github_test.go</code> coverage that <code>GitClientFactory</code> forwards <code>GitUser</code>.
+</li>
+<li>Clear the stale marker (<code>/remove-lifecycle stale</code>), or deliberately keep the issue open while #801 is under review; <code>lifecycle/rotten</code> plus 30 idle days closes it.
+</li>
+<li>Labels <code>kind/bug</code>, <code>area/git</code>, <code>good-first-issue</code> from the previous triage were never applied.
+</li></ul>
+<h2>Advice</h2>
+<p>Live state re-checked 2026-10-26: issue still <code>open</code>, only <code>lifecycle/stale</code>, no assignee, no milestone. PR #801 is <code>MERGEABLE</code> at <code>b8efacee</code> with all CI green (<code>pull-prow-unit-test</code>, <code>pull-prow-integration</code>, <code>pull-prow-verify-lint</code>, <code>pull-prow-image-build-test</code>, EasyCLA), <code>ok-to-test</code> applied by petr-muller on 2026-09-27; tide blocks only on <code>approved</code>/<code>lgtm</code>. Only blocker is ylink-lfs's 2026-07-29 CHANGES_REQUESTED plus the two substantive gaps in the <code>[cause]</code> finding above.</p>
+<ol>
+<li>Nudge #801 with the concrete remaining work — it is 4 lines from merging and is the only thing standing between this issue and closure.
+<pre><code>gh pr comment 801 --repo kubernetes-sigs/prow --body &quot;&gt; *This was generated by AI during triage.*
+
+CI is green and this is close. Remaining before merge:
+
+- Make the \`publisher.Commit\` error name the remedy (ylink-lfs on \`publisher.go:56\`), e.g. \`committing %q: client has no GitUser; pass gitv2.WithGitUser to the client factory\`.
+- Set \`GitUser\` outside the token/App branch: it is currently assigned only when \`cookieFilePath == \&quot;\&quot; &amp;&amp; (TokenPath != \&quot;\&quot; || AppPrivateKeyPath != \&quot;\&quot;)\`, so cookie-authenticated clients still hit the new error instead of committing.
+- Do not emit \`--author \&quot;user &lt;&gt;\&quot;\`: a blank email produces commits no GitHub account can claim. Return a real email, or reuse the bot/app email.
+- Add the two tests: a \`publisher_test.go\` case with nil \`info\` (expect an error, not a panic) and \`github_test.go\` coverage that \`GitClientFactory\` forwards \`GitUser\`.&quot;</code></pre>
+</li>
+<li>Label the issue so it stops looking untriaged, and clear the stale marker in the same edit. <code>kind/bug</code>, <code>triage/accepted</code>, <code>help wanted</code> and <code>lifecycle/active</code> all exist in this repo; there is no git/flagutil <code>area/*</code> label (the 35 <code>area/*</code> labels are all component-scoped), and <code>good first issue</code> is deliberately omitted since a PR is already in flight.
+<pre><code>gh issue edit 800 --repo kubernetes-sigs/prow --add-label &quot;kind/bug,triage/accepted,help wanted,lifecycle/active&quot;</code></pre>
+</li>
+<li>Record on the issue that the PR is the tracked path, so a future stale pass and the next triage see it without digging through the timeline.
+<pre><code>gh issue comment 800 --repo kubernetes-sigs/prow --body &quot;&gt; *This was generated by AI during triage.*
+
+Tracked in #801: nil guard for \`publisher.Commit\` plus \`GitUser\` plumbing through \`GitHubOptions.GitClientFactory\`. CI is green; what remains is an actionable error message, \`GitUser\` on the non-token auth path, a non-empty author email, and the two regression tests.&quot;</code></pre>
+</li>
+<li>If the author has gone quiet (last touch was 2026-07-15, the review comment still unaddressed 3 months later), take the branch over rather than leaving the fix stuck. The delta is small enough to land in one sitting.
+<pre><code>gh pr checkout 801   # or: git fetch https://github.com/StarMiner99/prow-fork.git main:pr-801</code></pre>
+</li></ol>
+<h2>Open questions</h2>
+<ul>
+<li>The shape question is answered by #801: assign <code>opts.GitUser</code> directly in <code>GitClientFactory</code>, mirroring <code>Username</code>/<code>Token</code>. Remaining: which email should the default getter return, and should <code>GitUser</code> be settable for cookie/App-authenticated clients too?
+</li></ul>
+</main></body></html>

@@ -1,93 +1,91 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>Review: kubernetes-sigs/prow#867</title>
-<style>
-  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-         line-height: 1.6; color: #1a1a1a; max-width: 860px; margin: 2rem auto; padding: 0 1.5rem; }
-  code, pre { font-family: "SF Mono", Consolas, Monaco, monospace; font-size: 0.92em; }
-  header { border-bottom: 2px solid #ddd; padding-bottom: 1rem; margin-bottom: 1.5rem; }
-  header h1 { margin-bottom: 0.3rem; font-size: 1.4rem; }
-  .meta { color: #555; font-size: 0.92em; }
-  .meta code { background: #f2f2f2; padding: 1px 5px; border-radius: 3px; }
-  .verdict { background: #eaf7ea; border-left: 4px solid #2e7d32; padding: 0.8rem 1.2rem; margin: 1.2rem 0; border-radius: 4px; }
-  .verdict .label { font-weight: 700; text-transform: uppercase; color: #2e7d32; }
-  h2 { border-bottom: 1px solid #eee; padding-bottom: 0.3rem; margin-top: 2.2rem; }
-  ul { padding-left: 1.4rem; }
-  .finding { border: 1px solid #eee; border-radius: 6px; padding: 0.9rem 1.1rem; margin-bottom: 1rem; }
-  .finding .where { color: #555; font-size: 0.88em; margin-bottom: 0.4rem; }
-  .none { color: #777; font-style: italic; }
-</style>
-</head>
-<body>
-
-<header>
-  <h1>Review: chore(deps): bump github.com/yuin/goldmark from 1.8.2 to 1.8.5</h1>
-  <div class="meta">
-    PR: <a href="https://github.com/kubernetes-sigs/prow/pull/867">kubernetes-sigs/prow#867</a><br>
-    Head SHA: <code>3ea8fc6b6f74e76f2ff064edaaea244c7ee06f2d</code><br>
-    Base: <code>main</code><br>
-    Reviewed at: <code>2026-08-25T12:01:58Z</code><br>
-    PR state: <strong>MERGED</strong>
-  </div>
-</header>
-
-<div class="verdict">
-  <span class="label">Verdict: Approve</span>
-  <p>Dep-only bump of a direct dependency, correctly scoped (only <code>go.mod</code>/<code>go.sum</code> change).
-  The new version is ~28 days old and includes a real security-relevant fix (SVG-in-data-URI XSS)
-  that lands directly in the one code path where Prow uses this library — rendering job-artifact
-  markdown into HTML without escaping. Safe and worthwhile to merge.</p>
-</div>
-
-<h2>What this PR does</h2>
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#867</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>chore(deps): bump github.com/yuin/goldmark from 1.8.2 to 1.8.5</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/867">kubernetes-sigs/prow#867</a> · base <code>main</code> · head_sha <code>3ea8fc6b6f74</code> · reviewed_at <code>2026-08-25T12:01:58Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span></div>
+<details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#867
+title: &quot;chore(deps): bump github.com/yuin/goldmark from 1.8.2 to 1.8.5&quot;
+head_sha: 3ea8fc6b6f74e76f2ff064edaaea244c7ee06f2d
+base: main
+reviewed_at: 2026-08-25T12:01:58Z
+verdict: approve
+refresh_log:
+  - from_sha: dc1c09615d8283e52e417c3bca2bb48612d3ea07
+    to_sha: 3ea8fc6b6f74e76f2ff064edaaea244c7ee06f2d
+    at: 2026-08-25T12:01:58Z
+    summary: &quot;PR merged (rebased onto main via dependabot auto-rebase before merge; head SHA changed but the PR&#x27;s own diff vs its merge-base is unchanged — still only the goldmark go.mod/go.sum bump). No new comments or reviews since prior review.&quot;</code></pre></details>
+<h2>Summary</h2>
+<p>Dep-only PR (dependabot). Only <code>go.mod</code>/<code>go.sum</code> change. Direct dependency <code>github.com/yuin/goldmark</code> v1.8.2 -&gt; v1.8.5.</p>
+<p>Since previous review: PR merged (state MERGED, head now <code>3ea8fc6b6f74e76f2ff064edaaea244c7ee06f2d</code>). The head SHA changed only because dependabot rebased onto <code>main</code> (which had advanced with unrelated PR #859, pubsub v2 migration) before merge; the PR's own diff against its merge-base is identical to what was reviewed — still just the goldmark bump. No new commits, comments, or reviews from the author/reviewers since the prior review.</p>
 <ul>
-  <li>Bumps <code>github.com/yuin/goldmark</code> from v1.8.2 to v1.8.5 in <code>go.mod</code>/<code>go.sum</code> (dependabot).</li>
-  <li>No project source, config, or test files change.</li>
-  <li>Pulls in three upstream fix commits spanning v1.8.3, v1.8.4, and v1.8.5.</li>
-</ul>
-
-<p><em>Since previous review:</em> PR merged (head now <code>3ea8fc6b6f74e76f2ff064edaaea244c7ee06f2d</code>). Head SHA changed only
-because dependabot rebased onto <code>main</code> (which had advanced with unrelated PR #859, pubsub v2 migration) before merge —
-the PR's own diff against its merge-base is unchanged, still only the goldmark bump. No new commits, comments, or reviews
-since the prior review.</p>
-
-<h2>Dependency analysis</h2>
+<li>New release age: v1.8.5 tagged 2026-07-28, ~28 days old at review time. Real tagged release, not a pseudo-version.
+</li>
+<li>Usage: single import site, <code>pkg/spyglass/lenses/markdown/markdown.go</code>. Prow's Spyglass markdown lens reads a job artifact, runs it through <code>goldmark.New(goldmark.WithExtensions(extension.GFM))</code> (default safe mode, no <code>WithUnsafe()</code>), and injects the result as <code>template.HTML</code> (bypasses Go autoescaping) into the served Spyglass UI.
+</li>
+<li>Changelog v1.8.2..v1.8.5:
 <ul>
-  <li><strong>Freshness:</strong> v1.8.5 tagged 2026-07-28T01:16:48Z — ~28 days old at review time. Real tagged release (not a pseudo-version). Fine.</li>
-  <li><strong>Direct/indirect:</strong> Direct (no <code>// indirect</code> marker).</li>
-  <li><strong>Usage:</strong> Single import site — <code>pkg/spyglass/lenses/markdown/markdown.go</code>. Renders a job artifact through
-      <code>goldmark.New(goldmark.WithExtensions(extension.GFM))</code> (default-safe mode, no <code>WithUnsafe()</code>) and injects the
-      result as <code>template.HTML</code> (bypasses Go's autoescaping) into the Spyglass UI.</li>
-  <li><strong>Changelog:</strong>
-    <ul>
-      <li>v1.8.3 — fix #556: fenced code block parsing degradation with nonzero block indent. Correctness only.</li>
-      <li>v1.8.4 — <em>"fix: disable svg in data:image urls"</em> (<code>renderer/html/html.go</code>): closes an XSS vector where
-          <code>![](data:image/svg+xml;base64,...)</code> images could carry a script/event-handler payload executed by the browser.
-          Directly relevant to Prow's usage.</li>
-      <li>v1.8.5 — fix #568: another fenced-code-block parser fix (<code>parser/fcode_block.go</code>). Correctness only.</li>
-    </ul>
-  </li>
-  <li><strong>Exposure:</strong> Light import surface (one call site), but sensitive: markdown comes from job artifacts (potentially
-      influenced by untrusted PR/CI content) and is rendered straight to HTML. The v1.8.4 fix is a genuine hardening for this exact path.</li>
-</ul>
-
+<li>v1.8.3: fix #556, fenced code block parsing degradation on nonzero block indent. Correctness only.
+</li>
+<li>v1.8.4: "fix: disable svg in data:image urls" (<code>renderer/html/html.go</code>) — closes an XSS vector where <code>![](data:image/svg+xml;base64,...)</code> could carry an embedded script/event handler executed by the browser. Lands directly in the renderer path Prow exercises.
+</li>
+<li>v1.8.5: fix #568, another fenced-code-block parser fix (<code>parser/fcode_block.go</code>). Correctness only.
+</li></ul>
+</li>
+<li>Exposure: light import surface (one call site) but sensitive (untrusted-ish markdown from job artifacts rendered to HTML without escaping). The v1.8.4 fix is a net security improvement for exactly this path.
+</li></ul>
 <h2>Findings</h2>
-<p class="none">None — dep-only PR, no project code to review.</p>
-
-<h2>Things I checked and was fine with</h2>
+<p>None. Dep-only bump; no project code changed.</p>
+<h2>Checked</h2>
 <ul>
-  <li>Diff scope limited to <code>go.mod</code>/<code>go.sum</code> (2/4 lines changed).</li>
-  <li>No <code>// indirect</code> marker; confirmed direct dependency.</li>
-  <li>Grepped for import path outside <code>vendor/</code>; exactly one importer.</li>
-  <li>Confirmed goldmark is used without <code>WithUnsafe()</code> in that importer.</li>
-  <li>Read commit range v1.8.2..v1.8.5 via GitHub compare API and per-tag release notes.</li>
-  <li>Confirmed release timestamp via the Go module proxy.</li>
-</ul>
-
-<h2>Open questions for the author</h2>
-<p class="none">None.</p>
-
-</body>
-</html>
+<li>Diff scope: confirmed only <code>go.mod</code>/<code>go.sum</code> changed (<code>git diff --stat</code>).
+</li>
+<li>Direct vs indirect: no <code>// indirect</code> marker on goldmark in go.mod.
+</li>
+<li>Import surface: <code>grep</code> shows one importer, <code>pkg/spyglass/lenses/markdown/markdown.go</code>.
+</li>
+<li>Goldmark config in that file: no <code>WithUnsafe()</code>, default-safe HTML rendering.
+</li>
+<li>Changelog commits v1.8.2..v1.8.5 via <code>gh api compare</code> and per-tag <code>gh release view</code>.
+</li>
+<li>Release freshness via <code>proxy.golang.org</code> <code>.info</code> endpoint (v1.8.5: 2026-07-28T01:16:48Z).
+</li></ul>
+<h2>Open questions</h2>
+<p>None.</p>
+<h2>Dependency followups</h2>
+<p>No followup opportunities identified.</p>
+<ul>
+<li>Examined: <code>github.com/yuin/goldmark</code> v1.8.2 → v1.8.5 (direct; only importer is <code>pkg/spyglass/lenses/markdown/markdown.go:28</code>). No other module versions change in this PR.
+</li>
+<li>Changelog v1.8.2..v1.8.5 (releases v1.8.3/v1.8.4/v1.8.5; 3 commits, 4 files: <code>parser/fcode_block.go</code>, <code>renderer/html/html.go</code>, <code>text/reader.go</code>, <code>_test/extra.txt</code>) is internal bugfixes only — fenced-code-block parsing (#556, #568) and dropping <code>svg+xml</code> from the <code>data:image</code> URL allowlist. No deprecations, no new or superseded exported API, no new features, and no changed defaults we override — nothing our single <code>goldmark.New(goldmark.WithExtensions(extension.GFM))</code> call site could adopt.
+</li></ul>
+</main></body></html>

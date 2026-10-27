@@ -1,7 +1,7 @@
 ---
 pr: kubernetes-sigs/prow#867
 title: "chore(deps): bump github.com/yuin/goldmark from 1.8.2 to 1.8.5"
-head_sha: dc1c09615d8283e52e417c3bca2bb48612d3ea07
+head_sha: 3ea8fc6b6f74e76f2ff064edaaea244c7ee06f2d
 base: main
 reviewed_at: 2026-08-25T12:01:58Z
 verdict: approve
@@ -55,3 +55,16 @@ None. Dep-only bump; no project code changed.
 ## Open questions
 
 None.
+
+## Dependency followups
+
+No followup opportunities identified.
+
+- Examined: `github.com/yuin/goldmark` v1.8.2 → v1.8.5 (direct; only importer is
+  `pkg/spyglass/lenses/markdown/markdown.go:28`). No other module versions change in this PR.
+- Changelog v1.8.2..v1.8.5 (releases v1.8.3/v1.8.4/v1.8.5; 3 commits, 4 files:
+  `parser/fcode_block.go`, `renderer/html/html.go`, `text/reader.go`, `_test/extra.txt`) is
+  internal bugfixes only — fenced-code-block parsing (#556, #568) and dropping `svg+xml`
+  from the `data:image` URL allowlist. No deprecations, no new or superseded exported API,
+  no new features, and no changed defaults we override — nothing our single
+  `goldmark.New(goldmark.WithExtensions(extension.GFM))` call site could adopt.

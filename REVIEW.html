@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#1008</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>peribolos: add end-of-run change report</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1008">kubernetes-sigs/prow#1008</a> · base <code>main</code> · head_sha <code>c341b7f065b8</code> · reviewed_at <code>2026-10-15T23:15:21Z</code></div>
+<div class="badges"><span class="badge c-red">verdict: request-changes</span><span class="badge c-red">gate: do-not-merge</span></div>
+<details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#1008
+title: &quot;peribolos: add end-of-run change report&quot;
+head_sha: c341b7f065b84442df6dd360f1695992b69ac38a
+base: main
+reviewed_at: 2026-10-15T23:15:21Z
+verdict: request-changes
+gate:
+  decision: do-not-merge
+  gated_at: 2026-10-15T23:18:51Z
+  gated_head_sha: c341b7f065b84442df6dd360f1695992b69ac38a
+  reviewed_head_sha: c341b7f065b84442df6dd360f1695992b69ac38a</code></pre></details>
+<h2>Gate</h2>
+<p><strong>Decision: do-not-merge</strong> — a confirmed blocking report-classification defect remains at the current PR head.</p>
+<p>There are no commits since the reviewed head. The six substantive inline comments from <code>@cblecker</code> appear addressed in <code>c341b7f</code>: recording follows successful calls, repo-field limitations are documented, identifiers are normalized/documented, report-path validation and partial-failure output are implemented, before/after values are typed, and CLI documentation was added. The local review's blocking <code>none</code> permission issue remains, along with two should-fix findings.</p>
+<p>Gating list:</p>
+<ul>
+<li><strong>Not addressed — <code>REVIEW.md</code> (blocking), <code>cmd/peribolos/main.go:1685-1693</code> and <code>1912-1915</code>:</strong> <code>github.None</code> is executed as removal but may be recorded as an add/update. Fix action classification and add regression coverage before merge.
+</li>
+<li><strong>Not addressed — <code>REVIEW.md</code> (should-fix), <code>site/content/en/docs/components/cli-tools/peribolos.md:227-228</code>:</strong> the schema says new <code>kind</code>/<code>action</code> values are compatible but does not tell consumers how to handle unknown values.
+</li>
+<li><strong>Not addressed — <code>REVIEW.md</code> (should-fix), <code>cmd/peribolos/main.go:218-220</code>:</strong> <code>--report-path</code> matching <code>--config-path</code> truncates the configuration after it has been read. Reject the alias to avoid source-file loss.
+</li></ul>
+<p>Independent merge risk:</p>
+<ul>
+<li>No exported Go API or configuration schema is changed. Existing runs are unaffected unless they opt into the new, release-noted <code>--report-path</code> flag.
+</li>
+<li>For users enabling reporting, write/close errors are logged but do not change the exit status, so automation may see success without a valid report. Rolling back to an older binary also requires removing the new flag.
+</li>
+<li>No repository compatibility skill specifically applies to this CLI/report change; compatibility was assessed directly from the diff and current call paths.
+</li></ul>
+<h2>Verdict</h2>
+<p>Request changes: configured <code>none</code> permissions can be reported as adds or updates even though reconciliation removes access.</p>
+<p>This makes the report inaccurate for a valid configuration value and undermines its purpose as a record of applied changes. The other perspectives found useful follow-up improvements, but no additional merge blockers.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Adds an opt-in <code>--report-path</code> flag for a versioned JSON change report.
+</li>
+<li>Reports organization metadata, memberships, teams, repositories, collaborators, team repository permissions, and organization role assignments.
+</li>
+<li>Records successful mutations in confirm mode and planned mutations in dry-run mode, with stable ordering and action totals.
+</li>
+<li>Avoids including changed field values in the report and censors the serialized output.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-red">blocking</span>Classify <code>none</code> permissions as removals</h3>
+<ul>
+<li>where: <code>cmd/peribolos/main.go:1685-1693</code>
+</li>
+<li>concern: <code>github.None</code> is a valid permission and the execution switch treats it as removal, but these branches classify the action by whether the collaborator exists. The same mismatch exists for team repository permissions at <code>cmd/peribolos/main.go:1912-1915</code>; classify <code>none</code> as remove and cover both cases with tests.
+</li>
+<li>excerpt:<pre><code>if currentInfo, exists := currentCollaborators.collaborators[normalizedUser]; exists {
+    actions[wantUser] = plannedChange{perm: wantPermission, change: change{Kind: kindCollaborator, Org: orgName, Scope: repoName, Target: normalizedUser, Action: actionUpdate, Before: string(currentInfo.permission), After: string(wantPermission)}}
+} else {
+    actions[wantUser] = plannedChange{perm: wantPermission, change: change{Kind: kindCollaborator, Org: orgName, Scope: repoName, Target: normalizedUser, Action: actionAdd, After: string(wantPermission)}}
+}</code></pre>
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>Document handling for unknown kind and action values</h3>
+<ul>
+<li>where: <code>site/content/en/docs/components/cli-tools/peribolos.md:227-228</code>
+</li>
+<li>concern: The schema policy allows adding <code>kind</code> and <code>action</code> values without a version bump but only tells consumers to ignore unknown property names. Consumers also need to handle or skip unrecognized values in these known fields to make the compatibility promise reliable.
+</li>
+<li>excerpt:<pre><code>* Backward-compatible changes (a new field, or a new `kind`/`action` value) do **not** bump the version. Consumers **must** ignore properties with names they do not recognize so they keep working against newer peribolos versions.</code></pre>
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>Prevent the report from truncating the configuration file</h3>
+<ul>
+<li>where: <code>cmd/peribolos/main.go:218-220</code>
+</li>
+<li>concern: If <code>--report-path</code> resolves to the same file as <code>--config-path</code>, <code>os.Create</code> truncates the configuration after it has been loaded. Rejecting that path would prevent accidental loss of the source config.
+</li>
+<li>excerpt:<pre><code>if o.reportPath != &quot;&quot; {
+    reportFile, err = os.Create(o.reportPath)
+    if err != nil {</code></pre>
+</li></ul>
+<h2>Resolved</h2>
+<h3><span class="tag c-amber">should-fix</span>Write the report after partial reconciliation failures</h3>
+<ul>
+<li>where: <code>cmd/peribolos/main.go:228-243</code>
+</li>
+<li>resolution: The run now saves the reconciliation error, emits the accumulated report, and only then exits with the error. This preserves the report when earlier operations succeeded before a later failure.
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>Reviewed the full PR diff from merge base <code>0edcac618455b9e7716a08be480d6984ef996eb1</code> to head <code>c341b7f065b84442df6dd360f1695992b69ac38a</code>.
+</li>
+<li>Confirmed <code>github.None</code> is accepted by <code>RepoPermissionLevel</code> and is handled as a removal by the mutation switch.
+</li>
+<li>Checked report recording paths, serialization, deterministic ordering, secret censoring, and the documented JSON schema.
+</li>
+<li>Existing invocations are unaffected unless they opt into <code>--report-path</code>; rolling back to a binary without the flag requires removing it from the invocation.
+</li>
+<li>Tests were not run.
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>Should report write or close failures make the run exit nonzero when <code>--report-path</code> is requested? They are currently logged while the process can still exit successfully.
+</li></ul>
+</main></body></html>

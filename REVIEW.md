@@ -44,3 +44,23 @@ Substantive upstream change in range: fix for S3 200-error response-body handlin
 
 ## Open questions
 (none)
+
+## Dependency followups
+
+No improvement opportunities identified. The merged head `b58b89c` carries two patch releases per module (the earlier revision `872e9b4` covered by the Summary above had one), so the changelog range examined here is wider than the Summary's stated versions.
+
+- `github.com/aws/aws-sdk-go-v2` v1.43.5 → v1.43.7 (direct)
+- `github.com/aws/aws-sdk-go-v2/config` v1.32.36 → v1.32.38 (direct)
+- `github.com/aws/aws-sdk-go-v2/credentials` v1.19.35 → v1.19.37 (direct)
+- `github.com/aws/aws-sdk-go-v2/service/s3` v1.107.1 → v1.107.3 (direct)
+- `github.com/aws/smithy-go` v1.27.7 → v1.27.8 (indirect, not imported by us)
+
+Changelog reviewed: the 10 non-regenerated commits in `v1.43.5...v1.43.7` (shared history for the four submodules). Per commit, why nothing is actionable:
+
+- `fe3cb6a4` close original S3 response body in 200-error handling (#3517) — behavior fix; applies to our `s3blob` multipart path without code changes.
+- `283dd703` expand S3 operations checking for errors inside HTTP 200 (#3523) — more of the same behavior fix, also automatic.
+- `36c81210` presigner `x-amz-checksum-*` header behavior (#3522) — we never presign; no presign client anywhere outside `pkg/io/providers/aws.go`'s plain `s3.NewFromConfig`.
+- `aaa3547c` close files during directory upload/download (#3514) — `feature/s3/manager` directory helpers; `gocloud.dev@v0.40.0/blob/s3blob` uses only the single-object uploader/downloader, and `feature/s3/manager` was not bumped (stays v1.17.10), so the fix is not in this tree anyway.
+- `daa38bc8` Smithy version bump, `27045a8b` tmv1 flaky test, `ce8fd411` schema-serde rollout, `c3679fbb`/`b0973f93` internal changelog/snapshot housekeeping, `12e7ccdb` endpoints model — internal or generated, no API surface for us.
+
+No deprecations in range touch the symbols we call: `awshttp.NewBuildableClient`, `config.LoadDefaultConfig`, `config.WithCredentialsProvider`, `credentials.NewStaticCredentialsProvider`, `config.WithRegion`, `s3.NewFromConfig` with `s3.Options{UsePathStyle, HTTPClient, BaseEndpoint}`.

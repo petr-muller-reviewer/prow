@@ -1,80 +1,110 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>Review: kubernetes-sigs/prow#865</title>
-<style>
-  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; line-height: 1.6; color: #1a1a1a; max-width: 860px; margin: 2rem auto; padding: 0 1.5rem; background: #fdfdfd; }
-  code, pre { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; font-size: 0.9em; }
-  header { border-bottom: 2px solid #333; padding-bottom: 1rem; margin-bottom: 1.5rem; }
-  header h1 { margin-bottom: 0.3rem; font-size: 1.4rem; }
-  .meta { color: #555; font-size: 0.9rem; }
-  .meta code { background: #eee; padding: 0.1em 0.35em; border-radius: 3px; }
-  .verdict { background: #e8f5e9; border-left: 4px solid #2e7d32; padding: 0.8rem 1.2rem; border-radius: 4px; margin-bottom: 1.5rem; }
-  .verdict strong { color: #2e7d32; }
-  h2 { border-bottom: 1px solid #ddd; padding-bottom: 0.3rem; margin-top: 2rem; }
-  ul { padding-left: 1.4rem; }
-  .empty { color: #777; font-style: italic; }
-  .finding { border: 1px solid #ddd; border-radius: 6px; padding: 0.8rem 1.2rem; margin-bottom: 1rem; }
-  pre { background: #f5f5f5; padding: 0.8rem; border-radius: 4px; overflow-x: auto; }
-</style>
-</head>
-<body>
-
-<header>
-  <h1>Review: kubernetes-sigs/prow#865</h1>
-  <div class="meta">
-    <div><strong>Title:</strong> chore(deps): bump the aws group across 1 directory with 4 updates</div>
-    <div><strong>Head SHA:</strong> <code>b58b89c339f3fd1bdfe26362e657b603f474a65f</code></div>
-    <div><strong>Base:</strong> main</div>
-    <div><strong>Reviewed at:</strong> 2026-08-25T12:01:35Z</div>
-    <div><strong>Status:</strong> Merged</div>
-    <div><a href="https://github.com/kubernetes-sigs/prow/pull/865">View PR on GitHub</a></div>
-  </div>
-</header>
-
-<div class="verdict">
-  <strong>Verdict: Approve.</strong> Dep-only patch bump of the AWS SDK for Go v2 family (4 direct modules + lockstep indirects), released 11 days ago, confined to a single, narrow import surface (<code>pkg/io/providers/aws.go</code>). The one substantive upstream change — an S3 multipart-upload connection-leak fix — is a strict improvement for how we use the SDK. No project code touched, no findings.
-</div>
-
-<h2>What this PR does</h2>
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#865</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>chore(deps): bump the aws group across 1 directory with 4 updates</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/865">kubernetes-sigs/prow#865</a> · base <code>main</code> · head_sha <code>b58b89c339f3</code> · reviewed_at <code>2026-08-25T12:01:35Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span></div>
+<details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#865
+title: &quot;chore(deps): bump the aws group across 1 directory with 4 updates&quot;
+head_sha: b58b89c339f3fd1bdfe26362e657b603f474a65f
+base: main
+reviewed_at: 2026-08-25T12:01:35Z
+verdict: approve
+refresh_log:
+  - old_sha: 872e9b417f442ac0873fabc9967bd8cf9e5e7c50
+    new_sha: b58b89c339f3fd1bdfe26362e657b603f474a65f
+    summary: &quot;PR merged; head advanced only via merge with main (contains unrelated PR #859 pubsub-v2 migration commits reachable from new head), PR&#x27;s own file set unchanged (go.mod/go.sum, hack/tools/go.mod/go.sum, same 4 module versions). Approved by cblecker (2x, both before this review) and merged. No new findings.&quot;</code></pre></details>
+<h2>Summary</h2>
+<p>Dep-only PR. Bumps 4 direct AWS SDK for Go v2 modules (patch versions) plus ~13 lockstep indirect submodules, in <code>go.mod</code>/<code>go.sum</code> and <code>hack/tools/go.mod</code>/<code>go.sum</code>. No project source changed.</p>
 <ul>
-  <li>Bumps <code>github.com/aws/aws-sdk-go-v2</code> v1.43.5 &rarr; v1.43.6</li>
-  <li>Bumps <code>github.com/aws/aws-sdk-go-v2/config</code> v1.32.36 &rarr; v1.32.37</li>
-  <li>Bumps <code>github.com/aws/aws-sdk-go-v2/credentials</code> v1.19.35 &rarr; v1.19.36</li>
-  <li>Bumps <code>github.com/aws/aws-sdk-go-v2/service/s3</code> v1.107.1 &rarr; v1.107.2</li>
-  <li>Drags along ~13 indirect submodules from the same release train (e.g. <code>smithy-go</code> v1.27.7&rarr;v1.27.8) in <code>go.mod</code>/<code>go.sum</code> and mirrors the same bump in <code>hack/tools/go.mod</code>/<code>go.sum</code></li>
-</ul>
-
-<h2>Dependency analysis</h2>
-<ul>
-  <li><strong>Freshness:</strong> all four tagged from the same upstream commit <code>168c59c</code>, released 2026-08-14 &mdash; 11 days old at review time. Real tags, not pseudo-versions. Fine to take.</li>
-  <li><strong>Usage:</strong> all four imported only in <code>pkg/io/providers/aws.go</code> (Prow's S3 blob-storage provider, used via <code>gocloud.dev/blob/s3blob</code>); <code>credentials</code> also appears in its test file. Narrow surface, but a real, exercised path (job artifact storage), not test-only.</li>
-  <li><strong>Changelog:</strong> mostly API-model regeneration and internal repo cleanup. The one substantive fix: the S3 200-error handling wrapped the response body in <code>io.NopCloser</code> (whose <code>Close</code> is a no-op), so closing it never reached the transport body &mdash; observed leaking connections on <code>CompleteMultipartUpload</code>. Now forwards the real <code>Closer</code>; <code>smithy-go</code> bumped to v1.27.8 alongside it for the underlying fix (drain body before close). No CVE.</li>
-  <li><strong>Exposure:</strong> <code>s3blob</code> uses multipart upload for larger objects, so this fix lands on a path we actually exercise. Not an auth/crypto-sensitive change, but a genuine connection-leak fix relevant to our usage.</li>
-</ul>
-
-<h2>Since previous review (refreshed 2026-08-25T12:01:35Z)</h2>
-<ul>
-  <li>PR merged into main. Head SHA advanced from <code>872e9b4</code> to <code>b58b89c</code> via merge with main (picks up unrelated commits from merged PR #859, &ldquo;Migrate to Pub/Sub v2&rdquo; &mdash; not part of this PR's own diff).</li>
-  <li>PR's own file set unchanged: <code>go.mod</code>, <code>go.sum</code>, <code>hack/tools/go.mod</code>, <code>hack/tools/go.sum</code>, same module version bumps as previously reviewed.</li>
-  <li>Approved by cblecker (2026-08-24T19:58:56Z and 2026-08-24T20:06:36Z, both prior to this review) and merged.</li>
-  <li>No new comments, no new review activity since previous <code>reviewed_at</code>.</li>
-</ul>
-
+<li><code>github.com/aws/aws-sdk-go-v2</code> v1.43.5 → v1.43.6
+</li>
+<li><code>github.com/aws/aws-sdk-go-v2/config</code> v1.32.36 → v1.32.37
+</li>
+<li><code>github.com/aws/aws-sdk-go-v2/credentials</code> v1.19.35 → v1.19.36
+</li>
+<li><code>github.com/aws/aws-sdk-go-v2/service/s3</code> v1.107.1 → v1.107.2
+</li></ul>
+<p>Release date (all four, same commit <code>168c59c</code>): 2026-08-14, 11 days old at review time. Not a pseudo-version, real tags.</p>
+<p>Usage: all four imported only in <code>pkg/io/providers/aws.go</code> (Prow's S3 blob-storage provider, <code>newS3Client</code>/<code>getS3Bucket</code> via <code>gocloud.dev/blob/s3blob</code>); <code>credentials</code> also referenced in <code>aws_test.go</code>.</p>
+<p>Substantive upstream change in range: fix for S3 200-error response-body handling — original body wrapped in <code>io.NopCloser</code> so <code>Close()</code> never reached the transport, leaking connections on <code>CompleteMultipartUpload</code>; now forwards the real <code>Closer</code>. <code>smithy-go</code> bumped to v1.27.8 alongside it (root fix, restores draining body before close). Directly relevant: <code>s3blob</code> uses multipart upload for larger objects, so this is an exercised path, not dead code. No CVE/security advisory involved.</p>
 <h2>Findings</h2>
-<p class="empty">None.</p>
-
-<h2>Things I checked and was fine with</h2>
+<p>(none)</p>
+<h2>Since previous review</h2>
 <ul>
-  <li>Confirmed diff is dep-only: only <code>go.mod</code>/<code>go.sum</code> and <code>hack/tools/go.mod</code>/<code>go.sum</code> changed</li>
-  <li>Verified release freshness of all 4 direct modules via the Go module proxy</li>
-  <li>Grepped for import usage across the repo (excluding vendor) &mdash; confined to one file</li>
-  <li>Read the upstream commit range for the shared aws-sdk-go-v2 monorepo release &mdash; identified the one relevant fix</li>
-</ul>
-
-<h2>Open questions for the author</h2>
-<p class="empty">None.</p>
-
-</body>
-</html>
+<li>PR merged into main. Head SHA advanced from <code>872e9b4</code> to <code>b58b89c</code> via merge with main (picks up unrelated commits from merged PR #859, "Migrate to Pub/Sub v2" — not part of this PR's own diff).
+</li>
+<li>PR's own file set unchanged: <code>go.mod</code>, <code>go.sum</code>, <code>hack/tools/go.mod</code>, <code>hack/tools/go.sum</code>, same module version bumps as previously reviewed.
+</li>
+<li>Approved by cblecker (2026-08-24T19:58:56Z and 2026-08-24T20:06:36Z, both prior to this review) and merged.
+</li>
+<li>No new comments, no new review activity since previous <code>reviewed_at</code>.
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>Diff scope confirmed dep-only (<code>go.mod</code>/<code>go.sum</code>, <code>hack/tools/go.mod</code>/<code>go.sum</code> only)
+</li>
+<li>Release freshness of all 4 direct modules via proxy.golang.org (2026-08-14, 11 days old)
+</li>
+<li>Import surface via grep: confined to <code>pkg/io/providers/aws.go</code> (+ its test)
+</li>
+<li>Upstream commit range aws/aws-sdk-go-v2 v1.43.5..v1.43.6 (shared history across config/credentials/s3 submodules): mostly API-model regen churn; one real fix (S3 200-error body-close/connection-leak, #3517) relevant to our multipart-upload usage
+</li></ul>
+<h2>Open questions</h2>
+<p>(none)</p>
+<h2>Dependency followups</h2>
+<p>No improvement opportunities identified. The merged head <code>b58b89c</code> carries two patch releases per module (the earlier revision <code>872e9b4</code> covered by the Summary above had one), so the changelog range examined here is wider than the Summary's stated versions.</p>
+<ul>
+<li><code>github.com/aws/aws-sdk-go-v2</code> v1.43.5 → v1.43.7 (direct)
+</li>
+<li><code>github.com/aws/aws-sdk-go-v2/config</code> v1.32.36 → v1.32.38 (direct)
+</li>
+<li><code>github.com/aws/aws-sdk-go-v2/credentials</code> v1.19.35 → v1.19.37 (direct)
+</li>
+<li><code>github.com/aws/aws-sdk-go-v2/service/s3</code> v1.107.1 → v1.107.3 (direct)
+</li>
+<li><code>github.com/aws/smithy-go</code> v1.27.7 → v1.27.8 (indirect, not imported by us)
+</li></ul>
+<p>Changelog reviewed: the 10 non-regenerated commits in <code>v1.43.5...v1.43.7</code> (shared history for the four submodules). Per commit, why nothing is actionable:</p>
+<ul>
+<li><code>fe3cb6a4</code> close original S3 response body in 200-error handling (#3517) — behavior fix; applies to our <code>s3blob</code> multipart path without code changes.
+</li>
+<li><code>283dd703</code> expand S3 operations checking for errors inside HTTP 200 (#3523) — more of the same behavior fix, also automatic.
+</li>
+<li><code>36c81210</code> presigner <code>x-amz-checksum-*</code> header behavior (#3522) — we never presign; no presign client anywhere outside <code>pkg/io/providers/aws.go</code>'s plain <code>s3.NewFromConfig</code>.
+</li>
+<li><code>aaa3547c</code> close files during directory upload/download (#3514) — <code>feature/s3/manager</code> directory helpers; <code>gocloud.dev@v0.40.0/blob/s3blob</code> uses only the single-object uploader/downloader, and <code>feature/s3/manager</code> was not bumped (stays v1.17.10), so the fix is not in this tree anyway.
+</li>
+<li><code>daa38bc8</code> Smithy version bump, <code>27045a8b</code> tmv1 flaky test, <code>ce8fd411</code> schema-serde rollout, <code>c3679fbb</code>/<code>b0973f93</code> internal changelog/snapshot housekeeping, <code>12e7ccdb</code> endpoints model — internal or generated, no API surface for us.
+</li></ul>
+<p>No deprecations in range touch the symbols we call: <code>awshttp.NewBuildableClient</code>, <code>config.LoadDefaultConfig</code>, <code>config.WithCredentialsProvider</code>, <code>credentials.NewStaticCredentialsProvider</code>, <code>config.WithRegion</code>, <code>s3.NewFromConfig</code> with <code>s3.Options{UsePathStyle, HTTPClient, BaseEndpoint}</code>.</p>
+</main></body></html>

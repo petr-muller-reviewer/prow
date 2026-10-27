@@ -31,13 +31,13 @@ ul, ol { padding-left:1.5rem; }
 details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
 </style></head><body><main>
 <h1>owners-label: add ignore_merge_commits config option</h1>
-<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/782">kubernetes-sigs/prow#782</a> · base <code>main</code> · head_sha <code>6a29c95931c3</code> · reviewed_at <code>2026-10-05T21:46:19Z</code></div>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/782">kubernetes-sigs/prow#782</a> · base <code>main</code> · head_sha <code>6a29c95931c3</code> · reviewed_at <code>2026-10-27T20:25:02Z</code></div>
 <div class="badges"><span class="badge c-green">verdict: approve</span><span class="badge c-amber">gate: hold</span></div>
 <details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#782
 title: &quot;owners-label: add ignore_merge_commits config option&quot;
 head_sha: 6a29c95931c3a76f016723bca5ee84eac2377bb6
 base: main
-reviewed_at: 2026-10-05T21:46:19Z
+reviewed_at: 2026-10-27T20:25:02Z
 verdict: approve
 gate:
   decision: hold
@@ -62,9 +62,12 @@ refresh_log:
     summary: No code changes. The author told Prucek on 2026-09-30 that the org/repo config scope and shared list lookup were addressed, and requested another look.
   - from_sha: 6a29c95931c3a76f016723bca5ee84eac2377bb6
     to_sha: 6a29c95931c3a76f016723bca5ee84eac2377bb6
-    summary: No code changes. Prucek approved on 2026-10-01; the approval notifier reported that a pkg/plugins approver is still required.</code></pre></details>
+    summary: No code changes. Prucek approved on 2026-10-01; the approval notifier reported that a pkg/plugins approver is still required.
+  - from_sha: 6a29c95931c3a76f016723bca5ee84eac2377bb6
+    to_sha: 6a29c95931c3a76f016723bca5ee84eac2377bb6
+    summary: No code changes. petr-muller reviewed on 2026-10-10 (after the gate) with two inline comments — the config field name is misleading (suggests `ignore_prs_with_merge_commits`), and the merge-commit check should move below the no-labels early return, reinforcing the existing API-ordering should-fix.</code></pre></details>
 <h2>Gate</h2>
-<p><strong>Decision: hold.</strong> Rechecked on 2026-10-10: the head remains <code>6a29c9593</code>, with no code or discussion changes since the previous gate. Prucek approved on 2026-10-01 after the config scope, generated docs, and duplicated lookup concerns were fixed. The local <code>should-fix</code> on API call ordering remains: configured repositories fetch every PR commit before checking whether any OWNERS labels apply. The call is paginated, so it can use multiple requests and can fail on a path that otherwise returns without further API work. Move it below the no-label return, or accept that cost and failure behavior explicitly, before merging.</p>
+<p><strong>Decision: hold.</strong> Rechecked on 2026-10-10: the head remains <code>6a29c9593</code>, with no code changes since the previous gate. Prucek approved on 2026-10-01 after the config scope, generated docs, and duplicated lookup concerns were fixed. The local <code>should-fix</code> on API call ordering remains: configured repositories fetch every PR commit before checking whether any OWNERS labels apply. The call is paginated, so it can use multiple requests and can fail on a path that otherwise returns without further API work. Move it below the no-label return, or accept that cost and failure behavior explicitly, before merging. petr-muller's 2026-10-10 review, posted after this gate, independently requested the same reordering and questioned the config field name, so the hold is no longer local-only.</p>
 <h3>Gating list</h3>
 <ul>
 <li><strong>Not addressed — <code>REVIEW.md</code>, <code>pkg/plugins/owners-label/owners-label.go:77-101</code>:</strong> <code>ListPullRequestCommits</code> still runs before the <code>neededLabels.Len() == 0</code> early return. This is the sole substantive gate; move the call after that return or explicitly accept the added paginated requests and possible API error for PRs needing no labels.
@@ -92,13 +95,17 @@ refresh_log:
 <li>No code changes since the 2026-09-22 review. On 2026-09-30, carterpewpew told Prucek that the config scope and shared lookup concerns were addressed and requested another look; no new inline comments or reviews followed as of this refresh.
 </li>
 <li>No code changes since the 2026-09-30 refresh. Prucek approved on 2026-10-01 at 12:38 UTC. The approval notifier commented at 12:38 UTC that approval from a <code>pkg/plugins</code> approver is still needed; no new inline feedback was posted. The previously recorded gate concern about API call ordering remains unchanged.
+</li>
+<li>No code changes since the 2026-10-10 gate; head remains <code>6a29c9593</code>. petr-muller reviewed on 2026-10-10 at 18:41 UTC (after the gate) with two inline comments: the config field name is misleading because whole PRs are skipped, not individual commits (<code>ignore_prs_with_merge_commits</code> proposed), and the merge-commit check should move below the no-labels early return, reinforcing the existing API-ordering should-fix.
 </li></ul>
 <h2>Findings</h2>
 <h3><span class="tag c-amber">should-fix</span>Merge commit API call runs before label-need check</h3>
 <ul>
-<li>where: <code>pkg/plugins/owners-label/owners-label.go:77-88</code>
+<li>where: <code>pkg/plugins/owners-label/owners-label.go:77-99</code>
 </li>
 <li>concern: <code>ListPullRequestCommits</code> executes before <code>GetPullRequestChanges</code>. When no OWNERS labels apply, the function early-exits at line 99 with comment "Return now to save API tokens". The commit-listing call is wasted in that case. Moving the label-need check before the merge commit check avoids the extra API call.
+</li>
+<li>review comment: petr-muller (2026-10-10, PR #782 inline at <code>owners-label.go:88</code>) explicitly asked to reverse the order — run <code>GetPullRequestChanges</code> on all PRs and only call <code>ListPullRequestCommits</code> when the PR actually needs at least one label, reasoning that PRs needing no labels are likely more common than PRs with an accidental merge commit.
 </li>
 <li>excerpt:<pre><code>if ignoreMergeCommits {
     commits, err := ghc.ListPullRequestCommits(org, repo, number)
@@ -109,6 +116,12 @@ if neededLabels.Len() == 0 {
     // No labels requested for the given files. Return now to save API tokens.
     return nil
 }</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">nit</span>Config field name <code>ignore_merge_commits</code> is misleading</h3>
+<ul>
+<li>where: <code>pkg/plugins/config.go:289-292</code>
+</li>
+<li>concern: The implementation skips the entire PR when any commit is a merge commit, but the name reads as per-commit filtering. petr-muller (2026-10-10, PR #782 inline at <code>config.go:292</code>) suggested <code>ignore_prs_with_merge_commits</code>. The rename is cheap now and awkward after release, because the key is public configuration and the struct field is exported.
 </li></ul>
 <h3><span class="tag c-gray">nit</span>Add comment noting relationship with mergecommitblocker</h3>
 <ul>
@@ -195,6 +208,6 @@ if neededLabels.Len() == 0 {
 </li></ul>
 <h2>Open questions</h2>
 <ul>
-<li>Would reordering checks so label-need runs before merge-commit detection be acceptable? The existing code explicitly optimizes for the no-labels path.
+<li>None. The prior question — whether reordering so the label-need check runs before merge-commit detection is acceptable — was answered by petr-muller on 2026-10-10 (<code>owners-label.go:88</code>); it is tracked under Findings as <code>[should-fix] Merge commit API call runs before label-need check</code>.
 </li></ul>
 </main></body></html>

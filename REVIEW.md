@@ -3,7 +3,7 @@ pr: kubernetes-sigs/prow#782
 title: "owners-label: add ignore_merge_commits config option"
 head_sha: 6a29c95931c3a76f016723bca5ee84eac2377bb6
 base: main
-reviewed_at: 2026-10-05T21:46:19Z
+reviewed_at: 2026-10-27T20:25:02Z
 verdict: approve
 gate:
   decision: hold
@@ -29,11 +29,14 @@ refresh_log:
   - from_sha: 6a29c95931c3a76f016723bca5ee84eac2377bb6
     to_sha: 6a29c95931c3a76f016723bca5ee84eac2377bb6
     summary: No code changes. Prucek approved on 2026-10-01; the approval notifier reported that a pkg/plugins approver is still required.
+  - from_sha: 6a29c95931c3a76f016723bca5ee84eac2377bb6
+    to_sha: 6a29c95931c3a76f016723bca5ee84eac2377bb6
+    summary: No code changes. petr-muller reviewed on 2026-10-10 (after the gate) with two inline comments — the config field name is misleading (suggests `ignore_prs_with_merge_commits`), and the merge-commit check should move below the no-labels early return, reinforcing the existing API-ordering should-fix.
 ---
 
 ## Gate
 
-**Decision: hold.** Rechecked on 2026-10-10: the head remains `6a29c9593`, with no code or discussion changes since the previous gate. Prucek approved on 2026-10-01 after the config scope, generated docs, and duplicated lookup concerns were fixed. The local `should-fix` on API call ordering remains: configured repositories fetch every PR commit before checking whether any OWNERS labels apply. The call is paginated, so it can use multiple requests and can fail on a path that otherwise returns without further API work. Move it below the no-label return, or accept that cost and failure behavior explicitly, before merging.
+**Decision: hold.** Rechecked on 2026-10-10: the head remains `6a29c9593`, with no code changes since the previous gate. Prucek approved on 2026-10-01 after the config scope, generated docs, and duplicated lookup concerns were fixed. The local `should-fix` on API call ordering remains: configured repositories fetch every PR commit before checking whether any OWNERS labels apply. The call is paginated, so it can use multiple requests and can fail on a path that otherwise returns without further API work. Move it below the no-label return, or accept that cost and failure behavior explicitly, before merging. petr-muller's 2026-10-10 review, posted after this gate, independently requested the same reordering and questioned the config field name, so the hold is no longer local-only.
 
 ### Gating list
 
@@ -56,12 +59,14 @@ Since previous review:
 - This resolves Prucek's two 2026-08-10 comments: `plugin-config-documented.yaml` now includes `ignore_merge_commits`, and the previously triplicated membership check is shared.
 - No code changes since the 2026-09-22 review. On 2026-09-30, carterpewpew told Prucek that the config scope and shared lookup concerns were addressed and requested another look; no new inline comments or reviews followed as of this refresh.
 - No code changes since the 2026-09-30 refresh. Prucek approved on 2026-10-01 at 12:38 UTC. The approval notifier commented at 12:38 UTC that approval from a `pkg/plugins` approver is still needed; no new inline feedback was posted. The previously recorded gate concern about API call ordering remains unchanged.
+- No code changes since the 2026-10-10 gate; head remains `6a29c9593`. petr-muller reviewed on 2026-10-10 at 18:41 UTC (after the gate) with two inline comments: the config field name is misleading because whole PRs are skipped, not individual commits (`ignore_prs_with_merge_commits` proposed), and the merge-commit check should move below the no-labels early return, reinforcing the existing API-ordering should-fix.
 
 ## Findings
 
 ### [should-fix] Merge commit API call runs before label-need check
-- where: `pkg/plugins/owners-label/owners-label.go:77-88`
+- where: `pkg/plugins/owners-label/owners-label.go:77-99`
 - concern: `ListPullRequestCommits` executes before `GetPullRequestChanges`. When no OWNERS labels apply, the function early-exits at line 99 with comment "Return now to save API tokens". The commit-listing call is wasted in that case. Moving the label-need check before the merge commit check avoids the extra API call.
+- review comment: petr-muller (2026-10-10, PR #782 inline at `owners-label.go:88`) explicitly asked to reverse the order — run `GetPullRequestChanges` on all PRs and only call `ListPullRequestCommits` when the PR actually needs at least one label, reasoning that PRs needing no labels are likely more common than PRs with an accidental merge commit.
 - excerpt: |
     if ignoreMergeCommits {
         commits, err := ghc.ListPullRequestCommits(org, repo, number)
@@ -72,6 +77,10 @@ Since previous review:
         // No labels requested for the given files. Return now to save API tokens.
         return nil
     }
+
+### [nit] Config field name `ignore_merge_commits` is misleading
+- where: `pkg/plugins/config.go:289-292`
+- concern: The implementation skips the entire PR when any commit is a merge commit, but the name reads as per-commit filtering. petr-muller (2026-10-10, PR #782 inline at `config.go:292`) suggested `ignore_prs_with_merge_commits`. The rename is cheap now and awkward after release, because the key is public configuration and the struct field is exported.
 
 ### [nit] Add comment noting relationship with mergecommitblocker
 - where: `pkg/plugins/owners-label/owners-label.go:77`
@@ -127,4 +136,4 @@ Since previous review:
 
 ## Open questions
 
-- Would reordering checks so label-need runs before merge-commit detection be acceptable? The existing code explicitly optimizes for the no-labels path.
+- None. The prior question — whether reordering so the label-need check runs before merge-commit detection is acceptable — was answered by petr-muller on 2026-10-10 (`owners-label.go:88`); it is tracked under Findings as `[should-fix] Merge commit API call runs before label-need check`.

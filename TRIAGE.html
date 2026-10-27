@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#1039</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>Support opt-in GitHub teams in OWNERS and OWNERS_ALIASES</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/issues/1039">kubernetes-sigs/prow#1039</a> · main_sha <code>0d9737ca26be</code> · state <code>open</code> · labels <code>kind/feature</code> · triaged_at <code>2026-10-27T17:22:29Z</code></div>
+<div class="badges"><span class="badge c-amber">verdict: needs-discussion</span></div>
+<details><summary>Full metadata</summary><pre><code>issue: kubernetes-sigs/prow#1039
+title: &quot;Support opt-in GitHub teams in OWNERS and OWNERS_ALIASES&quot;
+state: open
+labels: kind/feature
+main_sha: 0d9737ca26be70c30ad4d017f38965d0f8ef0943
+triaged_at: 2026-10-27T17:22:29Z
+verdict: needs-discussion
+legitimacy: LEGITIMATE
+effort: 3
+recommended_labels: [kind/feature, priority/important-longterm]
+advice:
+  advised_at: 2026-10-27T19:19:30Z
+  based_on_triaged_at: 2026-10-27T17:22:29Z</code></pre></details>
+<h2>Verdict</h2>
+<p><strong>needs-discussion</strong> — legitimate, well-specified opt-in feature whose design must be agreed before implementation.</p>
+<p>The request is in scope: <code>pkg/repoowners</code> is the single OWNERS entry point for approve, lgtm, verify-owners, blunderbuss, rifle, override, reward-owners and owners-label (<code>pkg/repoowners/repoowners.go:243-261</code>), and GitHub team listing already exists in the client (<code>pkg/github/client.go:4239-4267</code>). It is not implementable as-is because three constraints need maintainer decisions: login normalization erases the <code>@</code> marker, <code>RepoOwners</code> is cached per commit SHA while team membership is not commit-bound, and expansion must happen before collaborator filtering. Effort is level 3 (large): the change is contained but alters approval authority for every deployment that enables it.</p>
+<h2>What the issue reports</h2>
+<ul>
+<li>Allow <code>@org/team-slug</code> entries in <code>OWNERS</code> and <code>OWNERS_ALIASES</code>, including inside alias definitions, expanded to individual users.
+</li>
+<li>Gate it behind one global plugin-config option, <code>owners.enable_github_teams</code>, default off, with no per-repo or per-plugin override.
+</li>
+<li>Expand teams in every consumer of OWNERS data — approval, reviewer selection, ownership validation — without requiring contributors to mention teams themselves.
+</li>
+<li>Keep alias semantics: <code>required_reviewers</code> requests review from every team member rather than selecting one or requiring all of them to approve; resolve membership independently of commits via the existing GitHub client and ghproxy.
+</li>
+<li>Motivation is Knative's many repos across several orgs; the stated trade-off is that team membership changes are not recorded in a file's Git history, and the issue asks whether the opt-in approach is acceptable.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-amber">cause</span>Login normalization erases the team marker</h3>
+<ul>
+<li>detail: <code>NormLogins</code>/<code>NormLogin</code> strip one leading <code>@</code> and lowercase, so <code>@example/maintainers</code> becomes <code>example/maintainers</code> — identical to an alias or user spelled that way. Team detection must use the raw string and keep refs separate from logins until expansion.
+</li>
+<li>evidence: <code>pkg/github/types.go:166-168</code>, <code>pkg/repoowners/repoowners.go:726-732</code>
+</li></ul>
+<h3><span class="tag c-amber">cause</span>RepoOwners is cached per commit SHA, team membership is not commit-bound</h3>
+<ul>
+<li>detail: The parsed <code>*RepoOwners</code> is cached per <code>org/repo:base</code> and rebuilt only when the SHA changes. Resolving teams during parsing would freeze membership until a commit touches an OWNERS file, contradicting the issue's requirement. Resolution has to happen on each <code>LoadRepoOwnersSha</code> return, backed by its own cache; ghproxy only provides HTTP revalidation. <code>reward-owners</code> calls <code>LoadRepoOwnersSha</code> twice per event with <code>updateCache=false</code>.
+</li>
+<li>evidence: <code>pkg/repoowners/repoowners.go:344-426</code>, <code>pkg/repoowners/repoowners.go:308-343</code>, <code>pkg/plugins/reward-owners/reward-owners.go:122-128</code>
+</li></ul>
+<h3><span class="tag c-amber">cause</span>Collaborator filtering drops team refs and non-collaborator members</h3>
+<ul>
+<li>detail: <code>filterCollaborators</code> intersects approvers/reviewers/advisory approvers with <code>ListCollaborators</code> on every load. A <code>@org/team</code> ref is not a login and would be removed, so expansion must run first; even then, members who are not repo collaborators are dropped, so Knative-style peribolos teams may still need <code>skip_collaborators</code> or collaborator grants. <code>required_reviewers</code> is not collaborator-filtered.
+</li>
+<li>evidence: <code>pkg/repoowners/repoowners.go:784-808</code>, <code>pkg/repoowners/repoowners.go:308-343</code>
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>Alias parsing and single-level expansion</h3>
+<ul>
+<li>where: <code>pkg/repoowners/repoowners.go:240-482</code>, <code>pkg/repoowners/repoowners.go:665-777</code>
+</li>
+<li>excerpt:<pre><code>// ExpandAliases returns members of multiple aliases, duplicates are pruned
+func (a RepoAliases) ExpandAliases(logins sets.Set[string]) sets.Set[string] {
+	if a == nil {
+		return logins
+	}
+	// Make logins a copy of the original set to avoid modifying the original.
+	logins = logins.Union(nil)
+	for _, login := range sets.List(logins) {
+		if expanded, ok := a[github.NormLogin(login)]; ok {
+			logins.Delete(login)
+			logins = logins.Union(expanded)
+		}
+	}
+	return logins
+}</code></pre>
+</li>
+<li>detail: Expansion is one level only (nested aliases are not recursively expanded), and it runs in <code>applyConfigToPath</code> before any per-load post-processing.
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>Global Owners config and hook wiring</h3>
+<ul>
+<li>where: <code>pkg/plugins/config.go:259-289</code>, <code>cmd/hook/main.go:207-225</code>
+</li>
+<li>excerpt:<pre><code>	resolver := func(org, repo string) ownersconfig.Filenames {
+		return pluginAgent.Config().OwnersFilenames(org, repo)
+	}
+	ownersClient := repoowners.NewClient(gitClient, githubClient, mdYAMLEnabled, skipCollaborators, ownersDirDenylist, resolver)</code></pre>
+</li>
+<li>detail: <code>plugins.Owners</code> is deployment-global, matching the requested <code>enable_github_teams</code> shape; the existing resolver functions are the precedent for threading another option. Only hook constructs <code>repoowners.NewClient</code> in-tree, but the constructor is exported, so its signature should stay compatible for out-of-tree consumers.
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>Team membership API already exists</h3>
+<ul>
+<li>where: <code>pkg/github/client.go:4239-4267</code>
+</li>
+<li>excerpt:<pre><code>	path := fmt.Sprintf(&quot;/orgs/%s/teams/%s/members&quot;, org, teamSlug)
+	var teamMembers []TeamMember
+	err := c.readPaginatedResultsWithValues(
+		path,
+		url.Values{
+			&quot;per_page&quot;: []string{&quot;100&quot;},
+			&quot;role&quot;:     []string{role},
+		},</code></pre>
+</li>
+<li>detail: <code>github.Client</code> embeds <code>TeamClient</code>, so repoowners' existing client can call this without a new dependency. The endpoint returns direct members only, so nested teams are out of scope unless recursed explicitly.
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>verify-owners re-parses changed OWNERS files and trust-checks owner strings</h3>
+<ul>
+<li>where: <code>pkg/plugins/verify-owners/verify-owners.go:484-516</code>, <code>pkg/plugins/verify-owners/verify-owners.go:534-599</code>
+</li>
+<li>excerpt:<pre><code>	// If OWNERS_ALIASES file was modified, check if newly added owners are trusted.
+	if ownerAliasesModified &amp;&amp; !skipTrustedUserCheck {
+		allOwners := sets.List(repoAliases.ExpandAllAliases())
+		for _, owner := range allOwners {
+			nonTrustedUsers, err = checkIfTrustedUser(ghc, log, triggerConfig, owner, patch, filenames.OwnersAliases, org, repo, nonTrustedUsers, trustedUsers, repoAliases)</code></pre>
+</li>
+<li>detail: A team ref would reach <code>trigger.TrustedUser</code> → <code>IsMember</code>, which returns <code>false, nil</code> on 404 (<code>pkg/github/client.go:1474-1498</code>), so it is reported as an untrusted owner rather than crashing. Team refs need explicit skip-in-trust-check plus existence/permission validation.
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>required_reviewers fan-out</h3>
+<ul>
+<li>where: <code>pkg/reviewer/reviewer.go:109</code>
+</li>
+<li>excerpt:<pre><code>		requiredReviewers.Insert(rc.RequiredReviewers(file.Filename).UnsortedList()...)</code></pre>
+</li>
+<li>detail: Every entry becomes an individual review request, matching the issue's "include every member" requirement; a large team produces a large review-request batch.
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>Test fakes and coverage gap</h3>
+<ul>
+<li>where: <code>pkg/repoowners/repoowners_test.go:117-145</code>, <code>pkg/github/fakegithub/fakegithub.go:823-849</code>
+</li>
+<li>detail: The repoowners fake implements only <code>ListCollaborators</code> and <code>GetRef</code>, so widening the internal client interface touches it. <code>fakegithub.ListTeamMembersBySlug</code> is hardcoded to <code>admins</code>/<code>leads</code> and returns <code>nil, nil</code> for unknown teams; it needs arbitrary org/team data. verify-owners has no team cases.
+</li>
+<li>evidence: <code>pkg/repoowners/repoowners_test.go:117-145</code>
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>Docs currently say teams are unsupported</h3>
+<ul>
+<li>where: <code>site/content/en/docs/components/plugins/approve/approvers/_index.md:42</code>, <code>pkg/plugins/plugin-config-documented.yaml:499-522</code>
+</li>
+<li>excerpt:<pre><code>Note that items in the OWNERS files can be GitHub usernames, or aliases defined in OWNERS_ALIASES files. An OWNERS_ALIASES file is another co-existed file that delivers a mechanism for defining groups. However, GitHub Team names are not supported. We do not use them because there is no audit log for changes to the GitHub Teams. This way we have an audit log.</code></pre>
+</li>
+<li>detail: The approvers doc must be rewritten, and the plugin config reference is generated by <code>hack/gen-prow-documented</code> and diffed by <code>make verify-codegen</code>, so adding the option requires regenerating it.
+</li></ul>
+<h3><span class="tag c-blue">related-issue</span>Original tracker closed on the repo move</h3>
+<ul>
+<li>ref: kubernetes/test-infra#10065
+</li>
+<li>relevance: Same request (teams in OWNERS); closed with an invitation to continue in kubernetes-sigs/prow, which this issue does.
+</li></ul>
+<h3><span class="tag c-blue">related-issue</span>Team targets in /cc and /assign</h3>
+<ul>
+<li>ref: kubernetes-sigs/prow#145
+</li>
+<li>relevance: Closed feature request for team targets in the assign/cc commands; different code path, but shows demand and the historical preference for per-member expansion over GitHub team review requests.
+</li></ul>
+<h3><span class="tag c-blue">related-issue</span>Team mentions in /cc regressed</h3>
+<ul>
+<li>ref: kubernetes-sigs/prow#204
+</li>
+<li>relevance: Context for how team handling has broken before; argues for explicit config gating, not a precedent for OWNERS behavior.
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>Searched <code>pkg/repoowners</code> for existing team handling: none; only peribolos and org-config code deals with teams.
+</li>
+<li>Searched open and closed issues for "OWNERS team" and "OWNERS_ALIASES": only this issue plus unrelated verify-owners bugs (#360, #514).
+</li>
+<li>Checked the issue timeline for cross-referenced issues/PRs (<code>--paginate</code>, <code>cross-referenced</code> events): none.
+</li>
+<li>Checked whether OWNERS consumers bypass the <code>RepoOwner</code> interface: only verify-owners re-parses changed files; all others use the shared client.
+</li>
+<li>Checked in-tree <code>repoowners.NewClient</code> callers: only <code>cmd/hook/main.go</code>, so the option can be threaded without touching other binaries.
+</li>
+<li>Checked <code>IsMember</code> and <code>trigger.TrustedUser</code> with a non-user string: <code>404</code> maps to <code>false, nil</code>, so a team ref is flagged untrusted rather than causing an error.
+</li>
+<li>Checked plugin config doc generation: <code>hack/gen-prow-documented</code> output is verified by <code>hack/make-rules/verify/codegen.sh</code>.
+</li>
+<li>Checked whether team review requests could replace expansion: they cannot, because approve matches comment authors and <code>required_reviewers</code> wants individuals.
+</li></ul>
+<h2>Next steps</h2>
+<ul>
+<li>Maintainer reply on the proposal in the issue: config shape, fail-closed behavior, nested teams, and the collaborator-filter interaction. This is the blocking decision; no implementation should start before it.
+</li>
+<li>Apply <code>priority/important-longterm</code> and link kubernetes/test-infra#10065 for history.
+</li>
+<li>Recommended implementation shape if accepted: detect <code>@org/slug</code> on raw entries at parse time, keep refs distinct from logins, and expand in <code>LoadRepoOwnersSha</code> after the cache lookup and before <code>filterCollaborators</code>, using a Client-owned resolver with a short-TTL <code>org/team</code> cache over <code>ListTeamMembersBySlug(org, slug, RoleAll)</code>. Restrict refs to the repo's org, fail closed (empty set + error log) on unreadable teams, and add the option to <code>plugins.Owners</code> without breaking the exported constructor signature.
+</li>
+<li>Update <code>verify-owners</code> (skip team refs in the trust check; validate team existence/permissions via the existing <code>invalid-owners</code> path) and regenerate the plugin config reference; rewrite the approvers doc caveat and document the required org members-read permission, API budget without ghproxy, direct-members-only behavior, collaborator filtering, and loss of a Git-audited roster.
+</li>
+<li>Add tests in <code>pkg/repoowners</code> for ref detection, refs inside aliases, expansion ordering, TTL cache behavior, disabled-flag no-op, and unreadable teams; extend the fake GitHub team data; add verify-owners team cases.
+</li>
+<li>Ask the author to confirm bot permissions and whether Knative team members are repo collaborators (determines whether <code>skip_collaborators</code> is needed), and whether nested teams are in scope.
+</li>
+<li>Artifacts are local only; no issue comment, label, or state change has been made.
+</li></ul>
+<h2>Advice</h2>
+<p>Advice built on the triage of 2026-10-27T17:22:29Z. No change since then: issue is still OPEN, still labeled only <code>kind/feature</code>, no assignees or milestone, no new comments, and no cross-referenced or connected PRs. Nothing is in flight, so there is no PR to review and no close/link action available.</p>
+<p>Note: the repo has no <code>needs-triage</code>/<code>needs-discussion</code> label; its triage labels are <code>triage/accepted</code>, <code>triage/needs-information</code>, <code>triage/duplicate</code>, <code>triage/unresolved</code>, <code>triage/not-reproducible</code>. Since the verdict is <code>needs-discussion</code>, none of them fits, so state stays in <code>TRIAGE.md</code>. (Canonical role labels are unmapped for this repo; <code>/setup-matt-pocock-skills</code> sets that up.)</p>
+<h3>1. Add tracking and area labels</h3>
+<p>Rationale: the request is a long-standing downstream need with no deployment breakage, and Prow sits under SIG Testing; neither label is currently applied.</p>
+<pre><code>gh issue edit 1039 --repo kubernetes-sigs/prow --add-label &quot;sig/testing,priority/important-longterm&quot;</code></pre>
+<h3>2. Ask the area owners to decide the three design questions</h3>
+<p>Rationale: <code>pkg/repoowners</code> has no OWNERS file, so the root approvers are the decision makers (<code>OWNERS</code>: cblecker, petr-muller, smg247); cblecker and smg247 are also the most recent committers to the package. The issue explicitly asks whether the opt-in approach is acceptable, and findings [cause] 1-3 each require a maintainer answer before implementation.</p>
+<pre><code>gh issue comment 1039 --repo kubernetes-sigs/prow --body &quot;&gt; *This was generated by AI during triage.*
+
+@cblecker @smg247 @petr-muller — flagging the root approvers since pkg/repoowners has no OWNERS file. Triage of this proposal found three decisions that need maintainer agreement before implementation:
+
+1. Ref syntax: login normalization strips the @ (github.NormLogin), so @org/team must be detected on the raw string and kept separate from aliases. OK to special-case this in the parsing/expansion path?
+2. Resolution point: RepoOwners is cached per commit SHA, but team membership is not commit-bound. Proposed: expand on each LoadRepoOwnersSha call, after the cache lookup and before filterCollaborators, with a short-TTL org/team cache. Agree with load-time expansion?
+3. Collaborator filtering: the existing filter drops non-collaborator members, so peribolos-managed teams may still need skip_collaborators. Should team members be required to be repo collaborators?
+
+Also assumed: nested teams are out of scope (the API returns direct members only) and an unreadable/unknown team fails closed (empty member set + error log). Are those acceptable defaults?&quot;</code></pre>
+<h3>3. Route to the documented discussion venue if the issue thread goes quiet</h3>
+<p>Rationale: <code>CONTRIBUTING.md</code> documents Slack <code>#sig-testing</code> (<a href="https://kubernetes.slack.com/messages/sig-testing">https://kubernetes.slack.com/messages/sig-testing</a>) and the kubernetes-sig-testing mailing list (<a href="https://groups.google.com/forum/#!forum/kubernetes-sig-testing">https://groups.google.com/forum/#!forum/kubernetes-sig-testing</a>) as the contact channels; no <code>gh</code> command applies, this is a manual post.</p>
+<h2>Open questions</h2>
+<ul>
+<li>Should non-collaborator team members become approvers/reviewers when <code>skip_collaborators</code> is off, or is "team members must also be collaborators" acceptable? This decides whether Knative must enable <code>skip_collaborators</code>.
+</li>
+<li>Are nested teams in scope? <code>ListTeamMembersBySlug</code> returns direct members only.
+</li>
+<li>On an unreadable or unknown team, should Prow fail closed (empty set + log) with <code>verify-owners</code> attaching <code>invalid-owners</code>, or refuse to load OWNERS at all?
+</li>
+<li>Should <code>verify-owners</code> treat a team ref as trusted when the team exists in the repo's org, instead of checking members individually?
+</li>
+<li>Is the option strictly global, with no per-org/per-repo override, as proposed?
+</li>
+<li>Which bot permissions can deployments realistically grant (classic token <code>read:org</code>, GitHub App Members read)? This fixes the documented default and the failure mode.
+</li></ul>
+</main></body></html>

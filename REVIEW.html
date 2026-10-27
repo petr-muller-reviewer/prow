@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Review: kubernetes-sigs/prow#868</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; line-height: 1.6; color: #1a1a1a; max-width: 900px; margin: 2rem auto; padding: 0 1.5rem; background: #fafafa; }
+  code, pre { font-family: "SF Mono", Consolas, Menlo, monospace; font-size: 0.9em; }
+  pre { background: #f0f0f0; padding: 0.75rem 1rem; border-radius: 6px; overflow-x: auto; border-left: 3px solid #999; }
+  header { border-bottom: 2px solid #333; padding-bottom: 1rem; margin-bottom: 1.5rem; }
+  header dl { display: grid; grid-template-columns: max-content 1fr; gap: 0.2rem 1rem; margin: 0.5rem 0; }
+  header dt { font-weight: 600; color: #555; }
+  h1 { font-size: 1.4rem; margin-bottom: 0.3rem; }
+  h2 { font-size: 1.15rem; border-bottom: 1px solid #ddd; padding-bottom: 0.3rem; margin-top: 2rem; }
+  .verdict { font-size: 1.05rem; font-weight: 600; padding: 0.75rem 1rem; border-radius: 6px; margin: 1rem 0; }
+  .verdict.request-changes { background: #fff0ee; border: 1px solid #d9534f; color: #a02622; }
+  .verdict.approve { background: #eafbf0; border: 1px solid #2e9e56; color: #1f6e3a; }
+  .finding.resolved { border-left: 4px solid #2e9e56; opacity: 0.85; }
+  .badge.resolved { background: #2e9e56; color: #fff; }
+  .refresh-log { background: #eef2ff; border: 1px solid #c3cdfa; border-radius: 6px; padding: 0.7rem 1rem; margin: 1rem 0; font-size: 0.92em; }
+  .finding { border: 1px solid #ddd; border-radius: 6px; padding: 0.9rem 1.1rem; margin: 0.9rem 0; background: #fff; }
+  .finding.blocking { border-left: 4px solid #d9534f; }
+  .finding.should-fix { border-left: 4px solid #e0a800; }
+  .finding.nit { border-left: 4px solid #6c757d; }
+  .finding.question { border-left: 4px solid #0d6efd; }
+  .finding h3 { margin: 0 0 0.4rem 0; font-size: 1.02rem; }
+  .badge { display: inline-block; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; padding: 0.15rem 0.5rem; border-radius: 4px; margin-right: 0.5rem; vertical-align: middle; }
+  .badge.blocking { background: #d9534f; color: #fff; }
+  .badge.should-fix { background: #e0a800; color: #3a2c00; }
+  .badge.nit { background: #6c757d; color: #fff; }
+  .badge.question { background: #0d6efd; color: #fff; }
+  .loc { color: #555; font-size: 0.88em; }
+  ul.compact li { margin-bottom: 0.4rem; }
+  a { color: #0d6efd; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>kubernetes-sigs/prow#868</h1>
+  <p><em>chore(deps): bump github.com/tektoncd/pipeline from 1.6.2 to 1.15.0</em></p>
+  <dl>
+    <dt>Head SHA</dt><dd><code>93d82ce35d4aad0868994a97864a59735f7b4de9</code></dd>
+    <dt>Base</dt><dd><code>main</code></dd>
+    <dt>Reviewed at</dt><dd>2026-08-25T12:01:55Z</dd>
+    <dt>PR state</dt><dd><strong>MERGED</strong></dd>
+    <dt>Link</dt><dd><a href="https://github.com/kubernetes-sigs/prow/pull/868">github.com/kubernetes-sigs/prow/pull/868</a></dd>
+  </dl>
+</header>
+
+<div class="refresh-log">
+  <strong>Refresh 2026-08-25T12:01:55Z</strong> — from <code>9400d97b</code> to <code>93d82ce3</code>. PR merged. Head SHA changed because the PR was rebased onto a later <code>main</code> (picked up unrelated merged PRs: #859 Pub/Sub v2 migration, #865 aws group bump, #867 goldmark bump, #869 redigo bump). The tektoncd/pipeline bump content is unchanged (still v1.6.2 → v1.15.0). Both previously-blocking findings are resolved — see "Resolved" below. CI is fully green as merged; approved by cblecker.
+</div>
+
+<div class="verdict approve">
+  Verdict: Approve (post-hoc — PR already merged). The tektoncd/pipeline bump was safe to take. The two blocking issues found in the initial review (untidy go.mod/go.sum, broken spyglass error-string test) were resolved by an unrelated upstream fix (#859, "Migrate to Pub/Sub v2") that landed on main before this PR was rebased and merged — not by changes in #868 itself.
+</div>
+
+<h2>What this PR does</h2>
+<ul class="compact">
+  <li>Bumps direct dependency <code>github.com/tektoncd/pipeline</code> from <code>v1.6.2</code> to <code>v1.15.0</code> (8 minor releases).</li>
+  <li>Dep-only change: only <code>go.mod</code>/<code>go.sum</code> touched, no project code, no vendor directory in this repo.</li>
+  <li>Drags in a large amount of transitive <code>go mod tidy</code> churn: cloud.google.com/go/* family (including a bump of <code>cloud.google.com/go/storage</code> v1.50.0→v1.56.0), go.opentelemetry.io/*, knative.dev/pkg, google.golang.org/api, plus patch bumps of logrus/zap/go-retryablehttp.</li>
+  <li>tektoncd/pipeline v1.15.0 is a 24-day-old tagged LTS release; the version jump doesn't carry any security fix relevant to Prow (Prow only consumes the v1 API types/clientset, not the Tekton controller/resolvers where the module's CVEs live — all of which were already fixed as of the old v1.6.2).</li>
+  <li><strong>Since previous review:</strong> merged. Rebased onto a newer main (#859/#865/#867/#869 landed in between); CI green across all jobs; approved by cblecker.</li>
+</ul>
+
+<h2>Findings</h2>
+<p>None currently open — see Resolved below.</p>
+
+<h2>Resolved</h2>
+
+<div class="finding resolved">
+  <h3><span class="badge resolved">Resolved</span>go.mod/go.sum not tidy — verify-lint CI failing</h3>
+  <p class="loc"><code>go.mod</code>, <code>go.sum</code></p>
+  <p>At <code>head_sha 9400d97b</code>, <code>pull-prow-verify-lint</code> failed: running <code>go mod tidy</code> in CI produced a diff against the committed files.</p>
+  <pre>SUCCESS: ran go mod tidy in root and hack/tools folders
+One or more verify checks failed! See details above. Failed check:
+  FAILED: go
+make: *** [Makefile:86: verify] Error 1</pre>
+  <p><strong>Resolution:</strong> by the merged head (<code>93d82ce3</code>), <code>pull-prow-verify-lint</code> passed cleanly — the PR was rebased onto a later <code>main</code> (picking up #859/#865/#867/#869); no separate tidy commit was needed, the base rebase carried it.</p>
+</div>
+
+<div class="finding resolved">
+  <h3><span class="badge resolved">Resolved</span>TestSignURL/bad_type_errors broken by cloud.google.com/go/storage bump</h3>
+  <p class="loc"><code>pkg/spyglass/storageartifact_fetcher_test.go:422</code> (assertion), <code>:475</code> (<code>TestSignURL</code>)</p>
+  <p>The transitive storage client bump (v1.50.0→v1.56.0) changed the credential-parsing error message from <code>unknown credential type: %q</code> to <code>credentials: unsupported filetype "..."</code>. The test asserted the old exact string and failed on CI.</p>
+  <pre>- if tc.err != err.Error() {
++ if tc.err == "" || !strings.Contains(err.Error(), tc.err) {
+-   err: "dialing: unknown credential type: \"user\"",
++   err: `credentials: unsupported filetype "user"`,</pre>
+  <p><strong>Resolution:</strong> fixed in commit <code>578f7668f</code> ("Migrate to Pub/Sub v2", PR #859) — merged to main before #868 was rebased, not authored by #868. The test now does substring matching instead of exact-string comparison.</p>
+</div>
+
+<div class="finding resolved">
+  <h3><span class="badge resolved">Resolved</span>TestSize_GCS likely broken by same storage bump</h3>
+  <p class="loc"><code>pkg/spyglass/storageartifact_test.go:481-486</code> (<code>TestSize_GCS</code> / "Size of nonexistentArtifact")</p>
+  <p>Failed alongside <code>TestSignURL</code> in the same CI run; same root cause suspected (error-wrapping format changed by the storage library bump).</p>
+  <p><strong>Resolution:</strong> <code>pull-prow-unit-test</code> passes cleanly on the merged head; <code>storageartifact_test.go</code> (34 lines) also changed in the same <code>578f7668f</code> commit that fixed the sibling test above.</p>
+</div>
+
+<h2>Things I checked and was fine with</h2>
+<ul class="compact">
+  <li><code>pull-prow-image-build-test</code> and <code>pull-prow-integration</code> pass — code still compiles/integrates against the new tektoncd/pipeline v1 API types; no breaking API changes surfaced in <code>pkg/apis/prowjobs/v1/types.go</code> or <code>pkg/config/config.go</code> usage.</li>
+  <li><code>pkg/plugins/trick-or-treat TestReadImage</code> failure in the same run is unrelated — a real network-fetch test (not gated behind <code>--human</code>), pre-existing flake, not caused by this bump.</li>
+  <li>No vendor directory in this repo, so no vendored-code review needed.</li>
+  <li>Other transitive bumps (logrus, zap, go-retryablehttp, cloud.google.com/go/* family, go.opentelemetry.io/*, knative.dev/pkg) are minor/patch jumps with no flagged CVEs or behavior changes relevant to Prow.</li>
+</ul>
+
+<h2>Open questions for the author</h2>
+<p>None outstanding — PR merged, CI green, findings resolved by an unrelated upstream fix (#859) that landed before this PR's rebase/merge.</p>
+
+</body>
+</html>

@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#1036</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>Update k8s-staging-test-infra GCR images as needed</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1036">kubernetes-sigs/prow#1036</a> · base <code>main</code> · head_sha <code>7dddfa689c93</code> · reviewed_at <code>2026-10-27T17:17:33Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span></div>
+<h2>Verdict</h2>
+<p>Approve. A complete and internally consistent autobump: all 38 <code>.ko.yaml</code> base-image references move to tags that exist in the registry and were published from the expected test-infra commits, each command keeps its previous image family, and the only upstream content change in the window is the Alpine base bump to 3.24.3. The PR is already merged; <code>upstream/main</code> still carries exactly this content.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Bumps every <code>baseImageOverrides</code> entry in <code>.ko.yaml</code> from the 2026-05-12 build (<code>v20260512-1f34ef0df3</code>) to the 2026-10-23 builds.
+</li>
+<li>Alpine-based components move to <code>alpine:v20261023-49052c49ef</code> (18 entries).
+</li>
+<li>Git-based components move to <code>git:v20261023-d6356df2e8</code> (14 entries).
+</li>
+<li>Components that talk to Kubernetes move to <code>git-custom-k8s-auth:v20261023-d6356df2e8</code> (6 entries).
+</li>
+<li>No command's image family changes, and the distroless / <code>fakepubsub</code> overrides are left untouched; upstream, all three Dockerfiles only move <code>FROM alpine:3.23.4</code> to <code>alpine:3.24.3</code>.
+</li></ul>
+<h2>Findings</h2>
+<p>None (no blocking, should-fix, or nit findings).</p>
+<h2>Checked</h2>
+<ul>
+<li>All 38 GCR entries were updated; no <code>v20260512-1f34ef0df3</code> / <code>1f34ef0df3</code> remains anywhere in the tree (including hidden files; <code>.prow-images.yaml</code> only lists build directories, no tags).
+</li>
+<li>Tag/family pairing is uniform: 18x <code>alpine</code> -&gt; <code>49052c49ef</code>, 14x <code>git</code> and 6x <code>git-custom-k8s-auth</code> -&gt; <code>d6356df2e8</code>. No line mixes a tag from one image family into another.
+</li>
+<li>All three new tags exist under <code>gcr.io/k8s-staging-test-infra</code> and were pushed on 2026-10-23 (alpine 20:04Z, git 20:54Z, git-custom-k8s-auth 21:00Z), after the matching test-infra merges (<code>49052c49ef</code> 20:02Z, <code>d6356df2e8</code> 20:45Z).
+</li>
+<li>Upstream delta between the old and new builds is only <code>FROM alpine:3.23.4</code> -&gt; <code>alpine:3.24.3</code> in <code>images/{alpine,git,git-custom-k8s-auth}/Dockerfile</code>; no other Dockerfile changes. The five-month jump is because the autobumper was broken until #1034 landed just before this PR, not because of additional image changes.
+</li>
+<li>Multi-arch coverage is preserved (amd64, arm64, ppc64le, s390x, riscv64) for all three images. The media type changed from Docker manifest lists to OCI image indexes; both are handled by <code>ko</code>/containerd, and <code>pull-prow-image-build-test</code> and <code>pull-prow-integration</code> passed.
+</li>
+<li><code>.ko.yaml</code> parses as YAML with 40 overrides (38 bumped + distroless + <code>fakepubsub</code>); the key set is unchanged from the base commit.
+</li>
+<li><code>hack/autobump.yaml</code> sets <code>consistentImages: false</code>, so the differing per-image suffixes are expected. Other <code>k8s-staging-test-infra</code> references are <code>:latest</code> dev/integration usages and correctly not pinned.
+</li>
+<li><code>upstream/main</code> still has identical content; no post-merge fix or revert.
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>None.
+</li></ul>
+<h2>Followups</h2>
+<p>Accepted 4 of 4 opportunities on 2026-10-27 (post-merge followup to #1036, merge commit <code>0d9737ca26be70c30ad4d017f38965d0f8ef0943</code>).</p>
+<h3>docs: <code>.ko.yaml</code> base-image header is stale</h3>
+<ul>
+<li>category: docs
+</li>
+<li>necessity: could
+</li>
+<li>where: <code>.ko.yaml:1-5</code>
+<pre><code>In kubernetes-sigs/prow, following post-merge followup to PR #1036 (&quot;Update k8s-staging-test-infra GCR images as needed&quot;, merged as 0d9737ca26be70c30ad4d017f38965d0f8ef0943):
+
+Rewrite the header comment at the top of `.ko.yaml` (lines 1-5). It currently says &quot;Prow uses 2 bases images&quot;, omits the plain `git` image entirely, has a missing word in &quot;which the same alpine image&quot;, and has a trailing space on the third line.
+
+Task:
+- Document all three base images used by `baseImageOverrides`: `alpine`, `git`, and `git-custom-k8s-auth`.
+- For each, state what it contains and when to use it. Derive the exact contents from `images/alpine/Dockerfile`, `images/git/Dockerfile`, and `images/git-custom-k8s-auth/Dockerfile` in kubernetes/test-infra (branch master), not from memory: roughly, `alpine` is Alpine plus Prow&#x27;s required runtime packages; `git` is the alpine image plus git; `git-custom-k8s-auth` is the git image plus AWS/GCP Kubernetes auth clients.
+- Keep the existing note about the distroless default base image and the rule that `git-custom-k8s-auth` is only for components that talk to Kubernetes clusters.
+- Fix the grammar and remove trailing whitespace.
+
+Acceptance criteria:
+- The header names all three images, each with an accurate one-line description and usage rule.
+- No line has trailing whitespace, and `.ko.yaml` still parses as YAML.
+- The `baseImageOverrides` entries are byte-for-byte unchanged.
+
+Scope guard:
+- Comment-only change. Do not touch image tags, mappings, or any other file.</code></pre>
+</li></ul>
+<h3>tech-debt: guard against images silently missing a base-image override</h3>
+<ul>
+<li>category: tech-debt
+</li>
+<li>necessity: could
+</li>
+<li>where: <code>hack/tools/prowimagebuilder/main.go</code>, <code>hack/tools/prowimagebuilder/main_test.go</code>
+<pre><code>In kubernetes-sigs/prow, following post-merge followup to PR #1036 (&quot;Update k8s-staging-test-infra GCR images as needed&quot;, merged as 0d9737ca26be70c30ad4d017f38965d0f8ef0943):
+
+Add validation to `hack/tools/prowimagebuilder` so a Prow image cannot silently build on the default distroless base because it was added to `.prow-images.yaml` but not to `.ko.yaml`.
+
+Task:
+- In `hack/tools/prowimagebuilder/main.go`, when the images file is loaded, parse `path.Join(rootDir, &quot;.ko.yaml&quot;)` (the tool already imports `sigs.k8s.io/yaml`; `rootDir` comes from `git rev-parse --show-toplevel`).
+- Assert that every `dir` in `.prow-images.yaml` has a matching `sigs.k8s.io/prow/&lt;dir&gt;` key under `baseImageOverrides`. Fail with an error that lists every missing dir.
+- Only enforce this direction: `.ko.yaml` legitimately contains extra entries for integration-test images (`test/integration/cmd/fake*`) that are not in `.prow-images.yaml`.
+- Add table-driven tests in `hack/tools/prowimagebuilder/main_test.go` covering all-present and missing-entry cases, using fixture or temp files rather than the real repo files.
+
+Acceptance criteria:
+- `cd hack/tools &amp;&amp; go test ./prowimagebuilder/...` passes.
+- Invoking the validation against the current `.prow-images.yaml` and `.ko.yaml` succeeds; a fixture with a dir absent from `.ko.yaml` produces a clear error naming it.
+- No network calls and no new CI job.
+
+Scope guard:
+- Do not edit `.prow-images.yaml` or `.ko.yaml` contents. Do not change the image build logic or add platform/architecture checks.</code></pre>
+</li></ul>
+<h3>tech-debt: partial base-image bumps fail silently</h3>
+<ul>
+<li>category: tech-debt
+</li>
+<li>necessity: could
+</li>
+<li>where: <code>cmd/generic-autobumper/imagebumper/imagebumper.go:227-275</code>, <code>cmd/generic-autobumper/main.go:360-414</code>
+<pre><code>In kubernetes-sigs/prow, following post-merge followup to PR #1036 (&quot;Update k8s-staging-test-infra GCR images as needed&quot;, merged as 0d9737ca26be70c30ad4d017f38965d0f8ef0943):
+
+Stop generic-autobumper from silently producing a partial base-image bump.
+
+Current behavior: `updateAllTags` in `cmd/generic-autobumper/imagebumper/imagebumper.go` (~lines 227-259) logs `tagPicker` errors with `log.Printf`, keeps the old tag, and continues; `UpdateFile` (~lines 262-275) then returns nil, so `updateReferences` in `cmd/generic-autobumper/main.go` (~lines 360-414) reports success. Because `hack/autobump.yaml` sets `consistentImages: false`, `getVersionsAndCheckConsistency` cannot detect the stale image. A bump PR can therefore ship with only some of `alpine`/`git`/`git-custom-k8s-auth` updated.
+
+Task:
+- Make `updateAllTags` collect each tag-lookup failure (host, image, current tag, and underlying error) instead of only logging it.
+- Propagate a non-nil error out of `UpdateFile` (and therefore `updateReferences`) when any lookup failed, after still writing the successful replacements. The error message must name every image that failed.
+- Update the existing test case &quot;file with an error image is still otherwise updated&quot; in `cmd/generic-autobumper/imagebumper/imagebumper_test.go` to assert the new error behavior, and add a case asserting the error text names the failing image.
+- Keep the successful-path behavior identical (all images bumped, no error).
+
+Acceptance criteria:
+- `go test ./cmd/generic-autobumper/...` passes.
+- A failing `tagPicker` for one image yields a non-nil error naming that image, while the other images are still replaced in the written content.
+- `ci-prow-autobump-base-images` in kubernetes/test-infra will now exit non-zero on such a partial bump, which its existing testgrid alert covers after repeated failures.
+
+Scope guard:
+- Do not change tag-picking rules, config schema, or `hack/autobump.yaml`.
+- If maintainers prefer best-effort bumps, the alternative is to surface failed images in the PR body instead of failing the run; raise that as a question rather than silently changing behavior.</code></pre>
+</li></ul>
+<h3>docs: the new <code>--dry-run</code> flag is undocumented</h3>
+<ul>
+<li>category: docs
+</li>
+<li>necessity: could
+</li>
+<li>where: <code>site/content/en/docs/components/cli-tools/generic-autobumper.md</code>
+<pre><code>In kubernetes-sigs/prow, following post-merge followup to PR #1036 (&quot;Update k8s-staging-test-infra GCR images as needed&quot;, merged as 0d9737ca26be70c30ad4d017f38965d0f8ef0943):
+
+Document the `--dry-run` flag of generic-autobumper, added in #1034 but absent from the docs.
+
+Task:
+- Add a short &quot;Dry run&quot; section to `site/content/en/docs/components/cli-tools/generic-autobumper.md` (after the workflow bullets, before &quot;### Requirement&quot;).
+- Describe the behavior from `cmd/generic-autobumper/bumper/bumper.go` (`processDryRun`) and `cmd/generic-autobumper/main.go:190`: apply the changes to the working tree, log the generated PR title and body, and skip commit/push/PR creation; read-only lookups (upstream versions, on-call) still happen; token/App/Gerrit-cookie validation is waived for fork/branch/Gerrit modes.
+- Include one concrete local example for validating a base-image bump, e.g. from the repo root: `go run ./cmd/generic-autobumper --config=hack/autobump.yaml --dry-run`, then inspect `.ko.yaml` with `git diff`. Verify the command and flag name against the code before documenting them.
+
+Acceptance criteria:
+- The page has a &quot;Dry run&quot; section with the behavior above and the example.
+- The example is consistent with the actual flags (`--dry-run`, `--config`, `--skip-pullrequest`).
+- No other docs page needs changes for the flag.
+
+Scope guard:
+- Docs only. Do not change flag behavior, validation, or `hack/autobump.yaml`.</code></pre>
+</li></ul>
+</main></body></html>

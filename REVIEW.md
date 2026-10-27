@@ -67,3 +67,11 @@ None currently open — see Resolved below.
 
 ## Open questions
 - None outstanding — PR merged, CI green, findings resolved by an unrelated upstream fix (#859) that landed before this PR's rebase/merge.
+
+## Dependency followups
+
+- Examined: `github.com/tektoncd/pipeline` v1.6.2→v1.15.0 (release notes for v1.7.0–v1.15.0), plus the direct deps this PR's `go mod tidy` moved alongside it — `go.uber.org/zap` v1.27.1→v1.28.0, `github.com/sirupsen/logrus` v1.9.3→v1.9.4, `github.com/hashicorp/go-retryablehttp` v0.7.7→v0.7.8, `knative.dev/pkg` `2025-04-15`→`2026-06-22`, and the transitive `genproto`/OpenTelemetry/knative churn.
+- No accepted opportunities. The v1.7.0–v1.15.0 Tekton changes are controller/runtime-side (OpenTelemetry metrics migration, CloudEvents moved to `tekton-events-controller`, resolver object-type restrictions, git-resolver backoff), and Prow only consumes `pkg/apis/pipeline/v1` types — it runs none of that code. The v1 API deltas Prow could see are new constants (`PipelineRunReasonTimedOutRunningFinally`, the new `TaskRunReason*` failure reasons, `TaskRunSpecStatusPending`, `TaskRun.IsPending()`) and the `WorkspacePipelineDeclaration` deprecation alias; Prow references none of them (status mapping in `cmd/pipeline/controller.go:629` works off conditions, not reason constants).
+- No regeneration is due: `pkg/pipeline/clientset/**` still matches upstream v1.15.0 apart from the boilerplate header and import path, and the ProwJob CRD embeds `PipelineRunSpec` as `x-kubernetes-preserve-unknown-fields`, so neither the generated client nor `prowjob_customresourcedefinition.yaml` changes with the bump.
+- The co-bumped modules expose nothing Prow would adopt: zap v1.28's `CheckPreWriteHook`/`CheckedEntry.Before` has no call site, logrus and go-retryablehttp are patch releases, and `knative.dev/pkg`'s only deprecation (`WithUserInfo` in `apis/interfaces.go`) concerns reconcilers Prow doesn't implement.
+- Skipped (1): `consistency` — `.go-version:1` still pins Go `1.26.0` while `go.mod:3` requires `1.26.4` (forced by tektoncd/pipeline v1.15.0's own go directive); skipped by the user, no handoff prompt recorded.

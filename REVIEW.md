@@ -31,3 +31,18 @@ None.
 ## Open questions
 
 None.
+
+## Dependency followups
+
+No improvement opportunities identified (mined 2026-10-27 against PR #866, head `248712a806947b17c5b0b63425f18f561e6a1f87`, merged as `fc981531d74bb22d73916199e35e944b8c09fc38` on 2026-08-24T21:21:02Z).
+
+- `cloud.google.com/go/cloudbuild` 1.25.0 → 1.33.0 (direct; `pkg/googlecloudbuild/client/{client,fake/fake}.go`) — releases v1.26.0–v1.33.0 are "update sources/API and regenerate" plus LRO o11y tracing regeneration; no deprecation or replacement for `cloudbuild.NewClient`, `GetBuild`, `ListBuildsByTag`, `CreateBuild`, `CancelBuild`.
+- `cloud.google.com/go/auth` 0.18.2 → 0.20.0 (direct; only `credentials.DetectDefault` in `pkg/io/credentials.go:32`) — v0.19.0/v0.20.0 add OTel gRPC/HTTP wrappers and actionable-error logging inside auth transports we do not use; `credentials.DetectOptions` unchanged.
+- `google.golang.org/api` 0.274.0 → 0.287.1 (direct; only `option`, `iterator`, `googleapi`) — v0.275.0–v0.287.1 are auto-regenerated discovery clients plus a TODO removal; the core packages we import are untouched.
+- `google.golang.org/genproto/googleapis/{api,rpc}` 2026-05-26 → 2026-06-30 pseudoversions — generated protos only, no changelog surface.
+- `github.com/googleapis/gax-go/v2` 2.21.0 → 2.23.0 (indirect; not imported) — adds `http.response.status_code` to `TransportTelemetryData`, no call site of ours.
+- `cloud.google.com/go/iam` 1.7.0 → 1.11.0 and `cloud.google.com/go/longrunning` 0.8.0 → 1.2.0 (indirect; not imported) — regen and o11y instrumentation (`longrunning` v1.2.0 adds poll-attempt/sleep spans behind experimental gating).
+- `github.com/googleapis/enterprise-certificate-proxy` 0.3.14 → 0.3.17 (indirect; not imported) — internal mTLS filtering simplification in the ECP proxy.
+- `go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc` 0.65.0 → 0.67.0 (indirect; not imported) — new `WithSpanKind` option and an `elapsedTime` metric fix; Prow builds no otelgrpc handlers directly.
+
+Reason: no in-range changelog deprecates or replaces an API Prow calls, and every new feature lands in transports or packages Prow does not import directly.

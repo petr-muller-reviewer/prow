@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#1037</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>peribolos: support org-level repo defaults</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1037">kubernetes-sigs/prow#1037</a> · base <code>main</code> · head_sha <code>27d8e94d6931</code> · reviewed_at <code>2026-10-27T17:22:55Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span><span class="badge c-amber">gate: hold</span></div>
+<details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#1037
+title: &quot;peribolos: support org-level repo defaults&quot;
+head_sha: 27d8e94d6931f3253dbaa0b10679c6a0d7e09b77
+base: main
+reviewed_at: 2026-10-27T17:22:55Z
+verdict: approve
+gate:
+  decision: hold
+  gated_at: 2026-10-27T19:19:43Z
+  gated_head_sha: 27d8e94d6931f3253dbaa0b10679c6a0d7e09b77
+  reviewed_head_sha: 27d8e94d6931f3253dbaa0b10679c6a0d7e09b77</code></pre></details>
+<h2>Gate</h2>
+<p><strong>Decision: hold.</strong> The code is sound and this is not a do-not-merge, but two should-fix items are unaddressed and the <code>Defined()</code> behavior change needs a release note before merge.</p>
+<p>The PR head is unchanged from the reviewed SHA (<code>27d8e94d</code>), so every prior finding still stands. The feature is opt-in and configs without <code>repo_defaults</code> keep their current behavior, which rules out a do-not-merge. Holding for three small, scoped items: (1) <code>repo_defaults</code> can now produce an update delta for a repo GitHub reports as archived when the config does not declare <code>archived: true</code>, and the recommended dry run cannot surface the resulting rejected write because <code>UpdateRepo</code> short-circuits in dry-run mode (<code>pkg/github/client.go:2871-2873</code>); (2) the new docs claim dumps report individual repo settings, but <code>dumpOrgConfig</code> omits the two squash commit fields the example promotes; (3) the <code>Defined()</code> fix silently activates previously-inert squash settings on upgrade with no release note.</p>
+<p>Gating list:</p>
+<ol>
+<li><code>cmd/peribolos/main.go:1445</code> — archived-repo guard. Source: this review, <code>[should-fix]</code>. Skip repos GitHub reports as archived (or explicitly require <code>archived: true</code>) and test the undeclared case.
+</li>
+<li><code>site/content/en/docs/components/cli-tools/peribolos.md:119</code> and <code>cmd/peribolos/main.go:465-481</code> — reconcile the dump claim: either emit/prune the squash commit fields or narrow the wording. Source: this review, <code>[should-fix]</code>.
+</li>
+<li><code>pkg/github/types.go:491</code> — call out in the docs/changelog that configs setting <code>squash_merge_commit_title</code>/<code>squash_merge_commit_message</code> will start applying them on upgrade. Source: this review, <code>[should-fix]</code>, deployment-risk pass.
+</li></ol>
+<p>Not gating (follow-up): an exhaustiveness test for the hand-written field list in <code>WithDefaults</code> (<code>pkg/config/org/org.go:129</code>).</p>
+<p>Area-2 merge risk:</p>
+<ul>
+<li><strong>Go API surface</strong> — embedding <code>RepoSettings</code> in the exported <code>org.Repo</code> breaks downstream keyed literals that reference promoted fields (<code>pkg/config/org/org.go:62</code>). In-tree callers were migrated; no runtime or deployment impact, but release-note it if <code>pkg/config/org</code> importers matter.
+</li>
+<li><strong>Configuration</strong> — <code>repo_defaults</code> is optional and <code>nil</code> is a strict no-op (tested). Older peribolos versions ignore it silently because config loading is non-strict (<code>cmd/peribolos/main.go:200</code>); this is documented and needs no migration.
+</li>
+<li><strong>Behavioral</strong> — <code>RepoRequest.Defined()</code> now includes the squash fields (<code>pkg/github/types.go:491</code>), so existing configs that set them converge GitHub state on the first run after upgrade, potentially changing squash commit message format. Correct bug fix, but release-note-worthy.
+</li>
+<li><strong>Blast radius</strong> — one defaults line can change every listed repo, there is no per-repo opt-out, and dry run only logs "repo differs". It is opt-in and documented, so it does not break existing configs.
+</li></ul>
+<h2>Verdict</h2>
+<p>Approve. The feature is correct, well-tested and opt-in; the remaining items are non-blocking hardening and documentation consistency.</p>
+<p>The inheritance semantics are implemented cleanly: <code>RepoSettings</code> is shared between <code>repo_defaults</code> and <code>repos</code>, <code>WithDefaults</code> returns a copy without touching the source config, and explicit <code>false</code> wins over a <code>true</code> default on both creation and update. Configs without <code>repo_defaults</code> keep their current behavior, and <code>--dump</code> still emits per-repo settings. Three reviewers converged on the same non-blocking concerns: archived repos are only skipped when the config declares <code>archived: true</code>, dumps omit the squash commit fields the new docs promote, and both <code>WithDefaults</code> and <code>Defined</code> hand-enumerate fields. None of those block merge.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Adds an optional <code>repo_defaults</code> block to each org config, inherited by every repo listed under <code>repos</code>.
+</li>
+<li>Factors the defaultable repo fields into a shared <code>RepoSettings</code> type, embedded in <code>org.Repo</code> so the repo JSON/YAML shape stays flat.
+</li>
+<li>Resolves defaults in <code>configureRepos</code> via <code>Repo.WithDefaults</code> before both creation and update, honoring explicit values, including <code>false</code>; <code>null</code> means inherit.
+</li>
+<li>Fixes <code>RepoRequest.Defined()</code> so updates that only change <code>squash_merge_commit_title</code> or <code>squash_merge_commit_message</code> are no longer silently skipped.
+</li>
+<li>Documents the feature and adds tests for inheritance, overrides, flat JSON/YAML round-trips, legacy <code>private</code> parsing, creation, updates, and unlisted/archived repos.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-amber">should-fix</span>Archived repos are only skipped when the config declares <code>archived: true</code></h3>
+<ul>
+<li>where: <code>cmd/peribolos/main.go:1444-1450</code>
+</li>
+<li>concern: With defaults, a repo that is archived on GitHub but listed without <code>archived: true</code> can now get a non-empty delta where it previously had none, so peribolos attempts an update that GitHub rejects as read-only. The new <code>&quot;archived repo remains untouched&quot;</code> test covers only the explicitly-declared case.
+</li>
+<li>excerpt:<pre><code>if existing != nil {
+    if existing.Archived {
+        if wantRepo.Archived != nil &amp;&amp; *wantRepo.Archived {
+            repoLogger.Infof(&quot;repo %q is archived, skipping changes&quot;, wantName)
+            continue
+        }
+    }</code></pre>
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>Dumps omit the squash merge commit fields the new docs promote</h3>
+<ul>
+<li>where: <code>cmd/peribolos/main.go:465-481</code>
+</li>
+<li>concern: <code>dumpOrgConfig</code> never copies <code>SquashMergeCommitTitle</code>/<code>SquashMergeCommitMessage</code>, so <code>peribolos.md:119</code> ("Dumps continue to report individual repository settings") is not true for the two fields the new example recommends. This predates the PR, but the new docs and the <code>Defined()</code> fix make it more visible, and dump-then-apply leaves those settings unmanaged. Either emit them (with pruning in <code>PruneRepoDefaults</code>) or narrow the doc wording.
+</li>
+<li>excerpt:<pre><code>repoConfig := org.PruneRepoDefaults(org.Repo{
+    RepoSettings: org.RepoSettings{
+        HasIssues:           &amp;full.HasIssues,
+        HasProjects:         &amp;full.HasProjects,
+        HasWiki:             &amp;full.HasWiki,
+        AllowMergeCommit:    &amp;full.AllowMergeCommit,
+        AllowSquashMerge:    &amp;full.AllowSquashMerge,
+        AllowRebaseMerge:    &amp;full.AllowRebaseMerge,
+        DeleteBranchOnMerge: &amp;full.DeleteBranchOnMerge,
+    },</code></pre>
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span><code>WithDefaults</code> and <code>Defined</code> hand-enumerate fields</h3>
+<ul>
+<li>where: <code>pkg/config/org/org.go:129-161</code>
+</li>
+<li>concern: Adding a field to <code>RepoSettings</code> later will silently leave it undefaulted, and the tests would not catch it because they hardcode the same list. This PR fixes exactly this class of omission in <code>RepoRequest.Defined()</code> (<code>pkg/github/types.go:491</code>). An exhaustiveness test that reflects over <code>RepoSettings</code> and asserts every field is resolved would make future omissions fail loudly.
+</li>
+<li>excerpt:<pre><code>func (r Repo) WithDefaults(defaults *RepoSettings) Repo {
+    if defaults == nil {
+        return r
+    }
+    if r.AllowSquashMerge == nil {
+        r.AllowSquashMerge = defaults.AllowSquashMerge
+    }
+    ...
+    return r
+}</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">nit</span>Embedding <code>RepoSettings</code> is a source break for downstream keyed literals</h3>
+<ul>
+<li>where: <code>pkg/config/org/org.go:62-67</code>
+</li>
+<li>concern: YAML and JSON stay compatible, but Go callers outside the tree that build <code>org.Repo{HasIssues: ...}</code> with promoted fields stop compiling and need the nested <code>RepoSettings:</code> form. Worth a release-note mention if <code>pkg/config/org</code> importers matter.
+</li>
+<li>excerpt:<pre><code>type Repo struct {
+    RepoSettings
+    Description *string                `json:&quot;description,omitempty&quot;`
+    HomePage    *string                `json:&quot;homepage,omitempty&quot;`
+    Visibility  *github.RepoVisibility `json:&quot;visibility,omitempty&quot;`</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">nit</span><code>RepoDefaults</code> and <code>PruneRepoDefaults</code> are easy to confuse</h3>
+<ul>
+<li>where: <code>pkg/config/org/org.go:166</code>
+</li>
+<li>concern: One is org-level inheritance for listed repos; the other prunes GitHub's built-in defaults from dumps. A short doc comment on <code>RepoDefaults</code> (only listed repos inherit, <code>null</code> means inherit, no per-repo opt-out) and a rename such as <code>PruneGitHubDefaults</code> would reduce future misreads.
+</li>
+<li>excerpt:<pre><code>type Config struct {
+    Metadata
+    RepoDefaults *RepoSettings   `json:&quot;repo_defaults,omitempty&quot;`
+    Teams        map[string]Team `json:&quot;teams,omitempty&quot;`</code></pre>
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li><code>nil</code> and empty <code>repo_defaults</code> are strict no-ops; <code>TestConfigureReposWithDefaults</code> covers both.
+</li>
+<li>Explicit <code>false</code> overrides a <code>true</code> default, explicit <code>true</code> overrides a <code>false</code> default, and <code>null</code>/omitted inherits — tested for create and update.
+</li>
+<li>Defaults are merged before both <code>CreateRepo</code> and the update delta, so creation and <code>--fix-repos</code> behave consistently.
+</li>
+<li>Unlisted repos are untouched and defaults alone manage nothing — explicitly tested.
+</li>
+<li>Repos declared <code>archived: true</code> are skipped; that path is covered.
+</li>
+<li>JSON and YAML marshal flat (no <code>RepoSettings</code>/<code>repo_settings</code> nesting) and round-trip through <code>UnmarshalStrict</code>; legacy <code>private</code> parsing still works.
+</li>
+<li><code>PruneRepoDefaults</code> behavior is unchanged apart from the struct-literal rewrite.
+</li>
+<li>No new API endpoints, permissions, scopes, flags, or background work; the merge is local and cheap.
+</li>
+<li><code>go test ./pkg/config/org ./pkg/github ./cmd/peribolos</code> passes locally, and CI on the head SHA is green (unit, race, lint, integration, image build).
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>With defaults, an archived repo that is not declared <code>archived: true</code> can now get a delta and a rejected write. Should peribolos skip any repo GitHub reports as archived, or should the docs state that <code>archived: true</code> is required for archived repos?
+</li>
+<li>Should <code>--dump</code> emit <code>squash_merge_commit_title</code>/<code>squash_merge_commit_message</code> (with default pruning), or should the doc line say explicitly which settings dumps do not report?
+</li>
+<li>Should the upgrade note call out that configs which already set the squash commit fields will start applying them on the first run after upgrade, since those deltas were previously skipped?
+</li>
+<li>Are unknown keys inside <code>repo_defaults</code> intentionally ignored? Config loading is non-strict <code>yaml.Unmarshal</code> (<code>cmd/peribolos/main.go:200</code>), so a typo such as <code>visiblity:</code> silently disables a default across the whole org, and there is no local validation of the squash enum values.
+</li></ul>
+</main></body></html>

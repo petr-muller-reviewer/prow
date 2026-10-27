@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Review: prow#866</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; line-height: 1.6; color: #1a1a1a; max-width: 860px; margin: 2rem auto; padding: 0 1.5rem; background: #fff; }
+  code, pre { font-family: "SF Mono", Menlo, Consolas, monospace; }
+  code { background: #f2f2f2; padding: 0.1em 0.35em; border-radius: 3px; font-size: 0.9em; }
+  header { border-bottom: 2px solid #333; padding-bottom: 1rem; margin-bottom: 1.5rem; }
+  header dl { display: grid; grid-template-columns: max-content 1fr; gap: 0.25rem 1rem; margin: 0.5rem 0 0; }
+  header dt { font-weight: 600; color: #555; }
+  h1 { font-size: 1.4rem; margin: 0 0 0.25rem; }
+  h2 { font-size: 1.15rem; border-bottom: 1px solid #ddd; padding-bottom: 0.3rem; margin-top: 2rem; }
+  .verdict { display: inline-block; padding: 0.3em 0.8em; border-radius: 4px; font-weight: 600; background: #d6f5d6; color: #16611a; }
+  ul { padding-left: 1.3rem; }
+  li { margin-bottom: 0.4rem; }
+  .none { color: #777; font-style: italic; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Review: kubernetes-sigs/prow #866</h1>
+  <dl>
+    <dt>Title</dt><dd>chore(deps): bump cloud.google.com/go/cloudbuild from 1.22.0 to 1.32.0</dd>
+    <dt>PR</dt><dd><a href="https://github.com/kubernetes-sigs/prow/pull/866">github.com/kubernetes-sigs/prow/pull/866</a></dd>
+    <dt>Head SHA</dt><dd><code>248712a806947b17c5b0b63425f18f561e6a1f87</code></dd>
+    <dt>Base</dt><dd>main</dd>
+    <dt>Reviewed at</dt><dd>2026-08-25T10:50:23Z</dd>
+  </dl>
+</header>
+
+<h2>Verdict</h2>
+<p><span class="verdict">Approve</span></p>
+<p>Dep-only PR (only <code>go.mod</code>/<code>go.sum</code> changed) bumping five direct GCP client modules plus a lockstep tail of indirect transitives. All bumps are well past soak time, none are pseudo-versions, and per-module usage checks turned up no sensitive or heavily-exercised code path with a meaningful behavior change in the diff range. No findings.</p>
+
+<h2>What this PR does</h2>
+<ul>
+  <li>Dependabot sweep bumping <code>cloud.google.com/go/cloudbuild</code> v1.22.0 &rarr; v1.32.0 (the title dep), plus lockstep direct bumps of <code>cloud.google.com/go/pubsub</code> (v1.47.0&rarr;v1.50.1), <code>cloud.google.com/go/secretmanager</code> (v1.14.5&rarr;v1.16.0), <code>cloud.google.com/go/storage</code> (v1.50.0&rarr;v1.56.0), and <code>google.golang.org/api</code> (v0.233.0&rarr;v0.287.1).</li>
+  <li>Large tail of indirect transitive bumps in the <code>cloud.google.com/go/*</code> / otel / gax-go family, moved in lockstep with the direct bumps.</li>
+  <li>Only <code>go.mod</code> (49 lines) and <code>go.sum</code> (124 lines) touched &mdash; no project source changes.</li>
+</ul>
+
+<h2>Findings</h2>
+<p class="none">None.</p>
+
+<h2>Things I checked and was fine with</h2>
+<ul>
+  <li>Classification: dep-only (no code outside <code>go.mod</code>/<code>go.sum</code>), so no standard code review performed.</li>
+  <li>Freshness: all five direct bumps are well past soak &mdash; cloudbuild (2026-07-13, ~6wk), google.golang.org/api (2026-07-07, ~7wk), pubsub (2025-09-04), secretmanager (2025-10-20), storage (2025-07-25). No pseudo-versions.</li>
+  <li>cloudbuild usage: direct, <code>pkg/googlecloudbuild/client/{client.go,fake/fake.go}</code> + test. Compare <code>cloudbuild/v1.22.0...v1.32.0</code> on <code>googleapis/google-cloud-go</code> has zero <code>(cloudbuild)</code>-scoped conventional commits &mdash; routine proto/API-surface regen only, light/non-sensitive exposure.</li>
+  <li>pubsub usage: direct, moderate exposure (<code>pkg/crier/reporters/pubsub</code>, <code>pkg/pubsub/subscriber/*</code>, integration fake) &mdash; real reporting/trigger path but not auth/crypto-sensitive itself.</li>
+  <li>secretmanager usage: direct, single call site <code>cmd/webhook-server/secretmanager/secretmanager.go</code> &mdash; sensitive (webhook secret fetching) but version delta (1.14.5&rarr;1.16.0, both mature 2025 releases) gives no cause for concern.</li>
+  <li>storage usage: direct, moderate/broad (<code>pkg/io/{iterator,option,opener}.go</code>, gerrit/tide history tests) &mdash; generic blob abstraction, not credential-sensitive itself.</li>
+  <li><code>google.golang.org/api</code>: direct but narrow surface here (7 files); changelog (458 commits) dominated by unrelated generated services, not a useful signal at this granularity.</li>
+  <li>Indirect-only churn (cloud.google.com/go core, auth, iam, longrunning, otel, gax-go) not deep-dived &mdash; standard lockstep bump, unremarkable.</li>
+</ul>
+
+<h2>Open questions for the author</h2>
+<p class="none">None.</p>
+
+</body>
+</html>

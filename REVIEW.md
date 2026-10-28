@@ -3,12 +3,15 @@ pr: 573
 title: "Adding option to enable Back End HTTPS for Prow Ingress"
 head_sha: 814fb94b8d3379b2bef43f54564b0ecd3d97a32b
 base: main
-reviewed_at: "2026-06-15T16:20:00Z"
+reviewed_at: "2026-10-28T00:37:08Z"
 verdict: REQUEST_CHANGES
 refresh_log:
   - previous_sha: 53a81071b1f5a432c33362a42aa7bc9837f7ed14
     new_sha: 814fb94b8d3379b2bef43f54564b0ecd3d97a32b
     summary: "PR rebased onto newer main (force-push); no changes to PR-specific code. One author comment explaining motivation (Fidelity Investments corporate policy requires backend HTTPS on ingresses)."
+  - previous_sha: 814fb94b8d3379b2bef43f54564b0ecd3d97a32b
+    new_sha: 814fb94b8d3379b2bef43f54564b0ecd3d97a32b
+    summary: "No code changes; PR remains open. @k8s-triage-robot posted a lifecycle/stale triage comment on 2026-10-18; no inline comments or reviews."
 ---
 
 # PR #573 — Adding option to enable Back End HTTPS for Prow Ingress
@@ -19,6 +22,15 @@ refresh_log:
 ## Recommendation: REQUEST_CHANGES
 
 All three independent reviewers converge on the same core issues: the `--client-cert-file` flag is semantically misleading (it's a CA cert, not a client cert for mTLS), and the `AppendCertsFromPEM` return value is silently ignored, producing cryptic failures in production. While deployment risk is low (purely opt-in), this PR introduces TLS infrastructure that operators will rely on for security-critical paths — naming precision and fail-fast behavior are essential. The required changes are straightforward and should not need significant rework.
+
+## What this PR does
+
+Adds optional HTTPS serving for Prow's deck and hook backends so ingress can connect to those services over TLS.
+
+Since previous review:
+
+- No code changed; the PR head remains `814fb94b8d3379b2bef43f54564b0ecd3d97a32b`.
+- The PR remains open. `@k8s-triage-robot` posted a lifecycle/stale triage comment on 2026-10-18, and the `lifecycle/stale` label is present. No new inline comments or reviews were submitted.
 
 ## Reviewer Perspectives
 

@@ -2,11 +2,23 @@
 issue: kubernetes-sigs/prow#376
 title: "Cannot run prow at a subpath"
 state: open
-labels: kind/bug, lifecycle/stale, area/deck
+labels: kind/bug, lifecycle/rotten, area/deck
 main_sha: e601a1ffafd7d8d3a781238a4c5f4233d6248f68
-triaged_at: 2026-07-27T00:38:17Z
+triaged_at: 2026-10-28T00:44:38Z
 verdict: accepted
+refresh_log:
+  - since: 2026-07-27T00:38:17Z
+    summary: "Issue became rotten and related PR #576 was closed by stale automation without merging."
 ---
+
+## What the issue reports
+
+The reporter cannot run Deck beneath a URL subpath; the existing findings trace this to root-relative routes and URL construction.
+
+Since previous triage:
+- On 2026-10-17, the stale bot changed the issue label from `lifecycle/stale` to `lifecycle/rotten`; the issue remains open.
+- Related PR #576 was marked rotten on 2026-08-07 and closed by automation on 2026-10-17 without merging. The bot says it needs a rebase; it remains an unmerged candidate for the identified base-path work.
+- No new cross-references were added to issue #376.
 
 ## Findings
 
@@ -32,7 +44,7 @@ verdict: accepted
 
 ### [related-pr] deck: add base path plumbing and helper APIs
 - ref: kubernetes-sigs/prow#576
-- relevance: Near-complete candidate fix by tsj-30 — adds `--base-path` flag, `cmd/deck/basepath.go` (mux-wrapping middleware, `normalizeBasePath`/`stripBasePath`/`absolutePath`), template `deckPath`/`deckBasePath` exposure via `window.prowBasePath`, and frontend helpers in `cmd/deck/static/common/urls.ts`. Currently OPEN and stalled: CI red (`pull-prow-integration`, `pull-prow-unit-test`, `pull-prow-unit-test-race-detector-nonblocking`, `pull-prow-verify-lint` all FAILURE) since the last push on 2026-04-08, no activity since other than an automated stale-bot comment on 2026-07-08. Maintainer (petr-muller) posted review + `/hold cancel` on 2026-01-24; author (tsj-30) acknowledged all feedback on 2026-02-01 (including adding unit tests for `stripBasePath`/`normalizeBasePath` and narrowing `absolutePath`'s receiver to a custom `basePath` string type) but neither change appears in the current diff (`cmd/deck/basepath.go` has no matching `basepath_test.go`).
+- relevance: Near-complete candidate fix by tsj-30 — adds `--base-path` flag, `cmd/deck/basepath.go` (mux-wrapping middleware, `normalizeBasePath`/`stripBasePath`/`absolutePath`), template `deckPath`/`deckBasePath` exposure via `window.prowBasePath`, and frontend helpers in `cmd/deck/static/common/urls.ts`. At the previous triage it was open and stalled, with CI failures since the 2026-04-08 push and previously requested tests/type changes still absent from the reviewed diff. Since then it was marked rotten on 2026-08-07 and closed by automation on 2026-10-17 without merging; the close comment says it needs a rebase. The approach still addresses the findings here, but the PR is no longer active.
 
 ## Checked
 - Searched `cmd/deck/` and `pkg/deck/` for existing base-path/prefix/subpath config — none found.
@@ -41,11 +53,10 @@ verdict: accepted
 - Confirmed canonical repo is `kubernetes-sigs/prow` (`upstream`), current worktree `origin` is `petr-muller/prow`.
 
 ## Next steps
-- Re-review PR #576's current head commit; CI has been red for ~3.5 months since 2026-04-08 — confirm whether failures are unchanged or new.
-- Confirm whether the unit tests for `stripBasePath`/`normalizeBasePath` and the `basePath` custom-type refactor (agreed to by tsj-30 on 2026-02-01) were ever pushed; current diff suggests not.
-- Ping @tsj-30 on PR #576 to check if they are still working it given the multi-month gap, or offer to take over/close if abandoned.
-- Do not open separate good-first-issue/help-wanted work on #376 itself while PR #576 is active — its disposition is tied to the PR.
+- Check whether @tsj-30 intends to rebase and reopen PR #576; otherwise identify a new owner for the base-path fix.
+- If the PR resumes, review its rebased diff and rerun the relevant CI, including coverage for `normalizeBasePath` and `stripBasePath`.
+- Issue #376 remains open but is now labeled `lifecycle/rotten`; keep its disposition tied to whether the base-path work resumes or is taken over.
 
 ## Open questions
-- Is @tsj-30 still actively working PR #576, or has it effectively stalled?
-- Were the CI failures from 2026-04-08 ever investigated, or do they still block as-is?
+- Will @tsj-30 reopen and rebase PR #576, or should someone else take over?
+- After rebasing, are the previously failing CI checks and requested base-path tests addressed?

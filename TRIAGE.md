@@ -2,14 +2,17 @@
 issue: kubernetes-sigs/prow#800
 title: "publisher.Commit panics (nil pointer) when GitUser is unset, and GitHubOptions.GitClientFactory can't set it"
 state: open
-labels: lifecycle/stale
+labels: kind/bug
 main_sha: e601a1ffafd7d8d3a781238a4c5f4233d6248f68
-triaged_at: 2026-10-26T15:45:47Z
+triaged_at: 2026-10-27T23:57:08Z
 verdict: accepted
 refresh_log:
   - at: 2026-10-26T15:45:47Z
     since: 2026-07-27T00:05:00Z
     summary: "Folded in linked PR #801 (open, CHANGES_REQUESTED 2026-07-29) that the first triage missed, plus the 2026-10-22 lifecycle/stale label. Bug analysis unchanged; upstream main advanced 376 commits without touching the three referenced files."
+  - at: 2026-10-27T23:57:08Z
+    since: 2026-10-26T15:45:47Z
+    summary: "Maintainer petr-muller commented /kind bug and /remove-lifecycle stale; issue remains open with kind/bug as its only label. No new comments or cross-references beyond that action; PR #801 is unchanged and relevant main files remain untouched."
 advice:
   advised_at: 2026-10-26T15:50:03Z
   based_on_triaged_at: 2026-10-26T15:45:47Z
@@ -28,9 +31,8 @@ Accepted: legitimate, precisely-diagnosed bug (nil-pointer panic) plus a small, 
 - Author proposes: (1) nil-guard `publisher.Commit` to return an error instead of panicking, (2) let `GitHubOptions.GitClientFactory` accept/forward a `GitUser` getter. Offered to send a PR for both.
 
 Since previous triage:
-- No new reporter or maintainer discussion on the issue itself; the reproduction and cause analysis still hold.
-- PR kubernetes-sigs/prow#801 (author StarMiner99, opened 2026-07-15) already implements both proposed fixes and was missed by the previous triage. It is still open and received a CHANGES_REQUESTED review on 2026-07-29.
-- k8s-triage-robot applied `lifecycle/stale` on 2026-10-22 after 90 days of inactivity; the issue auto-closes once `lifecycle/rotten` lands and 30 more days pass with no activity.
+- On 2026-10-26T15:51:49Z, petr-muller commented `/kind bug` and `/remove-lifecycle stale`; the stale label was cleared and `kind/bug` is now the issue's only label.
+- No new PR references or substantive discussion. PR #801 remains open and unchanged since 2026-09-27; its proposed fixes and outstanding review concerns remain as recorded below.
 
 ## Findings
 
@@ -138,6 +140,8 @@ Since previous triage:
 - Refresh 2026-10-26: fetched upstream `main` over HTTPS (376 commits past `e601a1f`); none touch `pkg/git/v2/publisher.go`, `pkg/flagutil/github.go`, or `pkg/git/v2/client_factory.go`, so line references and the cause analysis remain accurate.
 - Refresh 2026-10-26: inspected PR #801's diff, its single review comment, and its label/head state; no CI signal beyond `ok-to-test`.
 - Refresh 2026-10-26: confirmed in a scratch repo that `git commit --author "name <>"` succeeds and records a blank-email author.
+- Refresh 2026-10-27: issue remains open; its only current label is `kind/bug`. The only new comment was petr-muller's 2026-10-26 `/kind bug` and `/remove-lifecycle stale` command; the timeline has no new cross-references.
+- Refresh 2026-10-27: PR #801 remains open, unmerged, and unchanged since 2026-09-27. Upstream `main` advanced, but `pkg/git/v2/publisher.go`, `pkg/flagutil/github.go`, and `pkg/git/v2/client_factory.go` have no commits since the recorded `main_sha`.
 
 ## Next steps
 
@@ -145,12 +149,11 @@ Since previous triage:
 - Have the author address the open review comment at `publisher.go:56` — make the error name the remedy, e.g. `committing %q: client has no GitUser; pass gitv2.WithGitUser to the client factory`.
 - Raise the two gaps #801 still leaves: `GitUser` is set only on the token/App auth path (cookie-auth clients still cannot commit), and `--author "user <>"` yields unattributable commits — require a real email or reuse the bot/app email.
 - Still missing from #801: the `publisher_test.go` case for `info == nil` (expect error, not panic) and `github_test.go` coverage that `GitClientFactory` forwards `GitUser`.
-- Clear the stale marker (`/remove-lifecycle stale`), or deliberately keep the issue open while #801 is under review; `lifecycle/rotten` plus 30 idle days closes it.
-- Labels `kind/bug`, `area/git`, `good-first-issue` from the previous triage were never applied.
+- The stale marker was cleared on 2026-10-26 and `kind/bug` was applied; current labels are only `kind/bug`. No `area/git` label exists, and `good-first-issue` remains unapplied.
 
 ## Advice
 
-Live state re-checked 2026-10-26: issue still `open`, only `lifecycle/stale`, no assignee, no milestone. PR #801 is `MERGEABLE` at `b8efacee` with all CI green (`pull-prow-unit-test`, `pull-prow-integration`, `pull-prow-verify-lint`, `pull-prow-image-build-test`, EasyCLA), `ok-to-test` applied by petr-muller on 2026-09-27; tide blocks only on `approved`/`lgtm`. Only blocker is ylink-lfs's 2026-07-29 CHANGES_REQUESTED plus the two substantive gaps in the `[cause]` finding above.
+Live state re-checked 2026-10-27: issue remains `open`, with only `kind/bug`; `lifecycle/stale` was removed by petr-muller on 2026-10-26. PR #801 is still `OPEN`, unchanged since 2026-09-27, and remains the tracked fix. The prior recorded review concerns and two substantive gaps in the `[cause]` finding remain outstanding.
 
 1. Nudge #801 with the concrete remaining work — it is 4 lines from merging and is the only thing standing between this issue and closure.
 
@@ -165,13 +168,7 @@ CI is green and this is close. Remaining before merge:
 - Add the two tests: a \`publisher_test.go\` case with nil \`info\` (expect an error, not a panic) and \`github_test.go\` coverage that \`GitClientFactory\` forwards \`GitUser\`."
 ```
 
-2. Label the issue so it stops looking untriaged, and clear the stale marker in the same edit. `kind/bug`, `triage/accepted`, `help wanted` and `lifecycle/active` all exist in this repo; there is no git/flagutil `area/*` label (the 35 `area/*` labels are all component-scoped), and `good first issue` is deliberately omitted since a PR is already in flight.
-
-```
-gh issue edit 800 --repo kubernetes-sigs/prow --add-label "kind/bug,triage/accepted,help wanted,lifecycle/active"
-```
-
-3. Record on the issue that the PR is the tracked path, so a future stale pass and the next triage see it without digging through the timeline.
+2. Record on the issue that the PR is the tracked path, so a future stale pass and the next triage see it without digging through the timeline.
 
 ```
 gh issue comment 800 --repo kubernetes-sigs/prow --body "> *This was generated by AI during triage.*
@@ -179,7 +176,7 @@ gh issue comment 800 --repo kubernetes-sigs/prow --body "> *This was generated b
 Tracked in #801: nil guard for \`publisher.Commit\` plus \`GitUser\` plumbing through \`GitHubOptions.GitClientFactory\`. CI is green; what remains is an actionable error message, \`GitUser\` on the non-token auth path, a non-empty author email, and the two regression tests."
 ```
 
-4. If the author has gone quiet (last touch was 2026-07-15, the review comment still unaddressed 3 months later), take the branch over rather than leaving the fix stuck. The delta is small enough to land in one sitting.
+3. If the author has gone quiet (last PR update was 2026-09-27, the review comment still unaddressed), take the branch over rather than leaving the fix stuck. The delta is small enough to land in one sitting.
 
 ```
 gh pr checkout 801   # or: git fetch https://github.com/StarMiner99/prow-fork.git main:pr-801

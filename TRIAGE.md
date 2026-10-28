@@ -4,16 +4,22 @@ title: "`tide` not honoring multiple reviewer branch protection"
 state: open
 labels: kind/bug, area/tide
 main_sha: e601a1ffafd7d8d3a781238a4c5f4233d6248f68
-triaged_at: 2026-07-27T00:35:12Z
+triaged_at: 2026-10-28T00:13:12Z
 verdict: accepted
 legitimacy: LEGITIMATE
 effort: 3
 recommended_labels: [kind/bug, area/tide, help-wanted]
+refresh_log:
+  - at: 2026-10-28T00:13:12Z
+    since: 2026-07-27T00:35:12Z
+    summary: "Issue remains open; stale automation notice was cleared by the reporter; no new PR references."
 ---
 
 ## Initial validation
 
 LEGITIMATE. Confirmed code-level bug in Tide (`pkg/tide/`), not a misconfiguration. Reporter's branch protection is correctly configured (screenshot shows GitHub UI blocking manual merge with only 1 of 2 required approvals); Tide bypasses it because it merges as a repo admin and never separately checks GitHub's review-count requirement. Already correctly labeled `kind/bug`, `area/tide` by petr-muller during the thread (2024-10-22, 2025-05-07). No relabeling needed.
+
+Since previous triage: The issue remains open with the same `kind/bug` and `area/tide` labels. On 2026-10-21, `k8s-triage-robot` posted a stale-issue notice; `dhaiducek` replied with `/remove-lifecycle stale` 14 minutes later. There were no new timeline cross-references. PR #674 remains open and is still the separate proposed fix for related issue #673.
 
 ## Research findings
 

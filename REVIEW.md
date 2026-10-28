@@ -81,3 +81,131 @@ The premise checks out: the removed 35-byte literal ends in a stored-DEFLATE blo
 
 - Would you like to convert the remaining literal at line 1387 to `mustGzip` too, for consistency? It is not required for the fix.
 - Is the `GOEXPERIMENT=jsonv2` note in the PR description only an artifact of your local setup (the repo's `go.mod` is `go 1.26.4` and `pkg/config` imports `encoding/json/jsontext`, so I needed it to build too)? Worth stating the CI-equivalent invocation if reviewers are likely to trip over it.
+
+## Followups
+
+Recorded 2026-10-28 as post-merge followups to PR #1038 (PR still open at `6c465a459661ab9941823525003c5cc893803a43`, approved for merge per the gate decision above). Four candidates accepted, none skipped.
+
+### [cleanup] Convert the last hand-written gzip literal
+
+- where: `pkg/plugins/updateconfig/updateconfig_test.go:1387`
+- necessity: could
+- mode: deliver
+
+```
+In kubernetes-sigs/prow, following PR #1038 "Generate gzip fixtures in updateconfig tests":
+
+In pkg/plugins/updateconfig/updateconfig_test.go, the "correctly converts to text when
+ungzipping" test case still hard-codes a gzip byte array for its existing ConfigMap
+BinaryData (line ~1387). Those bytes are gzip of "new-config" (verified by decompressing:
+1f 8b 08 ... 54 d6 e7 57 0a 00 00 00).
+
+Replace that literal with mustGzip(t, "new-config"), using the helper already defined in
+the same file at line ~149. Do not change any other line.
+
+Acceptance criteria:
+- `TMPDIR=/tmp GOEXPERIMENT=jsonv2 GOFLAGS='-p=4' go test -count=1 ./pkg/plugins/updateconfig` passes.
+- `gofmt -l pkg/plugins/updateconfig/updateconfig_test.go` prints nothing.
+- The diff is exactly one line.
+
+Scope guard: do not convert the TestUpdateSize "c" fixture or restructure assertions;
+do not touch production code or other packages.
+```
+
+### [tests] Assert gzip semantics, not just encoder bytes
+
+- where: `pkg/plugins/updateconfig/updateconfig_test.go:1722` (comparison loop) and the four gzip cases at `:907`, `:956`, `:1019`, `:1348`
+- necessity: could
+- mode: deliver
+
+```
+In kubernetes-sigs/prow, following PR #1038 "Generate gzip fixtures in updateconfig tests":
+
+Problem: in pkg/plugins/updateconfig/updateconfig_test.go the expected ConfigMap BinaryData
+for the gzip cases is produced by mustGzip (line ~149), i.e. by the same compress/gzip call
+production uses at pkg/plugins/updateconfig/updateconfig.go:181. The DeepEqual assertion at
+line ~1722 therefore pins "same encoder, same bytes" and would break on a valid encoder
+change even though the plugin behavior is correct.
+
+Add a semantic assertion alongside the existing byte comparison, without weakening it:
+1. Add a helper `mustGunzip(t *testing.T, data []byte) string` next to mustGzip: t.Helper(),
+   gzip.NewReader(bytes.NewReader(data)), io.ReadAll, fail on any error, return the string.
+2. Add an optional field `expectedBinaryPlaintext map[string]string` to the test-case struct
+   used by testUpdateConfig.
+3. In the comparison loop (after the existing equality.Semantic.DeepEqual check, around
+   line ~1630/1722), for each key/value of expectedBinaryPlaintext compare
+   mustGunzip(t, actual.BinaryData[key]) against the expected string.
+4. Set `expectedBinaryPlaintext: map[string]string{"config.yaml": "new-config"}` on the four
+   gzip cases (names "gzips all content...", "gzips all content except one...",
+   "gzips only one marked file...", "correctly converts to binary when gzipping").
+
+Acceptance criteria:
+- `TMPDIR=/tmp GOEXPERIMENT=jsonv2 GOFLAGS='-p=4' go test -count=1 ./pkg/plugins/updateconfig` passes.
+- gofmt clean.
+- Existing DeepEqual assertions and all non-gzip test cases are unchanged.
+- Deliberately switching production to gzip.NewWriterLevel(w, gzip.BestSpeed) locally still
+  passes the new semantic assertion (revert that experiment afterwards).
+
+Scope guard: do not remove the byte comparison, do not touch production code, do not
+change other test files.
+```
+
+### [tech-debt] Stop silently storing raw content when gzip fails
+
+- where: `pkg/plugins/updateconfig/updateconfig.go:178-193`
+- necessity: should
+- mode: deliver
+
+```
+In kubernetes-sigs/prow, following PR #1038 "Generate gzip fixtures in updateconfig tests":
+
+In pkg/plugins/updateconfig/updateconfig.go, Update() at line ~104 gzips each file into an
+in-memory buffer at lines ~178-193. On gzip Write/Close errors it currently logs
+"falling back to raw" and leaves value = content, which silently publishes uncompressed
+data into the ConfigMap's Data field even though the map is configured with gzip: true.
+The TODO at lines ~178-180 already proposes returning the error instead.
+
+Change the block so that a gzip Write or Close error returns an error from Update,
+e.g. `return fmt.Errorf("gzip %s: %w", upd.Filename, err)`. Remove the now-obsolete TODO
+comment. Keep the value = buff.Bytes() success path and everything after the block
+(the utf8.ValidString classification) exactly as is.
+
+Acceptance criteria:
+- `TMPDIR=/tmp GOEXPERIMENT=jsonv2 GOFLAGS='-p=4' go test -count=1 ./pkg/plugins/updateconfig` passes.
+- `go build ./pkg/plugins/updateconfig` passes; gofmt clean.
+- No remaining "falling back to raw" log lines or TODO in that block.
+
+Scope guard: do not refactor the gzip writer into an injectable dependency, do not add a
+fault-injection test harness, and do not change the utf8/BinaryData logic. The error path is
+practically unreachable with an in-memory buffer, so a dedicated test is not expected.
+```
+
+### [cleanup] Make the TestUpdateSize fixture say what it means
+
+- where: `pkg/plugins/updateconfig/updateconfig_test.go:1930-1943`
+- necessity: could
+- mode: deliver
+
+```
+In kubernetes-sigs/prow, following PR #1038 "Generate gzip fixtures in updateconfig tests":
+
+In pkg/plugins/updateconfig/updateconfig_test.go, TestUpdateSize (~line 1930) defines a
+MapFS entry "c" whose Data is a hard-coded gzip blob of "string data" (31 bytes, preceded by
+a `printf 'string data' | gzip | hexdump` comment). Nothing in the test decompresses it:
+Update() is called with GZIP unset and the size metric simply sums len() over cm.Data and
+cm.BinaryData (pkg/plugins/updateconfig/updateconfig.go:214-221). The case therefore depends
+only on the value being 31 bytes long and not valid UTF-8 (so it classifies as BinaryData).
+
+Replace the blob with a self-describing value of exactly 31 bytes that is not valid UTF-8,
+for example `Data: bytes.Repeat([]byte{0xff}, 31),` — add a short comment saying the case
+needs 31 non-UTF-8 bytes, and remove the hexdump comment. Leave the "s" fixture and every
+`expected` value (40, 73, 133, 166) unchanged.
+
+Acceptance criteria:
+- `TMPDIR=/tmp GOEXPERIMENT=jsonv2 GOFLAGS='-p=4' go test -count=1 ./pkg/plugins/updateconfig -run TestUpdateSize` passes.
+- The whole package test still passes; gofmt clean.
+- No hexdump comment or hex byte array remains in TestUpdateSize.
+
+Scope guard: do not change the metric logic or expectations; do not convert other fixtures;
+keep the change inside TestUpdateSize.
+```

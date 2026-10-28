@@ -3,17 +3,26 @@ pr: kubernetes-sigs/prow#752
 title: ".*: add `delete-spam-issue` prow plugin"
 head_sha: adac22030a7c19f4bab2b2f6806c5f353d7f436e
 base: main
-reviewed_at: 2026-06-12T15:59:05Z
+reviewed_at: 2026-10-28T00:36:43Z
 verdict: approve
+refresh_log:
+  - old_sha: adac22030a7c19f4bab2b2f6806c5f353d7f436e
+    new_sha: adac22030a7c19f4bab2b2f6806c5f353d7f436e
+    summary: "No code changes; recorded the design comment and stale bot notice."
 ---
 
-## Summary
+## What this PR does
 
 - New prow plugin: `/delete-spam-issue` command deletes GitHub issues via GraphQL `deleteIssue` mutation.
 - Authorization via three mechanisms: explicit user allowlist, GitHub team membership, top-level OWNERS approvers (on by default, configurable).
 - Config struct `DeleteSpamIssue` added to plugin config with `allowed_users`, `allowed_teams`, `allow_top_level_approvers`.
 - Rejects use on PRs. Posts audit comment before deleting. Posts error comment on failure.
 - Second commit adds the `allow_top_level_approvers` config knob (default true).
+
+Since previous review:
+- No code changes: PR head remains `adac22030a7c19f4bab2b2f6806c5f353d7f436e`.
+- On 2026-06-12, petr-muller commented that the command might belong in `issue-management`; this reinforces the existing open design question, with no decision recorded.
+- On 2026-10-18, k8s-triage-robot posted the stale PR notice; the PR remains open.
 
 ## Findings
 
@@ -77,6 +86,6 @@ verdict: approve
 
 ## Open questions
 
-- Should this live in `issue-management` instead of as a standalone plugin? The auth model is different (explicit allowlists vs org membership/OWNERS), but it is conceptually another issue management command.
+- Should this live in `issue-management` instead of as a standalone plugin? The auth model is different (explicit allowlists vs org membership/OWNERS), but it is conceptually another issue management command. petr-muller raised the same concern in a PR comment on 2026-06-12; no decision is recorded.
 - Does the Prow GitHub App in kubernetes org already have the permissions needed for the `deleteIssue` GraphQL mutation (requires admin-level access)?
 - Is global config intentional, or should per-org/repo authorization be supported from the start?

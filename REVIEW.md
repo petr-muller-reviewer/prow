@@ -3,7 +3,7 @@ pr: kubernetes-sigs/prow#730
 title: "Add gemini-agent Prow plugin"
 head_sha: cdc66d39b6b0d21f5b714d4ca1caee6f9583f555
 base: main
-reviewed_at: 2026-10-15T23:14:40Z
+reviewed_at: 2026-10-28T00:16:33Z
 verdict: approve-with-suggestions
 refresh_log:
   - from_sha: 27bec9f35515e125802bdbd1fa5e6c5bc0f9e551
@@ -18,6 +18,10 @@ refresh_log:
     to_sha: cdc66d39b6b0d21f5b714d4ca1caee6f9583f555
     at: 2026-10-15T23:14:40Z
     summary: "No code changes. ameukam proposed an opt-in dry-run rollout and described usage caps and retry accounting as future hardening; kannon92 suggested separate CNCF Copilot credits."
+  - from_sha: cdc66d39b6b0d21f5b714d4ca1caee6f9583f555
+    to_sha: cdc66d39b6b0d21f5b714d4ca1caee6f9583f555
+    at: 2026-10-28T00:16:33Z
+    summary: "No code changes. BenTheElder said the CNCF/GitHub credits request was never filed and raised policy questions about agent integrations; kannon92 supported meeting maintainers where they are with skills and tools and called for community direction."
 ---
 
 ## What this PR does
@@ -29,6 +33,7 @@ Since previous review:
 
 - No code changed: the head remains `cdc66d39b6b0d21f5b714d4ca1caee6f9583f555`, and the PR remains open.
 - On 2026-10-10, ameukam proposed starting with one explicitly opted-in public repository in dry-run mode, restricted to selected users or teams, and said dry-run still incurs inference costs. Daily usage caps, bounded concurrency, and retry quota accounting were described as future hardening. kannon92 suggested seeking separate CNCF Copilot credits. No inline comments or reviews were added.
+- On 2026-10-20, BenTheElder said no CNCF/GitHub credits request was filed and raised whether Prow should set a policy for accepting agent integrations; kannon92 supported meeting maintainers where they are with skills and tools and said community direction is needed.
 
 ## Findings
 

@@ -31,13 +31,13 @@ ul, ol { padding-left:1.5rem; }
 details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
 </style></head><body><main>
 <h1>Add gemini-agent Prow plugin</h1>
-<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/730">kubernetes-sigs/prow#730</a> · base <code>main</code> · head_sha <code>cdc66d39b6b0</code> · reviewed_at <code>2026-10-15T23:14:40Z</code></div>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/730">kubernetes-sigs/prow#730</a> · base <code>main</code> · head_sha <code>cdc66d39b6b0</code> · reviewed_at <code>2026-10-28T00:16:33Z</code></div>
 <div class="badges"><span class="badge c-gray">verdict: approve-with-suggestions</span></div>
 <details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#730
 title: &quot;Add gemini-agent Prow plugin&quot;
 head_sha: cdc66d39b6b0d21f5b714d4ca1caee6f9583f555
 base: main
-reviewed_at: 2026-10-15T23:14:40Z
+reviewed_at: 2026-10-28T00:16:33Z
 verdict: approve-with-suggestions
 refresh_log:
   - from_sha: 27bec9f35515e125802bdbd1fa5e6c5bc0f9e551
@@ -51,7 +51,11 @@ refresh_log:
   - from_sha: cdc66d39b6b0d21f5b714d4ca1caee6f9583f555
     to_sha: cdc66d39b6b0d21f5b714d4ca1caee6f9583f555
     at: 2026-10-15T23:14:40Z
-    summary: &quot;No code changes. ameukam proposed an opt-in dry-run rollout and described usage caps and retry accounting as future hardening; kannon92 suggested separate CNCF Copilot credits.&quot;</code></pre></details>
+    summary: &quot;No code changes. ameukam proposed an opt-in dry-run rollout and described usage caps and retry accounting as future hardening; kannon92 suggested separate CNCF Copilot credits.&quot;
+  - from_sha: cdc66d39b6b0d21f5b714d4ca1caee6f9583f555
+    to_sha: cdc66d39b6b0d21f5b714d4ca1caee6f9583f555
+    at: 2026-10-28T00:16:33Z
+    summary: &quot;No code changes. BenTheElder said the CNCF/GitHub credits request was never filed and raised policy questions about agent integrations; kannon92 supported meeting maintainers where they are with skills and tools and called for community direction.&quot;</code></pre></details>
 <h2>What this PR does</h2>
 <ul>
 <li>Adds an external Prow plugin that responds to <code>/gemini-agent</code> comments on issues and pull requests by sending collected GitHub context to Gemini on Vertex AI.
@@ -63,6 +67,8 @@ refresh_log:
 <li>No code changed: the head remains <code>cdc66d39b6b0d21f5b714d4ca1caee6f9583f555</code>, and the PR remains open.
 </li>
 <li>On 2026-10-10, ameukam proposed starting with one explicitly opted-in public repository in dry-run mode, restricted to selected users or teams, and said dry-run still incurs inference costs. Daily usage caps, bounded concurrency, and retry quota accounting were described as future hardening. kannon92 suggested seeking separate CNCF Copilot credits. No inline comments or reviews were added.
+</li>
+<li>On 2026-10-20, BenTheElder said no CNCF/GitHub credits request was filed and raised whether Prow should set a policy for accepting agent integrations; kannon92 supported meeting maintainers where they are with skills and tools and said community direction is needed.
 </li></ul>
 <h2>Findings</h2>
 <h3><span class="tag c-amber">should-fix</span>errors.AsType with value type may silently fail against pointer SDK errors</h3>

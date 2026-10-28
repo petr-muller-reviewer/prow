@@ -31,62 +31,111 @@ ul, ol { padding-left:1.5rem; }
 details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
 </style></head><body><main>
 <h1>feat: add squash-commits mode to cherrypicker</h1>
-<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1013">kubernetes-sigs/prow#1013</a> · base <code>main</code> · head_sha <code>399d1fd49b04</code> · reviewed_at <code>2026-10-20T12:27:33Z</code></div>
-<div class="badges"><span class="badge c-amber">verdict: needs-discussion</span><span class="badge c-amber">gate: hold</span></div>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1013">kubernetes-sigs/prow#1013</a> · base <code>main</code> · head_sha <code>90697ba698cf</code> · reviewed_at <code>2026-10-28T00:51:53Z</code></div>
+<div class="badges"><span class="badge c-red">verdict: request-changes</span><span class="badge c-red">gate: do-not-merge</span></div>
 <details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#1013
 title: &quot;feat: add squash-commits mode to cherrypicker&quot;
-head_sha: 399d1fd49b041dbf9b6d62d231a807b66bf99f1d
+head_sha: 90697ba698cf1d87b59e524183ebfc321c5eecc0
 base: main
-reviewed_at: 2026-10-20T12:27:33Z
-verdict: needs-discussion
+reviewed_at: 2026-10-28T00:51:53Z
+verdict: request-changes
+checkout_sha: 340ff7c5d792b15f5a2757ce1574704d8fbd5491
 gate:
-  decision: hold
-  gated_at: 2026-10-20T12:43:39Z
-  gated_head_sha: 399d1fd49b041dbf9b6d62d231a807b66bf99f1d
-  reviewed_head_sha: 399d1fd49b041dbf9b6d62d231a807b66bf99f1d
-refresh_log:
-  - at: 2026-10-20T12:27:33Z
-    old_sha: ce50c67292a53542103cf2b4318c3daf4c6a559f
-    new_sha: 399d1fd49b041dbf9b6d62d231a807b66bf99f1d
-    summary: &quot;Resolved the three implementation findings with targeted fixes and a trailer regression test.&quot;</code></pre></details>
+  decision: do-not-merge
+  gated_at: 2026-10-28T00:52:10Z
+  gated_head_sha: 90697ba698cf1d87b59e524183ebfc321c5eecc0
+  reviewed_head_sha: 90697ba698cf1d87b59e524183ebfc321c5eecc0</code></pre></details>
 <h2>Gate</h2>
-<p>Decision: <strong>hold</strong> at <code>399d1fd49b041dbf9b6d62d231a807b66bf99f1d</code>.</p>
-<p>The previous implementation findings are addressed: metadata lookup failures stop the squash before applying the diff, co-author deduplication checks the final trailer block, and commit messages are passed through a file. The earlier nil-GitUser panic is also fixed. No outstanding implementation finding from the previous review remains.</p>
-<p>One independent compatibility risk remains. This change adds <code>Apply</code> and <code>CommitWithAuthor</code> to the exported <code>pkg/git/v2.Interactor</code> interface (<code>interactor.go:63-67</code>), and the exported <code>RepoClient</code> embeds <code>Interactor</code> (<code>client_factory.go:92-95</code>). Downstream packages with their own implementations of either interface can therefore stop compiling. The squash flag defaults to false, so existing runtime behavior is unchanged by default, but that does not avoid the source compatibility break. Hold until maintainers confirm this interface break is acceptable or adjust the API to preserve downstream implementations.</p>
-<h3>Findings status</h3>
+<p>Decision: <strong>do-not-merge</strong> at <code>90697ba698cf1d87b59e524183ebfc321c5eecc0</code> (2026-10-28T00:52:10Z).</p>
+<p>The PR head is unchanged since the saved review, and the blocking temporary diff-file race remains. Requests for the same PR onto different target branches can execute concurrently but still write and remove the same filename, causing otherwise valid backports to fail. Prior GitHub review concerns about metadata failures, co-author trailers, message argument limits, binary contents, intermediate-commit conflicts, merge-commit PRs, and reverting base-only changes are addressed; the remaining suggestions do not independently block merging.</p>
+<h3>Findings disposition</h3>
 <ul>
-<li><strong>Addressed:</strong> metadata lookup failures, co-author trailer deduplication, long commit-message argument size, and nil author handling.
+<li><strong>Not addressed; blocks merge — REVIEW.md, <code>cmd/external-plugins/cherrypicker/server.go:913-917</code>:</strong> the filename contains only org, repo, and PR number, while request locks also include the target branch. Use a unique temporary file per invocation, close it before applying, and cover simultaneous requests for different targets.
 </li>
-<li><strong>Open maintainer disposition:</strong> source compatibility for external <code>Interactor</code> and <code>RepoClient</code> implementations.
+<li><strong>Not addressed; non-blocking — REVIEW.md, <code>cmd/external-plugins/cherrypicker/server.go:701-711</code>:</strong> preparation and commit failures still enter the apply-failure response and can create a manual-conflict issue. Improve classification and replace the unconditional <code>git am</code> error text.
+</li>
+<li><strong>Not addressed; non-blocking — REVIEW.md, <code>cmd/external-plugins/cherrypicker/server_test.go:1946-1949</code>, <code>1979-1982</code>, <code>2024-2037</code>:</strong> one real PR commit is paired with two synthetic metadata entries, and final author/trailer/sign-off assertions remain absent.
+</li>
+<li><strong>Borderline; accepted follow-up — @thc1006, <code>cmd/external-plugins/cherrypicker/server.go:921</code>:</strong> target-side renames remain unsupported by the net-diff apply path. The reviewer explicitly accepted a follow-up in the 2026-10-20T17:46:38Z review, and the PR description documents the limitation; this does not block merge.
+</li>
+<li><strong>Can't tell; compatibility decision — REVIEW.md, <code>pkg/git/v2/interactor.go:63-84</code>:</strong> four new interface methods require updates in external implementations of <code>Interactor</code> or <code>RepoClient</code>. No affected downstream implementation or explicit maintainer acceptance was established; confirm the intended source-compatibility policy rather than treating this as a demonstrated deployment outage.
 </li></ul>
-<h3>Merge risk</h3>
+<h3>Independent merge risk</h3>
 <ul>
-<li>The exported interface change may require downstream implementers to add two methods or prevent them from compiling against this release.
+<li><strong>API:</strong> adding <code>Apply</code>, <code>CommitWithAuthor</code>, <code>MergeBase</code>, and <code>BinaryDiff</code> to exported <code>Interactor</code> also extends <code>RepoClient</code>. The blast radius is downstream code implementing either interface when rebuilt; callers using the supplied implementation need no change. The source-compatibility change is not protected by the runtime flag and is not described in the feature release note.
 </li>
-<li>The new squash mode is opt-in; the default remains the existing <code>git am</code> path.
+<li><strong>Configuration:</strong> the only new flag is default-off <code>--squash-commits</code>; existing deployments retain the <code>git am</code> path. No schema migration, removed flag, or default change was found. Remove the new flag before rolling back to a binary that predates it.
+</li>
+<li><strong>Behavior:</strong> enabling the process-wide flag changes all cherrypicks handled by that instance to one commit, rejects incomplete metadata including histories beyond the 250-commit API cap, and adds API/Git work per target. These risks affect opt-in instances; the feature is release-noted, while operator documentation should cover the cap, rename limitation, and manual fallback.
+</li>
+<li>The risk pass used direct code inspection and the existing review evidence. No listed repository skill specifically covers Go API/config compatibility, so no additional review skill was invoked.
 </li></ul>
+<h3>Gating list</h3>
+<ol>
+<li><strong>REVIEW.md blocking finding — <code>cmd/external-plugins/cherrypicker/server.go:913-917</code>:</strong> isolate each invocation's diff file and verify concurrent requests cannot overwrite or delete one another's input. The current code is unchanged; this is the item driving <strong>do-not-merge</strong>.
+</li></ol>
 <h2>Verdict</h2>
-<p>Needs discussion: the three implementation findings from the previous review are resolved, but the source compatibility impact of extending the exported Interactor interface still needs maintainer disposition.</p>
+<p>Request changes: fix the shared temporary diff-file race before merging.</p>
+<p>Code Quality and Deployment Risk independently identified the race, and verification confirmed that requests for different target branches can overwrite or delete each other's diff. The design otherwise looks reasonable, defaults remain unchanged, and both affected package test suites pass. Diagnostics and integration-test improvements are non-blocking; downstream interface compatibility needs an explicit maintainer decision, with no affected implementation established.</p>
 <h2>What this PR does</h2>
 <ul>
-<li>Adds a default-off --squash-commits option to the cherrypicker.
+<li>Adds a default-off <code>--squash-commits</code> flag to cherrypicker.
 </li>
-<li>Fetches a pull request's net diff and applies it to the target branch with three-way support.
+<li>Computes the PR's net change from the merge-base of its recorded base SHA and fetched head, including binary file contents.
 </li>
-<li>Creates one signed-off commit for the cherry-pick and tries to preserve the original authorship.
+<li>Applies that change with <code>git apply --3way --index</code> and creates one signed-off commit.
 </li>
-<li>Leaves the existing per-commit git am path in place when squash mode is disabled.
-</li></ul>
-<p>Since previous review:</p>
-<ul>
-<li>cmd/external-plugins/cherrypicker/server.go now aborts before applying the diff when either authorship metadata request fails, and reports those failures separately from conflicts.
+<li>Preserves primary authorship and collects co-author trailers, aborting when commit metadata is incomplete.
 </li>
-<li>cmd/external-plugins/cherrypicker/server.go now deduplicates co-author trailers against only the final trailer block.
-</li>
-<li>pkg/git/v2/interactor.go writes the commit message to a temporary file and passes it with --file.
+<li>Keeps the existing per-commit <code>git am</code> path when squash mode is disabled.
 </li></ul>
 <h2>Findings</h2>
-<p>No new findings in this refresh.</p>
+<h3><span class="tag c-red">blocking</span>Use a unique temporary diff file per request</h3>
+<ul>
+<li>where: <code>cmd/external-plugins/cherrypicker/server.go:913-917</code>
+</li>
+<li>concern: CONFIRMED; Code Quality and Deployment Risk independently identified this race. Webhook handlers run concurrently and locks include the target branch, so requests for the same PR onto different branches can truncate or delete each other's diff and fail otherwise valid backports. Use <code>os.CreateTemp</code>, close the completed file before applying it, remove only that invocation's file, and add a regression test for concurrent squash requests to different targets.
+</li>
+<li>excerpt:<pre><code>diffPath := fmt.Sprintf(&quot;/tmp/%s_%s_%d.squash.diff&quot;, org, repo, num)
+if err := os.WriteFile(diffPath, diff, 0644); err != nil {
+    return fmt.Errorf(&quot;failed to write diff for PR #%d: %w&quot;, num, err)
+}
+defer os.Remove(diffPath)</code></pre>
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>Distinguish preparation, apply, and commit failures</h3>
+<ul>
+<li>where: <code>cmd/external-plugins/cherrypicker/server.go:701-704</code>
+</li>
+<li>concern: Non-blocking suggestion shared by Code Quality and Maintainability. New fetch, diff-generation, and commit failures enter this same apply-failure branch, which reports a failed <code>git am</code> and can create a manual-conflict issue when <code>issueOnConflict</code> is enabled. Use accurate operation descriptions and distinguish preparation and commit errors from an actual apply conflict.
+</li>
+<li>excerpt:<pre><code>if err := applyErr; err != nil {
+    errs := []error{fmt.Errorf(&quot;failed to `git am`: %w&quot;, err)}
+    logger.WithError(err).Warn(&quot;failed to apply PR on top of target branch&quot;)
+    resp := fmt.Sprintf(&quot;#%d failed to apply on top of branch %q:\n```\n%v\n```&quot;, num, targetBranch, err)</code></pre>
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>Exercise real multi-commit history and final attribution</h3>
+<ul>
+<li>where: <code>cmd/external-plugins/cherrypicker/server_test.go:1979-1982</code>
+</li>
+<li>concern: Non-blocking test improvement shared by Code Quality and Maintainability. The integration fixture creates only one actual PR commit but supplies two synthetic metadata entries, and its final assertions inspect commit count and file contents rather than author, co-author trailers, or sign-off. Create a genuine multi-commit history that rewrites the same lines, align metadata with it, and inspect the resulting commit's attribution.
+</li>
+<li>excerpt:<pre><code>commits: []github.RepositoryCommit{
+    commit(&quot;alice&quot;, &quot;Alice&quot;, &quot;alice@x.com&quot;, &quot;bump magic number&quot;),
+    commit(&quot;bob&quot;, &quot;Bob&quot;, &quot;bob@x.com&quot;, &quot;add comment&quot;),
+},</code></pre>
+</li></ul>
+<h3><span class="tag c-blue">question</span>Confirm the exported interface compatibility decision</h3>
+<ul>
+<li>where: <code>pkg/git/v2/interactor.go:63-67</code>
+</li>
+<li>concern: Is adding four methods to exported <code>Interactor</code>, also embedded by <code>RepoClient</code>, acceptable for downstream implementations, or should the new operations use an optional capability interface? The added methods are confirmed, but no affected downstream implementation was identified; this is a conditional source-compatibility question rather than a demonstrated deployment break or required change.
+</li>
+<li>excerpt:<pre><code>// Apply calls `git apply --3way --index`
+Apply(path string) error
+// CommitWithAuthor commits the already-staged index with the given message,
+// overriding the author, and optionally adding a Signed-off-by trailer.
+CommitWithAuthor(message, author string, signoff bool) error</code></pre>
+</li></ul>
 <h2>Resolved</h2>
 <h3><span class="tag c-amber">should-fix</span>Abort when commit metadata cannot be loaded</h3>
 <ul>
@@ -135,14 +184,26 @@ if out, err := i.executor.Run(args...); err != nil {
 </li></ul>
 <h2>Checked</h2>
 <ul>
-<li>--squash-commits defaults to false and the existing path still uses git am.
+<li>The local code matches PR head <code>90697ba698cf1d87b59e524183ebfc321c5eecc0</code>, excluding <code>REVIEW.md</code> and <code>REVIEW.html</code>; checkout HEAD <code>340ff7c5d792b15f5a2757ce1574704d8fbd5491</code> adds only review artifacts.
 </li>
-<li>The squash path applies the diff with git apply --3way --index and adds the bot's sign-off.
+<li>All five changed files were reviewed from Code Quality, Maintainability, and Deployment Risk perspectives. The required change was checked against webhook goroutines, target-specific locks, and temporary-file creation/removal.
 </li>
-<li>The author added a regression test for co-author trailers in commit bullet bodies. The metadata error and long-message paths have no new targeted test in this update. Tests were not run.
+<li><code>go test ./cmd/external-plugins/cherrypicker ./pkg/git/v2</code> passed. The Deployment Risk reviewer also reported 20 passing repetitions of the squash integration tests; these do not exercise the concurrent-request race.
+</li>
+<li>The default-off flag preserves the existing <code>git am</code> path. No configuration migration or new Kubernetes RBAC/GitHub permission requirement was identified.
+</li>
+<li>Metadata retrieval and truncation validation precede applying changes. Squash mode refuses incomplete commit metadata, including histories exceeding the 250-commit API cap.
+</li>
+<li>Integration coverage exercises an advancing base, a merge-commit PR, and a client without a GitUser getter. Commit messages use a file to avoid argument-size limits, and trailer deduplication checks the final trailer block.
+</li>
+<li>Git operations remain in <code>pkg/git/v2</code>, while GitHub-specific authorship and message policy remain in cherrypicker. Maintenance burden is MEDIUM; no independent design blocker was identified.
+</li>
+<li>Deployment risk is MEDIUM and concentrated in the opt-in path. Each target adds commit-list pagination, another PR metadata lookup, and two Git fetches; resource impact was not benchmarked.
+</li>
+<li>Operator documentation should explain the process-wide flag, metadata cap, manual fallback, and target-side rename limitation. Disable the flag to restore the existing runtime path; remove it before rolling back to an older binary.
 </li></ul>
 <h2>Open questions</h2>
 <ul>
-<li>Can downstream users that implement pkg/git/v2.Interactor remain source-compatible, or should the new operations use an optional capability interface?
+<li>Is extending the exported <code>pkg/git/v2.Interactor</code> interface acceptable for downstream implementers, or should the new operations use an optional capability interface?
 </li></ul>
 </main></body></html>

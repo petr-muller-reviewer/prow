@@ -1,129 +1,108 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>Review: kubernetes-sigs/prow#102</title>
-<style>
-  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; line-height: 1.6; color: #1a1a1a; max-width: 900px; margin: 2rem auto; padding: 0 1.5rem; background: #fff; }
-  code, pre { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; }
-  header { border-bottom: 2px solid #ddd; padding-bottom: 1rem; margin-bottom: 1.5rem; }
-  header h1 { margin-bottom: 0.25rem; font-size: 1.4rem; }
-  header table { border-collapse: collapse; margin-top: 0.5rem; }
-  header td { padding: 2px 8px 2px 0; font-size: 0.92rem; color: #333; }
-  header td.key { color: #777; white-space: nowrap; }
-  .verdict { background: #fff4e5; border: 1px solid #f0c36d; border-radius: 6px; padding: 1rem 1.25rem; margin-bottom: 1.5rem; }
-  .verdict .tag { display: inline-block; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; font-size: 0.85rem; background: #d9822b; color: #fff; padding: 2px 10px; border-radius: 4px; margin-bottom: 0.5rem; }
-  h2 { border-bottom: 1px solid #eee; padding-bottom: 0.3rem; margin-top: 2.2rem; }
-  .finding { border: 1px solid #e2e2e2; border-radius: 6px; padding: 1rem 1.25rem; margin-bottom: 1rem; }
-  .finding h3 { margin: 0 0 0.5rem 0; font-size: 1.05rem; }
-  .sev { display: inline-block; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; padding: 1px 8px; border-radius: 3px; margin-right: 0.5rem; vertical-align: middle; }
-  .sev.blocking { background: #ffd9d9; color: #a30000; }
-  .sev.should-fix { background: #ffe8c2; color: #8a5600; }
-  .sev.nit { background: #e2e2e2; color: #444; }
-  .loc { font-size: 0.85rem; color: #555; margin-bottom: 0.6rem; }
-  .finding pre { background: #f6f6f6; border: 1px solid #e5e5e5; border-radius: 4px; padding: 0.6rem 0.8rem; overflow-x: auto; font-size: 0.85rem; }
-  .hl { background: #ffe6a1; }
-  ul.plain li { margin-bottom: 0.4rem; }
-  a { color: #0b5fff; }
-</style>
-</head>
-<body>
-
-<header>
-  <h1>Review: Update trusted author handling for DCO</h1>
-  <table>
-    <tr><td class="key">PR</td><td><a href="https://github.com/kubernetes-sigs/prow/pull/102">kubernetes-sigs/prow#102</a></td></tr>
-    <tr><td class="key">Head SHA</td><td><code>8569602168cf34cb0deadf507652ff711f596785</code></td></tr>
-    <tr><td class="key">Base</td><td><code>main</code></td></tr>
-    <tr><td class="key">Reviewed at</td><td>2026-07-26T23:44:08Z</td></tr>
-  </table>
-</header>
-
-<div class="verdict">
-  <div class="tag">Request Changes</div>
-  <p>The refactor's stated goal — cleanly separating <code>SkipDCOCheckForMembers</code> from <code>SkipDCOCheckForCollaborators</code> — is not actually achieved: a collaborator-only configuration still silently trusts any member of the PR's own org because of an unconditional check inside <code>trigger.TrustedUser</code> that the new code doesn't account for. There's also a looser trusted-app match than the existing implementation in <code>trigger.go</code>. Both are worth fixing before merge; everything else (docs, most tests) is solid.</p>
-</div>
-
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#102</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>Update trusted author handling for DCO</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/102">kubernetes-sigs/prow#102</a> · base <code>main</code> · head_sha <code>6a28e9c4eb2e</code> · reviewed_at <code>2026-10-28T01:01:07Z</code></div>
+<div class="badges"><span class="badge c-red">verdict: request-changes</span><span class="badge c-amber">gate: hold</span></div>
+<details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#102
+title: &quot;Update trusted author handling for DCO&quot;
+head_sha: 6a28e9c4eb2e0604e1684d16237165b4efaf3553
+base: main
+reviewed_at: 2026-10-28T01:01:07Z
+verdict: request-changes
+worktree_head_sha: 65b16c998fe6df4ac9aa1dbe4080ec6bc37da606
+gate:
+  decision: hold
+  gated_at: 2026-10-28T01:01:14Z
+  gated_head_sha: 6a28e9c4eb2e0604e1684d16237165b4efaf3553
+  reviewed_head_sha: 6a28e9c4eb2e0604e1684d16237165b4efaf3553</code></pre></details>
+<h2>Gate</h2>
+<p>Hold — the trusted-app DCO bypass remains unaddressed at <code>6a28e9c4eb2e0604e1684d16237165b4efaf3553</code>.</p>
+<p>The current PR head matches the reviewed head, with no intervening commits. The local should-fix finding still applies: the inline app comparison trusts ordinary accounts sharing a configured app name. Paginated GitHub reviews and inline-comment queries returned no entries; issue comments contain no substantive review concerns. Fix the app identity check before merging. This decision is based on the code and review evidence.</p>
+<p>Gating list:</p>
+<ul>
+<li><strong>Not addressed; blocks merge</strong> — <code>REVIEW.md</code>, <code>pkg/plugins/dco/dco.go:138</code>: require <code>[bot]</code> before comparing the configured app name, and cover both the bot login and a matching human login in tests.
+</li></ul>
+<p>Independent merge risk:</p>
+<ul>
+<li><strong>Behavior/configuration compatibility:</strong> repositories already setting <code>trusted_apps</code> while leaving both skip flags false will stop exempting unrelated primary/secondary-org members and the Prow bot merely through the shared trust helper. At <code>pkg/plugins/dco/dco.go:144-153</code>, only configured apps remain exempt in that configuration. Existing unsigned commits from those other authors may start failing DCO; this follows the intended separation, but operators should receive a release note explaining the required skip flags. No release note is present in the PR diff.
+</li>
+<li><strong>Collaborator-only configuration:</strong> <code>trusted_org</code> stops granting a secondary-org member exemption when <code>skip_dco_check_for_members</code> is false (<code>pkg/plugins/dco/dco.go:147-150</code>). This is intentional and documented in the updated configuration comments; primary-org membership still grants trust through the pre-existing shared helper behavior.
+</li>
+<li><strong>API/schema:</strong> no exported Go signatures or configuration field names/types change; the changed helper is private. No CRD, protocol, migration, or rollout dependency is introduced. No applicable repository compatibility skill was available; this pass used direct code inspection.
+</li></ul>
+<h2>Verdict</h2>
+<p>Request changes: require the bot suffix before granting the trusted-app exemption.</p>
+<p>The new inline app check also trusts ordinary accounts whose usernames equal a configured app name, allowing unsigned human commits to bypass DCO. The complete four-file PR diff was reviewed against merge base <code>4425e386ffba859f8fbfb535617559f05d37bf2f</code>; the DCO package tests pass, but the added app cases accept suffix-free usernames and miss this regression. The worktree HEAD includes a local review-artifact commit; <code>head_sha</code> records the actual reviewed PR head, whose code is identical.</p>
 <h2>What this PR does</h2>
-<ul class="plain">
-  <li>Splits <code>SkipDCOCheckForMembers</code> and <code>SkipDCOCheckForCollaborators</code> so they're handled as independent booleans instead of being tied together via a single <code>trigger.TrustedUser</code> call.</li>
-  <li>Moves <code>TrustedApps</code> matching out of <code>trigger.TrustedUser</code> into an inline check in <code>dco.go</code>'s <code>filterTrustedUsers</code>, so trusted apps are honored regardless of the two skip booleans.</li>
-  <li>Zeroes <code>TrustedOrg</code> before calling <code>trigger.TrustedUser</code> when <code>SkipDCOCheckForMembers</code> is false, to stop that call's secondary-org membership check from granting trust in collaborator-only configs.</li>
-  <li>Updates doc comments and <code>plugin-config-documented.yaml</code>; adds test cases for trusted apps and the member/collaborator split.</li>
-</ul>
-
+<ul>
+<li>Passes the full DCO configuration into trusted-commit filtering so the member and collaborator settings can be considered separately.
+</li>
+<li>Checks configured trusted apps before calling the shared trigger trust helper, including when both skip flags are disabled.
+</li>
+<li>Clears the secondary trusted organization when skipping DCO for members is disabled.
+</li>
+<li>Updates configuration descriptions, the help example, and tests for the revised trust handling.
+</li></ul>
 <h2>Findings</h2>
-
-<div class="finding">
-  <h3><span class="sev blocking">Blocking</span>Member/collaborator separation is incomplete: org members still bypass DCO with collaborator-only config</h3>
-  <div class="loc"><code>pkg/plugins/dco/dco.go:139-156</code> (calls into <code>pkg/plugins/trigger/trigger.go:260-265</code>)</div>
-  <p><code>trigger.TrustedUser</code> checks <code>ghc.IsMember(org, user)</code> unconditionally as its first branch, gated by neither <code>onlyOrgMembers</code> nor the <code>trustedOrg</code> parameter — those only affect the collaborator check and the <em>secondary</em>-org check, respectively. When <code>SkipDCOCheckForCollaborators=true</code> and <code>SkipDCOCheckForMembers=false</code>, <code>filterTrustedUsers</code> zeroes <code>trustedOrg</code> but still calls <code>trigger.TrustedUser</code>, which still trusts any member of the PR's own org via that first unconditional <code>IsMember(org, user)</code> check. This contradicts the PR's stated goal of separating the two booleans.</p>
-  <pre>if !trustedResponse.IsTrusted &amp;&amp; (config.SkipDCOCheckForMembers || config.SkipDCOCheckForCollaborators) {
-    trustedOrg := config.TrustedOrg
-    <span class="hl">// If SkipDCOCheckforMembers is disabled, make sure the trusted org is empty</span>
-    if !config.SkipDCOCheckForMembers {
-        trustedOrg = ""
-    }
-    var err error
-    trustedResponse, err = trigger.TrustedUser(gc, !config.SkipDCOCheckForCollaborators, config.TrustedApps, trustedOrg, commit.Author.Login, org, repo)</pre>
-</div>
-
-<div class="finding">
-  <h3><span class="sev should-fix">Should fix</span>Inline TrustedApps check is looser than trigger.go's — matches non-bot usernames</h3>
-  <div class="loc"><code>pkg/plugins/dco/dco.go:135-141</code></div>
-  <p><code>trigger.go</code>'s existing app match (<code>trigger.go:279-283</code>) requires <code>strings.HasSuffix(user, "[bot]")</code> before trimming and comparing. This inline copy omits that guard, so <code>TrimSuffix</code> is a no-op for non-bot logins — any plain user account whose username literally equals a configured <code>TrustedApps</code> entry is also trusted. Diverges from the documented semantics and from the stricter existing implementation.</p>
-  <pre>for _, trustedApp := range config.TrustedApps {
-    <span class="hl">if tUser := strings.TrimSuffix(commit.Author.Login, "[bot]"); tUser == trustedApp {</span>
+<h3><span class="tag c-amber">should-fix</span>Require the bot suffix before trusting an app</h3>
+<ul>
+<li>where: <code>pkg/plugins/dco/dco.go:137-140</code>
+</li>
+<li>concern: With <code>trusted_apps: [&quot;my-app&quot;]</code>, this comparison exempts both <code>my-app[bot]</code> and the unrelated human account <code>my-app</code>, because <code>strings.TrimSuffix</code> leaves ordinary usernames unchanged. The previous <code>trigger.TrustedUser</code> check required the <code>[bot]</code> suffix, so preserve that guard to prevent unsigned human commits from bypassing DCO; update the added app tests to use bot logins and reject the matching human login.
+</li>
+<li>excerpt:<pre><code>for _, trustedApp := range config.TrustedApps {
+    if tUser := strings.TrimSuffix(commit.Author.Login, &quot;[bot]&quot;); tUser == trustedApp {
         trustedResponse.IsTrusted = true
-        break
-    }
-}</pre>
-</div>
-
-<div class="finding">
-  <h3><span class="sev should-fix">Should fix</span>New test doesn't actually exercise the member-check-disabled scenario</h3>
-  <div class="loc"><code>pkg/plugins/dco/dco_test.go:259-291</code>, harness at <code>dco_test.go:683-693</code></div>
-  <p>Test <em>"should fail if an user is member of the trusted org but skip member check is false"</em> is meant to prove a member is not trusted when <code>SkipDCOCheckForMembers=false</code>. But the <code>PullRequestEvent</code> has no <code>Repo</code> set, so <code>org</code> passed to <code>IsMember</code> is <code>""</code>, while <code>fc.OrgMembers</code> is only populated under <code>"kubernetes"</code> — the primary-org membership check trivially returns false regardless of the logic under test, so this test doesn't catch the blocking finding above.</p>
-</div>
-
-<div class="finding">
-  <h3><span class="sev nit">Nit</span>Comment typo</h3>
-  <div class="loc"><code>pkg/plugins/dco/dco.go:150</code></div>
-  <p><code>SkipDCOCheckforMembers</code> should be <code>SkipDCOCheckForMembers</code> (lowercase <code>f</code>).</p>
-</div>
-
-<div class="finding">
-  <h3><span class="sev nit">Nit</span>Duplicated trusted-app matching logic</h3>
-  <div class="loc"><code>pkg/plugins/dco/dco.go:135-141</code> vs <code>pkg/plugins/trigger/trigger.go:279-283</code></div>
-  <p>Two independent implementations of "is this login a trusted app" now exist with different behavior. Consider extracting a shared helper to prevent further drift.</p>
-</div>
-
-<div class="finding">
-  <h3><span class="sev nit">Nit</span>Undocumented API surface change and silent behavior change</h3>
-  <div class="loc"><code>pkg/plugins/dco/dco.go:128</code> (signature), overall PR</div>
-  <p><code>filterTrustedUsers</code> now takes the whole <code>plugins.Dco</code> struct instead of individual fields — reasonable but not called out as intentional. Separately, <code>TrustedApps</code> now takes effect even when neither skip-boolean is set (previously it didn't) — a legitimate fix per the PR description, but a silent, user-visible config semantics change for existing repos with no release-note-style callout.</p>
-</div>
-
-<div class="finding">
-  <h3><span class="sev nit">Nit</span>Stale error message and loop-scoped variable reuse</h3>
-  <div class="loc"><code>pkg/plugins/dco/dco.go:131</code>, <code>pkg/plugins/dco/dco.go:155</code></div>
-  <p><code>trustedResponse</code> is declared once outside the loop and reset field-by-field each iteration rather than declared fresh with <code>:=</code> inside the loop — works but reads as an unnecessary micro-optimization. The pre-existing error message <code>"Error checking is member trusted"</code> (capitalized, grammatically off) is worth tightening while these lines are already touched.</p>
-</div>
-
-<h2>Things I checked and was fine with</h2>
-<ul class="plain">
-  <li><code>handle()</code> call site update to pass the full <code>plugins.Dco</code> config into <code>filterTrustedUsers</code> — consistent with the new signature.</li>
-  <li>Doc-comment and <code>plugin-config-documented.yaml</code> wording changes are consistent with the new decoupled TrustedApps behavior (removal of "By default, this option is ignored").</li>
-  <li>New tests <em>"should succeed from a trusted app"</em> and <em>"should fail dco check as one unsigned commit is not from the trusted app"</em> correctly exercise the new inline TrustedApps branch (modulo the HasSuffix gap noted above).</li>
-  <li><code>helpProvider</code>'s example config snippet update (adding <code>TrustedApps</code>) is cosmetic/documentation only.</li>
-</ul>
-
-<h2>Open questions for the author</h2>
-<ul class="plain">
-  <li>For collaborator-only configs (<code>SkipDCOCheckForCollaborators=true</code>, <code>SkipDCOCheckForMembers=false</code>), is it intentional that org members still bypass DCO via <code>trigger.TrustedUser</code>'s unconditional primary-org <code>IsMember</code> check, or should <code>filterTrustedUsers</code> avoid calling <code>trigger.TrustedUser</code> at all in that case (checking only <code>IsCollaborator</code> directly)?</li>
-  <li>Should the inline <code>TrustedApps</code> match require the <code>[bot]</code> suffix (matching <code>trigger.go</code>'s stricter check) to avoid trusting a plain user account that happens to share a name with a configured app?</li>
-  <li><code>TrustedApps</code> now applies even with both skip-booleans false — is this behavior change intentional and worth a release note for operators who already set <code>trusted_apps</code> without either flag?</li>
-</ul>
-
-</body>
-</html>
+        break</code></pre>
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>Reviewed all changes in <code>pkg/plugins/config.go</code>, <code>pkg/plugins/dco/dco.go</code>, <code>pkg/plugins/dco/dco_test.go</code>, and <code>pkg/plugins/plugin-config-documented.yaml</code>.
+</li>
+<li>Traced <code>handle</code> through <code>filterTrustedUsers</code> and compared the old implementation with <code>trigger.TrustedUser</code>, including membership, collaborator, bot-self, and app checks.
+</li>
+<li>Confirmed trusted-app filtering runs when neither skip flag is set, as intended by the PR.
+</li>
+<li>Confirmed the updated call site passes the full DCO configuration and the documented configuration matches the new app handling.
+</li>
+<li><code>go test ./pkg/plugins/dco</code> passed.
+</li>
+<li>Primary-org members still bypass DCO in collaborator-only configurations through <code>trigger.TrustedUser</code>'s unconditional membership check. This behavior already exists in the base and is excluded from the defect findings for this change.
+</li>
+<li>The added app cases use suffix-free <code>my-trusted-app</code> logins and expect them to be trusted, leaving the human/app distinction untested.
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>Could you require <code>[bot]</code> in the inline app check, use <code>my-trusted-app[bot]</code> in the positive cases, and add a negative case for the ordinary <code>my-trusted-app</code> account?
+</li></ul>
+</main></body></html>

@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Triage: kubernetes-sigs/prow#376</title>
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+    color: #1a1a1a;
+    max-width: 860px;
+    margin: 2rem auto;
+    padding: 0 1.5rem;
+    background: #fdfdfd;
+  }
+  code, pre {
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.9em;
+  }
+  pre {
+    background: #f4f4f4;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 0.75rem 1rem;
+    overflow-x: auto;
+  }
+  code {
+    background: #f0f0f0;
+    padding: 0.1em 0.35em;
+    border-radius: 3px;
+  }
+  pre code { background: none; padding: 0; }
+  h1 { font-size: 1.5rem; margin-bottom: 0.25rem; }
+  h2 {
+    font-size: 1.15rem;
+    margin-top: 2.2rem;
+    border-bottom: 2px solid #e0e0e0;
+    padding-bottom: 0.3rem;
+  }
+  h3 { font-size: 1rem; margin-top: 1.4rem; }
+  .meta {
+    background: #f4f4f4;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.5rem;
+    font-size: 0.92rem;
+  }
+  .meta table { border-collapse: collapse; width: 100%; }
+  .meta td { padding: 0.15rem 0.5rem 0.15rem 0; vertical-align: top; }
+  .meta td.k { color: #555; white-space: nowrap; width: 1%; font-weight: 600; }
+  .verdict {
+    display: inline-block;
+    font-weight: 700;
+    padding: 0.2rem 0.7rem;
+    border-radius: 4px;
+    background: #dff0d8;
+    color: #2c662d;
+    border: 1px solid #b6d7a8;
+  }
+  .badge {
+    display: inline-block;
+    font-size: 0.78rem;
+    padding: 0.1rem 0.5rem;
+    border-radius: 3px;
+    background: #eee;
+    border: 1px solid #ccc;
+    margin-right: 0.3rem;
+  }
+  .tag-reproducibility { background: #e8f0fe; border-color: #b3c7f7; }
+  .tag-cause { background: #fdecea; border-color: #f4b8b0; }
+  .tag-related-code { background: #f3ecfb; border-color: #d3b8f0; }
+  .tag-related-pr { background: #fff4d6; border-color: #f0d98b; }
+  ul { padding-left: 1.4rem; }
+  li { margin-bottom: 0.35rem; }
+  a { color: #1a56db; }
+  .finding { margin-bottom: 1.6rem; }
+  .finding .where { color: #555; font-size: 0.88rem; margin: 0.2rem 0; }
+</style>
+</head>
+<body>
+
+<h1>Triage: Cannot run prow at a subpath</h1>
+<div class="meta">
+<table>
+<tr><td class="k">Issue</td><td><a href="https://github.com/kubernetes-sigs/prow/issues/376">kubernetes-sigs/prow#376</a></td></tr>
+<tr><td class="k">State</td><td>open</td></tr>
+<tr><td class="k">Labels</td><td>kind/bug, lifecycle/stale, area/deck</td></tr>
+<tr><td class="k">Triaged at</td><td>2026-07-27T00:38:17Z</td></tr>
+<tr><td class="k">Main SHA</td><td><code>e601a1ffafd7d8d3a781238a4c5f4233d6248f68</code></td></tr>
+<tr><td class="k">Verdict</td><td><span class="verdict">accepted</span></td></tr>
+</table>
+</div>
+
+<h2>Verdict</h2>
+<p><strong>Accepted — legitimate feature gap, already largely fixed by a stalled PR.</strong>
+Deck has no concept of a configurable base path in its routing, templates, or frontend JS, so it cannot be
+served correctly behind a reverse-proxy subpath. The gap is real and well-described. A near-complete fix
+already exists as <a href="https://github.com/kubernetes-sigs/prow/pull/576">PR&nbsp;#576</a>, but that PR has
+been stalled for roughly 3.5 months with failing CI and unresolved review feedback — the issue's disposition
+is tied entirely to that PR's fate, not to fresh triage work on #376 itself.</p>
+
+<h2>What the issue reports</h2>
+<ul>
+<li>Deck deployed behind an nginx ingress rewriting <code>/prow/?(.*)</code> to the Deck service is reachable at
+<code>https://infra.example.com/prow</code>, but static assets and the <code>prowjobs.js</code> data API are
+requested against the domain root instead of the subpath.</li>
+<li>Reporter (loispostula) read the code and found no configuration option to set a URL prefix for Deck.</li>
+<li>Confirmed as a valid bug/feature gap by the maintainer (<code>/kind bug</code> applied same day).</li>
+<li>A contributor (tsj-30) picked it up in September 2025 and has an active, substantial pull request open
+since December 2025.</li>
+</ul>
+
+<h2>Analysis</h2>
+
+<h3>Reproducibility / observed behavior</h3>
+<p>No live repro needed — confirmed directly from the code. A repo-wide search for
+<code>BasePath</code>/<code>base-path</code>/<code>subpath</code>/<code>prefix</code> under
+<code>cmd/deck/</code> and <code>pkg/deck/</code> at the triage SHA turns up no configuration or flag related
+to a URL prefix — only unrelated GCS-prefix variables and TypeScript <code>Prefix</code> fields. Any subpath
+deployment will 404 on static assets and mis-navigate exactly as reported.</p>
+
+<h3>Probable cause</h3>
+<p>Deck's routing is entirely root-relative, and URL construction is inconsistent between layers:</p>
+<ul>
+<li><code>cmd/deck/main.go</code> registers every route on a single <code>http.NewServeMux()</code> using
+literal root-relative paths (e.g. <code>/static/</code>, <code>/prowjobs.js</code>, <code>/tide</code>,
+Spyglass routes) — nothing derives from configuration.</li>
+<li><code>cmd/deck/template/base.html</code> emits <em>absolute</em> asset and nav URLs
+(<code>/static/style.css</code>, <code>/pr</code>, <code>/tide</code>), while the inline data-fetch
+<code>&lt;script src&gt;</code> tags in <code>index.html</code>, <code>pr.html</code>, <code>tide.html</code>,
+<code>command-help.html</code>, and <code>plugins.html</code> happen to use <em>relative</em> paths (no
+leading slash). Under a subpath, the absolute paths break; only the accidentally-relative ones keep
+working.</li>
+<li>No central frontend URL-builder exists: <code>static/pr/pr.ts</code>, <code>static/common/rerun.ts</code>,
+<code>static/common/abort.ts</code>, <code>static/spyglass/spyglass.ts</code>, and
+<code>static/prow/prow.ts</code> each construct URLs independently, several via
+<code>window.location.origin</code> plus a hardcoded absolute path.</li>
+</ul>
+
+<h3>Related code</h3>
+
+<div class="finding">
+<span class="badge tag-related-code">related-code</span>
+<div><strong>Deck mux route registration</strong></div>
+<div class="where"><code>cmd/deck/main.go:314-704</code></div>
+<pre><code>mux.Handle("/static/", http.StripPrefix("/static", staticHandlerFromDir(o.staticFilesLocation))) // main.go:316
+mux.HandleFunc("/", ...)                                                                          // main.go:435
+mux.Handle("/prowjobs.js", ...)                                                                   // main.go:455</code></pre>
+</div>
+
+<div class="finding">
+<span class="badge tag-related-code">related-code</span>
+<div><strong>Absolute asset/nav paths in base template</strong></div>
+<div class="where"><code>cmd/deck/template/base.html:30-65</code></div>
+<pre><code>href="/static/style.css" ... href="/pr" ... href="/tide"</code></pre>
+</div>
+
+<h3>Related issues / PRs</h3>
+
+<div class="finding">
+<span class="badge tag-related-pr">related-pr</span>
+<div><strong><a href="https://github.com/kubernetes-sigs/prow/pull/576">PR #576 — deck: add base path plumbing and helper APIs</a></strong></div>
+<p>Near-complete candidate fix by tsj-30: adds a <code>--base-path</code> flag, a new
+<code>cmd/deck/basepath.go</code> (mux-wrapping middleware with <code>normalizeBasePath</code>,
+<code>stripBasePath</code>, <code>absolutePath</code>), template <code>deckPath</code>/<code>deckBasePath</code>
+exposure via <code>window.prowBasePath</code>, and frontend helpers in
+<code>cmd/deck/static/common/urls.ts</code>.</p>
+<p><strong>Currently stalled:</strong> CI has been red (<code>pull-prow-integration</code>,
+<code>pull-prow-unit-test</code>, <code>pull-prow-unit-test-race-detector-nonblocking</code>,
+<code>pull-prow-verify-lint</code> — all FAILURE) since the author's last push on 2026-04-08, with no
+activity since besides an automated stale-bot comment on 2026-07-08. The maintainer (petr-muller) posted
+review feedback and <code>/hold cancel</code> on 2026-01-24; the author acknowledged all of it on 2026-02-01
+— including a promise to add unit tests for <code>stripBasePath</code>/<code>normalizeBasePath</code> and to
+narrow <code>absolutePath</code>'s receiver to a custom <code>basePath</code> string type — but neither
+change is present in the current diff (no <code>basepath_test.go</code> exists).</p>
+</div>
+
+<h2>What I checked</h2>
+<ul>
+<li>Searched <code>cmd/deck/</code> and <code>pkg/deck/</code> for existing base-path/prefix/subpath config — none found.</li>
+<li>Searched <code>*_test.go</code> under <code>cmd/deck</code> for base-path/subpath/URL-prefix coverage, before and after PR #576 — none found; PR #576's diff has no <code>basepath_test.go</code> despite it being requested and agreed to in review.</li>
+<li>Reviewed PR #576's full review/comment history and its <code>statusCheckRollup</code> (all failing checks dated 2026-04-08, matching the last commit).</li>
+<li>Confirmed canonical repo is <code>kubernetes-sigs/prow</code> (<code>upstream</code> remote); the local <code>origin</code> is <code>petr-muller/prow</code>.</li>
+</ul>
+
+<h2>Recommended next steps</h2>
+<ul>
+<li>Re-review PR #576's current head commit — CI has been red for ~3.5 months since 2026-04-08; confirm whether the failures are unchanged or new.</li>
+<li>Confirm whether the unit tests for <code>stripBasePath</code>/<code>normalizeBasePath</code> and the <code>basePath</code> custom-type refactor (agreed to by tsj-30 on 2026-02-01) were ever pushed; current diff suggests not.</li>
+<li>Ping @tsj-30 on PR #576 to check if they're still working it given the multi-month gap, or offer to take over/close if abandoned.</li>
+<li>Do not open separate good-first-issue/help-wanted work on #376 itself while PR #576 is active — its disposition is tied to the PR.</li>
+</ul>
+
+<h2>Open questions</h2>
+<ul>
+<li>"Are you still planning to continue with this, @tsj-30? It's been a few months since the last update and CI is currently failing."</li>
+<li>"Were the CI failures from April ever looked at, or is this still where things left off?"</li>
+</ul>
+
+</body>
+</html>

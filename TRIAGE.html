@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#482</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>Explore GitHub's Improved Search API</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/issues/482">kubernetes-sigs/prow#482</a> · main_sha <code>3617afe983fa</code> · state <code>open</code> · labels <code>kind/feature, area/tide, lifecycle/stale</code> · triaged_at <code>2026-10-28T00:47:58Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: accepted</span></div>
+<details><summary>Full metadata</summary><pre><code>issue: kubernetes-sigs/prow#482
+title: &quot;Explore GitHub&#x27;s Improved Search API&quot;
+state: open
+labels: kind/feature, area/tide, lifecycle/stale
+main_sha: 3617afe983fa4df61a494fc2a60300367372de3a
+triaged_at: 2026-10-28T00:47:58Z
+verdict: accepted
+advice:
+  advised_at: 2026-10-28T01:20:54Z
+  based_on_triaged_at: 2026-10-28T00:47:58Z</code></pre></details>
+<h2>Verdict</h2>
+<p><strong>Accepted.</strong> This is a legitimate exploratory feature request for Prow's Tide and GitHub search clients. Keep it open while the assigned investigator narrows it to a concrete Tide query or a measured API-call reduction opportunity. A future implementation is tentatively Level 3 (large): it affects merge-candidate search and has unresolved GitHub query semantics and result-limit constraints.</p>
+<h2>Resolution</h2>
+<p>Not resolved; the issue remains open.</p>
+<h2>What the issue reports</h2>
+<ul>
+<li>GitHub added Boolean and nested issue-search expressions and the issue asks whether Prow can benefit.
+</li>
+<li>The main areas named are Tide query construction and several other Prow GraphQL/REST search callers.
+</li>
+<li>The suggested directions are more expressive Tide configuration or combining searches to make fewer API requests.
+</li>
+<li>No representative query, expected user workflow, or success measure is specified.
+</li></ul>
+<h2>Re-triage recommended</h2>
+<p>Not assessed by <code>/triage:refresh</code>.</p>
+<h2>Findings</h2>
+<h3><span class="tag c-amber">cause</span>Tide has no general nested Boolean configuration</h3>
+<ul>
+<li>detail: <code>TideQuery</code> builds a flat set of qualifiers, with comma-separated alternatives for labels. It cannot express arbitrary nested Boolean groups. The REST search wrapper also does not opt into advanced search. No defect is reported; this is an exploratory feature gap.
+</li>
+<li>evidence: <code>pkg/config/tide.go:660-758</code>; <code>pkg/github/client.go:3905-3928</code>. GitHub's <a href="https://docs.github.com/en/rest/search/search?apiVersion=2022-11-28">REST search API</a> documents <code>advanced_search=true</code> as the opt-in. GitHub's <a href="https://docs.github.com/en/graphql/overview/changelog/2025">GraphQL schema changelog</a> scheduled removal of <code>SearchType.ISSUE_ADVANCED</code> effective 2025-11-04; verify current <code>ISSUE</code> behavior before relying on advanced syntax.
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>Tide query configuration and generation</h3>
+<ul>
+<li>where: <code>pkg/config/tide.go:660-676,730-757</code>
+</li>
+<li>excerpt:<pre><code>type TideQuery struct {
+	Author string `json:&quot;author,omitempty&quot;`
+
+	Labels        []string `json:&quot;labels,omitempty&quot;`
+	MissingLabels []string `json:&quot;missingLabels,omitempty&quot;`
+
+	ExcludedBranches []string `json:&quot;excludedBranches,omitempty&quot;`
+	IncludedBranches []string `json:&quot;includedBranches,omitempty&quot;`
+
+	Milestone string `json:&quot;milestone,omitempty&quot;`
+
+	ReviewApprovedRequired bool `json:&quot;reviewApprovedRequired,omitempty&quot;`
+
+	Orgs          []string `json:&quot;orgs,omitempty&quot;`
+	Repos         []string `json:&quot;repos,omitempty&quot;`
+	ExcludedRepos []string `json:&quot;excludedRepos,omitempty&quot;`
+}
+
+queryString := []string{&quot;is:pr&quot;, &quot;state:open&quot;, &quot;archived:false&quot;}
+for _, l := range tq.Labels {
+	var orOperands []string
+	for alt := range strings.SplitSeq(l, &quot;,&quot;) {
+		orOperands = append(orOperands, fmt.Sprintf(&quot;\&quot;%s\&quot;&quot;, alt))
+	}
+	queryString = append(queryString, fmt.Sprintf(&quot;label:%s&quot;, strings.Join(orOperands, &quot;,&quot;)))
+}
+return orgScopedIdentifiers, strings.Join(queryString, &quot; &quot;)</code></pre>
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>Tide runs separate GraphQL searches</h3>
+<ul>
+<li>where: <code>pkg/tide/github.go:116-130</code>; <code>pkg/tide/tide.go:2180-2191</code>
+</li>
+<li>excerpt:<pre><code>for i, query := range gi.cfg().Tide.Queries {
+	var queries map[string]string
+	if gi.usesGitHubAppsAuth {
+		queries = query.OrgQueries()
+	} else {
+		queries = map[string]string{&quot;&quot;: query.Query()}
+	}
+
+	for org, q := range queries {
+		org, q, i := org, q, i
+		g.Go(func() error {
+			results, err := gi.search(gi.ghc.QueryWithGitHubAppsSupport, gi.logger, q, time.Time{}, time.Now(), org)
+
+} `graphql:&quot;search(type: ISSUE, first: $searchPageSize, after: $searchCursor, query: $query)&quot;`</code></pre>
+</li>
+<li>detail: Results are unioned and deduplicated. GitHub's 1,000-result search cap makes batching a correctness concern. Tests cover paging and resource-limit handling, but not Boolean grouping or safe batching.
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>REST search wrapper omits advanced-search options</h3>
+<ul>
+<li>where: <code>pkg/github/client.go:3905-3928</code>
+</li>
+<li>excerpt:<pre><code>values := url.Values{
+	&quot;per_page&quot;: []string{&quot;100&quot;},
+	&quot;q&quot;:        []string{query},
+}
+
+err := c.readPaginatedResultsWithValues(
+	&quot;/search/issues&quot;,
+	values,
+	acceptNone,
+	org,</code></pre>
+</li>
+<li>detail: The direct production caller found is generic-autobumper, which currently builds a flat query (<code>cmd/generic-autobumper/updater/updater.go:70</code>). Other GraphQL search paths include blockers, needs-rebase, and the PR status dashboard.
+</li></ul>
+<h3><span class="tag c-amber">cause</span>Semantic search is not suitable for merge eligibility</h3>
+<ul>
+<li>detail: GitHub's semantic and hybrid issue-search API is intended for natural-language discovery and is rate limited to 10 requests per minute. Tide needs exact, repeatable predicate matching, so these modes should not drive merge decisions.
+</li>
+<li>evidence: <a href="https://github.blog/changelog/2026-04-02-improved-search-for-github-issues-is-now-generally-available/">GitHub's April 2026 announcement</a> and the <a href="https://docs.github.com/en/rest/search/search?apiVersion=2022-11-28">REST search API docs</a>.
+</li></ul>
+<h3><span class="tag c-blue">related-issue</span>Tide branch matching request</h3>
+<ul>
+<li>ref: kubernetes-sigs/prow#438
+</li>
+<li>relevance: Open request for regex matching of Tide branch names; a separate feature, not a duplicate.
+</li></ul>
+<h3><span class="tag c-blue">related-pr</span>OpenShift Tide configuration cleanup</h3>
+<ul>
+<li>ref: openshift/release#81290
+</li>
+<li>relevance: Open PR changes OpenShift deployment configuration; it does not change Prow's search clients or API behavior.
+</li></ul>
+<h2>Resolved</h2>
+<p>None.</p>
+<h2>Checked</h2>
+<ul>
+<li>Read the issue, labels, assignee, comments, and timeline cross-references. It is open and assigned to Amulyam24; it has an automatic <code>lifecycle/stale</code> label. The assignee volunteered to investigate and share findings in April 2026.
+</li>
+<li>Searched Go sources for GraphQL <code>search(type: ...)</code>, REST <code>/search/issues</code>, and <code>FindIssues</code> call sites. Reviewed Tide query generation, query execution, pagination/error handling, and current tests.
+</li>
+<li>Existing tests cover Tide query generation and org sharding (<code>pkg/config/tide_test.go:459-491</code>), blocker query construction (<code>pkg/tide/blockers/blockers_test.go:78</code>), Tide search paging/resource limits (<code>pkg/tide/github_test.go:45,966-1087</code>), and REST search request/pagination (<code>pkg/github/client_test.go:2380-2504</code>). They do not verify nested Boolean matching or batching completeness.
+</li>
+<li>Searched for duplicates with <code>search API</code>, <code>GitHub search</code>, and <code>improved search</code>; no duplicate found. Issue #438 is distinct. No Prow PR implementing this feature was found; openshift/release#81290 only changes deployment configuration.
+</li>
+<li>Reviewed GitHub's advanced-search API announcement, current REST search and filter documentation, GraphQL schema changelog, and semantic-search release announcement.
+</li></ul>
+<h2>Next steps</h2>
+<ul>
+<li>Ask assignee Amulyam24 to share the investigation and name one concrete Tide query that current config cannot express.
+</li>
+<li>Preserve the existing <code>TideQuery</code> behavior. If a concrete grouped rule exists, evaluate an additive typed Boolean-expression field and verify it against current GraphQL <code>ISSUE</code> behavior.
+</li>
+<li>If the goal is fewer API calls, measure real query counts and result sizes first; keep org sharding and the 1,000-result cap in view.
+</li>
+<li>Existing labels <code>kind/feature</code> and <code>area/tide</code> fit the request. No priority or newcomer label is supported by current evidence.
+</li></ul>
+<h2>Advice</h2>
+<ol>
+<li>Add <code>priority/awaiting-more-evidence</code>. The issue is a valid feature request, but it has no concrete Tide query or success measure yet. This label exists in the repository and is not currently applied.
+<pre><code>gh issue edit 482 --repo kubernetes-sigs/prow --add-label &quot;priority/awaiting-more-evidence&quot;</code></pre>
+</li>
+<li>If you want to resume the investigation, ping the assignee with a specific request and mark the issue fresh. The issue remains open and assigned to Amulyam24, but has had no new comments since the triage; <code>lifecycle/stale</code> is currently applied.
+<pre><code>gh issue comment 482 --repo kubernetes-sigs/prow --body &quot;&gt; *This was generated by AI during triage.*
+
+@Amulyam24, could you share an update with one Tide query that is awkward with the current TideQuery configuration, the Boolean expression you want to express, and whether the goal is simpler configuration, fewer API calls, or both? If exploring batching, please include representative result volumes given GitHub&#x27;s 1,000-result cap.
+
+/remove-lifecycle stale&quot;</code></pre>
+</li></ol>
+<p>The existing <code>kind/feature</code> and <code>area/tide</code> labels are appropriate and already applied. The issue has no milestone, and the triage provides no basis for assigning one. The open cross-referenced PR <code>openshift/release#81290</code> changes deployment configuration and does not resolve the Prow search work.</p>
+<h2>Open questions</h2>
+<ul>
+<li>Could you share one Tide query that is awkward with the current configuration, along with the Boolean expression you want it to represent?
+</li>
+<li>Is the primary goal simpler Tide configuration, fewer GitHub requests, or both?
+</li>
+<li>If the goal is batching, what result volumes must remain complete when a combined query approaches GitHub's 1,000-result cap?
+</li></ul>
+</main></body></html>

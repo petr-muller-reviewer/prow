@@ -31,18 +31,22 @@ ul, ol { padding-left:1.5rem; }
 details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
 </style></head><body><main>
 <h1>cherrypicker: support applying PRs as a single squashed diff instead of per-commit git am</h1>
-<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/issues/1011">kubernetes-sigs/prow#1011</a> · main_sha <code>985126490281</code> · state <code>open</code> · labels <code>sig/testing</code> · triaged_at <code>2026-10-15T23:34:25Z</code></div>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/issues/1011">kubernetes-sigs/prow#1011</a> · main_sha <code>985126490281</code> · state <code>open</code> · labels <code>sig/testing</code> · triaged_at <code>2026-10-28T00:38:13Z</code></div>
 <div class="badges"><span class="badge c-green">verdict: accepted</span></div>
 <details><summary>Full metadata</summary><pre><code>issue: kubernetes-sigs/prow#1011
 title: &quot;cherrypicker: support applying PRs as a single squashed diff instead of per-commit git am&quot;
 state: open
 labels: sig/testing
 main_sha: 9851264902811315625eb653081f981dfb499289
-triaged_at: 2026-10-15T23:34:25Z
+triaged_at: 2026-10-28T00:38:13Z
 verdict: accepted
 advice:
   advised_at: 2026-10-15T23:36:42Z
-  based_on_triaged_at: 2026-10-15T23:34:25Z</code></pre></details>
+  based_on_triaged_at: 2026-10-15T23:34:25Z
+refresh_log:
+  - at: 2026-10-28T00:38:13Z
+    since: 2026-10-15T23:34:25Z
+    summary: Recorded maintainer discussion and open implementation PR #1013; repository-scoped opt-in remains unresolved.</code></pre></details>
 <h2>Verdict</h2>
 <p><strong>accepted</strong> — This is an actionable feature request for Prow's cherrypicker external plugin. The per-commit <code>git am</code> behavior is confirmed in the current code, and the requested aggregate-diff mode could reduce conflict work. It needs repo-scoped configuration and decisions about source blobs and commit metadata before implementation.</p>
 <h2>What the issue reports</h2>
@@ -54,6 +58,14 @@ advice:
 <li>The author requests an optional squashed-diff mode that creates a single commit and preserves original authorship with co-author trailers.
 </li>
 <li>The issue cites kubernetes-sigs/kueue#17193 and PR #17200 as prior art for a manual cherry-pick script.
+</li></ul>
+<p>Since previous triage:</p>
+<ul>
+<li>On October 16, yindia said implementation changes were ready; mimowo supported fixing the issue and advised reaching out to Prow maintainers.
+</li>
+<li>On October 17, maintainer thc1006 agreed the mode should be opt-in and described expected squash authorship and single-commit message behavior.
+</li>
+<li>Open Prow PR #1013 proposes the feature; its server-wide flag does not match the previously identified repository-scoped selection requirement.
 </li></ul>
 <h2>Findings</h2>
 <h3><span class="tag c-amber">cause</span>The handler replays patch emails one commit at a time</h3>
@@ -119,11 +131,19 @@ path:      fmt.Sprintf(&quot;/repos/%s/%s/pulls/%d&quot;, org, repo, number),</c
 </li>
 <li>relevance: Open PR that applies each PR's net diff once in a manual script. It is useful prior art but does not implement Prow's external plugin behavior.
 </li></ul>
+<h3><span class="tag c-blue">related-pr</span>Prow squash-commits implementation</h3>
+<ul>
+<li>ref: kubernetes-sigs/prow#1013
+</li>
+<li>status: open; title: <code>feat: add squash-commits mode to cherrypicker</code>
+</li>
+<li>relevance: Implements a <code>--squash-commits</code> server flag, fetching the PR base and head, diffing from their merge-base, and applying the binary diff with <code>git apply --3way</code> before creating one signed-off commit. It proposes the PR author as commit author, preserves other authors as co-author trailers, and keeps the original message for a single-commit PR. This addresses the requested aggregate apply path and several metadata questions, but the flag is process-wide rather than repository-scoped, contrary to the previous triage's recorded requirement. The PR also notes that a rename on the target branch is not handled.
+</li></ul>
 <h2>Resolved</h2>
-<p>No open questions have been resolved through implementation or reporter follow-up. The maintainer clarified that the mode must be selectable per repository, not as one process-wide switch.</p>
+<p>No implementation has merged. The maintainer clarified that the mode should be opt-in and discussed expected commit authorship and message behavior; PR #1013 proposes those semantics. The earlier requirement that mode selection be per repository remains unresolved because the PR currently exposes a process-wide flag.</p>
 <h2>Checked</h2>
 <ul>
-<li>Read issue #1011, its comments, labels, and timeline. The issue is open, labeled <code>sig/testing</code>, and has an <code>/assign</code> comment; no Prow PR referencing #1011 surfaced in the search.
+<li>At initial triage, read issue #1011, its comments, labels, and timeline; no Prow PR referencing #1011 surfaced then. This refresh found the open cross-referenced PR #1013.
 </li>
 <li>Queried cross-references and searched Prow issues for <code>cherrypicker squash</code>, <code>cherrypicker git am</code>, and <code>cherrypicker diff</code>.
 </li>
@@ -137,13 +157,13 @@ path:      fmt.Sprintf(&quot;/repos/%s/%s/pulls/%d&quot;, org, repo, number),</c
 </li></ul>
 <h2>Next steps</h2>
 <ul>
-<li>Decide where repo-scoped opt-in configuration lives. Current <code>external_plugins</code> configuration only routes events; adding a setting requires a dedicated cherrypicker config/allowlist or additional config plumbing.
+<li>Review and track open PR #1013. Resolve the scope mismatch by deciding whether its server-wide <code>--squash-commits</code> flag meets the per-repository opt-in requirement or needs repository-level configuration.
 </li>
-<li>Define how the handler will make the diff's base blobs available for three-way apply, including for merged PRs and PRs whose base branch has advanced.
+<li>Review the proposed merge-base diff and <code>git apply --3way</code> path, including its stated limitation for files renamed on the target branch.
 </li>
-<li>Agree on the single commit's message, author, co-author trailers, and sign-off behavior.
+<li>Review the proposed commit author, co-author trailers, single-commit message, and sign-off behavior against maintainer expectations.
 </li>
-<li>Add coverage for single- and multi-commit PRs, conflicts and cleanup, per-repo mode selection, and unchanged behavior for unconfigured repos; update the cherrypicker docs.
+<li>Ensure coverage includes single- and multi-commit PRs, conflicts and cleanup, mode selection, and unchanged behavior when disabled; update the cherrypicker docs.
 </li>
 <li>Consider applying <code>kind/feature</code> and <code>area/plugins</code>; retain the current <code>sig/testing</code> label.
 </li></ul>
@@ -151,13 +171,13 @@ path:      fmt.Sprintf(&quot;/repos/%s/%s/pulls/%d&quot;, org, repo, number),</c
 <h3>Add the feature and area labels</h3>
 <p><code>kind/feature</code> and <code>area/plugins</code> exist in the repository and are not on the issue. Keep the existing <code>sig/testing</code> label.</p>
 <pre><code>gh issue edit 1011 --repo kubernetes-sigs/prow --add-label &quot;kind/feature,area/plugins&quot;</code></pre>
-<p>No additional comment or milestone is suggested now. The issue remains open and assigned to <code>yindia</code>; the existing next steps capture the design questions. No Prow PR is linked or in flight. Kueue PR #17200 remains open as external prior art.</p>
+<p>No additional comment or milestone is suggested now. The issue remains open and assigned to <code>yindia</code>. Prow PR #1013 is open and addresses the main apply-path request; review its process-wide flag against the repository-scoped requirement. Kueue PR #17200 remains open as external prior art.</p>
 <h2>Open questions</h2>
 <ul>
-<li>Could we agree on the source and format for the per-repository opt-in? The existing external-plugin routing config does not provide custom settings to this server.
+<li>Should squash mode be selectable per repository, and if so, where should that configuration live? The existing external-plugin routing config does not provide custom settings to this server, while PR #1013 uses a process-wide flag.
 </li>
-<li>Should the resulting commit include the PR author, each source commit author as <code>Co-authored-by</code>, and a <code>Signed-off-by</code> trailer?
+<li>Are PR #1013's proposed commit author, co-author trailers, single-commit message, and sign-off behavior acceptable?
 </li>
-<li>How should the diff's base blobs be fetched or retained so <code>git apply --3way</code> can use them on the target branch?
+<li>Does fetching the PR base and head and applying their merge-base diff provide the needed blobs and handle the relevant merged-PR cases? The PR documents target-branch renames as a limitation.
 </li></ul>
 </main></body></html>

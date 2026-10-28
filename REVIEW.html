@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#1013</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>feat: add squash-commits mode to cherrypicker</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1013">kubernetes-sigs/prow#1013</a> · base <code>main</code> · head_sha <code>399d1fd49b04</code> · reviewed_at <code>2026-10-20T12:27:33Z</code></div>
+<div class="badges"><span class="badge c-amber">verdict: needs-discussion</span><span class="badge c-amber">gate: hold</span></div>
+<details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#1013
+title: &quot;feat: add squash-commits mode to cherrypicker&quot;
+head_sha: 399d1fd49b041dbf9b6d62d231a807b66bf99f1d
+base: main
+reviewed_at: 2026-10-20T12:27:33Z
+verdict: needs-discussion
+gate:
+  decision: hold
+  gated_at: 2026-10-20T12:43:39Z
+  gated_head_sha: 399d1fd49b041dbf9b6d62d231a807b66bf99f1d
+  reviewed_head_sha: 399d1fd49b041dbf9b6d62d231a807b66bf99f1d
+refresh_log:
+  - at: 2026-10-20T12:27:33Z
+    old_sha: ce50c67292a53542103cf2b4318c3daf4c6a559f
+    new_sha: 399d1fd49b041dbf9b6d62d231a807b66bf99f1d
+    summary: &quot;Resolved the three implementation findings with targeted fixes and a trailer regression test.&quot;</code></pre></details>
+<h2>Gate</h2>
+<p>Decision: <strong>hold</strong> at <code>399d1fd49b041dbf9b6d62d231a807b66bf99f1d</code>.</p>
+<p>The previous implementation findings are addressed: metadata lookup failures stop the squash before applying the diff, co-author deduplication checks the final trailer block, and commit messages are passed through a file. The earlier nil-GitUser panic is also fixed. No outstanding implementation finding from the previous review remains.</p>
+<p>One independent compatibility risk remains. This change adds <code>Apply</code> and <code>CommitWithAuthor</code> to the exported <code>pkg/git/v2.Interactor</code> interface (<code>interactor.go:63-67</code>), and the exported <code>RepoClient</code> embeds <code>Interactor</code> (<code>client_factory.go:92-95</code>). Downstream packages with their own implementations of either interface can therefore stop compiling. The squash flag defaults to false, so existing runtime behavior is unchanged by default, but that does not avoid the source compatibility break. Hold until maintainers confirm this interface break is acceptable or adjust the API to preserve downstream implementations.</p>
+<h3>Findings status</h3>
+<ul>
+<li><strong>Addressed:</strong> metadata lookup failures, co-author trailer deduplication, long commit-message argument size, and nil author handling.
+</li>
+<li><strong>Open maintainer disposition:</strong> source compatibility for external <code>Interactor</code> and <code>RepoClient</code> implementations.
+</li></ul>
+<h3>Merge risk</h3>
+<ul>
+<li>The exported interface change may require downstream implementers to add two methods or prevent them from compiling against this release.
+</li>
+<li>The new squash mode is opt-in; the default remains the existing <code>git am</code> path.
+</li></ul>
+<h2>Verdict</h2>
+<p>Needs discussion: the three implementation findings from the previous review are resolved, but the source compatibility impact of extending the exported Interactor interface still needs maintainer disposition.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Adds a default-off --squash-commits option to the cherrypicker.
+</li>
+<li>Fetches a pull request's net diff and applies it to the target branch with three-way support.
+</li>
+<li>Creates one signed-off commit for the cherry-pick and tries to preserve the original authorship.
+</li>
+<li>Leaves the existing per-commit git am path in place when squash mode is disabled.
+</li></ul>
+<p>Since previous review:</p>
+<ul>
+<li>cmd/external-plugins/cherrypicker/server.go now aborts before applying the diff when either authorship metadata request fails, and reports those failures separately from conflicts.
+</li>
+<li>cmd/external-plugins/cherrypicker/server.go now deduplicates co-author trailers against only the final trailer block.
+</li>
+<li>pkg/git/v2/interactor.go writes the commit message to a temporary file and passes it with --file.
+</li></ul>
+<h2>Findings</h2>
+<p>No new findings in this refresh.</p>
+<h2>Resolved</h2>
+<h3><span class="tag c-amber">should-fix</span>Abort when commit metadata cannot be loaded</h3>
+<ul>
+<li>where: cmd/external-plugins/cherrypicker/server.go:813-827
+</li>
+<li>concern: If listing the pull request's commits fails, the code logs a warning and continues with an empty commit list and author. It can then create a title-only commit attributed to the bot, losing the original authorship.
+</li>
+<li>excerpt:<pre><code>commits, err := s.ghc.ListPullRequestCommits(org, repo, num)
+if err != nil {
+    logger.WithError(err).Warnf(&quot;failed to list commits for #%d; squashed commit will omit authorship&quot;, num)
+}
+...
+author := primaryAuthor(commits, prAuthorLogin)
+message := squashCommitMessage(title, commits, author)
+return r.CommitWithAuthor(message, author, true)</code></pre>
+</li>
+<li>resolution: The current code aborts when either ListPullRequestCommits or GetPullRequest fails, before applying the diff, and returns a metadata-specific response (server.go:697, 882-894).
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>Check existing co-author trailers in the trailer block</h3>
+<ul>
+<li>where: cmd/external-plugins/cherrypicker/server.go:920-925
+</li>
+<li>concern: For a multi-commit PR, commit bodies are copied into the base message. If one body mentions a co-author trailer, the substring check treats it as present and omits the actual trailer, so GitHub does not credit that co-author.
+</li>
+<li>excerpt:<pre><code>lower := strings.ToLower(base)
+...
+if !strings.Contains(lower, strings.ToLower(t)) {
+    add = append(add, t)
+}</code></pre>
+</li>
+<li>resolution: Deduplication now scans only the final trailer block, and a regression test covers a co-author trailer inside a bullet body (server.go:1009-1050; server_test.go:1841-1855).
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>Pass long commit messages without an argv limit</h3>
+<ul>
+<li>where: pkg/git/v2/interactor.go:439-449
+</li>
+<li>concern: The complete squashed message was passed as one --message argument. A sufficiently long pull request history could exceed Linux's per-argument limit and fail before Git ran.
+</li>
+<li>excerpt:<pre><code>args := []string{&quot;commit&quot;, &quot;--message&quot;, message}
+...
+if out, err := i.executor.Run(args...); err != nil {
+    return fmt.Errorf(&quot;error committing: %w. output: %s&quot;, err, string(out))
+}</code></pre>
+</li>
+<li>resolution: CommitWithAuthor now writes the message to a temporary file and invokes git commit with --file (interactor.go:472-489).
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>--squash-commits defaults to false and the existing path still uses git am.
+</li>
+<li>The squash path applies the diff with git apply --3way --index and adds the bot's sign-off.
+</li>
+<li>The author added a regression test for co-author trailers in commit bullet bodies. The metadata error and long-message paths have no new targeted test in this update. Tests were not run.
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>Can downstream users that implement pkg/git/v2.Interactor remain source-compatible, or should the new operations use an optional capability interface?
+</li></ul>
+</main></body></html>

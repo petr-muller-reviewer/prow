@@ -2,14 +2,27 @@
 issue: kubernetes-sigs/prow#693
 title: "Integrate with Netlify for /retest Prow command"
 state: open
-labels: kind/feature, area/plugins
+labels: kind/feature, lifecycle/stale, area/plugins
 main_sha: 53a81071b1f5a432c33362a42aa7bc9837f7ed14
-triaged_at: 2026-05-30T13:22:53Z
+triaged_at: 2026-10-28T00:33:22Z
 verdict: needs-discussion
+refresh_log:
+  - at: 2026-10-28T00:33:22Z
+    since: 2026-05-30T13:22:53Z
+    summary: "Recorded the stale label, confirmed PR #708 remains open, and added the related Kueue queued-deploy diagnostic."
 advice:
   advised_at: 2026-10-05T23:34:56Z
   based_on_triaged_at: 2026-05-30T13:22:53Z
 ---
+
+## What the issue reports
+
+The request is for an authorized Prow user to retry a failed or stuck Netlify deploy preview for pull requests in `kubernetes/website` or `kubernetes/contributor-site` using `/retest`.
+
+Since previous triage:
+- The issue remains open. `lifecycle/stale` was applied by `k8s-triage-robot` on 2026-10-19 at 12:41:17Z; there have been no new human comments or cross-references on issue #693 since 2026-05-30.
+- PR #708 remains open and was updated 2026-10-16. Its current implementation includes paginated deploy lookup, retries an errored preview with `/retest`, and offers `/netlify-rebuild` for an explicit retry. Its July discussion considered Kueue as another consumer and deferred Kueue-specific credential and configuration questions.
+- The PR discussion cross-referenced Kueue #15975 on 2026-09-22. That report found an `enqueued` preview could look missing while GitHub had no deploy status; Kueue #17049 merged on 2026-10-20 to report the Netlify deploy state after the bounded wait. This is adjacent diagnostic work, not a change to #693's retry request.
 
 ## Findings
 
@@ -60,6 +73,10 @@ advice:
 - ref: kubernetes/test-infra#35103
 - relevance: Source issue; contains BenTheElder's security analysis and lmktfy's original request. Went stale/rotten multiple times since Jul 2025. Caesarsage duplicated it here because GitHub doesn't allow cross-org issue transfers.
 
+### [related-issue] Kueue: queued preview appears missing
+- ref: kubernetes-sigs/kueue#15975
+- relevance: A September 2026 report found a deploy could remain `enqueued` while GitHub showed no deploy status; Kueue #17049 (merged 2026-10-20) now reports Netlify's deploy state after the bounded wait. This is adjacent diagnostic work and does not retry a deploy or validate the retry endpoint proposed by Prow PR #708.
+
 ## Checked
 - Netlify OpenAPI spec v2.53.0 — no retry/rebuild-preview endpoint documented
 - `pkg/plugins/trigger/generic-comment.go` — full /retest flow; TriggerGitHubWorkflows is the existing pattern
@@ -68,6 +85,8 @@ advice:
 - `pkg/pjutil/filter.go`, `pkg/pjutil/pjutil.go` — retest regex, ProwJob creation
 - Netlify community threads on build hooks, deploy previews, PAT scoping
 - Netlify docs: build hooks, deploy types, manage deploys
+- GitHub issue #693 state, labels, comments, and timeline; PR #708 current status, files, discussion, and diff (2026-10-28)
+- kubernetes-sigs/kueue#15975 and merged #17049 for the separate queued-deploy diagnostic
 
 ## Next steps
 - Validate whether `POST /api/v1/deploys/{deploy_id}/retry` actually preserves deploy preview identity and updates GitHub PR status. Caesarsage should provide a test result or curl transcript.

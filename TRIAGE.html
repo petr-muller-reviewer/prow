@@ -31,18 +31,32 @@ ul, ol { padding-left:1.5rem; }
 details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
 </style></head><body><main>
 <h1>Integrate with Netlify for /retest Prow command</h1>
-<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/issues/693">kubernetes-sigs/prow#693</a> · main_sha <code>53a81071b1f5</code> · state <code>open</code> · labels <code>kind/feature, area/plugins</code> · triaged_at <code>2026-05-30T13:22:53Z</code></div>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/issues/693">kubernetes-sigs/prow#693</a> · main_sha <code>53a81071b1f5</code> · state <code>open</code> · labels <code>kind/feature, lifecycle/stale, area/plugins</code> · triaged_at <code>2026-10-28T00:33:22Z</code></div>
 <div class="badges"><span class="badge c-amber">verdict: needs-discussion</span></div>
 <details><summary>Full metadata</summary><pre><code>issue: kubernetes-sigs/prow#693
 title: &quot;Integrate with Netlify for /retest Prow command&quot;
 state: open
-labels: kind/feature, area/plugins
+labels: kind/feature, lifecycle/stale, area/plugins
 main_sha: 53a81071b1f5a432c33362a42aa7bc9837f7ed14
-triaged_at: 2026-05-30T13:22:53Z
+triaged_at: 2026-10-28T00:33:22Z
 verdict: needs-discussion
+refresh_log:
+  - at: 2026-10-28T00:33:22Z
+    since: 2026-05-30T13:22:53Z
+    summary: &quot;Recorded the stale label, confirmed PR #708 remains open, and added the related Kueue queued-deploy diagnostic.&quot;
 advice:
   advised_at: 2026-10-05T23:34:56Z
   based_on_triaged_at: 2026-05-30T13:22:53Z</code></pre></details>
+<h2>What the issue reports</h2>
+<p>The request is for an authorized Prow user to retry a failed or stuck Netlify deploy preview for pull requests in <code>kubernetes/website</code> or <code>kubernetes/contributor-site</code> using <code>/retest</code>.</p>
+<p>Since previous triage:</p>
+<ul>
+<li>The issue remains open. <code>lifecycle/stale</code> was applied by <code>k8s-triage-robot</code> on 2026-10-19 at 12:41:17Z; there have been no new human comments or cross-references on issue #693 since 2026-05-30.
+</li>
+<li>PR #708 remains open and was updated 2026-10-16. Its current implementation includes paginated deploy lookup, retries an errored preview with <code>/retest</code>, and offers <code>/netlify-rebuild</code> for an explicit retry. Its July discussion considered Kueue as another consumer and deferred Kueue-specific credential and configuration questions.
+</li>
+<li>The PR discussion cross-referenced Kueue #15975 on 2026-09-22. That report found an <code>enqueued</code> preview could look missing while GitHub had no deploy status; Kueue #17049 merged on 2026-10-20 to report the Netlify deploy state after the bounded wait. This is adjacent diagnostic work, not a change to #693's retry request.
+</li></ul>
 <h2>Findings</h2>
 <h3><span class="tag c-blue">reproducibility</span>Feature gap, not a bug</h3>
 <ul>
@@ -104,6 +118,12 @@ var RetestRequiredRe = regexp.MustCompile(`(?m)^/retest-required\s*$`)</code></p
 </li>
 <li>relevance: Source issue; contains BenTheElder's security analysis and lmktfy's original request. Went stale/rotten multiple times since Jul 2025. Caesarsage duplicated it here because GitHub doesn't allow cross-org issue transfers.
 </li></ul>
+<h3><span class="tag c-blue">related-issue</span>Kueue: queued preview appears missing</h3>
+<ul>
+<li>ref: kubernetes-sigs/kueue#15975
+</li>
+<li>relevance: A September 2026 report found a deploy could remain <code>enqueued</code> while GitHub showed no deploy status; Kueue #17049 (merged 2026-10-20) now reports Netlify's deploy state after the bounded wait. This is adjacent diagnostic work and does not retry a deploy or validate the retry endpoint proposed by Prow PR #708.
+</li></ul>
 <h2>Checked</h2>
 <ul>
 <li>Netlify OpenAPI spec v2.53.0 — no retry/rebuild-preview endpoint documented
@@ -119,6 +139,10 @@ var RetestRequiredRe = regexp.MustCompile(`(?m)^/retest-required\s*$`)</code></p
 <li>Netlify community threads on build hooks, deploy previews, PAT scoping
 </li>
 <li>Netlify docs: build hooks, deploy types, manage deploys
+</li>
+<li>GitHub issue #693 state, labels, comments, and timeline; PR #708 current status, files, discussion, and diff (2026-10-28)
+</li>
+<li>kubernetes-sigs/kueue#15975 and merged #17049 for the separate queued-deploy diagnostic
 </li></ul>
 <h2>Next steps</h2>
 <ul>

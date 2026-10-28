@@ -1,265 +1,203 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<title>Review: kubernetes-sigs/prow#750</title>
-<style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; line-height: 1.6; color: #1a1a1a; background: #f8f9fa; padding: 2rem; }
-  .container { max-width: 52rem; margin: 0 auto; }
-  h1 { font-size: 1.4rem; margin-bottom: 0.5rem; }
-  h2 { font-size: 1.15rem; margin: 2rem 0 0.75rem; border-bottom: 2px solid #ddd; padding-bottom: 0.3rem; }
-  h3 { font-size: 1rem; margin: 1.25rem 0 0.4rem; }
-  a { color: #0366d6; text-decoration: none; }
-  a:hover { text-decoration: underline; }
-  code { font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; font-size: 0.88em; background: #eef0f3; padding: 0.15em 0.35em; border-radius: 3px; }
-  pre { font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; font-size: 0.85em; background: #f0f2f5; padding: 1rem; border-radius: 5px; overflow-x: auto; margin: 0.5rem 0 1rem; line-height: 1.45; }
-  ul { margin: 0.3rem 0 0.8rem 1.5rem; }
-  li { margin-bottom: 0.3rem; }
-  .meta { background: #fff; border: 1px solid #ddd; border-radius: 6px; padding: 1rem 1.25rem; margin-bottom: 1.5rem; }
-  .meta table { border-collapse: collapse; }
-  .meta td { padding: 0.15rem 0.75rem 0.15rem 0; vertical-align: top; }
-  .meta td:first-child { font-weight: 600; white-space: nowrap; color: #555; }
-  .verdict-box { background: #e8f5e9; border-left: 4px solid #43a047; padding: 0.9rem 1.25rem; border-radius: 0 6px 6px 0; margin-bottom: 1.5rem; }
-  .verdict-box .label { font-weight: 700; font-size: 1.05rem; }
-  .converging { background: #fff3e0; border: 1px solid #ffe0b2; border-radius: 6px; padding: 0.9rem 1.25rem; margin-bottom: 1.5rem; }
-  .converging h3 { margin-top: 0; color: #e65100; font-size: 0.95rem; }
-  .finding { background: #fff; border: 1px solid #ddd; border-radius: 6px; padding: 1rem 1.25rem; margin-bottom: 1rem; }
-  .finding.blocking { border-left: 4px solid #d32f2f; }
-  .finding.should-fix { border-left: 4px solid #f57c00; }
-  .finding.nit { border-left: 4px solid #90a4ae; }
-  .finding.question { border-left: 4px solid #1976d2; }
-  .severity { font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.2rem; }
-  .severity.blocking { color: #d32f2f; }
-  .severity.should-fix { color: #f57c00; }
-  .severity.nit { color: #607d8b; }
-  .severity.question { color: #1976d2; }
-  .finding h3 { margin-top: 0; }
-  .checked { background: #e8f5e9; border-radius: 6px; padding: 0.9rem 1.25rem; }
-  .questions { background: #e3f2fd; border-radius: 6px; padding: 0.9rem 1.25rem; }
-</style>
-</head>
-<body>
-<div class="container">
-
-<h1>Review: kubernetes-sigs/prow#750</h1>
-
-<div class="meta">
-<table>
-  <tr><td>PR</td><td><a href="https://github.com/kubernetes-sigs/prow/pull/750">kubernetes-sigs/prow#750</a></td></tr>
-  <tr><td>Title</td><td>feat: Add kube-api-linter and fix ProwJob API type annotations</td></tr>
-  <tr><td>Author</td><td>dongjiang1989</td></tr>
-  <tr><td>Head SHA</td><td><code>bec45be57ec57e9849c0144952eb0c987e518d2e</code></td></tr>
-  <tr><td>Base</td><td>main</td></tr>
-  <tr><td>Reviewed</td><td>2026-06-16T10:59:45Z</td></tr>
-  <tr><td>Size</td><td>+764 / -387 across 13 files</td></tr>
-  <tr><td>Refreshed</td><td>2026-06-16 (1 new commit since <code>ce1159b9</code>)</td></tr>
-</table>
-</div>
-
-<div class="verdict-box">
-  <div class="label">Verdict: Approve with Suggestions</div>
-  <p style="margin-top:0.4rem">
-    All three review perspectives (code quality, maintainability, deployment risk) approve this PR.
-    The KAL infrastructure is well-structured, the linter selection is conservative and thoughtful,
-    and deployment risk is low &mdash; no struct tags, validation rules, or runtime behavior changed.
-    Two converging concerns (CRD description information loss, missing <code>set -o errexit</code>)
-    are worth addressing but non-blocking.
-  </p>
-</div>
-
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#750</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>feat: Add kube-api-linter and fix ProwJob API type annotations</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/750">kubernetes-sigs/prow#750</a> · base <code>main</code> · head_sha <code>bec45be57ec5</code> · reviewed_at <code>2026-10-28T00:36:17Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span></div>
+<details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#750
+title: &quot;feat: Add kube-api-linter and fix ProwJob API type annotations&quot;
+head_sha: bec45be57ec57e9849c0144952eb0c987e518d2e
+base: main
+reviewed_at: 2026-10-28T00:36:17Z
+verdict: approve
+refresh_log:
+  - from: ce1159b9d156135d5c15054e86e800d5a7d37537
+    to: bec45be57ec57e9849c0144952eb0c987e518d2e
+    summary: &quot;Author added &#x27;make verify&#x27; commit: adds hack/tools/tmp/ to .gitignore, adds missing +optional on Refs.Auxiliary, lowercases CRD description for Auxiliary field, gofmt/go vet cleanup across unrelated files&quot;
+  - from: bec45be57ec57e9849c0144952eb0c987e518d2e
+    to: bec45be57ec57e9849c0144952eb0c987e518d2e
+    summary: &quot;No code changes; recorded /ok-to-test, stale lifecycle, and needs-rebase activity&quot;</code></pre></details>
 <h2>What this PR does</h2>
+<p>Integrates kube-api-linter (KAL) into CI. Adds <code>make lint-api</code>, <code>hack/make-rules/verify/kube-api-lint.sh</code>, KAL config at <code>hack/tools/.golangci-kal.yml</code>, and build script <code>hack/tools/build-kal</code>. Fixes <code>pkg/apis/prowjobs/v1/types.go</code> to comply with <code>commentstart</code> (lowercase JSON-tag-prefixed comments) and <code>optionalorrequired</code> (every field marked <code>+optional</code> or <code>+required</code>). Regenerates CRD YAML and documented config files. Low deployment risk — no struct tags, validation rules, or runtime behavior changed.</p>
+<p>Since previous review: the PR head is unchanged, so there are no code changes to assess.</p>
 <ul>
-  <li>Adds <a href="https://github.com/kubernetes-sigs/kube-api-linter">kube-api-linter</a> (KAL) as a custom golangci-lint plugin, built via <code>hack/tools/build-kal</code> and run via <code>hack/make-rules/verify/kube-api-lint.sh</code> against <code>./pkg/apis/...</code></li>
-  <li>Enables eight KAL rules: <code>commentstart</code>, <code>conflictingmarkers</code>, <code>duplicatemarkers</code>, <code>nofloats</code>, <code>optionalorrequired</code>, <code>uniquemarkers</code>, <code>nophase</code>, <code>nonullable</code> &mdash; with thoughtful TODOs for future rules</li>
-  <li>Fixes every field in <code>pkg/apis/prowjobs/v1/types.go</code> to have lowercase-JSON-tag-prefixed comments and <code>+optional</code>/<code>+required</code> markers</li>
-  <li>Replaces <code>+kubebuilder:validation:Required</code> with <code>+required</code></li>
-  <li>Regenerates CRD YAML and both documented config files to reflect the comment changes</li>
-  <li>Adds <code>make lint-api</code> target and integrates into <code>make verify</code>; adds cleanup dirs to <code>make clean</code></li>
-</ul>
-
-<div class="converging">
-  <h3>Converging Concerns (flagged by 2+ reviewers)</h3>
-  <ol>
-    <li><strong>CRD description information loss</strong> (Maintainability + Deployment Risk): <code>Spec</code> and <code>Status</code> field comments were reduced to tautologies like &ldquo;spec is the ProwJob spec&rdquo;. The <code>commentstart</code> rule only requires the first word to match the JSON tag &mdash; the descriptive content should be preserved.</li>
-    <li><strong><code>build-kal</code> missing <code>set -o errexit</code></strong> (Code Quality + Maintainability): Every other verify script in the repo includes all three shell options. Without it, the real build error is masked behind &ldquo;binary not found&rdquo;.</li>
-  </ol>
-</div>
-
+<li>On 2026-06-16, <code>dongjiang1989</code> commented <code>/ok-to-test</code>; <code>k8s-ci-robot</code> applied <code>ok-to-test</code>.
+</li>
+<li>On 2026-10-18, <code>k8s-triage-robot</code> marked the PR stale, and <code>kubernetes-prow[bot]</code> reported that it needs a rebase; <code>lifecycle/stale</code> and <code>needs-rebase</code> labels were applied.
+</li>
+<li>No new inline comments or submitted reviews were found. The PR remains open.
+</li></ul>
+<h2>Converging concerns</h2>
+<p>Two issues were independently flagged by multiple reviewers:</p>
+<ol>
+<li><strong>CRD description information loss</strong> (Maintainability + Deployment Risk): <code>Spec</code> and <code>Status</code> field comments reduced to tautologies. The <code>commentstart</code> rule only requires the first word to match — descriptive content can be preserved.
+</li>
+<li><strong><code>build-kal</code> missing <code>set -o errexit</code></strong> (Code Quality + Maintainability): Every other verify script includes it. Practical impact low but masks real build errors.
+</li></ol>
 <h2>Since previous review (2026-06-16)</h2>
-<div style="background:#fff;border:1px solid #ddd;border-radius:6px;padding:1rem 1.25rem;margin-bottom:1.5rem">
-  <p>Author pushed one commit (<strong>&ldquo;make verify&rdquo;</strong>, <code>bec45be57</code>):</p>
-  <ul>
-    <li>Added <code>hack/tools/tmp/</code> to <code>.gitignore</code> &mdash; the build output directory for the KAL binary</li>
-    <li>Added missing <code>// +optional</code> marker on <code>Refs.Auxiliary bool</code> &mdash; a field the original PR had missed</li>
-    <li>Lowercased &ldquo;Auxiliary&rdquo; &rarr; &ldquo;auxiliary&rdquo; in the CRD description for that field (commentstart compliance)</li>
-    <li><code>gofmt</code>/<code>go vet</code> alignment fixes in unrelated files (<code>markdown.go</code>, <code>storageartifact_test.go</code>, <code>tide_test.go</code>, etc.) required to pass <code>make verify</code></li>
-  </ul>
-  <p style="margin-top:0.6rem">None of the <strong>Should Fix</strong> findings from the original review were addressed.</p>
-</div>
-
+<p>Author pushed one commit ("make verify", <code>bec45be57</code>):</p>
+<ul>
+<li>Added <code>hack/tools/tmp/</code> to <code>.gitignore</code> — this is the build output dir for the KAL binary
+</li>
+<li>Added missing <code>// +optional</code> marker on <code>Refs.Auxiliary bool</code> (line 1388 in types.go) — this was a field the original PR missed
+</li>
+<li>Lowercased <code>Auxiliary</code> → <code>auxiliary</code> in CRD description for that field (commentary rule compliance)
+</li>
+<li><code>gofmt</code>/<code>go vet</code> alignment fixes in unrelated files (<code>markdown.go</code>, <code>storageartifact_test.go</code>, <code>tide_test.go</code>, etc.) — these appear to be required by <code>make verify</code> to pass
+</li></ul>
+<p>None of the [should-fix] findings from the original review were addressed. The open questions remain open.</p>
 <h2>Findings</h2>
-
-<div class="finding should-fix">
-  <div class="severity should-fix">Should Fix</div>
-  <h3>CRD descriptions gutted for ProwJobSpec, ProwJobStatus, ResultStoreConfig</h3>
-  <p><code>pkg/apis/prowjobs/v1/types.go:136-141</code></p>
-  <p>
-    To satisfy <code>commentstart</code>, several field-level comments were replaced with tautological stubs.
-    Users reading <code>kubectl explain prowjob.spec</code> now see <em>&ldquo;spec is the ProwJob spec&rdquo;</em> instead
-    of the previous description covering podspec, cloning, clusters, child jobs, and concurrency.
-    Similarly, <code>ProwJobStatus</code> lost <em>&ldquo;provides runtime metadata, such as when it finished, whether
-    it is running, etc.&rdquo;</em>, and <code>ResultStoreConfig</code> lost <em>&ldquo;for uploading results to&rdquo;</em>.
-  </p>
-  <p>
-    The <code>commentstart</code> rule only requires the comment to <strong>start</strong> with the JSON tag name
-    in lowercase &mdash; it doesn't require removing all content. Rewrite to keep the descriptive text:
-  </p>
-<pre>// spec configures the details of the prow job, including the podspec,
-// code to clone, the cluster it runs, child jobs, concurrency limitations, etc.
+<h3><span class="tag c-amber">should-fix</span>CRD descriptions gutted for ProwJobSpec, ProwJobStatus, ResultStoreConfig</h3>
+<ul>
+<li>where: <code>pkg/apis/prowjobs/v1/types.go:136-141</code>
+</li>
+<li>concern: To satisfy <code>commentstart</code>, several field comments were replaced with tautological stubs. Users reading <code>kubectl explain prowjob.spec</code> now see "spec is the ProwJob spec" instead of the previous description covering podspec, cloning, clusters, child jobs, concurrency. The <code>commentstart</code> rule only requires the comment to _start_ with the JSON tag name in lowercase — it doesn't require removing all content. Rewrite to keep descriptive text with lowercase first word. Flagged by Maintainability and Deployment Risk reviewers independently.
+</li>
+<li>excerpt:<pre><code>// spec is the ProwJob spec
 // +optional
-Spec ProwJobSpec `json:"spec,omitempty"`</pre>
-</div>
-
-<div class="finding should-fix">
-  <div class="severity should-fix">Should Fix</div>
-  <h3><code>build-kal</code> missing <code>set -o errexit</code></h3>
-  <p><code>hack/tools/build-kal:16-17</code></p>
-  <p>
-    The script has <code>set -o nounset</code> and <code>set -o pipefail</code> but omits
-    <code>set -o errexit</code>. Every other verify script in the repo includes all three. If the
-    <code>go tool</code> invocation fails, the real error is masked behind the &ldquo;binary not found&rdquo;
-    fallback message at line 30.
-  </p>
-<pre>set -o nounset
-set -o pipefail</pre>
-</div>
-
-<div class="finding should-fix">
-  <div class="severity should-fix">Should Fix</div>
-  <h3>Questionable <code>+optional</code> on embedded <code>time.Duration</code> in Duration wrapper</h3>
-  <p><code>pkg/apis/prowjobs/v1/types.go:464-467</code></p>
-  <p>
-    <code>Duration</code> is a wrapper type whose sole purpose is to hold a <code>time.Duration</code> value.
-    Marking the embedded field <code>+optional</code> is semantically wrong &mdash; it's the value itself, not
-    an optional sub-field. If KAL flags embedded fields in wrapper types, a nolint directive would be more
-    appropriate than an incorrect marker.
-  </p>
-<pre>type Duration struct {
+Spec ProwJobSpec `json:&quot;spec,omitempty&quot;`
+// status is the ProwJob status
+// +optional
+Status ProwJobStatus `json:&quot;status,omitempty&quot;`</code></pre>
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>build-kal missing set -o errexit</h3>
+<ul>
+<li>where: <code>hack/tools/build-kal:16-17</code>
+</li>
+<li>concern: Has <code>set -o nounset</code> and <code>set -o pipefail</code> but omits <code>set -o errexit</code>. Every other verify script in the repo includes all three. Without it, if <code>go tool ... golangci-lint custom</code> fails, the real error is masked behind "binary not found". Flagged by Code Quality and Maintainability reviewers independently.
+</li>
+<li>excerpt:<pre><code>set -o nounset
+set -o pipefail</code></pre>
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>Questionable +optional on embedded time.Duration in Duration wrapper</h3>
+<ul>
+<li>where: <code>pkg/apis/prowjobs/v1/types.go:464-467</code>
+</li>
+<li>concern: <code>Duration</code> is a wrapper whose sole purpose is to hold a <code>time.Duration</code> value. Marking the embedded field <code>+optional</code> is semantically wrong — it's the value itself, not an optional sub-field. If KAL flags embedded fields in wrapper types, a nolint directive would be more appropriate.
+</li>
+<li>excerpt:<pre><code>type Duration struct {
 	// +optional
 	time.Duration
-}</pre>
-</div>
-
-<div class="finding should-fix">
-  <div class="severity should-fix">Should Fix</div>
-  <h3>Dubious markers on <code>ProwJobList</code> embedded types</h3>
-  <p><code>pkg/apis/prowjobs/v1/types.go:1465-1473</code></p>
-  <p>
-    <code>TypeMeta</code> is marked <code>+optional</code>, <code>ListMeta</code> and <code>Items</code> are
-    marked <code>+required</code>. These are structural fields on a list type, not user-facing optional/required
-    API fields. Adding markers here to silence the linter misrepresents the API semantics. Consider a nolint
-    directive or excluding the list type from KAL scope.
-  </p>
-<pre>type ProwJobList struct {
+}</code></pre>
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>Dubious +optional/+required markers on ProwJobList embedded types</h3>
+<ul>
+<li>where: <code>pkg/apis/prowjobs/v1/types.go:1465-1473</code>
+</li>
+<li>concern: <code>TypeMeta</code> is marked <code>+optional</code> and <code>ListMeta</code>/<code>Items</code> are marked <code>+required</code>. These are structural fields on a list type, not user-facing optional/required API fields. Consider a nolint directive or excluding the list type from KAL scope.
+</li>
+<li>excerpt:<pre><code>type ProwJobList struct {
 	// +optional
-	metav1.TypeMeta `json:",inline"`
+	metav1.TypeMeta `json:&quot;,inline&quot;`
 	// +required
-	metav1.ListMeta `json:"metadata"`
+	metav1.ListMeta `json:&quot;metadata&quot;`
 	// +required
-	Items []ProwJob `json:"items"`
-}</pre>
-</div>
-
-<div class="finding nit">
-  <div class="severity nit">Nit</div>
-  <h3><code>.custom-gcl.yaml</code> version coupling with <code>go.mod</code></h3>
-  <p><code>hack/tools/.custom-gcl.yaml:1</code></p>
-  <p>
-    Pins <code>version: v2.12.2</code> for golangci-lint separately from the version in <code>go.mod</code>.
-    When golangci-lint is bumped in <code>go.mod</code>, this file must be updated in lockstep.
-    No comment warns about the coupling.
-  </p>
-</div>
-
-<div class="finding nit">
-  <div class="severity nit">Nit</div>
-  <h3><code>build-kal</code> duplicate &ldquo;Build complete&rdquo; message</h3>
-  <p><code>hack/tools/build-kal:29,33-34</code></p>
-  <p>
-    Lines 29 and 33-34 both print &ldquo;Build complete&rdquo; on success. The second one (with the
-    &ldquo;Run with:&rdquo; hint) is redundant.
-  </p>
-</div>
-
-<div class="finding nit">
-  <div class="severity nit">Nit</div>
-  <h3><code>build-kal</code> redundant <code>-modfile</code> flag</h3>
-  <p><code>hack/tools/build-kal:26</code></p>
-  <p>
-    The subshell already <code>cd</code>s into <code>hack/tools/</code> where <code>go.mod</code> lives.
-    The <code>-modfile "${SCRIPT_DIR}/go.mod"</code> flag points to the same directory and is redundant.
-  </p>
-<pre>(cd "${SCRIPT_DIR}" &amp;&amp; go tool -modfile "${SCRIPT_DIR}/go.mod" golangci-lint custom)</pre>
-</div>
-
-<div class="finding nit">
-  <div class="severity nit">Nit</div>
-  <h3>KAL pinned to a pseudo-version</h3>
-  <p><code>hack/tools/go.mod:21</code>, <code>hack/tools/.custom-gcl.yaml:6</code></p>
-  <p>
-    <code>sigs.k8s.io/kube-api-linter v0.0.0-20260206102632-39e3d06a2850</code> is a pre-release pseudo-version.
-    If a tagged release is available, it should be preferred for reproducibility and clearer version communication.
-  </p>
-</div>
-
-<div class="finding nit">
-  <div class="severity nit">Nit</div>
-  <h3>Trailing blank line in <code>kube-api-lint.sh</code></h3>
-  <p><code>hack/make-rules/verify/kube-api-lint.sh:37</code></p>
-  <p>File ends with an extra blank line after the last command.</p>
-</div>
-
-<div class="finding question">
-  <div class="severity question">Question</div>
-  <h3><code>ResultStoreConfig.ProjectID</code> marker mismatch</h3>
-  <p><code>pkg/apis/prowjobs/v1/types.go:509</code></p>
-  <p>
-    The prose says &ldquo;Required to upload results to ResultStore&rdquo; but the marker is
-    <code>// +optional</code>. Pre-existing condition, but this PR had the opportunity to clarify it.
-    Should this be <code>+required</code>?
-  </p>
-</div>
-
-<h2>Things I checked and was fine with</h2>
-<div class="checked">
+	Items []ProwJob `json:&quot;items&quot;`
+}</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">nit</span>.custom-gcl.yaml version coupling with go.mod</h3>
 <ul>
-  <li>KAL config structure and enabled/disabled linter selection &mdash; conservative, well-documented with good TODO comments</li>
-  <li>Makefile integration (<code>lint-api</code> target, <code>clean</code> additions) &mdash; correct</li>
-  <li><code>verify/all.sh</code> integration with env-var gate <code>VERIFY_KUBE_API_LINT</code> &mdash; follows existing pattern, can bypass via env var</li>
-  <li><code>+required</code> / <code>+optional</code> marker correctness on regular struct fields (ProwJobSpec, ProwJobStatus, Refs, Pull, etc.) &mdash; correct throughout</li>
-  <li><code>+kubebuilder:validation:Required</code> &rarr; <code>+required</code> migration &mdash; correct, produces identical CRD output</li>
-  <li>Regenerated CRD YAML and documented config YAMLs &mdash; consistent with types.go changes</li>
-  <li><code>plugin-config-documented.yaml</code> includes new <code>invalid_commit_msg</code> section &mdash; from prior main commits picked up during regeneration, not from this PR</li>
-  <li><code>go.sum</code> changes &mdash; only adds the KAL module entry</li>
-  <li><code>tools.go</code> blank import &mdash; follows existing pattern</li>
-  <li>No <code>json:</code> or <code>yaml:</code> struct tags modified &mdash; wire-format compatibility preserved</li>
-  <li>No validation rules, default values, or required/optional field semantics change in generated CRD</li>
-  <li>KAL dependency scoped to <code>hack/tools</code> module only &mdash; cannot affect main binary or runtime</li>
-  <li>Deployment risk is LOW &mdash; CRD update safe, no config migration, rollback trivial</li>
-</ul>
-</div>
-
-<h2>Open questions for the author</h2>
-<div class="questions">
+<li>where: <code>hack/tools/.custom-gcl.yaml:1</code>
+</li>
+<li>concern: Pins <code>version: v2.12.2</code> for golangci-lint separately from the version in <code>go.mod</code>. When golangci-lint is bumped in <code>go.mod</code>, this file must be updated in lockstep. No comment warns about the coupling.
+</li></ul>
+<h3><span class="tag c-gray">nit</span>build-kal duplicate "Build complete" message</h3>
 <ul>
-  <li>Why were descriptive comments stripped rather than reworded to start with the JSON tag? The <code>commentstart</code> rule only requires the first word to match &mdash; the rest of the description could have been preserved.</li>
-  <li>Is <code>+optional</code> on embedded <code>time.Duration</code> (in the <code>Duration</code> wrapper) actually required by KAL, or was it added preemptively? If KAL flags it, would a nolint directive be more appropriate?</li>
-  <li>Is <code>kube-api-linter</code> available as a tagged release? The pseudo-version makes it harder to track which version of the rules the codebase conforms to.</li>
-  <li>Should <code>ResultStoreConfig.ProjectID</code> be <code>+required</code> given the prose says it is required for ResultStore functionality?</li>
-</ul>
-</div>
-
-</div>
-</body>
-</html>
+<li>where: <code>hack/tools/build-kal:29,33-34</code>
+</li>
+<li>concern: Lines 29 and 33-34 both print "Build complete" on success. The second one (with the "Run with:" hint) is redundant.
+</li></ul>
+<h3><span class="tag c-gray">nit</span>build-kal redundant -modfile flag</h3>
+<ul>
+<li>where: <code>hack/tools/build-kal:26</code>
+</li>
+<li>concern: The subshell already <code>cd</code>s into <code>hack/tools/</code> where <code>go.mod</code> lives. The <code>-modfile &quot;${SCRIPT_DIR}/go.mod&quot;</code> flag is redundant.
+</li>
+<li>excerpt:<pre><code>(cd &quot;${SCRIPT_DIR}&quot; &amp;&amp; go tool -modfile &quot;${SCRIPT_DIR}/go.mod&quot; golangci-lint custom)</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">nit</span>KAL pinned to a pseudo-version</h3>
+<ul>
+<li>where: <code>hack/tools/go.mod:21</code>, <code>hack/tools/.custom-gcl.yaml:6</code>
+</li>
+<li>concern: <code>sigs.k8s.io/kube-api-linter v0.0.0-20260206102632-39e3d06a2850</code> is a pre-release pseudo-version. If a tagged release exists, prefer it.
+</li></ul>
+<h3><span class="tag c-gray">nit</span>Trailing blank line in kube-api-lint.sh</h3>
+<ul>
+<li>where: <code>hack/make-rules/verify/kube-api-lint.sh:37</code>
+</li>
+<li>concern: File ends with an extra blank line.
+</li></ul>
+<h3><span class="tag c-blue">question</span>ResultStoreConfig.ProjectID marker mismatch</h3>
+<ul>
+<li>where: <code>pkg/apis/prowjobs/v1/types.go:509</code>
+</li>
+<li>concern: The prose says "Required to upload results to ResultStore" but the marker is <code>// +optional</code>. Pre-existing condition, but this PR had the opportunity to clarify it.
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>KAL config structure and enabled/disabled linter selection — conservative, well-documented with good TODO comments
+</li>
+<li>Makefile integration (<code>lint-api</code> target, <code>clean</code> additions) — correct
+</li>
+<li><code>verify/all.sh</code> integration with env-var gate <code>VERIFY_KUBE_API_LINT</code> — follows existing pattern, can bypass via env var
+</li>
+<li><code>+required</code> / <code>+optional</code> marker correctness on regular struct fields (ProwJobSpec, ProwJobStatus, Refs, Pull, etc.) — correct throughout
+</li>
+<li><code>+kubebuilder:validation:Required</code> to <code>+required</code> migration — correct, produces identical CRD output
+</li>
+<li>Regenerated CRD YAML and documented config YAMLs — consistent with types.go changes
+</li>
+<li><code>plugin-config-documented.yaml</code> includes new <code>invalid_commit_msg</code> section — from prior main commits picked up during regeneration, not from this PR
+</li>
+<li><code>go.sum</code> changes — only adds the KAL module entry
+</li>
+<li><code>tools.go</code> blank import — follows existing pattern
+</li>
+<li>No <code>json:</code> or <code>yaml:</code> struct tags modified — wire-format compatibility preserved
+</li>
+<li>No validation rules, default values, or required/optional field semantics change in generated CRD
+</li>
+<li>KAL dependency scoped to <code>hack/tools</code> module only — cannot affect main binary or runtime
+</li>
+<li>Deployment risk is LOW — CRD update is safe, no config migration needed, rollback trivial
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>Why were descriptive comments stripped rather than reworded to start with the JSON tag? The <code>commentstart</code> rule only requires the first word to match — the rest of the description could have been preserved.
+</li>
+<li>Is <code>+optional</code> on embedded <code>time.Duration</code> (in the <code>Duration</code> wrapper) actually required by KAL, or was it added preemptively? If KAL flags it, would a nolint directive be more appropriate?
+</li>
+<li>Is <code>kube-api-linter</code> available as a tagged release? The pseudo-version makes it harder to track which version of the rules the codebase conforms to.
+</li>
+<li>Should <code>ResultStoreConfig.ProjectID</code> be <code>+required</code> given the prose says it is required for ResultStore functionality?
+</li></ul>
+</main></body></html>

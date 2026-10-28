@@ -3,17 +3,25 @@ pr: kubernetes-sigs/prow#750
 title: "feat: Add kube-api-linter and fix ProwJob API type annotations"
 head_sha: bec45be57ec57e9849c0144952eb0c987e518d2e
 base: main
-reviewed_at: 2026-06-16T10:59:45Z
+reviewed_at: 2026-10-28T00:36:17Z
 verdict: approve
 refresh_log:
   - from: ce1159b9d156135d5c15054e86e800d5a7d37537
     to: bec45be57ec57e9849c0144952eb0c987e518d2e
     summary: "Author added 'make verify' commit: adds hack/tools/tmp/ to .gitignore, adds missing +optional on Refs.Auxiliary, lowercases CRD description for Auxiliary field, gofmt/go vet cleanup across unrelated files"
+  - from: bec45be57ec57e9849c0144952eb0c987e518d2e
+    to: bec45be57ec57e9849c0144952eb0c987e518d2e
+    summary: "No code changes; recorded /ok-to-test, stale lifecycle, and needs-rebase activity"
 ---
 
-## Summary
+## What this PR does
 
 Integrates kube-api-linter (KAL) into CI. Adds `make lint-api`, `hack/make-rules/verify/kube-api-lint.sh`, KAL config at `hack/tools/.golangci-kal.yml`, and build script `hack/tools/build-kal`. Fixes `pkg/apis/prowjobs/v1/types.go` to comply with `commentstart` (lowercase JSON-tag-prefixed comments) and `optionalorrequired` (every field marked `+optional` or `+required`). Regenerates CRD YAML and documented config files. Low deployment risk — no struct tags, validation rules, or runtime behavior changed.
+
+Since previous review: the PR head is unchanged, so there are no code changes to assess.
+- On 2026-06-16, `dongjiang1989` commented `/ok-to-test`; `k8s-ci-robot` applied `ok-to-test`.
+- On 2026-10-18, `k8s-triage-robot` marked the PR stale, and `kubernetes-prow[bot]` reported that it needs a rebase; `lifecycle/stale` and `needs-rebase` labels were applied.
+- No new inline comments or submitted reviews were found. The PR remains open.
 
 ## Converging concerns
 

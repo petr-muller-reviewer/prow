@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#676</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>ci: add plugin for Go dependency license check</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/issues/676">kubernetes-sigs/prow#676</a> · main_sha <code>3617afe983fa</code> · state <code>open</code> · labels <code>lifecycle/stale</code> · triaged_at <code>2026-10-28T01:08:31Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: accepted</span></div>
+<details><summary>Full metadata</summary><pre><code>issue: kubernetes-sigs/prow#676
+title: &quot;ci: add plugin for Go dependency license check&quot;
+state: open
+labels: lifecycle/stale
+main_sha: 3617afe983fa4df61a494fc2a60300367372de3a
+triaged_at: 2026-10-28T01:08:31Z
+verdict: accepted
+legitimacy: LEGITIMATE
+effort: 3
+recommended_labels: [kind/feature, area/dependency]
+advice:
+  advised_at: 2026-10-28T01:15:18Z
+  based_on_triaged_at: 2026-10-28T01:08:31Z</code></pre></details>
+<h2>Initial validation</h2>
+<p><strong>Assessment</strong>: LEGITIMATE</p>
+<h3>Analysis</h3>
+<p>This is a feature request for automated Go dependency license policy checks, prompted by an incompatible dependency entering <code>kubernetes-sigs/external-dns</code>. It is a concrete CI problem and the requested Prow integration is related to this repository's plugins and ProwJob machinery. The issue itself acknowledges uncertainty about whether an in-tree plugin is the right home. Maintainer discussion agrees that a webhook plugin is not an obvious fit for the license analysis itself and suggests a CI job or a separately maintained external plugin.</p>
+<p>The issue is open and currently has only <code>lifecycle/stale</code>. There is no cross-reference to a Prow pull request or issue in its timeline. The issue links external-dns PR #5955 as the motivating dependency change and external-dns PR #6334 as a repository-specific CI implementation; the latter is merged. Those examples validate the underlying need but do not settle whether Prow should ship a general-purpose checker.</p>
+<p><strong>Issue Category</strong>: Feature Request</p>
+<p><strong>Repository Scope Check</strong>:</p>
+<ul>
+<li>Component mentioned: Hook plugins / CI integration
+</li>
+<li>Exists in this repo: Yes — Prow has internal and external webhook plugins, and ProwJob orchestration.
+</li>
+<li>Relevant code paths: <code>pkg/hook/server.go</code>; <code>site/content/en/docs/components/plugins/_index.md</code>; <code>site/content/en/docs/life-of-a-prow-job.md</code>
+</li></ul>
+<p><strong>Information Completeness</strong>:</p>
+<ul>
+<li>Sufficient detail provided: Partially. The desired check (Go module dependency license policy) and a concrete motivation are identified.
+</li>
+<li>Missing information: Whether the request is for a reusable first-party Prow feature or a job for specific repositories; policy ownership and configuration; treatment of unknown licenses, indirect/test/tool dependencies, and multiple <code>go.mod</code> files; and expected behavior when the check cannot classify a license.
+</li></ul>
+<h3>Recommendation</h3>
+<p>Keep open for maintainer direction on ownership and scope. The use case is legitimate, but the repository's existing source-header check is distinct from dependency-license analysis, and the proposed implementation location is unsettled. The merged external-dns workflow is a useful repository-specific precedent, not evidence that a generic Prow plugin should own license policy.</p>
+<p><strong>Suggested Action</strong>:</p>
+<ul>
+<li>Keep open and continue triage; ask whether the requested outcome is a reusable Prow integration or guidance/job configuration for individual repositories.
+</li></ul>
+<h2>Research findings</h2>
+<h3>How it works today</h3>
+<p>Prow plugins consume GitHub webhook events. The plugin documentation describes them as Hook sub-components, configurable per repository (<code>site/content/en/docs/components/plugins/_index.md:8-11</code>). Internal pull-request handlers are invoked from Hook's event path (<code>pkg/hook/events.go:164-193</code>); external plugins receive forwarded webhook payloads (<code>site/content/en/docs/components/plugins/_index.md:28-38</code>, <code>pkg/hook/server.go:223-249</code>). The docs call out long-running operations and isolating plugins that execute PR code as use cases for external plugins (<code>site/content/en/docs/components/plugins/_index.md:31-36</code>).</p>
+<p>ProwJobs are a separate CI execution path: trigger selects configured presubmit jobs, creates a ProwJob, and prow-controller-manager runs it as a pod (<code>site/content/en/docs/life-of-a-prow-job.md:53-57,87-91</code>). Prow's repository contains three Go modules (<code>go.mod</code>, <code>hack/tools/go.mod</code>, <code>site/go.mod</code>). Its current boilerplate verifier checks source-file copyright headers (<code>hack/boilerplate/verify_boilerplate.py:17</code>), and the dependency verifier regenerates/synchronizes Go dependencies (<code>hack/make-rules/verify/go-deps.sh:58-85</code>); neither checks dependency-license policy.</p>
+<h3>Root cause</h3>
+<p>The reported gap is in repositories' CI policy: changing a Go module dependency does not automatically evaluate that dependency's license against a project-owned allowlist. Prow's header boilerplate check covers a different concern, and the Prow repository has no dependency-license scanner or policy configuration. Confidence is high about the distinction and current code paths; the issue does not define whether it seeks a reusable Prow product feature or help with the external-dns use case. The reporter's external-dns PR #6334 is now merged and adds <code>.github/workflows/license-check.yml</code> plus <code>.licenserc.yaml</code>, so it addresses that repository's example.</p>
+<h3>Tests and docs</h3>
+<p>Coverage for dependency-license policy is missing in this repository. Existing verification covers source boilerplate and dependency-file consistency, not license identification or allowlist enforcement. Prow's plugin docs describe webhook integration and recommend isolating plugins that execute PR code; the ProwJob lifecycle docs describe running configured checks in pods. A new check would need coverage for allowed, disallowed, and unclassified licenses, as well as the intended module-file set (this checkout has root, <code>hack/tools</code>, and <code>site</code> modules).</p>
+<h3>Proposed approach</h3>
+<p><strong>Recommended</strong>: Repository-configured ProwJob check — run an established Go license scanner as a presubmit job, with the allowlist owned alongside each repository's CI policy. For Kubernetes-wide reuse, provide job configuration or a documented template in the CI configuration repository (<code>kubernetes/test-infra</code>), rather than placing dependency classification and policy inside Hook. This follows Prow's existing job execution model and keeps the check isolated with the PR checkout.</p>
+<ul>
+<li>Trade-offs: Each repository must opt in and maintain its policy; a shared template can reduce setup duplication but still needs clear handling of unknown licenses and tool maintenance.
+</li>
+<li>Backwards compatibility: Additive when enabled per repository; turning it on can intentionally fail PRs that introduce disallowed or unclassified licenses.
+</li>
+<li>Testing needed: Validate allowed/disallowed/unknown results, all intended Go module files, and that the ProwJob reports a failing check on violations.
+</li></ul>
+<p><strong>Alternative</strong>: External plugin — a separately deployed service could receive PR webhooks and coordinate a standardized check. This may suit centralized policy and reporting, but adds a service to operate and needs careful isolation because it examines untrusted PR content; Hook's docs explicitly identify PR-code isolation as an external-plugin use case.</p>
+<h2>Effort assessment</h2>
+<p><strong>Effort Level</strong>: 3 - Large</p>
+<p>The request is not yet a bounded implementation: maintainers need to choose whether Prow should own a reusable scanner integration or whether this belongs in repository-level ProwJob configuration, and define who owns the allowlist and unknown-license behavior.</p>
+<ul>
+<li><strong>Solution certainty</strong>: significant uncertainty — the need is clear, but the product boundary, policy model, and treatment of multiple module files are unresolved.
+</li>
+<li><strong>Blast radius</strong>: multiple components — a first-party integration could affect Hook/plugin configuration and external service or ProwJob execution; reusable CI guidance would also involve <code>kubernetes/test-infra</code>.
+</li>
+<li><strong>Expertise</strong>: Prow plugin and ProwJob architecture, license-scanner behavior, and safe handling of untrusted PR contents.
+</li>
+<li><strong>Scope estimate</strong>: Medium — design decision plus either a reusable CI job/template and documentation, or a service/plugin with configuration, tests, and deployment guidance.
+</li></ul>
+<p><strong>Recommended labels</strong>: <code>kind/feature</code> (new CI capability), <code>area/dependency</code> (Go dependency policy). No priority or contributor-level label is recommended until scope is agreed.</p>
+<p><strong>Guidance for contributors</strong>: Read the Hook/external-plugin docs and ProwJob lifecycle first. Get maintainer agreement on the execution boundary and policy inputs before implementing a scanner or adding a Prow dependency. If the scope is narrowed to a repository-level job using an already selected scanner and policy, reassess the effort level.</p>
+<h2>Briefing summary</h2>
+<p>Briefed the maintainer on the request and its status, the legitimate but unresolved product boundary, the absence of dependency-license checks in Prow's current verification, the ProwJob and external-plugin options, and the resulting level 3 effort assessment. Recommended keeping the request open until maintainers decide whether to build a reusable Prow integration; the external-dns example is already addressed by its merged repository workflow.</p>
+<p>Briefed maintainer on: 2026-10-28T01:08:31Z</p>
+<p>Key questions asked:</p>
+<ul>
+<li>No technical questions were asked; the maintainer chose to continue through each briefing checkpoint.
+</li></ul>
+<p>Maintainer decision: No implementation or disposition decision indicated.</p>
+<h2>Findings</h2>
+<ul>
+<li>[related-issue] <code>kubernetes-sigs/external-dns#5955</code> — cited by the reporter as an incompatible dependency merged without a license check; it is the motivating example, not a duplicate.
+</li>
+<li>[related-pr] <code>kubernetes-sigs/external-dns#6334</code> — the repository-specific dependency license check workflow linked by the reporter; merged, but it does not implement a Prow feature.
+</li>
+<li>[related-code] <code>site/content/en/docs/components/plugins/_index.md:8-38</code>, <code>pkg/hook/events.go:164-193</code>, <code>pkg/hook/server.go:223-249</code> — internal plugins handle Hook webhooks; external plugins receive forwarded payloads and are suited to isolated/slow work.
+</li>
+<li>[related-code] <code>site/content/en/docs/life-of-a-prow-job.md:53-57,87-91</code> — configured presubmit jobs execute as ProwJobs in pods, providing the closest existing CI mechanism.
+</li>
+<li>[cause] <code>hack/boilerplate/verify_boilerplate.py:17</code>, <code>hack/make-rules/verify/go-deps.sh:58-85</code> — current verification checks source headers and dependency-file consistency, not dependency licenses.
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>Read issue #676 and its discussion; confirmed the issue is open, labeled <code>lifecycle/stale</code>, and has no Prow issue/PR cross-references.
+</li>
+<li>Searched Prow issues for <code>go license</code> and <code>dependency license</code>; #777 from the first query is unrelated, and the second query returned only #676.
+</li>
+<li>Confirmed Prow's existing <code>verify-boilerplate</code>/header checking is separate from checking third-party dependency licenses.
+</li>
+<li>Confirmed the external-dns PR #6334 is merged and only changes that repository's <code>.github/workflows/license-check.yml</code> and <code>.licenserc.yaml</code>.
+</li></ul>
+<h2>Next steps</h2>
+<ul>
+<li>Ask maintainers to decide whether a reusable Prow implementation is desired; if so, define whether it should be a ProwJob pattern, external plugin, or in-tree plugin.
+</li>
+<li>If the desired outcome is only for external-dns, track the already merged external-dns workflow there instead of adding a generic Prow plugin.
+</li>
+<li>Consider <code>kind/feature</code> and <code>area/dependency</code> after scope is confirmed; remove <code>lifecycle/stale</code> only if active work resumes.
+</li></ul>
+<h2>Advice</h2>
+<p>No change since triage: issue #676 remains open with <code>lifecycle/stale</code>; it has no assignees or milestone, and there are no new comments or Prow cross-references. No Prow PR is in flight. The cited external-dns workflow remains merged.</p>
+<ol>
+<li><strong>Add the feature and area labels.</strong> These labels are available and are not currently applied; no priority or contributor-level label is justified while the ownership and scope remain unsettled.
+<pre><code>gh issue edit 676 --repo kubernetes-sigs/prow --add-label &quot;kind/feature,area/dependency&quot;</code></pre>
+</li>
+<li><strong>Ask whether the reusable request is still needed.</strong> The only concrete use case cited was external-dns, whose workflow has since merged. If a shared Prow capability is still wanted, the issue needs a target implementation home and an owner for license policy.
+<pre><code>gh issue comment 676 --repo kubernetes-sigs/prow --body &quot;$(cat &lt;&lt;&#x27;EOF&#x27;
+&gt; *This was generated by AI during triage.*
+
+The external-dns workflow you cited in #6334 has since merged. Does that resolve your motivating use case, or are you still requesting reusable license-check support for Kubernetes repositories? If shared support is still wanted, would you prefer a ProwJob template in kubernetes/test-infra or a centrally operated plugin, and who should own the allowlist and unknown-license policy?
+EOF
+)&quot;</code></pre> Leave <code>lifecycle/stale</code> in place unless discussion or active work resumes. No milestone or assignee is recommended until maintainers agree on scope.
+</li></ol>
+<h2>Open questions</h2>
+<ul>
+<li>Should Prow own a reusable license-check integration, or should this remain a repository-specific CI job/tooling concern?
+</li>
+<li>What license allowlist, policy owner, module/workspace coverage, and unknown-license failure behavior should the check use?
+</li>
+<li>If a shared implementation is wanted, should it be a ProwJob template in <code>kubernetes/test-infra</code> or a Prow external plugin with a separately operated service?
+</li></ul>
+</main></body></html>

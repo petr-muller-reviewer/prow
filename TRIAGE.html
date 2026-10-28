@@ -1,253 +1,166 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>Triage: kubernetes-sigs/prow#391</title>
-<style>
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-    line-height: 1.6;
-    color: #1a1a1a;
-    max-width: 860px;
-    margin: 2rem auto;
-    padding: 0 1.5rem;
-    background: #fff;
-  }
-  code, pre {
-    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
-    font-size: 0.9em;
-  }
-  pre {
-    background: #f6f8fa;
-    padding: 0.8rem 1rem;
-    border-radius: 6px;
-    overflow-x: auto;
-    border: 1px solid #e1e4e8;
-  }
-  code {
-    background: #f6f8fa;
-    padding: 0.1em 0.35em;
-    border-radius: 4px;
-  }
-  pre code { background: none; padding: 0; }
-  h1 { font-size: 1.5rem; margin-bottom: 0.2rem; }
-  h2 {
-    font-size: 1.15rem;
-    margin-top: 2.2rem;
-    border-bottom: 1px solid #e1e4e8;
-    padding-bottom: 0.3rem;
-  }
-  h3 { font-size: 1rem; margin-top: 1.4rem; margin-bottom: 0.4rem; }
-  .header-block {
-    background: #f6f8fa;
-    border: 1px solid #e1e4e8;
-    border-radius: 8px;
-    padding: 1rem 1.2rem;
-    margin-bottom: 1.5rem;
-    font-size: 0.92rem;
-  }
-  .header-block dl {
-    display: grid;
-    grid-template-columns: max-content 1fr;
-    gap: 0.25rem 1rem;
-    margin: 0;
-  }
-  .header-block dt { font-weight: 600; color: #555; }
-  .header-block dd { margin: 0; }
-  .verdict-box {
-    border-left: 4px solid #2c974b;
-    background: #f0fbf4;
-    padding: 0.9rem 1.2rem;
-    border-radius: 0 6px 6px 0;
-    margin-bottom: 1.5rem;
-  }
-  .verdict-box .verdict-label {
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-    color: #2c974b;
-    font-size: 0.85rem;
-  }
-  .tag {
-    display: inline-block;
-    font-size: 0.75rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.02em;
-    padding: 0.1em 0.5em;
-    border-radius: 4px;
-    background: #e1e4e8;
-    color: #444;
-    margin-right: 0.4em;
-  }
-  .tag.cause { background: #ffeef0; color: #b31d28; }
-  .tag.related-code { background: #ddf4ff; color: #0969da; }
-  .tag.related-issue { background: #fff8c5; color: #9a6700; }
-  .tag.reproducibility { background: #fbefff; color: #8250df; }
-  ul { padding-left: 1.4rem; }
-  li { margin-bottom: 0.3rem; }
-  a { color: #0969da; }
-  .finding { margin-bottom: 1.2rem; }
-  .finding .meta { font-size: 0.88rem; color: #444; }
-  .labels span {
-    display: inline-block;
-    background: #ddf4ff;
-    color: #0969da;
-    border-radius: 999px;
-    padding: 0.05em 0.7em;
-    font-size: 0.82rem;
-    margin-right: 0.3em;
-  }
-</style>
-</head>
-<body>
-
-<h1>Triage: assign: add configuration per repo so that only org users can assign issues</h1>
-
-<div class="header-block">
-  <dl>
-    <dt>Issue</dt>
-    <dd><a href="https://github.com/kubernetes-sigs/prow/issues/391">kubernetes-sigs/prow#391</a></dd>
-    <dt>State</dt>
-    <dd>open</dd>
-    <dt>Labels</dt>
-    <dd class="labels"><span>kind/feature</span><span>area/plugins</span><span>lifecycle/stale</span></dd>
-    <dt>Main SHA</dt>
-    <dd><code>e601a1ffafd7d8d3a781238a4c5f4233d6248f68</code></dd>
-    <dt>Triaged at</dt>
-    <dd>2026-07-27T00:31:54Z</dd>
-    <dt>Verdict</dt>
-    <dd><strong>accepted</strong></dd>
-  </dl>
-</div>
-
-<div class="verdict-box">
-  <div class="verdict-label">Verdict: Accepted</div>
-  <p style="margin:0.5rem 0 0 0;">
-    Legitimate, well-scoped feature request. The <code>assign</code> plugin has no configuration surface today
-    (<code>helpProvider</code> in <code>pkg/plugins/assign/assign.go</code> explicitly says so), and the requested
-    per-repo "only org members can <code>/assign</code>" gate closely mirrors two existing, established patterns
-    &mdash; <code>Trigger.OnlyOrgMembers</code> and <code>Approve</code>'s per-repo config/getter &mdash; and can reuse
-    <code>trigger.TrustedUser</code> rather than reimplementing trust logic. A later follow-up idea in the thread
-    (bot warning-comment for unvetted good-first-issue self-assigns) is materially larger and should be split into
-    its own issue rather than bundled here.
-  </p>
-</div>
-
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#391</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>assign: add configuration per repo so that only org users can assign issues</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/issues/391">kubernetes-sigs/prow#391</a> · main_sha <code>e601a1ffafd7</code> · state <code>open</code> · labels <code>kind/feature, area/plugins, lifecycle/rotten</code> · triaged_at <code>2026-10-28T00:38:36Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: accepted</span></div>
+<details><summary>Full metadata</summary><pre><code>issue: kubernetes-sigs/prow#391
+title: &quot;assign: add configuration per repo so that only org users can assign issues&quot;
+state: open
+labels: kind/feature, area/plugins, lifecycle/rotten
+main_sha: e601a1ffafd7d8d3a781238a4c5f4233d6248f68
+triaged_at: 2026-10-28T00:38:36Z
+verdict: accepted
+refresh_log:
+  - at: 2026-10-28T00:38:36Z
+    since: 2026-07-27T00:31:54Z
+    summary: &quot;Recorded the Oct 17 lifecycle rotation and reviewed open PR #755&#x27;s proposed implementation.&quot;</code></pre></details>
 <h2>What the issue reports</h2>
+<p>The issue asks for a repository-level setting that limits <code>/assign</code> on issues to members of the owning organization.</p>
+<p>Since previous triage:</p>
 <ul>
-  <li>During GSoC-style contributor drives, newcomers drive-by <code>/assign</code> themselves (or others) to issues that were never vetted as beginner-friendly, citing a concrete kubevirt example.</li>
-  <li>Author asks for a per-repo config on the <code>assign</code> plugin restricting who may run <code>/assign</code> to org members only, referencing the exact config struct and enforcement code location.</li>
-  <li>A maintainer raised whether this should default to on (behavior change) vs. be opt-in &mdash; never resolved in-thread.</li>
-  <li>A separate commenter asked about also blocking non-owners from *re*-assigning an already-assigned issue.</li>
-  <li>A later (2026-04-14) comment adds a second, distinct idea: have the bot post an informational reply (not a hard block) when a non-org-member self-assigns an issue lacking a <code>good-first-issue</code> label.</li>
-</ul>
-
-<h2>Analysis</h2>
-
-<h3>Probable cause / architectural gap</h3>
-<p>
-The plugin was never built with a config surface. <code>handle()</code> (<code>pkg/plugins/assign/assign.go:113-152</code>)
-unconditionally calls <code>h.add</code>/<code>h.remove</code> for any commenter; the only existing restriction is
-GitHub's own assignee-eligibility rule (must be an org member, collaborator, or prior commenter), which constrains
-who can be <em>assigned</em>, not who is allowed to <em>issue the command</em>.
-</p>
-
-<h3>Related code</h3>
-
-<div class="finding">
-  <span class="tag related-code">related-code</span> Config struct + per-org/repo getter pattern to follow
-  <div class="meta">where: <code>pkg/plugins/config.go:360-380</code> (<code>Approve</code>), <code>pkg/plugins/config.go:1029</code> (<code>ApproveFor</code>)</div>
-<pre><code>func (c *Configuration) ApproveFor(org, repo string) *Approve {
-	fullName := fmt.Sprintf("%s/%s", org, repo)
+<li>On 2026-10-17, k8s-triage-robot posted the lifecycle stale-cycle notice; <code>lifecycle/stale</code> was removed and <code>lifecycle/rotten</code> added. The issue remains open.
+</li>
+<li>PR #755 remains open (created 2026-06-14 and updated 2026-09-30). Its description claims <code>Fixes: #391</code>; the proposal adds per-org/repo <code>block</code> or <code>warn</code> behavior with optional exempt labels, checks the commenter's org membership for issue assignments including self-assignment, and leaves pull requests and <code>/unassign</code> unrestricted. No new cross-reference event appeared on the issue timeline since the prior triage.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-amber">cause</span>Plugin was never built with a config surface</h3>
+<ul>
+<li>detail: <code>helpProvider</code> explicitly states the plugin is unconfigurable, and <code>handle()</code> gates on nothing but GitHub's own assignee-eligibility rules (which restrict who can be <em>assigned</em>, not who can <em>do the assigning</em>).
+</li>
+<li>evidence: <code>pkg/plugins/assign/assign.go:41</code> — comment "The Config field is omitted because this plugin is not configurable."; <code>pkg/plugins/assign/assign.go:113-152</code> (<code>handle</code>) calls <code>h.add</code>/<code>h.remove</code> unconditionally for any commenter.
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>Config struct + per-org/repo getter pattern to follow</h3>
+<ul>
+<li>where: <code>pkg/plugins/config.go:360-380</code> (<code>Approve</code> struct), <code>pkg/plugins/config.go:1029</code> (<code>ApproveFor</code>)
+</li>
+<li>excerpt:<pre><code>func (c *Configuration) ApproveFor(org, repo string) *Approve {
+	fullName := fmt.Sprintf(&quot;%s/%s&quot;, org, repo)
 	a := func() *Approve {
 		// First search for repo config
 		for _, approve := range c.Approve {
 			if !sets.New[string](approve.Repos...).Has(fullName) {
 				continue
 			}
-			return &approve
+			return &amp;approve
 		}
-		// If you don't find anything, loop again looking for an org config
+		// If you don&#x27;t find anything, loop again looking for an org config
 		for _, approve := range c.Approve {
 			if !sets.New[string](approve.Repos...).Has(org) {
 				continue
 			}
-			return &approve
+			return &amp;approve
 		}</code></pre>
-</div>
-
-<div class="finding">
-  <span class="tag related-code">related-code</span> Existing per-repo OnlyOrgMembers analogue
-  <div class="meta">where: <code>pkg/plugins/config.go:554-582</code> (<code>Trigger</code> struct)</div>
-<pre><code>// OnlyOrgMembers requires PRs and/or /ok-to-test comments to come from org members.
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>Existing per-repo OnlyOrgMembers analogue</h3>
+<ul>
+<li>where: <code>pkg/plugins/config.go:554-582</code> (<code>Trigger</code> struct)
+</li>
+<li>excerpt:<pre><code>// OnlyOrgMembers requires PRs and/or /ok-to-test comments to come from org members.
 // By default, trigger also include repo collaborators.
-OnlyOrgMembers bool `json:"only_org_members,omitempty"`</code></pre>
-</div>
-
-<div class="finding">
-  <span class="tag related-code">related-code</span> Reusable org-membership/trust check
-  <div class="meta">where: <code>pkg/plugins/trigger/trigger.go:245</code></div>
-<pre><code>func TrustedUser(ghc trustedUserClient, onlyOrgMembers bool, trustedApps []string, trustedOrg, user, org, repo string) (TrustedUserResponse, error) {</code></pre>
-  <p class="meta">Implements exactly the "org member / collaborator / trusted app" check the assign gate needs &mdash;
-  avoids reimplementing trust logic. Reuse means importing <code>pkg/plugins/trigger</code> from
-  <code>pkg/plugins/assign</code>, or extracting the logic to a neutral location (open design question).</p>
-</div>
-
-<div class="finding">
-  <span class="tag related-code">related-code</span> githubClient interface needs IsMember
-  <div class="meta">where: <code>pkg/plugins/assign/assign.go:63-70</code></div>
-<pre><code>type githubClient interface {
+OnlyOrgMembers bool `json:&quot;only_org_members,omitempty&quot;`</code></pre>
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>Reusable org-membership/trust check</h3>
+<ul>
+<li>where: <code>pkg/plugins/trigger/trigger.go:245</code>
+</li>
+<li>excerpt:<pre><code>func TrustedUser(ghc trustedUserClient, onlyOrgMembers bool, trustedApps []string, trustedOrg, user, org, repo string) (TrustedUserResponse, error) {</code></pre>
+</li>
+<li>relevance: implements exactly the "is this user an org member / collaborator / from a trusted app" check the assign gate would need; avoids reimplementing trust logic. Reusing it means importing <code>pkg/plugins/trigger</code> from <code>pkg/plugins/assign</code>, or extracting the logic to a neutral shared location — an open design question.
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>githubClient interface needs IsMember</h3>
+<ul>
+<li>where: <code>pkg/plugins/assign/assign.go:63-70</code> (<code>githubClient</code> interface)
+</li>
+<li>excerpt:<pre><code>type githubClient interface {
 	AssignIssue(owner, repo string, number int, logins []string) error
 	UnassignIssue(owner, repo string, number int, logins []string) error
 	RequestReview(org, repo string, number int, logins []string) error
 	UnrequestReview(org, repo string, number int, logins []string) error
 	CreateComment(owner, repo string, number int, comment string) error
 }</code></pre>
-  <p class="meta">Needs an <code>IsMember(org, user string) (bool, error)</code> method to call into the trust check;
-  already implemented on the real GitHub client and used by other plugins (e.g. <code>trigger</code>).</p>
-</div>
-
-<div class="finding">
-  <span class="tag related-code">related-code</span> GenericCommentEvent lacks issue labels (scopes the follow-on idea out)
-  <div class="meta">where: <code>pkg/github/types.go:1323-1341</code></div>
-  <p class="meta">The 2026-04-14 follow-up idea (warn non-org-members self-assigning issues lacking
-  <code>good-first-issue</code>) needs the issue's labels, which aren't present on <code>GenericCommentEvent</code> &mdash;
-  would require an extra GitHub API call. Confirms that idea is materially larger and should not be bundled into
-  the base ask. Label constant already exists: <code>labels.GoodFirstIssue</code> (<code>pkg/labels/labels.go:34</code>).</p>
-</div>
-
-<h3>Related issues / PRs</h3>
-<div class="finding">
-  <span class="tag related-issue">related-issue</span>
-  <a href="https://github.com/kubevirt/kubevirt/issues/14085#issuecomment-2694071352">kubevirt/kubevirt#14085 (comment)</a>
-  &mdash; the concrete drive-by-assign incident that prompted this issue.
-</div>
-<p>No open PR currently references or closes this issue.</p>
-
-<h2>What I checked</h2>
+</li>
+<li>relevance: needs an <code>IsMember(org, user string) (bool, error)</code> method added to call into the trust check; already implemented on the real GitHub client and used elsewhere (e.g. <code>trigger</code>).
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>GenericCommentEvent lacks issue labels (scopes the follow-on idea out)</h3>
 <ul>
-  <li>No existing <code>Assign</code>-named field in <code>plugins.Configuration</code> (<code>pkg/plugins/config.go:52-100</code>).</li>
-  <li><code>pkg/plugins/assign/assign_test.go</code>'s <code>fakeClient</code> (line 28) has no <code>IsMember</code> mock yet &mdash; trust-check tests would need new scaffolding, mirroring <code>trigger_test.go</code>.</li>
-  <li>No open PR currently references or closes this issue (checked issue timeline/cross-references).</li>
-  <li>The default-on vs. opt-in question raised by <code>petr-muller</code> (2025-03-13) was never resolved in-thread.</li>
-  <li>Issue has cycled through <code>lifecycle/stale</code>/<code>rotten</code>/close/reopen several times (2025-06-18 through 2026-07-13), each time manually kept alive &mdash; still legitimate and actionable.</li>
-</ul>
-
-<h2>Recommended next steps</h2>
+<li>where: <code>pkg/github/types.go:1323-1341</code>
+</li>
+<li>relevance: the 2026-04-14 follow-up comment's idea (warn non-org-members self-assigning issues that lack a <code>good-first-issue</code> label) needs the issue's labels, which aren't on <code>GenericCommentEvent</code> — would require an extra GitHub API call. Confirms that idea is materially larger than the base ask and should not be bundled into it. Label constant already exists: <code>labels.GoodFirstIssue</code> (<code>pkg/labels/labels.go:34</code>).
+</li></ul>
+<h3><span class="tag c-blue">related-pr</span>Open implementation for issue #391</h3>
 <ul>
-  <li>Apply <code>help-wanted</code> (not <code>good-first-issue</code> &mdash; the trust-check-reuse-vs-duplicate decision and unresolved default-on/opt-in question push it a notch up).</li>
-  <li>Post a scoping comment confirming the base ask (opt-in <code>only_org_members</code>, reusing <code>trigger.TrustedUser</code>) is what's tracked here, and suggesting the good-first-issue-warning-comment idea move to its own issue.</li>
-  <li>Get maintainer/sig-contribex input on default-on vs. opt-in before a PR lands.</li>
-  <li>Remove <code>lifecycle/stale</code> given this triage constitutes fresh activity.</li>
-</ul>
-
+<li>ref: kubernetes-sigs/prow#755
+</li>
+<li>relevance: Open PR, last updated 2026-09-30, proposes per-org/repo restriction configuration with <code>block</code>/<code>warn</code> actions and label exemptions. It checks the commenter's membership directly with <code>IsMember</code>, including for self-assignment; pull requests and <code>/unassign</code> are excluded. This matches the requested configuration and membership gate, while choosing direct membership checking over <code>trigger.TrustedUser</code> and adding the action, exemption, and self-assignment decisions.
+</li></ul>
+<h3><span class="tag c-blue">related-issue</span>Referenced drive-by-assign example</h3>
+<ul>
+<li>ref: kubevirt/kubevirt#14085 (comment <a href="https://github.com/kubevirt/kubevirt/issues/14085#issuecomment-2694071352">https://github.com/kubevirt/kubevirt/issues/14085#issuecomment-2694071352</a>)
+</li>
+<li>relevance: the concrete incident that prompted this issue — GSoC participants self-assigning issues not vetted as beginner-friendly.
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>No existing <code>Assign</code>-named field in <code>plugins.Configuration</code> (<code>pkg/plugins/config.go:52-100</code>) — confirms the feature doesn't already exist under another name.
+</li>
+<li><code>pkg/plugins/assign/assign_test.go</code>'s <code>fakeClient</code> (line 28) has no <code>IsMember</code> mock yet — trust-check testing would need new scaffolding, mirrored on <code>trigger_test.go</code>'s approach.
+</li>
+<li>PR #755 is open and its description claims to fix #391; it was created before the prior triage and last updated 2026-09-30. The issue timeline contains no new cross-reference events since the prior triage.
+</li>
+<li>The default-on vs. opt-in question raised by <code>petr-muller</code> in a 2025-03-13 comment was never resolved in-thread.
+</li>
+<li>Issue has cycled through <code>lifecycle/stale</code>/<code>rotten</code>/close/reopen multiple times (2025-06-18 through 2026-07-13), each time kept alive by <code>dhiller</code> or <code>petr-muller</code> manually — still legitimate and actionable, not abandoned.
+</li></ul>
+<h2>Next steps</h2>
+<ul>
+<li>Apply <code>help-wanted</code> label (not <code>good-first-issue</code> — the trust-check design and remaining scope decisions make this more than a pure first issue).
+</li>
+<li>Review/track PR #755. Its per-repo config and org-membership gate match the core request; settle whether self-assignment, <code>warn</code> versus <code>block</code>, and exempt-label behavior belong in this issue before merging.
+</li>
+<li>Confirm the opt-in policy and whether direct <code>IsMember</code> is sufficient or the broader <code>trigger.TrustedUser</code> behavior is required.
+</li>
+<li>Compare PR #755's warning and exempt-label behavior with the 2026-04-14 good-first-issue-warning idea; decide whether that scope stays here or should be split.
+</li>
+<li>Remove <code>lifecycle/rotten</code> while maintainers are actively considering the open PR.
+</li></ul>
 <h2>Open questions</h2>
 <ul>
-  <li>Should <code>OnlyOrgMembers</code> for <code>/assign</code> default to on (behavior change, needs sig-contribex sign-off) or ship opt-in per repo first?</li>
-  <li>Should the gate apply to self-assignment (<code>/assign</code> with no args) or only to assigning others? The original report is about assigning others; a separate commenter also asked about blocking re-assignment by non-owners.</li>
-  <li>Should the trust-check reuse <code>trigger.TrustedUser</code> directly, or should the shared logic be extracted to a neutral location to avoid a new <code>assign</code> &rarr; <code>trigger</code> import edge?</li>
-</ul>
-
-</body>
-</html>
+<li>Should the restriction ship opt-in per repo, as PR #755 proposes, or default on (which changes behavior across repos and needs sig-contribex sign-off)?
+</li>
+<li>Should the gate apply to self-assignment as well as assigning others? PR #755 applies it to both; the original report focuses on assigning others, and <code>mohit-nagaraj</code> also asked about blocking reassignment by non-owners.
+</li>
+<li>Is direct <code>IsMember</code> sufficient, as PR #755 implements, or should the check reuse <code>trigger.TrustedUser</code> or shared trust logic?
+</li>
+<li>Should this issue include PR #755's <code>warn</code>/<code>block</code> choices and exempt-label behavior, including the good-first-issue warning idea?
+</li></ul>
+</main></body></html>

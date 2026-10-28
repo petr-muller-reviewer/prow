@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#1029</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>peribolos: support more org settings (repo creation by type, fork policy, commit signoff)</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/issues/1029">kubernetes-sigs/prow#1029</a> · main_sha <code>c78b4fb59529</code> · state <code>open</code> · labels <code></code> · triaged_at <code>2026-10-28T00:45:59Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: accepted</span></div>
+<details><summary>Full metadata</summary><pre><code>issue: kubernetes-sigs/prow#1029
+title: &quot;peribolos: support more org settings (repo creation by type, fork policy, commit signoff)&quot;
+state: open
+labels: &quot;&quot;
+main_sha: c78b4fb59529c0abc6e1c75eb8ed3675f58ce99e
+triaged_at: 2026-10-28T00:45:59Z
+verdict: accepted
+legitimacy: LEGITIMATE
+effort: 2
+recommended_labels: [kind/feature, area/peribolos, help wanted]
+advice:
+  advised_at: 2026-10-28T01:01:37Z
+  based_on_triaged_at: 2026-10-28T00:45:59Z</code></pre></details>
+<h2>Initial validation</h2>
+<p><strong>Assessment</strong>: LEGITIMATE</p>
+<h3>Analysis</h3>
+<p>The author asks Peribolos to manage five GitHub organization settings through its declarative configuration: whether members can create public, private, or internal repositories; whether they can fork private organization repositories; and whether web-based commits require signoff. The issue gives the exact API setting names, explains the current workaround (<code>gh api</code>), and offers to contribute a PR. This is a specific, actionable feature request for a component maintained in this repository.</p>
+<p>The open issue #737 is about excluding repositories from team-repository permission reconciliation. It is also Peribolos-related but has a different behavior and configuration surface, so it is not a duplicate. The issue timeline had no cross-references, and a PR search for <code>1029</code> returned no result.</p>
+<p><strong>Issue Category</strong>: Feature Request</p>
+<p><strong>Repository Scope Check</strong>:</p>
+<ul>
+<li>Component mentioned: Peribolos
+</li>
+<li>Exists in this repo: Yes
+</li>
+<li>Relevant code paths: <code>pkg/config/org/org.go</code>, <code>pkg/github/types.go</code>, <code>cmd/peribolos/main.go</code>, <code>cmd/peribolos/main_test.go</code>, <code>site/content/en/docs/components/cli-tools/peribolos.md</code>
+</li></ul>
+<p><strong>Information Completeness</strong>:</p>
+<ul>
+<li>Sufficient detail provided: Yes
+</li>
+<li>Missing information: The author has not specified whether the YAML field names should match GitHub's API names exactly; the existing Peribolos convention uses those names, so this can be resolved consistently during implementation.
+</li></ul>
+<h3>Recommendation</h3>
+<p>Keep open and continue triage. The requested settings are organization-level fields on the GitHub organization API, and Peribolos already supports declaratively managing organization metadata. The requested work extends an existing capability rather than asking for general support or changes outside Prow.</p>
+<p><strong>Suggested Action</strong>:</p>
+<ul>
+<li>Keep open and continue triage.
+</li></ul>
+<h2>Research findings</h2>
+<h3>How it works today</h3>
+<p>Peribolos models organization settings as optional pointers in <code>org.Metadata</code> (<code>pkg/config/org/org.go:38-49</code>), while the GitHub API response/request type is <code>github.Organization</code> (<code>pkg/github/types.go:1216-1234</code>). <code>dumpOrgConfig</code> copies supported settings from <code>GetOrg</code> into the YAML config (<code>cmd/peribolos/main.go:228-245</code>). During apply, <code>configureOrgMeta</code> compares each non-nil desired field and calls <code>EditOrg</code> only when something changed (<code>cmd/peribolos/main.go:1090-1120</code>); <code>EditOrg</code> sends a <code>PATCH /orgs/{org}</code> with the organization struct (<code>pkg/github/client.go:1660-1679</code>).</p>
+<p>Only <code>members_can_create_repositories</code> among the requested settings is represented in those paths today. The current Peribolos guide documents that field and says omitted YAML fields remain unmanaged (<code>site/content/en/docs/components/cli-tools/peribolos.md:25-33, 91</code>). GitHub documents the requested fields as inputs to its Update an organization endpoint. Internal repository creation is only available to orgs associated with GitHub Enterprise Cloud or GitHub Enterprise Server 2.20+, and web commit signoff applies to commits made through GitHub's web interface (<a href="https://docs.github.com/en/rest/orgs/orgs?apiVersion=2022-11-28#update-an-organization">GitHub REST API: Update an organization</a>).</p>
+<h3>Root cause</h3>
+<p>The remaining settings are absent from both the Peribolos YAML metadata struct and the GitHub organization model, so dump cannot emit them and apply cannot compare or send them. The lack is visible alongside the existing <code>MembersCanCreateRepositories</code> field in <code>pkg/config/org/org.go:45-49</code> and <code>pkg/github/types.go:1230-1234</code>. Confidence is high; this is a capability gap rather than a failure in an existing code path.</p>
+<h3>Tests and docs</h3>
+<p><strong>Partial</strong> — <code>TestConfigureOrgMeta</code> covers diffs for current organization settings, including the existing repository-creation bool (<code>cmd/peribolos/main_test.go:1882-2026</code>), and <code>TestDumpOrgConfig</code> verifies settings are copied into dumped config (<code>cmd/peribolos/main_test.go:2054-2149</code>). Neither covers the five requested API properties. The Peribolos guide has an organization settings example and unmanaged-field rule, but only lists the legacy repository-creation field (<code>site/content/en/docs/components/cli-tools/peribolos.md:24-34, 91</code>). GitHub's API supports these request fields; the internal-repository setting has the stated Enterprise eligibility constraint.</p>
+<h3>Proposed approach</h3>
+<p><strong>Recommended</strong>: Extend the existing organization metadata path — add the five optional YAML settings and corresponding GitHub organization API fields, then wire them through dump and apply. Preserve the current <code>members_can_create_repositories</code> behavior for backward compatibility. Since <code>EditOrg</code> sends the <code>github.Organization</code> value as its PATCH body, model the new API fields so absent response fields stay omitted rather than becoming an accidental <code>false</code>; that matters for GitHub versions or org plans where a setting may not be reported. Update the Peribolos example and unmanaged-field description.</p>
+<ul>
+<li>Trade-offs: Slightly more care is needed for optional API response fields than for a plain bool, particularly for internal repo creation; setting it to true is limited by GitHub's Enterprise eligibility.
+</li>
+<li>Backwards compatibility: Additive YAML fields remain unmanaged when omitted; retain the existing field and its behavior.
+</li>
+<li>Testing needed: Cover each setting's false/true reconciliation, no-change behavior, absent API values, dump output, and YAML serialization; document the GitHub web-only scope of commit signoff and internal-repo eligibility.
+</li></ul>
+<h2>Effort assessment</h2>
+<p><strong>Effort Level</strong>: 2 - Moderate</p>
+<p>The requested fields and the GitHub endpoint are identified, and Peribolos has an established dump/apply pattern. The change spans the YAML and API models, reconciliation and dump paths, tests, and documentation; the internal-repository setting also needs to preserve GitHub's Enterprise eligibility behavior.</p>
+<ul>
+<li><strong>Solution certainty</strong>: clear — each requested setting is an organization API field, with an existing metadata pattern to extend.
+</li>
+<li><strong>Blast radius</strong>: localized — Peribolos org metadata reconciliation and dump; existing optional-field behavior should remain intact.
+</li>
+<li><strong>Expertise</strong>: Go structs and JSON/YAML serialization, plus GitHub organization setting semantics.
+</li>
+<li><strong>Scope estimate</strong>: Medium — a few metadata/model/wiring changes, table-driven apply and dump coverage, and a docs update.
+</li></ul>
+<p><strong>Recommended labels</strong>: <code>kind/feature</code> (new supported capability), <code>area/peribolos</code> (component ownership), <code>help wanted</code> (moderate contributor-sized work).</p>
+<p><strong>Guidance for contributors</strong>: Start with <code>org.Metadata</code>, <code>github.Organization</code>, <code>dumpOrgConfig</code>, and <code>configureOrgMeta</code>. Preserve omission semantics for unconfigured fields and verify what GitHub returns for the internal-repository setting on organizations without Enterprise eligibility; document that commit signoff covers web-based commits.</p>
+<h2>Briefing summary</h2>
+<p>The briefing covered the issue's legitimacy as a Peribolos feature request, the missing YAML/API model fields that prevent dump and apply from handling the settings, and the existing metadata path to extend. The recommended approach keeps the five new settings optional, preserves the legacy repository-creation field, and tests dump/apply behavior and unsupported or absent API values. Effort was assessed as Level 2 (Moderate), with <code>kind/feature</code>, <code>area/peribolos</code>, and <code>help wanted</code> recommended.</p>
+<p>Briefed maintainer on: 2026-10-28 00:45 UTC</p>
+<p>Key questions asked:</p>
+<ul>
+<li>None; no substantive questions were raised during the briefing checkpoints.
+</li></ul>
+<p>Maintainer decision: No implementation or label decision was stated; recommendation is to keep the issue open and invite a PR.</p>
+<h2>Findings</h2>
+<ul>
+<li>[related-issue] #737 (open): adds a proposed <code>--ignore-repos</code> option for team-repository reconciliation; it concerns a separate Peribolos feature and is not a duplicate.
+</li>
+<li>[cause] The five requested properties are not modeled in Peribolos org metadata or <code>github.Organization</code>, so current dump/apply code cannot serialize or reconcile them.
+</li>
+<li>[related-code] <code>pkg/config/org/org.go:38-49</code> and <code>pkg/github/types.go:1216-1234</code> define the current org metadata/API types; <code>cmd/peribolos/main.go:228-245, 1090-1120</code> contains the dump and apply paths; <code>pkg/github/client.go:1660-1679</code> sends the org PATCH.
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>Read issue #1029 and its empty comment list; the issue is open and has no labels or assignee.
+</li>
+<li>Checked the issue timeline for cross-references; none were returned.
+</li>
+<li>Searched repository issues for Peribolos organization settings, <code>members_can_create</code>, and commit signoff. No matching prior request appeared beyond #1029; #737 is a distinct Peribolos request.
+</li>
+<li>Searched PRs for <code>1029</code>; no result was returned.
+</li>
+<li>Reviewed GitHub's Update an organization docs for the requested API fields; internal repo creation requires an Enterprise-associated organization, and web commit signoff is limited to commits made through GitHub's web interface.
+</li></ul>
+<h2>Next steps</h2>
+<ul>
+<li>Keep the issue open and invite a PR for the five settings through the metadata/API models, dump/apply paths, tests, and Peribolos guide.
+</li>
+<li>A maintainer can apply <code>kind/feature</code>, <code>area/peribolos</code>, and <code>help wanted</code> if desired.
+</li></ul>
+<h2>Advice</h2>
+<p>Current state is unchanged since triage: #1029 is open, unlabeled, unassigned, and has no milestone, comments, or cross-referenced PR/issues. The issue author offered to contribute a PR; no implementation is in flight in the issue timeline.</p>
+<ol>
+<li><strong>Add the recommended labels.</strong> The issue has no labels, and all three labels below exist in <code>kubernetes-sigs/prow</code>. <code>help wanted</code> fits the Level 2 effort; <code>good first issue</code> is not recommended.
+<pre><code>gh issue edit 1029 --repo kubernetes-sigs/prow --add-label &quot;kind/feature,area/peribolos,help wanted&quot;</code></pre>
+</li>
+<li><strong>Invite the offered contribution with implementation scope.</strong> This reiterates the triage guidance and highlights the API compatibility details.
+<pre><code>gh issue comment 1029 --repo kubernetes-sigs/prow --body &quot;Thanks for offering to contribute this. A PR adding the five settings through Peribolos org metadata, dump, and apply would be welcome. Please preserve the existing members_can_create_repositories setting and leave omitted fields unmanaged; cover the Enterprise restriction for internal repository creation and that commit signoff applies to GitHub web commits in tests and docs.&quot;</code></pre>
+</li></ol>
+<p>No milestone or project assignment is indicated yet: the request names no release target or urgency. There is no linked PR to review or link.</p>
+<h2>Open questions</h2>
+<ul>
+<li>Confirm implementation behavior when GitHub does not return an optional setting on an organization or GitHub Enterprise Server version that does not support it.
+</li></ul>
+</main></body></html>

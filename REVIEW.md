@@ -3,9 +3,19 @@ pr: kubernetes-sigs/prow#770
 title: "trigger: expose triggering comment ID and URL in JOB_SPEC"
 head_sha: 043dffcf0ea7a043e769daea76d1a2b39cee944f
 base: main
-reviewed_at: 2026-06-25T12:04:58Z
+reviewed_at: 2026-10-28T00:35:16Z
 verdict: approve
+refresh_log:
+  - old_sha: 043dffcf0ea7a043e769daea76d1a2b39cee944f
+    new_sha: 043dffcf0ea7a043e769daea76d1a2b39cee944f
+    summary: "No code changes; recorded the new lifecycle/stale bot comment."
 ---
+
+## What this PR does
+
+Since previous review:
+- No code changes: the PR head remains `043dffcf0ea7a043e769daea76d1a2b39cee944f`.
+- `k8s-triage-robot` marked the PR stale on 2026-10-18; there were no new inline comments or submitted reviews.
 
 ## Findings
 

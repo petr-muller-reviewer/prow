@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#1028</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>secretutil: censor the values inside JSON and INI secrets</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1028">kubernetes-sigs/prow#1028</a> · base <code>main</code> · head_sha <code>365526a1b148</code> · reviewed_at <code>2026-10-28T01:09:48Z</code></div>
+<div class="badges"><span class="badge c-red">verdict: request-changes</span><span class="badge c-red">gate: do-not-merge</span></div>
+<details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#1028
+title: &quot;secretutil: censor the values inside JSON and INI secrets&quot;
+head_sha: 365526a1b1483fb958bbcb2e74d9541c084ca79c
+base: main
+reviewed_at: 2026-10-28T01:09:48Z
+verdict: request-changes
+gate:
+  decision: do-not-merge
+  gated_at: 2026-10-28T01:15:07Z
+  gated_head_sha: 365526a1b1483fb958bbcb2e74d9541c084ca79c
+  reviewed_head_sha: 365526a1b1483fb958bbcb2e74d9541c084ca79c</code></pre></details>
+<h2>Gate</h2>
+<p>Do not merge: both previously confirmed blocking defects remain unchanged.</p>
+<p>PR #1028 is open at <code>365526a1b1483fb958bbcb2e74d9541c084ca79c</code>, the same head covered by the saved review; there are no intervening commits or code changes. Re-reading the current head confirms that extracted prefixes can suppress full-secret matches and opaque double-padded base64 credentials can register <code>=</code> for global censorship. Paginated GitHub review, inline-comment, and issue-comment reads found no substantive reviewer feedback or discussion changing those conclusions. Fix both blockers and add regression coverage before reconsidering merge; retain the original review verdict and treat the remaining suggestions as nonblocking.</p>
+<h3>Findings disposition</h3>
+<ul>
+<li><strong>Not addressed; blocks merge — REVIEW.md, preserve longer matches</strong> (<code>pkg/secretutil/censor.go:145-149</code>, <code>177-179</code>): extracted values still precede subsequent original secrets, JSON map traversal still supplies arbitrary registration order, and the unchanged replacer uses ordered non-overlapping matches. The demonstrated <code>abcdefghi</code> to <code>XXXdefghi</code> credential leak remains possible.
+</li>
+<li><strong>Not addressed; blocks merge — REVIEW.md, padded-token detection</strong> (<code>pkg/secretutil/censor.go:196</code>, <code>201-208</code>): any line containing <code>=</code> still passes INI detection. A token such as <code>YWJjZA==</code> still yields the extracted value <code>=</code>, which is registered under the unchanged zero minimum, altering unrelated log and artifact content.
+</li>
+<li><strong>Not addressed; nonblocking recommendation — REVIEW.md, complete JSON validation</strong> (<code>pkg/secretutil/censor.go:162-165</code>): Decoder.More() remains the trailing-input check. Replace it with complete-document validation and cover extra closing delimiters; this does not independently drive the gate verdict.
+</li>
+<li><strong>Not addressed; nonblocking recommendation — REVIEW.md, successful JSON without strings</strong> (<code>pkg/secretutil/censor.go:146-149</code>, <code>167</code>): a successful parse with no strings still returns nil and falls through to INI. Distinguish recognition from extraction results; this does not independently drive the gate verdict.
+</li>
+<li><strong>Not addressed; nonblocking recommendation — REVIEW.md, extraction documentation</strong> (<code>pkg/secretutil/censor.go:94-104</code>): Refresh's public comment still only describes refreshing secrets, and the PR still changes only implementation and tests. Document automatic extraction, its relationship to IniFilenames, and the minimum-length tradeoff.
+</li></ul>
+<h3>Independent merge risk</h3>
+<ul>
+<li><strong>API and configuration:</strong> the full PR diff adds private helpers and changes Refresh behavior; no exported signature, schema, flag, environment variable, or default-value declaration changes. No coordinated rollout, permissions change, or migration requirement was found. No additional compatibility-specific repository skill applies; this pass examined the code directly and incorporates the prior deployment review.
+</li>
+<li><strong>Behavior and blast radius:</strong> automatic extraction is unconditional for callers of ReloadingCensorer.Refresh/RefreshBytes, including the component secret agent, log formatter, and sidecar artifact censorship. Existing deployments using compatible structured secret content receive broader redaction without opting in; ordinary strings stored alongside credentials may be censored, and short patterns can alter serialized log metadata. The zero default minimum makes padded-token misclassification particularly disruptive. There is no new opt-in or operator-facing release note in the two-file PR diff.
+</li>
+<li><strong>Recovery:</strong> reverting restores previous behavior but cannot reconstruct redacted uploaded artifacts and also restores the earlier gap in field-level protection. Raising minimum_secret_length trades reduced incidental masking for leaving short credentials unprotected, so it does not substitute for fixing the blockers.
+</li></ul>
+<h3>Gating list</h3>
+<ol>
+<li>Fix precedence so extracted prefixes cannot expose longer secrets — <code>pkg/secretutil/censor.go:145-149</code>; source: REVIEW.md blocking finding, confirmed by Code Quality and local probes.
+</li>
+<li>Preserve opaque padded credentials instead of registering padding as INI values — <code>pkg/secretutil/censor.go:196</code>; source: REVIEW.md blocking finding, independently confirmed by Code Quality and Deployment Risk.
+</li></ol>
+<h2>Verdict</h2>
+<p>Request changes: prevent partial credential exposure and unintended redaction before merging.</p>
+<p>The shared implementation is a sensible place to fix field-level censorship, but two reproduced defects require changes: overlapping extracted patterns can expose credential suffixes, and padded base64 tokens can cause unrelated output to be redacted. Code Quality and Deployment Risk independently identified the latter; Code Quality and Maintainability also agreed that JSON validation needs clarification. Maintenance burden and deployment risk are both medium: no configuration migration or new permissions are required, but broader extraction immediately affects component logs and uploaded artifacts, including ordinary configuration values stored alongside credentials.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Extracts string values recursively from JSON objects and arrays.
+</li>
+<li>Extracts values from payloads whose lines resemble INI syntax.
+</li>
+<li>Registers extracted values alongside complete secrets in the shared reloading censor, covering sidecar and in-process callers.
+</li>
+<li>Applies existing trimming, base64 encoding, minimum-length, and boolean handling to extracted values.
+</li>
+<li>Adds public-behavior tests for JSON and INI field censorship and whole-blob fallback.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-red">blocking</span>Preserve longer secret matches when adding extracted values</h3>
+<ul>
+<li>where: <code>pkg/secretutil/censor.go:145-149</code>
+</li>
+<li>concern: CONFIRMED by code inspection and temporary probes: extracted values precede subsequent original secrets, and the replacer prioritizes registration order; Refresh with <code>{&quot;password&quot;:&quot;abc&quot;}</code> followed by <code>abcdefghi</code> produces <code>XXXdefghi</code>, exposing a previously protected suffix (P1). Overlapping values within a single JSON object are also registered in map iteration order: <code>secret-extra</code> can become <code>XXXXXX-extra</code>. Ensure shorter patterns cannot suppress complete matches, including original, extracted, and encoded patterns, and add regression coverage; Code Quality identified this blocker.
+</li>
+<li>excerpt:<pre><code>expanded = append(expanded, secret)
+if values := jsonStringValues(secret); values != nil {
+    expanded = append(expanded, values...)
+} else {
+    expanded = append(expanded, iniValues(secret)...)</code></pre>
+</li></ul>
+<h3><span class="tag c-red">blocking</span>Avoid interpreting base64 padding as an INI value</h3>
+<ul>
+<li>where: <code>pkg/secretutil/censor.go:194-196</code>
+</li>
+<li>concern: CONFIRMED: Contains("=") classifies an opaque token such as <code>YWJjZA==</code> as INI, whose parsed value is <code>=</code>; the default minimum length of zero then makes unrelated <code>result=ok</code> become <code>resultXok</code> in component logs and sidecar artifacts (P2). Code Quality and Deployment Risk independently reproduced this regression. Tighten detection to preserve opaque padded credentials and add a regression test; raising minimum_secret_length is not a general fix because it also leaves genuinely short credentials unprotected.
+</li>
+<li>excerpt:<pre><code>case line == &quot;&quot;, strings.HasPrefix(line, &quot;#&quot;), strings.HasPrefix(line, &quot;;&quot;):
+case strings.HasPrefix(line, &quot;[&quot;) &amp;&amp; strings.HasSuffix(line, &quot;]&quot;):
+case strings.Contains(line, &quot;=&quot;):</code></pre>
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>Validate the complete JSON document</h3>
+<ul>
+<li>where: <code>pkg/secretutil/censor.go:162-165</code>
+</li>
+<li>concern: Nonblocking suggestion shared by Code Quality and Maintainability: Decoder.More() does not establish end-of-input, so malformed <code>{&quot;a&quot;:&quot;secret&quot;}}</code> can still register <code>secret</code>, contrary to the whole-blob fallback contract. Use json.Unmarshal or require a subsequent decode to return io.EOF, and cover trailing closing delimiters in the tests.
+</li>
+<li>excerpt:<pre><code>decoder := json.NewDecoder(bytes.NewReader([]byte(trimmed)))
+var parsed interface{}
+if err := decoder.Decode(&amp;parsed); err != nil || decoder.More() {
+    return nil
+}</code></pre>
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>Distinguish recognized JSON without strings from parsing failure</h3>
+<ul>
+<li>where: <code>pkg/secretutil/censor.go:146-149</code>
+</li>
+<li>concern: Maintainability identified a parser-contract ambiguity: valid JSON without string values returns nil and falls through to INI parsing. Its temporary probe showed that <code>{&quot;a=b&quot;:1}</code> registers <code>b&quot;:1}</code> as a secret even though the JSON document contains no string values. As a nonblocking improvement, return a separate recognition flag or a non-nil empty slice for successfully parsed documents, and add a public-behavior regression case.
+</li>
+<li>excerpt:<pre><code>if values := jsonStringValues(secret); values != nil {
+    expanded = append(expanded, values...)
+} else {
+    expanded = append(expanded, iniValues(secret)...)</code></pre>
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>Document automatic extraction and its operational effects</h3>
+<ul>
+<li>where: <code>pkg/secretutil/censor.go:104-105</code>
+</li>
+<li>concern: Maintainability and Deployment Risk recommend documenting that every compatible secret is now expanded automatically, including ordinary configuration values and short strings, and explaining the relationship to sidecar's existing IniFilenames selection. Short extracted values can also alter serialized log metadata because censorship runs after formatting; this is an intentional broadening of extraction rather than another parsing regression. Clarify the behavior at Refresh and in operator-facing documentation, including the tradeoff when increasing minimum_secret_length.
+</li>
+<li>excerpt:<pre><code>for _, secret := range expandStructuredSecrets(secrets) {
+    toEncode := []string{secret}</code></pre>
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>Inspected the complete PR diff against merge base <code>6c4d88e3b73e434d7acc03395ec337fa2b3f1fad</code>, resolved using <code>upstream/main</code>.
+</li>
+<li>Confirmed the local tracked checkout matches PR head <code>365526a1b1483fb958bbcb2e74d9541c084ca79c</code>, excluding review artifacts.
+</li>
+<li>Read PR #1028 and issue #939 to establish the intended extraction and fallback behavior.
+</li>
+<li>Completed independent Code Quality, Maintainability, and Deployment Risk reviews, followed by a maintainer walkthrough and synthesis.
+</li>
+<li>Verified both required changes against the cited code, registration order, byte replacer's ordered non-overlapping matching contract, and sidecar's default minimum length of zero.
+</li>
+<li>Temporary public-API probes reproduced both required findings; reviewers additionally reproduced overlapping JSON values and the JSON parser-boundary cases. Probe files were removed afterward.
+</li>
+<li>Passed <code>go test ./pkg/secretutil ./pkg/config/secret ./pkg/logrusutil</code>; the Code Quality reviewer also passed <code>go test ./pkg/secretutil</code>.
+</li>
+<li>Checked sidecar, secret-agent, and log formatter call sites, including post-format censorship and existing filename-based INI extraction.
+</li>
+<li>Existing trimming, base64, minimum-length, boolean exclusion, length-preserving replacements, and locking remain in use; parsing runs outside the censorer lock.
+</li>
+<li>No configuration schema, API, CLI, RBAC, new service dependency, migration, or deployment ordering change was identified. The INI library was already a project dependency.
+</li>
+<li>Generic extraction is intentionally broad; masking nonsecret configuration fields is not a separate blocker.
+</li>
+<li>Rollback restores prior extraction behavior but cannot reconstruct already-redacted artifacts; it also restores the previous gap in field-level protection.
+</li>
+<li>Existing tests omit overlapping patterns, opaque padded tokens, and several JSON boundary cases. Sidecar integration tests and representative-scale refresh benchmarks were not run during this review.
+</li></ul>
+<h2>Open questions</h2>
+<p>None.</p>
+</main></body></html>

@@ -3,7 +3,7 @@ pr: kubernetes-sigs/prow#674
 title: "tide: skip unmergeable PRs instead of retrying indefinitely"
 head_sha: d6d08d0b2b40c9ef3fee39d3886a44be0c993f23
 base: main
-reviewed_at: 2026-08-09T01:38:33Z
+reviewed_at: 2026-10-28T00:39:01Z
 verdict: request-changes
 refresh_log:
   - from: 910f6c95a54b8370a167f1b8453ce1d53cb08ac5
@@ -12,7 +12,33 @@ refresh_log:
   - from: d6d08d0b2b40c9ef3fee39d3886a44be0c993f23
     to: d6d08d0b2b40c9ef3fee39d3886a44be0c993f23
     summary: "No new commits. A second-pass code review (with a working Go toolchain) found two should-fix gaps the prior pass missed: the serial-trigger gate still tests unfiltered `successes`, and the pre-existing-batch merge path never consults the exclusion set. Verdict downgraded approve -> request-changes; the prior 'Resolved: batch-merge path' entry was only partially correct."
+  - from: d6d08d0b2b40c9ef3fee39d3886a44be0c993f23
+    to: d6d08d0b2b40c9ef3fee39d3886a44be0c993f23
+    summary: "No code changes; PR remains open. k8s-triage-robot posted a lifecycle/rotten inactivity notice on 2026-10-17; no inline comments or reviews were added."
+gate:
+  decision: hold
+  gated_at: 2026-10-28T00:56:46Z
+  gated_head_sha: d6d08d0b2b40c9ef3fee39d3886a44be0c993f23
+  reviewed_head_sha: d6d08d0b2b40c9ef3fee39d3886a44be0c993f23
 ---
+
+## Gate
+
+**hold** — the two prior should-fix findings remain at `d6d08d0b2b40c9ef3fee39d3886a44be0c993f23`. No commits or code changes have landed since the reviewed head. Filtering still happens inside individual merge selection and new batch selection, leaving serial test scheduling and already-successful batches outside the exclusion policy. This also leaves @petr-muller's April 1/4 request for earlier filtering only partially addressed. Resolve these behavioral gaps before merging.
+
+Gating list / findings disposition:
+
+- **Not addressed — serial test scheduling** (`REVIEW.md`; @petr-muller's earlier-filtering feedback): `pkg/tide/tide.go:1710` creates a filtered local slice, but `pkg/tide/tide.go:1741` still checks the original `successes`. An excluded successful PR can suppress another PR's serial tests. Blocks merge: apply exclusions before the downstream scheduling decisions, or provide equivalent coverage of every decision, and cover an excluded success alongside a PR needing serial tests.
+- **Not addressed — existing successful batches** (`REVIEW.md`; @petr-muller's batch/earlier-filtering feedback): `pkg/tide/tide.go:1085` accumulates batches without exclusions, and `pkg/tide/tide.go:1695` attempts them unconditionally. Recording failures at line 1698 does not prevent that batch being selected again. Sustained retries require its members to remain in the pool; successful batch-mates normally leave and invalidate the old refs. Blocks merge: honor exclusions when selecting an existing batch without treating a subset as having passed the original combined tests, and cover retry selection after a batch failure.
+
+Other substantive feedback: cycle-based tracking, per-PR recording of batch failures, and Copilot's map-key/cleanup concerns are addressed. @petr-muller explicitly deferred increasing backoff to a follow-up; it does not gate this PR.
+
+Independent merge risk:
+
+- **API/configuration:** the full PR changes only `pkg/tide/tide.go` and `pkg/tide/tide_test.go`; no exported API signatures, flags, configuration schema, CRDs, or persistent data formats change. No coordinated rollout or migration is needed.
+- **Default behavior:** all GitHub Tide installations adopting this code automatically delay retries after `UnmergablePRError`, allowing other eligible PRs to proceed. There is no opt-in setting. A PR that becomes mergeable without a new head SHA can wait for the exclusion to expire; a new SHA bypasses it. The PR description still promises a five-minute TTL, so update the operator-facing description/release communication to match cycle-based behavior.
+- **Timing clarification:** storing 3 and decrementing before selection (`pkg/tide/tide.go:548`, `:567`, `:670`) skips N+1 and N+2, then permits retry at N+3. This corrects the older arithmetic assertion in `Checked`; it does not skip three full subsequent cycles. Failed syncs also consume this window. This is a bounded retry-timing concern, not an additional merge blocker; align the documentation/constant with the intended count.
+- No applicable repository compatibility skill was listed; the compatibility assessment used the full production diff and current call paths directly. This gate used static inspection; the test results in `Checked` belong to the earlier review.
 
 ## What this PR does
 - Fixes #673: `takeAction()` deterministically re-picks the lowest-numbered PR from `successes` every sync cycle; if that PR fails to merge with `UnmergablePRError` (e.g. branch protection needs more approvals), it blocks the whole queue forever.
@@ -25,6 +51,9 @@ Since previous review: no new commits (`head_sha` unchanged). A second review pa
 - Two new `should-fix` findings, both in `takeAction`: the serial-trigger gate and the pre-existing-batch merge path each still operate on unfiltered data, so an excluded PR can still block other PRs.
 - The prior "Resolved — batch-merge path bypassed the exclusion filter" entry is downgraded to partially resolved: `pickBatch` selection and post-failure exclusion recording were fixed, but merging an already-successful batch was not.
 - Verdict downgraded from `approve` to `request-changes`.
+
+Since previous review: no code changes (`head_sha` is unchanged), and the PR remains open.
+- On 2026-10-17, `k8s-triage-robot` posted a `lifecycle/rotten` inactivity notice. No inline comments or reviews were added.
 
 ## Findings
 

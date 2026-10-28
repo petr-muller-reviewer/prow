@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#666</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>Allow use of Git subtrees with <code>mergecommitblocker</code></h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/issues/666">kubernetes-sigs/prow#666</a> · main_sha <code>3617afe983fa</code> · state <code>open</code> · labels <code>kind/feature, area/plugins, lifecycle/stale</code> · triaged_at <code>2026-10-28T01:17:51Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: accepted</span></div>
+<details><summary>Full metadata</summary><pre><code>issue: kubernetes-sigs/prow#666
+title: &quot;Allow use of Git subtrees with `mergecommitblocker`&quot;
+state: open
+labels: kind/feature, area/plugins, lifecycle/stale
+main_sha: 3617afe983fa4df61a494fc2a60300367372de3a
+triaged_at: 2026-10-28T01:17:51Z
+verdict: accepted
+advice:
+  advised_at: 2026-10-28T01:18:51Z
+  based_on_triaged_at: 2026-10-28T01:17:51Z</code></pre></details>
+<h2>Verdict</h2>
+<p><strong>accepted</strong> — This is a valid feature request for Prow's <code>mergecommitblocker</code> plugin. The plugin currently blocks any PR containing a merge commit, including subtree merges; PR #719 proposes an opt-in, path-based exception and is open but needs a rebase.</p>
+<h2>Resolution</h2>
+<p>Not resolved. PR #719 is open and has not been merged.</p>
+<h2>What the issue reports</h2>
+<ul>
+<li>Git subtree updates rely on merge commits to preserve history.
+</li>
+<li><code>mergecommitblocker</code> currently flags every PR containing a merge commit.
+</li>
+<li>The issue asks for path-based exemptions so subtree merges can be used while retaining the blocker for other merge commits.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-amber">cause</span>The plugin blocks every merge commit in the PR range</h3>
+<ul>
+<li>detail: The handler checks only whether any merge commit exists between the base and head; it does not inspect the files changed by each merge commit.
+</li>
+<li>evidence: <code>pkg/plugins/mergecommitblocker/mergecommitblocker.go:99-104</code>; <code>pkg/git/v2/interactor.go:590-599</code>.
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>The plugin has no path exemption configuration</h3>
+<ul>
+<li>where: <code>pkg/plugins/mergecommitblocker/mergecommitblocker.go:47-53</code>
+</li>
+<li>excerpt:<pre><code>// Only the Description field is specified because this plugin is not triggered with commands and is not configurable.
+return &amp;pluginhelp.PluginHelp{
+    Description: fmt.Sprintf(&quot;The merge commit blocker plugin adds the %s label to pull requests that contain merge commits&quot;, labels.MergeCommits),
+}, nil</code></pre>
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>Existing tests do not cover path-based exemptions</h3>
+<ul>
+<li>where: <code>pkg/plugins/mergecommitblocker/mergecommitblocker_test.go:137-195</code>
+</li>
+<li>excerpt:<pre><code>name: &quot;merge commit label not exist, PR has merge commits&quot;
+name: &quot;merge commit label not exists, PR doesn&#x27;t have merge commits&quot;</code></pre>
+</li>
+<li>detail: Current tests cover merge-commit presence and label/comment behavior. PR #719 adds matching, non-matching, and mixed-path cases; its changed-file list does not include the documented plugin config file.
+</li></ul>
+<h3><span class="tag c-blue">related-pr</span>PR #719 proposes the requested behavior</h3>
+<ul>
+<li>ref: kubernetes-sigs/prow#719
+</li>
+<li>relevance: The open PR adds <code>excluded_paths</code> configuration and checks the changed paths of each merge commit. At triage time it has no formal reviews and the PR bot reports that it needs a rebase.
+</li></ul>
+<h3><span class="tag c-blue">related-issue</span>Issue #610 is related but not a duplicate</h3>
+<ul>
+<li>ref: kubernetes-sigs/prow#610
+</li>
+<li>relevance: Closed feature request about <code>owners-label</code> retaining labels after merge commits; it concerns a different plugin behavior.
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>Read issue #666's description, labels, comments, and timeline cross-references.
+</li>
+<li>Searched all-state issues for <code>mergecommitblocker subtree</code>, <code>mergecommitblocker merge commits</code>, and <code>subtree merge commits</code>; no other matching issue appeared.
+</li>
+<li>Checked PRs referencing <code>666</code>; PR #719 is the related open implementation.
+</li>
+<li>Read the <code>mergecommitblocker</code> handler and tests, the v2 Git interactor method, nearby org/repo configuration lookup and regexp compilation patterns, and <code>pkg/plugins/plugin-config-documented.yaml</code>.
+</li>
+<li>Confirmed issue #610 is about <code>owners-label</code> and is not a duplicate.
+</li></ul>
+<h2>Next steps</h2>
+<ul>
+<li>Review PR #719 after its rebase; verify per-merge path handling and config precedence.
+</li>
+<li>Add and validate the <code>merge_commit_blocker</code> configuration example in <code>pkg/plugins/plugin-config-documented.yaml</code>.
+</li>
+<li>Keep the issue open while the PR is under review; consider <code>help-wanted</code> if additional implementation work is needed.
+</li></ul>
+<h2>Advice</h2>
+<ol>
+<li><strong>Ask the PR author to rebase PR #719.</strong> The linked implementation remains open, has no formal review, and GitHub currently reports it as conflicting. This is the main blocker to reviewing the existing implementation.
+<pre><code>gh pr comment 719 --repo kubernetes-sigs/prow --body &quot;$(printf &#x27;%s\n&#x27; &#x27;&gt; *This was generated by AI during triage.*&#x27; &#x27;&#x27; &#x27;@RadaBDimitrova, PR #719 is currently conflicting and needs a rebase before it can be reviewed. Please rebase it when you have a chance, or let us know if you need help.&#x27;)&quot;</code></pre>
+</li>
+<li><strong>Mark the issue active and invite help if broader contribution would be useful.</strong> The issue remains open with <code>lifecycle/stale</code>; the implementation PR is still conflicting. <code>kind/feature</code> and <code>area/plugins</code> are already applied, while <code>help wanted</code> is available but absent.
+<pre><code>gh issue edit 666 --repo kubernetes-sigs/prow --remove-label lifecycle/stale --add-label lifecycle/active --add-label &quot;help wanted&quot;</code></pre>
+</li></ol>
+<h2>Open questions</h2>
+<ul>
+<li>Would regex patterns, as proposed in PR #719, be the desired contract for excluded paths, or should the plugin use simpler glob patterns?
+</li>
+<li>Should organization-level exclusions be supported, with repository-level configuration taking precedence?
+</li></ul>
+</main></body></html>

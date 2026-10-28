@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Triage: kubernetes-sigs/prow#134</title>
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+    color: #1a1a1a;
+    background: #fdfdfd;
+    margin: 0;
+    padding: 2.5rem 1.5rem;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; }
+  code, pre {
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 0.92em;
+  }
+  pre {
+    background: #f4f4f4;
+    padding: 0.9rem 1rem;
+    border-radius: 6px;
+    overflow-x: auto;
+    border: 1px solid #e5e5e5;
+  }
+  code { background: #f0f0f0; padding: 0.1em 0.35em; border-radius: 3px; }
+  pre code { background: none; padding: 0; }
+  h1 { font-size: 1.5rem; margin-bottom: 0.25rem; }
+  h2 {
+    font-size: 1.15rem;
+    margin-top: 2.2rem;
+    border-bottom: 2px solid #eee;
+    padding-bottom: 0.3rem;
+  }
+  h3 { font-size: 1rem; margin-top: 1.4rem; margin-bottom: 0.4rem; }
+  header {
+    background: #f6f8fa;
+    border: 1px solid #e1e4e8;
+    border-radius: 8px;
+    padding: 1.2rem 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+  .meta-table { width: 100%; border-collapse: collapse; margin-top: 0.6rem; }
+  .meta-table td { padding: 0.2rem 0.5rem 0.2rem 0; vertical-align: top; }
+  .meta-table td.k { color: #57606a; width: 9rem; white-space: nowrap; }
+  .badge {
+    display: inline-block;
+    font-size: 0.78rem;
+    font-weight: 600;
+    padding: 0.15em 0.6em;
+    border-radius: 999px;
+    background: #ddf4ff;
+    color: #0969da;
+    margin-right: 0.3em;
+  }
+  .verdict-box {
+    background: #dafbe1;
+    border: 1px solid #2da44e;
+    border-radius: 8px;
+    padding: 1rem 1.3rem;
+    margin: 1rem 0 1.6rem;
+  }
+  .verdict-box .verdict-line { font-weight: 700; font-size: 1.05rem; color: #116329; }
+  ul { padding-left: 1.4rem; }
+  li { margin-bottom: 0.35rem; }
+  .tag {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding: 0.1em 0.5em;
+    border-radius: 4px;
+    margin-right: 0.5em;
+  }
+  .tag-cause { background: #ffebe9; color: #cf222e; }
+  .tag-related-code { background: #fff8c5; color: #7d4e00; }
+  .tag-related-issue { background: #ddf4ff; color: #0969da; }
+  .tag-related-pr { background: #e6ffec; color: #1a7f37; }
+  .tag-reproducibility { background: #fbefff; color: #8250df; }
+  a { color: #0969da; }
+  .finding { margin-bottom: 1.3rem; }
+  .oq { background: #fff8c5; border-left: 4px solid #d4a72c; padding: 0.6rem 1rem; margin-bottom: 0.5rem; border-radius: 0 4px 4px 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>Triage: kubernetes-sigs/prow#134</h1>
+  <div><span class="badge">kind/bug</span><span class="badge">area/tide</span></div>
+  <table class="meta-table">
+    <tr><td class="k">Title</td><td>&#96;tide&#96; not honoring multiple reviewer branch protection</td></tr>
+    <tr><td class="k">Issue</td><td><a href="https://github.com/kubernetes-sigs/prow/issues/134">kubernetes-sigs/prow#134</a></td></tr>
+    <tr><td class="k">State</td><td>open</td></tr>
+    <tr><td class="k">Labels</td><td>kind/bug, area/tide</td></tr>
+    <tr><td class="k">Triaged at</td><td>2026-07-27T00:35:12Z</td></tr>
+    <tr><td class="k">Main SHA</td><td><code>e601a1ffafd7d8d3a781238a4c5f4233d6248f68</code></td></tr>
+    <tr><td class="k">Verdict</td><td><strong>accepted</strong></td></tr>
+    <tr><td class="k">Effort</td><td>Level 3 (large)</td></tr>
+  </table>
+</header>
+
+<div class="verdict-box">
+  <div class="verdict-line">Verdict: ACCEPTED — keep open, legitimate bug</div>
+  <p style="margin-bottom:0;">Tide's merge decision never checks GitHub branch protection's <code>required_approving_review_count</code>; it merges based purely on its own <code>lgtm</code>/<code>approved</code> labels and CI status. Because Tide's bot account typically holds admin/bypass-branch-protection permission, GitHub itself doesn't stop it. This is a confirmed code-level gap, not a misconfiguration, already correctly labeled &#96;kind/bug&#96;, &#96;area/tide&#96;. No further author info is needed; the fix requires new implementation work sized as a Level 3 effort.</p>
+</div>
+
+<h2>What the issue reports</h2>
+<ul>
+  <li>With org-level Tide config requiring <code>approved</code> + <code>lgtm</code> labels, and a repo branch-protection rule requiring 2 approving reviews, Tide merged a PR with only one review.</li>
+  <li>The reporter verified GitHub's own UI correctly blocks the manual merge button with only one approval (screenshot in original report) — so branch protection is genuinely configured and would work for a human.</li>
+  <li>Reporter asked whether an undocumented <code>tide.queries.reviewApprovedRequired</code> setting was the missing piece — it isn't a review-count feature.</li>
+  <li>Follow-up discussion (dhaiducek, kaovilai, petr-muller) converged on: Tide's bot account is a repo admin, and GitHub branch protection doesn't apply to admins unless <code>enforce_admins</code> is explicitly enabled.</li>
+  <li>A later comment (2026-04-01) notes that enabling <code>enforce_admins</code> as a workaround triggers a different bug (issue #673): Tide gets stuck retrying the same now-unmergeable PR indefinitely.</li>
+</ul>
+
+<h2>Analysis</h2>
+
+<h3>Reproducibility / observed behavior</h3>
+<p>Reproducible by configuration, not a transient failure: any org/repo with <code>required_approving_review_count &gt;= 1</code> and no <code>enforce_admins</code>, combined with a Tide bot holding admin/bypass permission (the common default), exhibits this. Confirmed independently by two reporters (dhaiducek, kaovilai) across multiple repos/orgs from 2024-04-25 through 2026-04-01.</p>
+
+<h3>Probable cause</h3>
+<p>Tide's merge gate (<code>mergeChecker.isAllowedToMerge</code>) only checks GraphQL <code>Mergeable</code> (conflict state) and merge-method labels — never branch protection's review-count requirement. Pool membership (<code>filterPR</code>/<code>filterSubpool</code>) is decided purely by <code>tide.queries</code> labels/missingLabels and CI status. The final merge call is unconditional aside from that gate. <code>RequiredApprovingReviewCount</code> exists in the codebase, but only for <code>branchprotector</code> to configure GitHub — never consumed by Tide itself.</p>
+
+<h3>Related code</h3>
+<div class="finding">
+  <strong>Tide's actual pre-merge gate — no review-count check</strong>
+  <pre><code>pkg/tide/github.go:600-619
+mergeChecker.isAllowedToMerge — checks GraphQL Mergeable (conflict state)
+and merge-method labels only.</code></pre>
+</div>
+<div class="finding">
+  <strong>Pool filtering is label/CI-only</strong>
+  <pre><code>pkg/tide/tide.go:755-793   filterPR
+pkg/tide/tide.go:847-858   filterSubpool
+Both decide membership via tide.queries labels/missingLabels and
+Prow job/status contexts — never GitHub review state.</code></pre>
+</div>
+<div class="finding">
+  <strong>Blind merge call</strong>
+  <pre><code>pkg/tide/github.go:283
+gi.ghc.Merge(...) — no pre-check of required approving-review count.</code></pre>
+</div>
+<div class="finding">
+  <strong>RequiredApprovingReviewCount defined but unused by Tide</strong>
+  <pre><code>pkg/config/branch_protection.go:96
+pkg/github/types.go:594,649
+Used only by branchprotector to configure GitHub; never read by pkg/tide.</code></pre>
+</div>
+<div class="finding">
+  <strong>Only existing branch-protection read in Tide is unrelated</strong>
+  <pre><code>pkg/tide/tide.go:2398-2408
+Reads branch protection only for RequireManuallyTriggeredJobs — confirms
+no existing plumbing reads review-count settings from Tide.</code></pre>
+</div>
+
+<h3>Related issues / PRs</h3>
+<ul>
+  <li><a href="https://github.com/kubernetes-sigs/prow/issues/673">#673</a> — Enabling <code>enforce_admins</code> as a workaround causes GitHub to correctly reject the merge, but Tide swallows the <code>UnmergablePRError</code> (logged at Debug only, <code>pkg/tide/github.go:280-300</code>) and re-selects the same PR every sync, starving the pool.</li>
+  <li><a href="https://github.com/kubernetes-sigs/prow/pull/674">PR #674</a> (open, non-draft, author kaovilai) — "tide: skip unmergeable PRs instead of retrying indefinitely." Fixes #673's symptom; does not address #134's root cause. A #134 fix should be sequenced with this to avoid reintroducing the stuck-retry pattern.</li>
+  <li><a href="https://github.com/kubernetes-sigs/prow/issues/269">#269</a> — Earlier precedent cited by petr-muller for "Tide should fail gracefully, not succeed wrongly." Related failure family, distinct issue, not a duplicate.</li>
+</ul>
+
+<h2>What I checked</h2>
+<ul>
+  <li>Searched <code>pkg/tide</code>, <code>pkg/config</code>, <code>pkg/github</code> for review-count handling — confirmed absent from Tide's merge decision path.</li>
+  <li>Verified #673 is open and its fix PR #674 is open/non-draft — the <code>enforce_admins</code> workaround isn't currently safe to recommend without caveats.</li>
+  <li>Verified #269 is open and related but not a duplicate.</li>
+  <li>Confirmed existing labels (<code>kind/bug</code>, <code>area/tide</code>) are already correct — applied by petr-muller during the thread (2024-10-22, 2025-05-07).</li>
+</ul>
+
+<h2>Recommended next steps</h2>
+<ul>
+  <li>Keep issue open, accepted. No author follow-up needed — report is complete, root cause already understood.</li>
+  <li>Apply <code>/help-wanted</code> — well-scoped but requires an experienced Prow/pkg-tide contributor; skip <code>/good-first-issue</code>.</li>
+  <li>Consider a comment cross-linking #134, #673, and PR #674 so the full picture lives in one place.</li>
+  <li>If picked up for implementation: design as an opt-in config field, add caching for the extra branch-protection lookup, and sequence merge order with PR #674.</li>
+</ul>
+
+<h2>Open questions</h2>
+<div class="oq">Should the fix be a hard pre-merge gate, or opt-in config — some deployments may rely on today's bypass semantics (e.g. override-command workflows)?</div>
+<div class="oq">Should scope include CODEOWNERS-based required reviewers, or just a plain approving-review-count check for a first PR?</div>
+<div class="oq">Should the check live inside <code>mergeChecker.isAllowedToMerge</code> directly, or as a separate cacheable pre-check, given the added GitHub API cost per sync loop across large pools?</div>
+
+</div>
+</body>
+</html>

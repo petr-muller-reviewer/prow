@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#995</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>branchprotector: add <code>require_last_push_approval</code> and <code>bypass_pull_request_allowances.apps</code></h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/995">kubernetes-sigs/prow#995</a> · base <code>main</code> · head_sha <code>f14b640b59d7</code> · reviewed_at <code>2026-10-14T15:55:59Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span><span class="badge c-amber">gate: hold</span></div>
+<details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#995
+title: &quot;branchprotector: add `require_last_push_approval` and `bypass_pull_request_allowances.apps`&quot;
+head_sha: f14b640b59d7f9f82dda202cfa904fd58f5fbe99
+base: main
+reviewed_at: 2026-10-14T15:55:59Z
+verdict: approve
+gate:
+  decision: hold
+  gated_at: 2026-10-15T10:49:09Z
+  gated_head_sha: f14b640b59d7f9f82dda202cfa904fd58f5fbe99
+  reviewed_head_sha: f14b640b59d7f9f82dda202cfa904fd58f5fbe99</code></pre></details>
+<h2>Gate</h2>
+<p><strong>Decision: HOLD</strong></p>
+<p>The concern raised by @petr-muller about omitted settings resetting manually managed GitHub policy is addressed by the current preservation helper in <code>f14b640b59d7f9f82dda202cfa904fd58f5fbe99</code>. One substantive local review finding remains: the config says an empty app list removes apps, while inherited policies union parent and child app lists. That can leave inherited bypass access in place when an operator expects an empty child list to remove it; clarify the behavior or change the merge semantics before merging.</p>
+<h3>Findings disposition</h3>
+<ul>
+<li><strong>Addressed — @petr-muller issue comment (2026-10-10):</strong> the current code preserves omitted app allowances and last-push approval from GitHub state and warns operators to configure them explicitly.
+</li>
+<li><strong>Not addressed — <code>REVIEW.md</code> finding:</strong> <code>pkg/config/branch_protection.go:112-116, 215-226</code> still documents an empty app list as removing apps, but <code>mergeBypassRestrictions</code> unions child and parent lists. An empty child list cannot remove apps inherited from a parent.
+</li>
+<li>No submitted reviews or inline review comments were found. No later response clarifies the inherited-app behavior.
+</li></ul>
+<h3>Gating list</h3>
+<ul>
+<li>Clarify the meaning of <code>apps: []</code> under policy inheritance or implement removal semantics (<code>pkg/config/branch_protection.go:112-116, 215-226</code>). This gates merge because operators may believe they removed inherited app bypass access when the merged policy still allows it.
+</li></ul>
+<h3>Independent merge risk</h3>
+<ul>
+<li>The new config fields are optional; existing config files remain valid. The current preservation logic avoids resetting existing GitHub values when these fields are omitted. No other backward-incompatible API, config, or behavioral change was identified in the full PR diff against <code>main</code> (<code>b4b2b38994859131ab14b656b584e80b325096c0</code>..<code>f14b640b59d7f9f82dda202cfa904fd58f5fbe99</code>).
+</li>
+<li>Preserved enabled/nonempty values produce warnings until operators set them explicitly. This is documented and does not require a coordinated rollout.
+</li>
+<li>App allowance inheritance is the outstanding configuration risk described in the gating list. No specialized API/config compatibility skill was available; this pass inspected the full diff directly.
+</li></ul>
+<h2>Verdict</h2>
+<p>Approve with suggestions. The three maintainer perspectives found no blocking issues, and the preservation logic reduces upgrade risk for settings that operators already manage on GitHub. Clarify how app allowances merge through inherited policies and give the temporary compatibility backstop a tracked sunset path.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Adds <code>require_last_push_approval</code> to branch protection review policy.
+</li>
+<li>Adds app slugs to pull request bypass allowances.
+</li>
+<li>Keeps the new settings optional so omitted values differ from explicit false or empty values.
+</li>
+<li>Preserves current GitHub settings when these new fields are omitted, with warnings to configure them explicitly.
+</li>
+<li>Adds tests and updates configuration examples and operator documentation.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-amber">should-fix</span>Clarify inherited app allowance behavior</h3>
+<ul>
+<li>where: <code>pkg/config/branch_protection.go:112-116, 215-226</code>
+</li>
+<li>concern: The field comment says an empty app list removes apps, but policy merging unions child and parent lists. An empty child list therefore cannot remove apps inherited from a parent, which may mislead operators configuring policy inheritance. Clarify the documentation or define replacement semantics.
+</li>
+<li>excerpt:<pre><code>return &amp;BypassRestrictions{
+    Apps:  unionStringPtrs(parent.Apps, child.Apps),
+    Users: unionStrings(parent.Users, child.Users),
+    Teams: unionStrings(parent.Teams, child.Teams),
+}</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">nit</span>Track the preservation backstop's sunset</h3>
+<ul>
+<li>where: <code>cmd/branchprotector/protect.go:560-565</code>
+</li>
+<li>concern: The TODO says to remove this compatibility behavior after configs have had time to set the fields, but gives no timeframe or tracking reference. Tie cleanup to a release or tracked follow-up so the temporary behavior does not become permanent by default.
+</li>
+<li>excerpt:<pre><code>// TODO: remove this backstop once configs had time to set these fields explicitly,
+// so they behave consistently with all other fields.</code></pre>
+</li></ul>
+<h2>Resolved</h2>
+<h3>Omitted review settings could reset existing GitHub values</h3>
+<p>The preservation helper now copies the current app allowances and last-push approval setting into the reconciliation request when configuration omits them. Explicit values remain configurable.</p>
+<ul>
+<li>where: <code>cmd/branchprotector/protect.go:575-588</code>
+</li>
+<li>excerpt:<pre><code>if reviews.BypassRestrictions.Apps == nil &amp;&amp; stateReviews != nil &amp;&amp; stateReviews.BypassRestrictions != nil &amp;&amp; len(stateReviews.BypassRestrictions.Apps) &gt; 0 {
+    apps := make([]string, 0, len(stateReviews.BypassRestrictions.Apps))
+    for _, app := range stateReviews.BypassRestrictions.Apps {
+        apps = append(apps, app.Slug)
+    }
+    reviews.BypassRestrictions.Apps = &amp;apps
+}</code></pre>
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>Reviewed the PR diff at head <code>f14b640b59d7f9f82dda202cfa904fd58f5fbe99</code> against <code>main</code> from code quality, maintainability, and deployment risk perspectives.
+</li>
+<li>Confirmed omitted review settings are preserved before reconciliation comparison; explicit values can be managed through config.
+</li>
+<li>Confirmed tests cover preservation and explicit overrides, and existing configuration remains compatible.
+</li>
+<li>No tests were run as part of this review.
+</li></ul>
+<h2>Open questions</h2>
+<p>None.</p>
+</main></body></html>

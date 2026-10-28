@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Review: kubernetes-sigs/prow#752</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; line-height: 1.6; max-width: 820px; margin: 2rem auto; padding: 0 1rem; color: #24292f; background: #fff; }
+  h1 { font-size: 1.4rem; border-bottom: 1px solid #d0d7de; padding-bottom: 0.4rem; }
+  h2 { font-size: 1.15rem; margin-top: 2rem; border-bottom: 1px solid #d0d7de; padding-bottom: 0.3rem; }
+  h3 { font-size: 1rem; margin-top: 1.4rem; }
+  code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; font-size: 0.9em; background: #f6f8fa; padding: 0.15em 0.35em; border-radius: 3px; }
+  pre { background: #f6f8fa; padding: 1em; border-radius: 6px; overflow-x: auto; font-size: 0.85em; line-height: 1.45; }
+  pre code { background: none; padding: 0; }
+  .meta { background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 6px; padding: 0.8rem 1rem; margin-bottom: 1.5rem; font-size: 0.9rem; }
+  .meta dt { font-weight: 600; display: inline; }
+  .meta dd { display: inline; margin: 0 1.2rem 0 0; }
+  .verdict { background: #dafbe1; border-left: 4px solid #2da44e; padding: 0.6rem 1rem; border-radius: 4px; margin: 1rem 0; }
+  .severity { display: inline-block; font-size: 0.75rem; font-weight: 600; padding: 0.15em 0.5em; border-radius: 3px; margin-right: 0.4rem; vertical-align: middle; }
+  .sev-blocking { background: #ffebe9; color: #82071e; }
+  .sev-should-fix { background: #fff8c5; color: #6a4c00; }
+  .sev-nit { background: #ddf4ff; color: #0550ae; }
+  .sev-question { background: #f0e6ff; color: #5b1ea0; }
+  .converge { font-size: 0.75rem; font-style: italic; color: #57606a; }
+  ul { padding-left: 1.4rem; }
+  li { margin-bottom: 0.3rem; }
+  a { color: #0969da; }
+</style>
+</head>
+<body>
+
+<h1>Review: kubernetes-sigs/prow#752</h1>
+
+<div class="meta">
+  <dl>
+    <dt>PR:</dt><dd><a href="https://github.com/kubernetes-sigs/prow/pull/752">kubernetes-sigs/prow#752</a></dd>
+    <dt>Title:</dt><dd><code>.*: add delete-spam-issue prow plugin</code></dd>
+    <dt>Head SHA:</dt><dd><code>adac22030a7c19f4bab2b2f6806c5f353d7f436e</code></dd>
+    <dt>Base:</dt><dd><code>main</code></dd>
+    <dt>Reviewed:</dt><dd>2026-06-12T15:59:05Z</dd>
+  </dl>
+</div>
+
+<h2>Verdict</h2>
+<div class="verdict">
+  <strong>Approve with suggestions</strong>
+</div>
+<p>
+  Well-structured, low-risk, opt-in plugin with solid test coverage and no critical bugs. Three independent reviewers (code quality, maintainability, deployment risk) all approve or comment without blocking concerns. The main converging finding is the lack of a durable audit trail when deletion succeeds — the pre-deletion comment is destroyed with the issue. Several non-blocking improvements around message clarity and documentation.
+</p>
+
+<h2>What this PR does</h2>
+<ul>
+  <li>Adds a new <code>delete-spam-issue</code> prow plugin that responds to <code>/delete-spam-issue</code> comments on GitHub issues.</li>
+  <li>Authorizes deletion via three mechanisms: explicit user allowlist, GitHub team membership, and top-level OWNERS file approvers (on by default, configurable via <code>allow_top_level_approvers</code>).</li>
+  <li>Deletes issues using GitHub's GraphQL <code>deleteIssue</code> mutation via <code>MutateWithGitHubAppsSupport</code>.</li>
+  <li>Posts an audit comment before deletion and an error comment if the mutation fails. Rejects use on pull requests.</li>
+  <li>Second commit adds the <code>allow_top_level_approvers</code> config knob (default: true) to control whether OWNERS approvers can use the command.</li>
+</ul>
+
+<h2>Findings</h2>
+
+<h3><span class="severity sev-should-fix">should fix</span> No log entry on successful deletion</h3>
+<p><code>pkg/plugins/delete-spam-issue/delete-spam-issue.go:114-119</code></p>
+<p class="converge">Converging concern: flagged independently by Code Quality, Maintainability, and Deployment Risk reviewers.</p>
+<p>
+  When deletion succeeds, the handler returns <code>nil</code> with no log output. The pre-deletion comment is destroyed along with the issue, so the only audit trail is email notifications (if they fired in time). A structured log line like <code>log.WithFields(logrus.Fields{"user": user, "org": org, "repo": repo, "number": number}).Info("Deleted spam issue")</code> would be the only reliable, durable record.
+</p>
+<pre><code>if err := deleteIssue(gc, org, e.NodeID); err != nil {
+    log.WithError(err).Error("Failed to delete issue.")
+    return gc.CreateComment(...)
+}
+return nil</code></pre>
+
+<h3><span class="severity sev-should-fix">should fix</span> Rejection message misleading when not all auth paths configured</h3>
+<p><code>pkg/plugins/delete-spam-issue/delete-spam-issue.go:149-155</code></p>
+<p class="converge">Converging concern: flagged by Code Quality and Maintainability reviewers.</p>
+<p>
+  The rejection message always says "you are not in one of the allowed teams and are not an allowed user" even when no teams are configured (only <code>AllowedUsers</code> or only OWNERS). The message should be built dynamically based on which authorization sources are actually present in the config.
+</p>
+<pre><code>msg := "This issue cannot be deleted, because you are not in one of the allowed teams and are not an allowed user."
+if len(config.AllowedTeams) > 0 {
+    msg += fmt.Sprintf(" Must be a member of one of these teams: %s", strings.Join(config.AllowedTeams, ", "))
+}</code></pre>
+
+<h3><span class="severity sev-should-fix">should fix</span> Documented default for <code>allow_top_level_approvers</code> is misleading</h3>
+<p><code>pkg/plugins/plugin-config-documented.yaml:412</code></p>
+<p>
+  The generated YAML shows <code>allow_top_level_approvers: false</code> (Go zero value) but the runtime default is <code>true</code> via the <code>*bool</code> + <code>TopLevelApproversAllowed()</code> method. For a security-sensitive field controlling who can permanently delete issues, the mismatch between documented value and runtime default could mislead operators into thinking OWNERS approvers are excluded when they are actually included by default.
+</p>
+
+<h3><span class="severity sev-nit">nit</span> <code>canNotDeleteReason</code> naming</h3>
+<p><code>pkg/plugins/delete-spam-issue/delete-spam-issue.go:122</code></p>
+<p>
+  <code>canNotDeleteReason</code> reads awkwardly. <code>denyReason</code> or <code>denialReason</code> would be more conventional Go style.
+</p>
+
+<h3><span class="severity sev-nit">nit</span> Unrelated <code>invalid_commit_msg</code> in documented config</h3>
+<p><code>pkg/plugins/plugin-config-documented.yaml:459-469</code></p>
+<p>
+  The regenerated documented config picks up the <code>invalid_commit_msg</code> section from the recently merged PR #738. Not a problem (it is correct), but it is out-of-scope noise in this diff.
+</p>
+
+<h3><span class="severity sev-question">question</span> Standalone plugin vs issue-management</h3>
+<p><code>pkg/plugins/delete-spam-issue/</code></p>
+<p>
+  The existing <code>issue-management</code> plugin already handles <code>/pin-issue</code>, <code>/unpin-issue</code>, <code>/link-issue</code>, <code>/unlink-issue</code> with the same <code>githubClient</code> and <code>ownersClient</code> interfaces. This could be another command there. The separate plugin is defensible given the distinct auth model and destructive nature, but worth an explicit decision from maintainers.
+</p>
+
+<h3><span class="severity sev-question">question</span> GitHub App permission requirements</h3>
+<p><code>pkg/plugins/delete-spam-issue/delete-spam-issue.go:174-179</code></p>
+<p>
+  The <code>deleteIssue</code> GraphQL mutation requires admin-level repository access. The PR does not document this requirement. Operators enabling the plugin need to know what GitHub App permissions to grant.
+</p>
+
+<h3><span class="severity sev-question">question</span> Global config vs per-org/repo config</h3>
+<p><code>pkg/plugins/config.go:80</code></p>
+<p>
+  The <code>DeleteSpamIssue</code> config is a single global struct, not a per-org/repo map. All repos that enable this plugin share the same <code>allowed_users</code>, <code>allowed_teams</code>, and <code>allow_top_level_approvers</code> settings. Multi-tenant Prow installations wanting different authorization rules per org/repo cannot achieve that with this design. Not blocking for initial merge but worth flagging as a design choice.
+</p>
+
+<h2>Things I checked and was fine with</h2>
+<ul>
+  <li><code>GenericCommentEvent.NodeID</code> is the issue's node ID (not the comment's) for both <code>IssueEvent</code> and <code>IssueCommentEvent</code> paths in <code>pkg/github/helpers.go:126-168</code>. The <code>IsPR</code> guard prevents PR/review event paths from reaching delete logic.</li>
+  <li><code>DeleteIssueInput</code> exists in the vendored <code>shurcooL/githubv4@v0.0.0-20210725200734</code>.</li>
+  <li><code>MutateWithGitHubAppsSupport</code> signature matches the interface declaration.</li>
+  <li>Authorization checks: user allowlist is case-insensitive via <code>strings.EqualFold</code>, team check delegates to GitHub API, OWNERS check uses <code>github.NormLogin</code>.</li>
+  <li>Test coverage is thorough: 14 test cases covering allowed user, team member, top-level approver, case-insensitive match, PR rejection, non-matching body, non-created action, LoadRepoOwners failure, team API failure, mutation failure, disabled <code>allow_top_level_approvers</code>.</li>
+  <li>Plugin registration follows existing patterns (<code>init</code> + <code>RegisterGenericCommentHandler</code>).</li>
+  <li>Both <code>cmd/hook</code> and <code>pkg/hook</code> plugin-imports updated.</li>
+  <li><code>helpProvider</code> generates correct yaml snippet and command help.</li>
+  <li><code>context.Background()</code> in the GraphQL call is consistent with other Prow plugins.</li>
+  <li><code>fakeOwnersClient</code> duplication with <code>pin-issue_test.go</code> is acknowledged via TODO.</li>
+</ul>
+
+<h2>Open questions for the author</h2>
+<ul>
+  <li>Should this live in <code>issue-management</code> instead of as a standalone plugin? The auth model is different (explicit allowlists vs org membership/OWNERS), but it is conceptually another issue management command.</li>
+  <li>Does the Prow GitHub App in kubernetes org already have the permissions needed for the <code>deleteIssue</code> GraphQL mutation (requires admin-level access)?</li>
+  <li>Is global config intentional, or should per-org/repo authorization be supported from the start?</li>
+</ul>
+
+</body>
+</html>

@@ -3,12 +3,15 @@ pr: kubernetes-sigs/prow#766
 title: "handle github teams lookup correctly with github apps"
 head_sha: b6a76dd31dbbcd5c7292052f4400d138820c2bbc
 base: main
-reviewed_at: 2026-07-26T22:55:58Z
+reviewed_at: 2026-10-28T00:34:46Z
 verdict: request-changes
 refresh_log:
   - from: b6a76dd31dbbcd5c7292052f4400d138820c2bbc
     to: b6a76dd31dbbcd5c7292052f4400d138820c2bbc
     summary: "No code changes. Incorporated new discussion: matthyx suggested the ListTeamMembersbyID comment-typo fix inline; upodroid and matthyx opened a broader design thread on deprecating/reworking GitHubTeamIDs vs GitHubTeamSlugs."
+  - from: b6a76dd31dbbcd5c7292052f4400d138820c2bbc
+    to: b6a76dd31dbbcd5c7292052f4400d138820c2bbc
+    summary: "No code changes. Recorded the stale-lifecycle notice and rebase request posted by Kubernetes automation."
 ---
 
 Fixes GitHub Apps auth failure for team-member-by-ID lookups by changing the API path from `/teams/{id}/members` (no org in URL, so `extractOrgFromContext` returned empty) to `/orgs/{org}/team/{id}/members`. Renames `ListTeamMembers` to `ListTeamMembersByID`, removes deprecation warning, updates all callers/interfaces/fakes/tests. Drive-by doc cleanup in peribolos.md.
@@ -17,6 +20,10 @@ Since previous review:
 - No new commits (head still `b6a76dd3`).
 - matthyx posted an inline suggestion on `pkg/github/fakegithub/fakegithub.go` fixing the `ListTeamMembersbyID` comment typo (matches the existing "Comment typo and stale references in fakegithub" nit below) — not yet pushed by the author.
 - upodroid and matthyx opened a design discussion on the issue thread about the empty-org problem: whether to deprecate/remove `GitHubTeamIDs` in favor of `GitHubTeamSlugs`, or keep `GitHubTeamIDs` working via this PR's org-scoped path with a hard error on empty org, plus a deprecation warning and doc update — this bears directly on the unresolved "Empty org produces malformed URL" blocking finding below.
+
+Since previous review (2026-10-28):
+- On 2026-10-18, `k8s-triage-robot` posted a stale-lifecycle notice.
+- On 2026-10-18, `kubernetes-prow[bot]` commented that the PR needs a rebase.
 
 ## Findings
 

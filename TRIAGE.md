@@ -1,15 +1,42 @@
 ---
 issue: kubernetes-sigs/prow#970
 title: "Pod-utility uploads to S3-compatible stores fail with `501 NotImplemented: AWS chunked encoding not supported`"
-state: open
-labels: []
+state: closed
+labels: kind/bug, area/podutils/initupload
 main_sha: a490515e5655cd08fd602e3bbef6a6f3cbfea16b
-triaged_at: 2026-09-27T14:03:26Z
-verdict: accepted
+triaged_at: 2026-10-29T14:27:22Z
+verdict: resolved
 legitimacy: LEGITIMATE
 effort: 2
 recommended_labels: [kind/bug, area/provider/aws, area/podutils/initupload, help-wanted]
+refresh_log:
+  - at: 2026-10-29T14:27:22Z
+    since: 2026-09-27T14:03:26Z
+    summary: "Issue closed COMPLETED by merged PR #971; resolution check found the shipped opt-in credential field sufficient; recorded the gocloud transfer-manager correction and the label changes."
 ---
+
+## Resolution
+
+Resolving PR: kubernetes-sigs/prow#971 (merged 2026-10-28T08:53:37Z, squash commit `707da3e68`, merge commit `c06373a3`), authored by the reporter, Sunnatillo. The issue was closed `COMPLETED` one second later, and the squash commit is in `upstream/main`.
+
+**Classification**: sufficient.
+
+- Fixes the triaged cause: `pkg/io/providers/aws.go:81-93` maps a new optional `S3Credentials.RequestChecksumCalculation` field (`when_required` / `when_supported`, case-insensitive, invalid values rejected) onto the SDK config, and `pkg/io/providers/aws.go:49-52` forwards it to `s3blob.Options` so gocloud's transfer manager honors it. `gocloud.dev` is bumped to v0.47.0 (`go.mod:63`), and `pkg/io/providers/providers.go:75-82` documents the OCI/Swift recipe.
+- Wire-level evidence exists at both ends: `Test_getS3Bucket_UploadChecksumHeaders` in `pkg/io/providers/aws_test.go` drives a real write through a TLS test server and asserts presence/absence of `Content-Encoding: aws-chunked` and `X-Amz-Trailer`; the author's OCI `eu-paris-1` verification on PR #971 reports 501 for the default and 200 with `when_required` (`X-Amz-Content-Sha256: UNSIGNED-PAYLOAD`, no trailer).
+- Deviation from the recommendation, not from the cause: the shipped change is an opt-in per-credential-file setting rather than automatic `when_required` for every non-empty `endpoint`. Default behavior is unchanged, so an affected deployment still needs `{"request_checksum_calculation": "when_required"}` after upgrading. The issue body now documents this design, and maintainers (lentzi90 LGTM, petr-muller `/approve`) accepted it without asking for automatic defaulting; no post-merge comment reports the failure persisting.
+- The previously recommended next step (review #971 for environment precedence and the custom-endpoint guard) was followed: the merged tests cover unset/invalid values, field-over-env precedence, and the environment fallback, but the custom-endpoint guard was dropped along with automatic defaulting.
+
+## What the issue reports
+
+- Every ProwJob stops at init (`Init:Error`): `initupload` cannot write to OCI Object Storage and fails with `501 NotImplemented: AWS chunked encoding not supported`.
+- The AWS SDK v2 default checksum mode (`when_supported`) makes a streamed `PutObject` send `Content-Encoding: aws-chunked` with a CRC32 trailer; AWS S3, MinIO, and recent Ceph RGW accept it, while OCI Object Storage and OpenStack Swift reject it.
+- Prow's S3 credential path had no way to select `when_required`, and pod-utility containers do not get an environment-variable escape hatch, so affected deployments had no workaround.
+- Requested: a per-credential-file `request_checksum_calculation` setting (`when_supported` / `when_required`; empty keeps the SDK default) that also reaches the gocloud upload path.
+
+Since previous triage (2026-09-27T14:03:26Z):
+- Closed as `COMPLETED` on 2026-10-28T08:53:38Z by merged PR #971; labels changed from none to `kind/bug` and `area/podutils/initupload`.
+- The issue body now documents the final opt-in design (optional `request_checksum_calculation` field plus a `gocloud.dev` bump), which differs from the endpoint-only defaulting this triage originally described.
+- New issue comments are process-only: `/kind bug` and `/area podutils/initupload` (petr-muller, 2026-09-27T14:06:18Z), a review request to the reporter and that reporter accepting (petr-muller 14:19:14Z, Ultronious 14:24:49Z). The OCI verification evidence lives in PR #971, not the issue.
 
 ## Initial validation
 
@@ -67,6 +94,8 @@ Partial coverage. `pkg/io/providers/aws_test.go:29-119` verifies client credenti
 
 **Alternative**: expose an environment-variable list through `DecorationConfig` and inject `AWS_REQUEST_CHECKSUM_CALCULATION` into pod-utility containers. This is more general, but expands public configuration, deepcopy/validation, and container wiring for a policy Prow can select safely based on its already-explicit custom endpoint.
 
+**Shipped (PR #971, merged 2026-10-28)**: neither option above. The merged change keeps the SDK default and adds an optional `request_checksum_calculation` field to `S3Credentials` (`pkg/io/providers/aws.go:81-93`), then forwards the resulting policy to `s3blob.Options` (`pkg/io/providers/aws.go:49-52`) with `gocloud.dev` v0.47.0. The reporter chose this because the credential file already reaches `initupload` and `sidecar`, whereas an environment variable does not reach them. It is strictly smaller than the alternative and does not change behavior for existing users, but it also does not remove the 501 for a deployment that upgrades without changing its secret.
+
 ## Effort assessment
 
 **Effort Level**: 2 - Moderate
@@ -100,7 +129,14 @@ Not yet indicated.
 - [cause] `pkg/io/providers/aws.go:54-92` leaves the SDK on its default `RequestChecksumCalculationWhenSupported`; the SDK documents that this calculates request checksums whenever supported, which triggers incompatible streaming behavior for the reported stores.
 - [related-code] `pkg/pod-utils/gcs/upload.go:55-72` builds the opener used by artifact upload; `pkg/io/opener.go:207-227` caches buckets and delegates S3 construction to the provider.
 - [related-code] `pkg/io/providers/providers.go:75-101` explicitly supports S3-compatible endpoints and routes supplied S3 credentials to `getS3Bucket`.
-- [related-pr] #971 (open) implements endpoint-only `when_required` defaulting with tests for AWS S3, custom endpoints, and the environment override.
+- [cause] Setting the policy on `s3.Client` alone is insufficient: gocloud's S3 writer uploads through the SDK transfer manager, whose own checksum setting overrides the client's. The merged fix therefore passes `client.Options().RequestChecksumCalculation` to `s3blob.Options.RequestChecksumCalculation` (`pkg/io/providers/aws.go:49-52`), which required `gocloud.dev` v0.47.0.
+- [related-pr] #971 (merged 2026-10-28, squash commit `707da3e68`) adds the opt-in `request_checksum_calculation` credential field with table-driven client tests, an invalid-value error, field-over-env precedence, and a TLS-server test asserting the real `PutObject` headers.
+
+## Resolved
+
+- [related-pr] #971 implemented endpoint-only `when_required` defaulting with tests for AWS S3, custom endpoints, and the environment override — superseded: the merged design is an opt-in credential field with unchanged defaults, plus a `gocloud.dev` bump.
+- The triage's implied assumption that configuring `s3.Client` would change upload behavior — answered by the PR: the transfer manager has its own checksum setting; see the corrected `[cause]` finding above.
+- Requested labels `area/provider/aws` and `help-wanted` — not applied; maintainers added only `kind/bug` and `area/podutils/initupload`.
 
 ## Checked
 
@@ -109,14 +145,19 @@ Not yet indicated.
 - Read the shared upload, opener, provider, and AWS client paths, their unit tests, and the SDK's current request-checksum contract.
 - Checked PR #971 discussion/status; it is mergeable, has no human reviews yet, and no failing completed check was reported.
 - Reviewed history of the AWS client path; the custom-endpoint support predates the dependency update. The precise upstream version that altered observed wire behavior remains unproven.
+- Re-checked #970 on 2026-10-29: state `CLOSED` / `COMPLETED`, closed 2026-10-28T08:53:38Z, closing reference PR #971, labels `kind/bug` and `area/podutils/initupload`.
+- Read PR #971's final diff, reviews (lentzi90 LGTM 2026-10-23T07:54:43Z; petr-muller `/approve` twice, 2026-10-27T18:33:06Z and 2026-10-28T08:52:16Z), and its OCI verification comment (Sunnatillo, 2026-10-19T20:35:24Z).
+- Confirmed the fix is on `upstream/main` (squash commit `707da3e68`, ancestor of `upstream/main`; 136 commits ahead of the triage's `main_sha`), and `upstream/main:go.mod` pins `gocloud.dev v0.47.0`.
+- Checked for post-merge issue comments and cross-references: none; the only post-triage timeline events are the two label events and the close.
 
 ## Next steps
 
-- Review PR #971, paying particular attention to environment/profile precedence and the custom-endpoint-only guard.
-- Apply `kind/bug`, `area/provider/aws`, `area/podutils/initupload`, and `help-wanted` if the maintainer agrees.
-- Keep #970 open until #971 merges; then close it as fixed.
+- No blocking maintainer action: #971 is merged and #970 is closed `COMPLETED`.
+- Optional follow-ups if desired:
+  - Document `request_checksum_calculation: "when_required"` in user-facing storage documentation, not only the `GetBucket` doc comment (`pkg/io/providers/providers.go:75-82`); upgrading alone does not fix an OCI/Swift deployment.
+  - Consider a follow-up issue for automatic `when_required` defaulting on custom endpoints (this triage's original recommendation) if other adopters hit the 501 without reading the credential docs.
 
 ## Open questions
 
-- Should an OCI/Swift-compatible integration fixture be added, or are the targeted SDK-client policy tests sufficient for this dependency behavior?
-- Is `area/podutils/initupload` preferred over the broader `area/pod-utilities`, given that the same shared path can also affect other pod utilities?
+- Should checksum mode default to `when_required` for custom endpoints instead of requiring a credential-file opt-in? The shipped fix leaves defaults unchanged, trading interoperability for opportunistic integrity checks.
+- Is a real OCI/Swift integration fixture worth adding beyond the TLS-server header assertion in `pkg/io/providers/aws_test.go`?

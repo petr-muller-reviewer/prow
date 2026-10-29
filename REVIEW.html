@@ -31,19 +31,24 @@ ul, ol { padding-left:1.5rem; }
 details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
 </style></head><body><main>
 <h1>Require rationale for /retest, /retest-required, and /override</h1>
-<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1026">kubernetes-sigs/prow#1026</a> · base <code>main</code> · head_sha <code>1e4f82208865</code> · reviewed_at <code>2026-10-28T01:09:54Z</code></div>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1026">kubernetes-sigs/prow#1026</a> · base <code>main</code> · head_sha <code>1e4f82208865</code> · reviewed_at <code>2026-10-29T19:10:45Z</code></div>
 <div class="badges"><span class="badge c-red">verdict: request-changes</span><span class="badge c-red">gate: do-not-merge</span></div>
 <details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#1026
 title: &quot;Require rationale for /retest, /retest-required, and /override&quot;
 head_sha: 1e4f822088659f761c582b695d1fae19c87f546d
 base: main
-reviewed_at: 2026-10-28T01:09:54Z
+reviewed_at: 2026-10-29T19:10:45Z
 verdict: request-changes
 gate:
   decision: do-not-merge
   gated_at: 2026-10-28T01:14:05Z
   gated_head_sha: 1e4f822088659f761c582b695d1fae19c87f546d
-  reviewed_head_sha: 1e4f822088659f761c582b695d1fae19c87f546d</code></pre></details>
+  reviewed_head_sha: 1e4f822088659f761c582b695d1fae19c87f546d
+refresh_log:
+  - at: 2026-10-29T19:10:45Z
+    old_sha: 1e4f822088659f761c582b695d1fae19c87f546d
+    new_sha: 1e4f822088659f761c582b695d1fae19c87f546d
+    summary: &quot;No code changes; only activity since the review was BenTheElder&#x27;s `/assign @petr-muller` comment. Findings unchanged, blocking override bypass still open.&quot;</code></pre></details>
 <h2>Gate</h2>
 <p><strong>Decision: do-not-merge</strong> at <code>1e4f822088659f761c582b695d1fae19c87f546d</code>.</p>
 <p>The current PR head is identical to the reviewed head: no subsequent commits address the confirmed override rationale bypass. A failed initial authorization lookup still skips validation, while a successful authorization lookup in the native handler can permit an override without the required rationale. This remains an unresolved blocking finding; fix the sequencing and cover the failed-then-successful lookup scenario before merging. GitHub contains no submitted reviews or inline review comments adding further gating findings; the author's validation evidence does not cover this failure transition.</p>
@@ -77,6 +82,14 @@ gate:
 <li>Parses same-line and following-line rationales, validates each command occurrence, and strips same-line rationale text before native command parsing.
 </li>
 <li>Blocks the trigger or override handler when an authorized user supplies an invalid rationale, and documents configuration and behavior.
+</li></ul>
+<p>Since previous review (2026-10-28T01:09:54Z, <code>1e4f8220</code>): no code changed.</p>
+<ul>
+<li>PR head is still <code>1e4f822088659f761c582b695d1fae19c87f546d</code>; <code>git diff 1e4f8220..FETCH_HEAD</code> for <code>pull/1026/head</code> is empty, so no commits were pushed and no force-push occurred.
+</li>
+<li>Only activity since the review: BenTheElder's <code>/assign @petr-muller</code> issue comment at 2026-10-28T01:29:35Z (with the resulting assignment/subscription timeline events). No submitted reviews, inline review comments, label changes, or discussion of the findings.
+</li>
+<li>The blocking override rationale bypass at <code>pkg/plugins/override/override.go:343-344</code> is untouched and still gates merge.
 </li></ul>
 <h2>Findings</h2>
 <h3><span class="tag c-red">blocking</span>Tie rationale validation to the authorization that permits execution</h3>

@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#474</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>2 pr's are not compatible in merge pool</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/issues/474">kubernetes-sigs/prow#474</a> · main_sha <code>b99244a63a72</code> · state <code>open</code> · labels <code>kind/bug, area/tide</code> · triaged_at <code>2026-10-28T01:17:50Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: accepted</span></div>
+<details><summary>Full metadata</summary><pre><code>issue: kubernetes-sigs/prow#474
+title: &quot;2 pr&#x27;s are not compatible in merge pool&quot;
+state: open
+labels: kind/bug, area/tide
+main_sha: b99244a63a72e55978010020b225d27637bf4051
+triaged_at: 2026-10-28T01:17:50Z
+verdict: accepted
+legitimacy: LEGITIMATE
+effort: 3
+recommended_labels: [kind/bug, area/tide]
+advice:
+  advised_at: 2026-10-28T01:19:37Z
+  based_on_triaged_at: 2026-10-28T01:17:50Z</code></pre></details>
+<h2>Verdict</h2>
+<p><strong>Accepted — keep open; effort level 3.</strong></p>
+<p>The report concerns Tide's scheduling code and remains worth investigating. Current code permits a conditional repeated-batch loop, but the production cause is unverified: individual retesting can run while a batch is pending. PR #538 closed unmerged, and the newer overlapping #1041 was withdrawn. Capture a multi-sync reproduction before choosing a scheduling change; retain the existing <code>kind/bug</code> and <code>area/tide</code> labels.</p>
+<h2>What the issue reports</h2>
+<ul>
+<li>Two otherwise eligible PRs can be semantically incompatible when tested together.
+</li>
+<li>Tide reportedly repeats their batch without progressing to an individual merge.
+</li>
+<li>Maintainers expect one PR to be retested and merged, followed by retesting the other against the updated base.
+</li>
+<li>Individual results becoming stale after another merge is a suspected precondition; the precise incident trigger is unresolved.
+</li>
+<li>The issue reopened on October 28, 2026 after automatic closure; the proposed fix has not merged.
+</li></ul>
+<h2>Initial validation</h2>
+<p><strong>Assessment</strong>: LEGITIMATE</p>
+<h3>Analysis</h3>
+<p><a href="https://github.com/kubernetes-sigs/prow/issues/474">Issue #474</a> describes incompatible PRs repeatedly batch-tested without making progress. Maintainers expect Tide to retest and merge one PR individually. Discussion identifies stale individual results after the base advances as a relevant condition; the March 10 clarification explicitly leaves open why serial retesting does not rescue the pool. This is a valid Tide scheduling report, although its precise production trigger remains unproven.</p>
+<p>The issue was automatically closed on October 17, 2026 and reopened by petr-muller on October 28 with a statement that the problem remains. This fresh triage replaces the stale July analysis, including its incorrect claim that PR #538 remains open.</p>
+<p><strong>Issue Category</strong>: Bug</p>
+<p><strong>Repository Scope Check</strong>:</p>
+<ul>
+<li>Component mentioned: Tide merge-pool scheduling.
+</li>
+<li>Exists in this repo: Yes, <code>pkg/tide/tide.go</code>.
+</li>
+<li>Relevant paths: <code>accumulateBatch</code>, <code>accumulate</code>, <code>pickBatch</code>, <code>takeAction</code>, and <code>syncSubpool</code> in <code>pkg/tide/tide.go</code>.
+</li></ul>
+<p><strong>Information Completeness</strong>:</p>
+<ul>
+<li>Sufficient detail provided: Yes for investigation; not yet a verified reproduction against this checkout.
+</li>
+<li>Missing information: incident-time individual job states, pending batch states across syncs, deployment revision/configuration, and whether a required batch failure precedes any successful serial retest opportunity.
+</li></ul>
+<h3>Recommendation</h3>
+<p>Keep open. The closed, unmerged <a href="https://github.com/kubernetes-sigs/prow/pull/538">PR #538</a> is prior work, not a shipped fix. <a href="https://github.com/kubernetes-sigs/prow/issues/1041">Issue #1041</a> describes the same proposed loop in more detail but was closed by its author because its AI analysis was considered mistaken. Treat it as an unverified overlapping report, not independent confirmation or grounds to close this older record.</p>
+<p><strong>Suggested Action</strong>: Keep open and continue triage; gather a deterministic reproduction before selecting a fix.</p>
+<h2>Research findings</h2>
+<h3>How it works today</h3>
+<p><code>syncSubpool</code> accumulates individual and batch results, then chooses one action (<code>pkg/tide/tide.go:1859-1880</code>). Individual successes must have a matching current base (or skip-retest sentinel) when reconstructed from contexts (<code>pkg/tide/tide.go:1116-1129</code>); missing/failed required current-base jobs put a PR in <code>missings</code> (<code>pkg/tide/tide.go:1151-1210</code>).</p>
+<p>Batch candidates need acceptable head contexts, but may have stale-base successes: <code>pickBatch</code> uses <code>isRetestEligible</code>, not current-base success classification (<code>pkg/tide/tide.go:1271-1327,1335-1381</code>). This is intentional retesting eligibility, not by itself a bug. <code>pickNewBatch</code> checks Git merge compatibility, which cannot detect semantic/test incompatibility (<code>pkg/tide/tide.go:1227-1263</code>).</p>
+<p><code>accumulateBatch</code> groups jobs by refs and combines the best results per context. A missing or failing required context makes the batch invalid; only successful and pending sets are returned (<code>pkg/tide/tide.go:1016-1113</code>). Importantly, missing jobs also use <code>failureState</code>, so adding a failure return naively would conflate incomplete job sets with actual CI failures. <code>takeAction</code> prefers a successful batch, then a ready individual PR when no batch is pending, then a new batch, then a serial retest (<code>pkg/tide/tide.go:1615-1665</code>).</p>
+<p><code>trigger</code> deduplicates batch jobs using an index keyed by job, repo, base, and PR numbers/SHAs. Completed unsuccessful jobs are excluded from that index and can be retried (<code>pkg/tide/tide.go:1557-1612,2259-2287</code>). A <code>TRIGGER_BATCH</code> history action alone does not prove every batch job was recreated: nonfailed jobs are reused.</p>
+<h3>Root cause</h3>
+<p><strong>High confidence in the conditional control-flow mechanism; moderate confidence that it explains the reported incidents.</strong> At a stable base, if all individual results need retesting, at least two PRs remain batch-eligible and merge-compatible, and no batch is classified pending or successful when each sync observes it, Tide can repeatedly select the same batch before reaching serial retesting. Fast failure of a required batch context before the following sync is one sufficient scenario. Because any required failure dominates the aggregate, other batch jobs can still be running while <code>batchPending</code> is empty.</p>
+<p><strong>Correction to the previous triage:</strong> ignoring failed batches alone does not establish a livelock. If a valid pending batch is observed and there are no serial successes or pendings, <code>takeAction</code> can start a serial retest; if a serial success exists and no batch is pending, Tide can merge it. These branches are explicitly tested. In PR #538's incident log, multiple pending-batch snapshots show WAIT, but the excerpt does not include individual buckets, so it does not establish why the serial branch was unavailable.</p>
+<p>No runtime reproduction was executed, and no incident deployment revision or complete job/status timeline was supplied. The renewed statement that the bug remains is evidence to continue investigation, not proof of a particular root cause. The newer #1041 analysis was withdrawn and supplies no independent validation. History search for the action-order/failure-state constructs leads back to the 2024 source move, so no recent regression commit is established.</p>
+<h3>Tests and docs</h3>
+<p><strong>Coverage: Partial.</strong> <code>TestAccumulateBatch</code> covers failure, missing-required-job and success-after-failure behavior (<code>pkg/tide/tide_test.go:91-219</code>). <code>TestTakeActionV2</code> intentionally expects failed batch jobs to retry (<code>pkg/tide/tide_test.go:2053-2091</code>) and verifies serial retesting while a batch is pending (<code>pkg/tide/tide_test.go:2093-2113,2162-2186</code>). The examined coverage checks isolated decisions; it does not establish eventual progress across repeated failing-batch syncs. No tests were run for this analysis-only task.</p>
+<p>The author guide promises automatic retesting after the base advances and documents batch priority (<code>site/content/en/docs/components/core/tide/pr-authors.md:37-43</code>). A scheduling fix must preserve required-test gating and useful batch throughput.</p>
+<h3>Proposed approach</h3>
+<p><strong>Recommended: failure-aware serial fallback.</strong> First capture a multi-sync reproduction, then distinguish an actually failed required batch job from missing jobs. Carry a valid failed-batch signal from accumulation into scheduling, scoped to the same base and PR heads. When the pool would otherwise retry an unchanged failed combination indefinitely, give a missing individual retest a chance to run; preserve the normal merge-success path and do not merge stale individual greens. Once that serial result passes, normal merging can advance the base.</p>
+<ul>
+<li>Trade-offs: extra individual work and reduced batch throughput on transient failures, in exchange for progress; define behavior with simultaneous pending and failed batches, changed config, and garbage-collected jobs.
+</li>
+<li>Backwards compatibility: no public API/config change is inherently needed, but deployment-visible retry ordering changes. Do not reject all stale-green batch candidates: they are precisely what normal batching retests.
+</li>
+<li>Testing needed in implementation work: repeated fast-failing two-PR batches at a stable base; serial fallback then merge; ordinary pending-batch serial retest; mixed pending/failed contexts; missing <code>run_before_merge</code> jobs; old failures with newer successful results; base/head changes; <code>run_if_changed</code>; no required-test bypass.
+</li></ul>
+<p><strong>Alternative: shrink failed batches.</strong> PR #538 removes the highest-numbered PR in a failed set and selects another batch, falling through to serial work for a two-PR pool. This may retain throughput for larger pools, but is not binary bisection and needs explicit convergence/fairness rules. Its helper treats newest as lowest priority without considering configured label priority; multiple failed sets are assigned from map iteration, and missing-job states are lumped into failures. Its latest diff adds a synthetic three-PR shrink case, not a demonstrated multi-sync progress guarantee. Treat it as a design starting point, not a ready or merged fix.</p>
+<h2>Effort assessment</h2>
+<p><strong>Effort Level</strong>: 3 - Large</p>
+<p>The deciding factors are unresolved incident conditions and a deployment-visible change to Tide's core scheduling policy. A small patch still requires expertise to preserve merge safety and progress across repeated syncs; the existing unmerged PR does not reduce this level.</p>
+<ul>
+<li><strong>Solution certainty</strong>: significant uncertainty — conditional starvation is clear, but production causality and fallback versus shrinking semantics need agreement.
+</li>
+<li><strong>Blast radius</strong>: core paths and deployment-visible behavior — batch retry ordering, serial progress, test reuse and required-context handling across deployments.
+</li>
+<li><strong>Expertise</strong>: Tide result accumulation, job indexing/lifetime, GitHub contexts, batching and priority semantics.
+</li>
+<li><strong>Scope estimate</strong>: Medium — likely <code>pkg/tide</code> accumulation/scheduling and multi-sync regression coverage; no public configuration change is inherently required.
+</li></ul>
+<p><strong>Recommended labels</strong>: <code>kind/bug</code> (reported loss of progress), <code>area/tide</code> (scheduler ownership). Both are already present. Neither <code>good-first-issue</code> nor <code>help-needed</code> is appropriate at level 3. No priority label is justified without current impact/scope evidence.</p>
+<p><strong>Guidance for contributors</strong>: Read accumulation, eligibility, <code>takeAction</code> and the existing retry/pending-batch tests first. Agree a progress invariant and failure classification with Tide maintainers before implementation. Use #538 as prior art, including its multi-failure, priority and missing-job limitations.</p>
+<h2>Briefing summary</h2>
+<p>Completed the seven-slide interactive briefing: issue overview, legitimacy, conditional root cause, technical analysis, solution approaches, effort and recommendations. Keep #474 open as a legitimate Tide scheduling report. The code permits repeated failed-batch selection under specific conditions, but individual retesting can run while a batch is pending, so the production cause remains unverified. PR #538 closed unmerged; #1041 was withdrawn and is not independent confirmation. Recommended collecting a multi-sync reproduction before agreeing failure-aware serial fallback versus batch shrinking. Effort is level 3 because of uncertainty and deployment-visible changes to core scheduling; retain <code>kind/bug</code> and <code>area/tide</code> without newcomer or priority labels.</p>
+<p>Briefed maintainer on: 2026-10-28T01:17:50Z</p>
+<p>Key questions asked:</p>
+<ul>
+<li>No substantive questions were asked; the maintainer chose to continue through all seven slides.
+</li></ul>
+<p>Maintainer decision:</p>
+<ul>
+<li>No implementation, label, or publication decision was indicated. The recommendations above remain proposed actions.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-amber">cause</span>Conditional starvation of individual retesting</h3>
+<ul>
+<li>detail: With stale individual results, at least two batch-eligible PRs, and no batch classified pending or successful at each sync, <code>takeAction</code> can repeatedly select the same batch before individual retesting. This is a code-supported hypothesis, not a reproduced explanation of the incidents; a pending batch can allow individual retesting.
+</li>
+<li>evidence: <code>pkg/tide/tide.go:1615-1665</code>; <a href="https://github.com/kubernetes-sigs/prow/issues/474#issuecomment-4027955562">March 10 qualification</a>.
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>Batch accumulation omits invalid batches</h3>
+<ul>
+<li>where: <code>pkg/tide/tide.go:1082-1113</code>
+</li>
+<li>excerpt:<pre><code>case pendingState:
+    pendingBatch = state.prs
+case successState:
+    successBatch = state.prs</code></pre>
+</li>
+<li>detail: Both missing required jobs and actual failures produce <code>failureState</code>; a fix must distinguish them.
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>Stale successes remain eligible for batch retesting</h3>
+<ul>
+<li>where: <code>pkg/tide/tide.go:1116-1210,1271-1381</code>
+</li>
+<li>excerpt:<pre><code>if c.isRetestEligible(sp.log, &amp;pr, cc[pr.Number]) {
+    candidates = append(candidates, pr)
+}</code></pre>
+</li>
+<li>detail: Batch retest eligibility accepts successful head contexts regardless of base. Individual success classification requires current-base jobs or the skip-retest sentinel. That distinction enables ordinary batching and is not itself a defect.
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>Completed unsuccessful batch jobs can retry</h3>
+<ul>
+<li>where: <code>pkg/tide/tide.go:1557-1612,2259-2287</code>
+</li>
+<li>excerpt:<pre><code>if pj.Complete() &amp;&amp; pj.Status.State != prowapi.SuccessState {
+    return nil
+}</code></pre>
+</li>
+<li>detail: Such jobs are excluded from the deduplication index. Nonfailed batch jobs can be reused, so repeated <code>TRIGGER_BATCH</code> actions do not prove that every job restarted.
+</li></ul>
+<h3><span class="tag c-blue">reproducibility</span>Incident reports do not yet establish the full loop</h3>
+<ul>
+<li>detail: Production reports and PR #538's log excerpt support investigating repeated batches. Fast-failure reproduction and why pending-batch snapshots showed WAIT remain unverified; no runtime reproduction was executed.
+</li>
+<li>evidence: <a href="https://github.com/kubernetes-sigs/prow/pull/538#issuecomment-3897386597">Incident log</a>; <a href="https://github.com/kubernetes-sigs/prow/issues/474#issuecomment-4020200695">stale-base hypothesis</a>.
+</li></ul>
+<h3><span class="tag c-blue">related-pr</span>Closed batch-shrinking proposal</h3>
+<ul>
+<li>ref: kubernetes-sigs/prow#538
+</li>
+<li>relevance: CLOSED, unmerged on 2026-10-17. Proposes removing the highest-numbered PR from a failed batch; prior art requiring convergence, priority, and missing-job handling review.
+</li></ul>
+<h3><span class="tag c-blue">related-issue</span>Withdrawn overlapping report</h3>
+<ul>
+<li>ref: kubernetes-sigs/prow#1041
+</li>
+<li>relevance: CLOSED. Describes the stale-base/repeated-batch hypothesis; the author withdrew its AI analysis on 2026-10-27, so it is not independent confirmation.
+</li></ul>
+<h3><span class="tag c-blue">related-issue</span>Superseded batch jobs continue running</h3>
+<ul>
+<li>ref: kubernetes-sigs/prow#650
+</li>
+<li>relevance: OPEN. Concerns obsolete batch jobs after the base moves; related scheduling area, different trigger.
+</li></ul>
+<h3><span class="tag c-blue">related-issue</span>GitHub review protection blocked merge attempts</h3>
+<ul>
+<li>ref: kubernetes-sigs/prow#673
+</li>
+<li>relevance: CLOSED. Solved through configuration introduced in #579; distinct from batch test failures.
+</li></ul>
+<h3><span class="tag c-blue">related-issue</span>Priority merge feature request</h3>
+<ul>
+<li>ref: kubernetes-sigs/prow#506
+</li>
+<li>relevance: CLOSED. Requests expedited individual merging, not recovery from this failed-batch loop.
+</li></ul>
+<h3><span class="tag c-blue">related-pr</span>Merge errors surfaced in history</h3>
+<ul>
+<li>ref: kubernetes-sigs/prow#643
+</li>
+<li>relevance: MERGED on 2026-03-09. Improves observability of merge errors; does not fix failed-batch scheduling.
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>Read full issue and discussion, including the March 10 qualification and October 28 reopening.
+</li>
+<li>Queried cross-reference timeline; found #506, #538, #643.
+</li>
+<li>Searched all issues using <code>tide batch</code>, <code>batch fail</code>, and <code>merge incompatible</code>; opened relevant candidates #1041, #673, #650 and #506.
+</li>
+<li>No confirmed older canonical duplicate found. #1041 is newer and withdrawn; #673 has a different cause.
+</li>
+<li>Read PR #538 diff and nearby tests; no implementation or runtime reproduction performed.
+</li>
+<li>Ruled out the previous blanket claim that serial retesting is always starved; the pending-batch path can trigger it.
+</li>
+<li>No recent regression commit identified by focused action-order/failure-state history search.
+</li>
+<li>Analysis inspected code and tests without running tests or changing implementation. <code>/triage:save</code> generates <code>TRIAGE.html</code> from this Markdown.
+</li></ul>
+<h2>Next steps</h2>
+<ul>
+<li>Capture full sync buckets plus job/context timestamps at a stable base and reproduce the failure across successive syncs.
+</li>
+<li>Ask whether PR #538 should be revived or replaced after the fallback policy is agreed with Tide maintainers.
+</li>
+<li>Retain <code>kind/bug</code> and <code>area/tide</code>; do not add newcomer or priority labels on present evidence.
+</li></ul>
+<h2>Advice</h2>
+<p>No change since triage at 2026-10-28T01:17:50Z: #474 remains open with <code>kind/bug</code> and <code>area/tide</code>, no assignee or milestone, and no new comments or cross-references. PR #538 remains closed and unmerged; #643 merged only an observability improvement. No active linked fix was identified. The existing next steps still apply.</p>
+<h3>Suggested action: request the evidence needed for reproduction</h3>
+<p>The unresolved finding is why individual retesting did not rescue the pool. Ask for complete successive sync states before choosing a scheduling change; the latest human comment only says the issue remains. Suggested command (not executed):</p>
+<pre><code>gh issue comment 474 --repo kubernetes-sigs/prow --body &#x27;&gt; *This was generated by AI during triage.*
+
+@bn222 @Prucek could you share a recent occurrence with successive Tide sync logs showing prs-passing, prs-pending, prs-missing, batch-passing, batch-pending, actions and targets? Please include job/context timestamps, base and PR-head SHAs, Tide revision, sync period, and relevant job/batching configuration.
+
+Tide can trigger an individual retest while a batch is pending. We need to understand why that did not make progress here, including whether a required batch job failed before the next sync. PR #538 closed unmerged; a reproduction would help decide whether to revive that approach or use individual retesting after batch failure.&#x27;</code></pre>
+<p>Keep the issue open and retain its existing labels; no label edit or fresh PR link is needed. The level-3 assessment does not justify newcomer labels, and there is no evidence for a priority, milestone, or assignment recommendation. Decide whether to revive or replace #538 after reproduction and maintainer agreement on fallback behavior.</p>
+<h2>Open questions</h2>
+<ul>
+<li>Could you provide successive sync logs including <code>prs-passing</code>, <code>prs-pending</code>, <code>prs-missing</code>, <code>batch-passing</code>, <code>batch-pending</code>, actions and targets, so we can determine what prevented an individual retest while the recorded batch remained pending?
+</li>
+<li>Does the incident reproduce when a required batch job fails before the next Tide sync? Please include job/context timestamps, base and PR-head SHAs, Tide revision, sync period and relevant job/batching configuration.
+</li></ul>
+</main></body></html>

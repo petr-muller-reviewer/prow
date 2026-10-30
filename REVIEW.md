@@ -57,3 +57,30 @@ No findings.
 ## Open questions
 
 None.
+
+## Followups
+
+### [tests] Probe multipart upload checksum behavior
+
+- category: tests
+- necessity: could
+- mode: probe
+- where: `pkg/io/providers/aws_test.go`; `pkg/io/providers/aws.go:51`
+
+**Why followup:** The merged regression test writes five bytes, exercising only a single `PutObject`. Prow artifacts can exceed the transfer manager's 16 MiB multipart threshold, so the large-upload path is not covered in Prow even though the fix exists to support stores that reject `aws-chunked`.
+
+**Handoff prompt:**
+
+```text
+In `kubernetes-sigs/prow`, following merged PR #971 ("Avoid aws-chunked 501 error on S3-compatible stores", merge commit `c06373a3e2cdcf0de2a087b4ed1db426366694b8`), probe the multipart upload path in `pkg/io/providers`.
+
+Background: `getS3Bucket` passes `client.Options().RequestChecksumCalculation` into `s3blob.Options`. The existing `Test_getS3Bucket_UploadChecksumHeaders` in `pkg/io/providers/aws_test.go` writes only five bytes, so it exercises the transfer manager's single-part `PutObject` path. The transfer manager's default multipart threshold is 16 MiB.
+
+Write throwaway tests that exercise uploads larger than 16 MiB through `getS3Bucket` with `request_checksum_calculation` set to `when_required`, using a TLS `httptest` S3-compatible server and `insecure: true`, `s3_force_path_style: true`. Capture the `CreateMultipartUpload` and every `UploadPart` request. Assert that none has `Content-Encoding: aws-chunked` or a non-empty `X-Amz-Trailer`. Inspect request checksum and signature headers as needed to distinguish a real regression from an invalid test expectation.
+
+Run the probe tests. For any failure, classify it as a real implementation bug or a test mistake, with evidence. If a real bug is found, apply the minimal implementation fix in `pkg/io/providers/aws.go` and related code only if strictly necessary, then rerun. Do not submit the throwaway tests. Delete them before finishing; leave only the minimal production fix, if any.
+
+Acceptance criteria: the multipart path is exercised for `when_required`; `CreateMultipartUpload` and every `UploadPart` request are checked for chunked encoding and trailers; each failure is classified with evidence; if no real bug is found, no files are changed; if a real bug is found, its failing input, expected result, and actual result are reported and the minimal fix is applied.
+
+Scope guard: do not refactor checksum configuration, change default behavior, alter the existing single-part regression test, add permanent tests, or change unrelated S3 provider behavior.
+```

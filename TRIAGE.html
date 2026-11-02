@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#5</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>Implement doc checkers</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/issues/5">kubernetes-sigs/prow#5</a> · main_sha <code>0d9737ca26be</code> · state <code>open</code> · labels <code>lifecycle/frozen</code> · triaged_at <code>2026-10-28T01:31:26Z</code></div>
+<div class="badges"><span class="badge c-amber">verdict: needs-discussion</span></div>
+<details><summary>Full metadata</summary><pre><code>issue: kubernetes-sigs/prow#5
+title: &quot;Implement doc checkers&quot;
+state: open
+labels: lifecycle/frozen
+main_sha: 0d9737ca26be70c30ad4d017f38965d0f8ef0943
+triaged_at: 2026-10-28T01:31:26Z
+verdict: needs-discussion
+legitimacy: LEGITIMATE
+effort: 2
+recommended_labels: [area/documentation, kind/feature, priority/important-longterm]
+advice:
+  advised_at: 2026-10-28T01:38:49Z
+  based_on_triaged_at: 2026-10-28T01:31:26Z</code></pre></details>
+<h2>Verdict</h2>
+<p><code>needs-discussion</code> — a legitimate tracking issue whose remaining scope needs a maintainer decision.</p>
+<p>The link-checking half is done: #952 made the checker actually check links and #954 repaired the dead external links it found. What remains is (1) a periodic external-link job, (2) an internal-link gate for site PRs, and (3) "other checkers" that are defined only in a Google Doc that requires login. The issue is actionable only after the maintainer decides whether #5 stays an umbrella or is split into focused issues.</p>
+<h2>What the issue reports</h2>
+<ul>
+<li>Tracking issue for automated quality checks on docs.prow.k8s.io, covering both existing and newly proposed documentation.
+</li>
+<li>Original proposal: adopt the <code>kubernetes/website</code> link-checking approach; run external link checking periodically (2x/day proposed) rather than as a presubmit.
+</li>
+<li>Status update from @dklima (2026-10-23): #952 fixed the link checker and #954 repaired the dead external links.
+</li>
+<li>Still open per that comment: the periodic external-link job and the other checkers from the design doc.
+</li>
+<li>Explicit question to maintainers: keep this as the tracking issue for both, or close it and file a separate periodic-job issue.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-amber">cause</span>External link failures cannot fail the check</h3>
+<ul>
+<li>detail: <code>site/.htmltest.yml</code> sets <code>IgnoreExternalBrokenLinks: true</code>, so htmltest reports broken external links as warnings and exits successfully. htmltest v0.17.0 has no CLI flag to override this; it is config-only. Scheduling the current target would produce a green job that checks nothing.
+</li>
+<li>evidence: <code>site/.htmltest.yml:39</code>; <code>hack/make-rules/verify/links.sh:53-54</code>
+</li></ul>
+<h3><span class="tag c-amber">cause</span>Internal link checking has no CI owner</h3>
+<ul>
+<li>detail: <code>verify-links</code> is absent from the <code>make verify</code> driver, and the <code>pull-prow-verify-lint</code> image has neither hugo nor node. Separately, every build/test presubmit skips site-only PRs, so no Prow job validates a change that only touches <code>site/</code>.
+</li>
+<li>evidence: <code>hack/make-rules/verify/all.sh:29-68</code>; <code>kubernetes/test-infra/config/jobs/kubernetes-sigs/prow/prow-presubmits.yaml</code> (<code>skip_if_only_changed: &#x27;^site/&#x27;</code>)
+</li></ul>
+<h3><span class="tag c-amber">cause</span>"Other checkers" have no public definition</h3>
+<ul>
+<li>detail: The referenced design doc requires a Google login. The only non-link checker named in the public trail is docs freshness. The issue cannot be implemented beyond link checking without maintainer input.
+</li>
+<li>evidence: <a href="https://docs.google.com/document/d/17_gyhQipmK_roYqUtwx-hTwi1tn2sd0aG6vdkBn6fKM">https://docs.google.com/document/d/17_gyhQipmK_roYqUtwx-hTwi1tn2sd0aG6vdkBn6fKM</a> ; kubernetes/test-infra#24821 (comment 1057524854 names "broken links, freshness, etc")
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>Link-check pipeline</h3>
+<ul>
+<li>where: <code>hack/make-rules/verify/links.sh:41-54</code>
+</li>
+<li>excerpt:<pre><code>cd site
+
+# The site build transforms SCSS through PostCSS, which hugo calls via npx.
+echo &quot;Installing site dependencies.&quot;
+npm ci
+
+echo &quot;Building the site.&quot;
+hugo --quiet --cleanDestinationDir
+
+echo &quot;Checking links...&quot;
+make check-broken-links HTMLTEST=&quot;${HTMLTEST}&quot;
+
+echo &#x27;PASS: No broken internal links detected&#x27;
+echo &#x27;NOTE: broken external links are reported as warnings above, not failures.&#x27;</code></pre>
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>Site make targets</h3>
+<ul>
+<li>where: <code>site/Makefile:31-38</code>
+</li>
+<li>excerpt:<pre><code>check-broken-links:
+	$(HTMLTEST) -c .htmltest.yml
+
+check-broken-links-internal:
+	$(HTMLTEST) -s -c .htmltest.yml</code></pre>
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>htmltest configuration</h3>
+<ul>
+<li>where: <code>site/.htmltest.yml:35-40</code>
+</li>
+<li>excerpt:<pre><code>IgnoreDirectoryMissingTrailingSlash: true
+# Certificate problems are real breakage. Suppress single URLs through
+# IgnoreURLs above if one ever needs an exception.
+IgnoreSSLVerify: false
+IgnoreExternalBrokenLinks: true
+IgnoreAltMissing: true</code></pre>
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>No link job in CI</h3>
+<ul>
+<li>where: <code>kubernetes/test-infra/config/jobs/kubernetes-sigs/prow/prow-periodics.yaml:1-9</code>
+</li>
+<li>excerpt:<pre><code>periodics:
+- name: ci-prow-continuous-test-verify
+  cluster: k8s-infra-prow-build
+  decorate: true
+  extra_refs:
+  - org: kubernetes-sigs
+    repo: prow
+    base_ref: main
+  interval: 1h</code></pre>
+</li></ul>
+<h3><span class="tag c-blue">related-pr</span>#952 made the checker check links</h3>
+<ul>
+<li>ref: kubernetes-sigs/prow#952
+</li>
+<li>relevance: Merged 2026-09-27; fixed the per-file htmltest invocation, pinned htmltest v0.17.0, added <code>verify-links</code>, and explicitly left CI jobs and external-link strictness as follow-up.
+</li></ul>
+<h3><span class="tag c-blue">related-pr</span>#954 repaired dead external links</h3>
+<ul>
+<li>ref: kubernetes-sigs/prow#954
+</li>
+<li>relevance: Merged 2026-09-27; fixed the 16 dead external links found by the repaired checker.
+</li></ul>
+<h3><span class="tag c-blue">related-issue</span>Documentation Revamp</h3>
+<ul>
+<li>ref: kubernetes/test-infra#24821
+</li>
+<li>relevance: Closed predecessor; defines the docs site goal and names broken-link and freshness checks as intended Prow jobs.
+</li></ul>
+<h3><span class="tag c-blue">related-issue</span>Containerized site tooling</h3>
+<ul>
+<li>ref: kubernetes-sigs/prow#29
+</li>
+<li>relevance: Closed; also asked for a containerized htmltest, which is relevant to the CI image problem.
+</li></ul>
+<h3><span class="tag c-blue">related-issue</span>Design doc is login-gated</h3>
+<ul>
+<li>ref: <a href="https://docs.google.com/document/d/17_gyhQipmK_roYqUtwx-hTwi1tn2sd0aG6vdkBn6fKM">https://docs.google.com/document/d/17_gyhQipmK_roYqUtwx-hTwi1tn2sd0aG6vdkBn6fKM</a>
+</li>
+<li>relevance: Cannot be read without a Google session, so the intended list of additional checkers is not recoverable from the issue.
+</li></ul>
+<h2>Resolved</h2>
+<h3><span class="tag c-blue">related-pr</span>Link checker did not check links</h3>
+<ul>
+<li>ref: kubernetes-sigs/prow#952
+</li>
+<li>relevance: Resolved 2026-09-27; the checker now runs htmltest once over the built <code>public/</code> tree.
+</li></ul>
+<h3><span class="tag c-blue">related-pr</span>Sixteen dead external links in site content</h3>
+<ul>
+<li>ref: kubernetes-sigs/prow#954
+</li>
+<li>relevance: Resolved 2026-09-27; the links were repaired.
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>Searched open issues for "docs checker" and "link checker": only #5 matches; no duplicate or successor issue.
+</li>
+<li>Read the issue timeline cross-references: #29, #952, #954 only.
+</li>
+<li>Confirmed <code>.github/workflows/</code> does not exist in this repo.
+</li>
+<li>Confirmed <code>hack/make-rules/verify/all.sh</code> has no <code>links</code> entry (go lints, go fmt, file perms, spelling, codegen, boilerplate, go deps).
+</li>
+<li>Read all three <code>kubernetes/test-infra</code> job files for <code>kubernetes-sigs/prow</code>: no link-checking job.
+</li>
+<li>Counted frontmatter across 94 Markdown files: <code>title</code> 94, <code>weight</code> 93, <code>description</code> 91, <code>date</code> 0, <code>lastmod</code> 0.
+</li>
+<li>Checked htmltest v0.17.0 CLI help and option table: only <code>-s/--skip-external</code>; <code>IgnoreExternalBrokenLinks</code> is config-only.
+</li>
+<li>Attempted to export the design doc as text: redirects to a Google login page.
+</li>
+<li>Confirmed Hugo has <code>enableGitInfo = true</code> (<code>site/config.toml:10</code>), so <code>.Lastmod</code> is derivable for a freshness checker.
+</li></ul>
+<h2>Next steps</h2>
+<ul>
+<li>Maintainer decision: keep #5 as the umbrella for the remaining work, or close it after opening focused issues.
+</li>
+<li>Land the strict external config first: <code>site/.htmltest-external.yml</code> with <code>IgnoreExternalBrokenLinks: false</code> plus a <code>verify-links-external</code> make/verify target.
+</li>
+<li>Add a periodic external-link job (~2x/day) in <code>kubernetes/test-infra</code>, or a GitHub Actions <code>schedule:</code> workflow if maintainers prefer to keep docs tooling here.
+</li>
+<li>Add an internal-link presubmit with <code>run_if_changed: &#x27;^site/&#x27;</code>.
+</li>
+<li>Choose or publish a CI image containing hugo extended, node and Go; #952 explicitly leaves this choice to maintainers.
+</li>
+<li>Decide whether to add a <code>curl --compressed</code> checker for <code>docs.github.com</code>, <code>developer.github.com</code>, <code>help.github.com</code> and Slack, which htmltest cannot validate.
+</li>
+<li>Ask for the design-doc checker list to be made public or pasted into the issue; file one issue per accepted checker.
+</li>
+<li>Document <code>make verify-links</code> and its local prerequisites in contributor docs.
+</li></ul>
+<h2>Advice</h2>
+<p>Live state at advice time: issue open, only <code>lifecycle/frozen</code>, no assignee, no milestone; no comments or linked work since <code>triaged_at</code>; #952 and #954 remain merged. No PR exists for the remaining work.</p>
+<h3>1. Answer @dklima and settle the scope in-thread (recommended)</h3>
+<p>Rationale: their 2026-10-23 comment asks the exact open question, so a decision comment is the disposition-changing action. Keeping #5 as the umbrella, agreeing on the periodic job, and asking for the strict external target first is consistent with the triage findings.</p>
+<pre><code>gh issue comment 5 --repo kubernetes-sigs/prow --body &#x27;&gt; *This was generated by AI during triage.*
+
+@dklima @listx @petr-muller — keeping #5 open as the tracking issue for the remaining doc-checker work.
+
+Agreed on the periodic external-link job. The prerequisite is a strict external target: `site/.htmltest-external.yml` with `IgnoreExternalBrokenLinks: false`, plus a `verify-links-external` make/verify rule. Without that, scheduling the current target produces a green job that checks nothing.
+
+@dklima, can you open that config/target PR first? Then we can decide the job location (test-infra periodic vs. a GitHub Actions workflow) and the hugo+node+Go image.
+
+For the other checkers: the design doc requires login. Can you paste the remaining list here so we can file focused issues?&#x27;</code></pre>
+<h3>2. Apply the triage labels</h3>
+<p>Rationale: the issue currently carries only <code>lifecycle/frozen</code>; <code>area/documentation</code> and <code>kind/feature</code> make it discoverable, and <code>priority/important-longterm</code> fits quality infrastructure that is not urgent.</p>
+<pre><code>gh issue edit 5 --repo kubernetes-sigs/prow \
+  --add-label &quot;area/documentation&quot; \
+  --add-label &quot;kind/feature&quot; \
+  --add-label &quot;priority/important-longterm&quot;</code></pre>
+<h3>3. Split and close #5 (alternative)</h3>
+<p>Rationale: if the umbrella should not stay open, create focused issues and close #5 with cross-references. The first body targets the strict external config; the second the internal presubmit; the third the undefined checker list.</p>
+<pre><code>gh issue create --repo kubernetes-sigs/prow \
+  --title &quot;Add a periodic external link check for docs.prow.k8s.io&quot; \
+  --label area/documentation --label kind/feature \
+  --body &#x27;Track the periodic external link check from #5: add site/.htmltest-external.yml with IgnoreExternalBrokenLinks: false plus a verify-links-external target, then run it ~2x/day. See TRIAGE.md findings.&#x27;
+
+gh issue create --repo kubernetes-sigs/prow \
+  --title &quot;Gate site PRs on internal link checks&quot; \
+  --label area/documentation --label kind/feature \
+  --body &#x27;Track the internal-link presubmit from #5: gate site/** changes on check-broken-links-internal. See TRIAGE.md findings.&#x27;
+
+gh issue create --repo kubernetes-sigs/prow \
+  --title &quot;Define the remaining documentation checkers&quot; \
+  --label area/documentation --label kind/feature \
+  --body &#x27;Track the undefined doc checkers from #5. The design doc is login-gated; freshness is the only publicly named candidate. Enumerate the wanted checkers first.&#x27;
+
+gh issue close 5 --repo kubernetes-sigs/prow --comment &#x27;&gt; *This was generated by AI during triage.*
+
+Split into #&lt;external&gt;, #&lt;internal&gt;, #&lt;checkers&gt;; closing this umbrella.&#x27;</code></pre>
+<h3>4. Escalate to SIG Testing if no decision</h3>
+<p>Rationale: SIG Testing is the documented venue for Prow discussion (<code>CONTRIBUTING.md:25-26</code>), and the root <code>OWNERS</code> approvers (<code>cblecker</code>, <code>petr-muller</code>, <code>matthyx</code>, <code>droslean</code>, <code>krzyzacy</code>, <code>smg247</code>) are the people who can decide.</p>
+<ul>
+<li>Slack: <a href="https://kubernetes.slack.com/messages/sig-testing">https://kubernetes.slack.com/messages/sig-testing</a>
+</li>
+<li>Mailing list: <a href="https://groups.google.com/forum/#!forum/kubernetes-sig-testing">https://groups.google.com/forum/#!forum/kubernetes-sig-testing</a>
+</li></ul>
+<p>No <code>gh</code> command carries this out; raise it in the SIG Testing channel or on the list, then record the outcome here.</p>
+<h3>5. Assign @dklima once they take the first PR</h3>
+<p>Rationale: they volunteered to open the periodic-job PR; assignment is appropriate only after they confirm they are taking it.</p>
+<pre><code>gh issue edit 5 --repo kubernetes-sigs/prow --add-assignee dklima</code></pre>
+<h2>Open questions</h2>
+<ul>
+<li>@dklima: should #5 stay open as the tracking issue for the periodic job and other checkers, or should we close it and open a focused issue for the periodic job?
+</li>
+<li>Is the design doc still the source of truth for "other checkers"? It requires login — can the remaining list be pasted here?
+</li>
+<li>For the periodic job, do we prefer <code>kubernetes/test-infra</code> job config or a GitHub Actions workflow in this repo?
+</li>
+<li>Who can supply or publish the hugo+node+Go image, and is 2x/day still the right cadence?
+</li>
+<li>Should internal-link checking gate every PR or only <code>site/**</code> changes?
+</li>
+<li>What should a periodic failure do — TestGrid only, open an issue, or notify a channel?
+</li>
+<li>Should <code>lifecycle/frozen</code> stay once the issue is split or narrowed?
+</li></ul>
+</main></body></html>

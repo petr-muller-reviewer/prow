@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#1045</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>fix(clonerefs): recover failed sparse merges with complete fetch</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1045">kubernetes-sigs/prow#1045</a> · base <code>main</code> · head_sha <code>66eb058c0c9e</code> · reviewed_at <code>2026-11-01T23:17:54Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span></div>
+<h2>Verdict</h2>
+<p>Approve with suggestions: the recovery is correctly placed, avoids the in-place retry that would silently leave a broken object store, preserves sparse-checkout semantics, and changes no config or API surface — three hardening items and one coverage fix are worth doing in or right after this PR.</p>
+<p>Reviewed from three perspectives (code quality, maintainability, deployment risk); they converged on the same few issues, none blocking. Deployment risk is medium only because a failure path that used to fail fast now performs a full-object re-clone, which during a git-host incident happens across all sparse-checkout jobs at once; nothing breaks on upgrade and rollback is a clean image revert.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Splits <code>Run</code> into an outer driver and <code>runClone</code>, so the whole clone sequence can run twice with different fetch settings.
+</li>
+<li>On a failed sparse-checkout <code>git merge</code> that is not a conflict, removes the failed clone directory and redoes the clone with a full object fetch, keeping <code>sparse-checkout set</code> intact.
+</li>
+<li>Deliberately refuses an in-place merge retry: the merge commit already exists when git dies while writing its output, so a second <code>git merge</code> would report success over a broken object store.
+</li>
+<li>Threads the new <code>fullFetch</code> flag into both places that add <code>--filter=blob:none</code>, and records the retry as <code>fell_back_to_full_fetch</code> plus a line in the human-readable output.
+</li>
+<li>Adds a unit test for the trigger predicate and an integration test that injects the <code>upload-pack: not our ref</code> failure once and asserts that the second attempt is a full fetch with the right merged content and retained sparse paths.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-amber">should-fix</span>Recovery only covers sparse checkout, not <code>blobless_fetch</code></h3>
+<ul>
+<li>where: <code>pkg/pod-utils/clone/clone.go:97-105</code>
+</li>
+<li>concern: the guard is <code>isSparseCheckoutSet(refs)</code>, but the mechanism being repaired (<code>--filter=blob:none</code> promoting a locally created merge blob to a lazy promisor object) is also enabled by <code>BloblessFetch</code> alone at <code>clone.go:296</code> and <code>clone.go:402</code>. Jobs with <code>blobless_fetch: true</code> and no sparse checkout would still crash with no recovery. Mirror the filter condition, or document why sparse is the only reachable trigger.
+</li>
+<li>excerpt:<pre><code>if !record.Failed || !isSparseCheckoutSet(refs) || len(record.Commands) == 0 {
+	return false
+}</code></pre>
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>Failure detection matches the rendered command string</h3>
+<ul>
+<li>where: <code>pkg/pod-utils/clone/clone.go:101-103</code>
+</li>
+<li>concern: <code>strings.Contains(failedCommand.Command, &quot; git merge --no-ff &quot;)</code> depends on <code>cloneCommand.String()</code> rendering <code>PWD=&lt;dir&gt; &lt;env...&gt; git merge --no-ff &lt;sha&gt;</code> and on the merge being the last command. A <code>git -c … merge</code>, a <code>retryCommand</code> wrapper, or a post-merge step would silently disable recovery, and only the integration test would notice. A command-kind marker recorded when the command is built (surfaced on <code>Command</code>) would decouple detection from formatting.
+</li>
+<li>excerpt:<pre><code>failedCommand := record.Commands[len(record.Commands)-1]
+if !strings.Contains(failedCommand.Command, &quot; git merge --no-ff &quot;) {
+	return false
+}</code></pre>
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>Any non-conflict merge failure pays for a full re-clone</h3>
+<ul>
+<li>where: <code>pkg/pod-utils/clone/clone.go:97-110</code>
+</li>
+<li>concern: the predicate is "merge failed and does not look like a conflict", so unrelated causes (network/auth failure during git's lazy fetch, unrelated histories, missing committer identity) also trigger a complete fetch of a potentially huge repo before failing again, with no jitter or backoff. On a systemic git-host degradation that becomes a full re-clone of every sparse-checkout job across all tenants at once. Consider narrowing to the known signature (<code>not our ref</code>, promisor/lazy-fetch errors) and/or a small jittered delay.
+</li>
+<li>excerpt:<pre><code>return !mergeConflictDetected(failedCommand)</code></pre>
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>Recursive delete is keyed on a config-derived path</h3>
+<ul>
+<li>where: <code>pkg/pod-utils/clone/clone.go:79-84</code>
+</li>
+<li>concern: <code>PathForRefs</code> honours <code>Refs.PathAlias</code>, which is not validated (<code>path.Join(root, &quot;src&quot;, &quot;../foo&quot;)</code> resolves outside <code>root/src</code>, and <code>../../..</code> escapes <code>root</code> entirely; verified). Clones run concurrently under one <code>SrcRoot</code>, so a pathological alias lets one failed clone delete a sibling clone's directory. Assert the target is a strict descendant of <code>&lt;dir&gt;/src</code> (or that it equals <code>gitCtx.cloneDir</code>) before removing.
+</li>
+<li>excerpt:<pre><code>if err := os.RemoveAll(PathForRefs(dir, refs)); err != nil {
+	logrus.WithError(err).Error(&quot;Cannot remove failed clone directory&quot;)</code></pre>
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>Regression test does not run in unit CI and does not reproduce blobless</h3>
+<ul>
+<li>where: <code>test/integration/test/pod-utils_test.go:631</code>
+</li>
+<li>concern: the test needs no cluster but lives in a package whose <code>TestMain</code> (<code>overall_test.go:28</code>) exits 0 unless <code>-run-integration-test</code> is set, so it never runs under plain <code>go test ./...</code>. Related fidelity note: the fixture uses a local path as <code>CloneURI</code> and git logs <code>warning: filtering not recognized by server, ignoring</code>, so attempt 1 is not actually blobless; the shim simulates the failure. A clone-package variant (skipped when <code>git</code> is absent) would give this signal on every PR.
+</li>
+<li>excerpt:<pre><code>func TestClonerefsRecoversFromPostMergeFailure(t *testing.T) {</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">nit</span>Retry boundary is invisible in records and logs</h3>
+<ul>
+<li>where: <code>pkg/pod-utils/clone/clone.go:78-87</code>, <code>pkg/pod-utils/clone/format.go:31-33</code>
+</li>
+<li>concern: the two attempts' <code>Commands</code> are concatenated with no separator, so <code>clone-records.json</code> reads as one clone that ran <code>git init</code> twice, and the banner prints above the first attempt rather than at the seam. A synthetic <code>Command{Command: &quot;retry with full object fetch&quot;}</code> makes incident triage straightforward.
+</li>
+<li>excerpt:<pre><code>record = runClone(refs, dir, gitUserName, gitUserEmail, cookiePath, env, user, token, true)
+record.Commands = append(failedCommands, record.Commands...)
+record.FellBackToFullFetch = true</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">nit</span>Rationale and issue link absent from the code</h3>
+<ul>
+<li>where: <code>pkg/pod-utils/clone/clone.go:95-96</code>
+</li>
+<li>concern: the key design decision — must re-clone because git may already have created the merge commit before failing — lives only in the PR body, and nothing in <code>pkg/</code> references #1043. A future maintainer will read this as "just retry the clone" and may simplify it into an in-place re-fetch/merge. A comment with the issue link and the condition for retiring the workaround is cheap insurance.
+</li>
+<li>excerpt:<pre><code>// shouldFallBackToFullFetch reports whether a sparse merge failed for a reason
+// that fetching all objects in a fresh repository might resolve.</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">nit</span>No unit coverage of the <code>fullFetch</code> command lists</h3>
+<ul>
+<li>where: <code>pkg/pod-utils/clone/clone_test.go:1114</code>
+</li>
+<li>concern: <code>TestShouldFallBackToFullFetch</code> covers the predicate, but nothing asserts that <code>fullFetch</code> drops <code>--filter=blob:none</code> from both <code>commandsForBaseRef</code> and <code>commandsForPullRefs</code> while leaving <code>--depth</code>, <code>sparse-checkout set</code> and <code>submodule update</code> alone. The existing <code>TestCommandsForRefs</code> table makes a <code>fullFetch: true</code> case cheap. The retry-also-fails and <code>RemoveAll</code>-failure paths are also unexercised.
+</li>
+<li>excerpt:<pre><code>func TestShouldFallBackToFullFetch(t *testing.T) {</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">nit</span><code>FellBackToFullFetch</code> is set even when the retry fails</h3>
+<ul>
+<li>where: <code>pkg/pod-utils/clone/clone.go:87</code>
+</li>
+<li>concern: the field means "a full-fetch retry was attempted", but the log line "Sparse checkout merge failed, retried with a full object fetch" does not say whether it helped. Either set it only on a successful retry or make the wording/field doc explicit.
+</li>
+<li>excerpt:<pre><code>record.FellBackToFullFetch = true</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">nit</span>New table test lacks <code>t.Run</code></h3>
+<ul>
+<li>where: <code>pkg/pod-utils/clone/clone_test.go:1163</code>
+</li>
+<li>concern: every other table test in this file (<code>clone_test.go:858</code>, <code>:913</code>, <code>:1001</code>, <code>:1067</code>, <code>:1105</code>) uses <code>t.Run</code>, so a failure here is harder to locate in CI.
+</li>
+<li>excerpt:<pre><code>for _, testCase := range testCases {
+	got := shouldFallBackToFullFetch(testCase.refs, testCase.record)</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">nit</span>Duplicated blobless-filter predicate</h3>
+<ul>
+<li>where: <code>pkg/pod-utils/clone/clone.go:296</code>, <code>pkg/pod-utils/clone/clone.go:402</code>
+</li>
+<li>concern: <code>(BloblessFetch || sparse)</code> was already duplicated; this PR adds <code>!g.fullFetch &amp;&amp;</code> to both copies. One helper returning the filter args would keep the base and pull fetch sites from drifting when a third fetch is added.
+</li>
+<li>excerpt:<pre><code>if !g.fullFetch &amp;&amp; ((refs.BloblessFetch != nil &amp;&amp; *refs.BloblessFetch) || sparseCheckoutSet) {</code></pre>
+</li></ul>
+<h3><span class="tag c-blue">question</span>Does conflict detection survive a non-English git locale?</h3>
+<ul>
+<li>where: <code>pkg/pod-utils/clone/clone.go:108-110</code>
+</li>
+<li>concern: <code>mergeConflictDetected</code> matches literal <code>CONFLICT</code> / <code>Automatic merge failed</code>, which git translates when a locale with gettext data is active. Worst case is an undetected conflict that triggers a wasted full re-clone and then fails anyway, so this is a cost issue, not a correctness one — but using the merge exit status would be locale-proof.
+</li>
+<li>excerpt:<pre><code>return strings.Contains(command.Output, &quot;CONFLICT&quot;) || strings.Contains(command.Output, &quot;Automatic merge failed&quot;)</code></pre>
+</li></ul>
+<h3><span class="tag c-blue">question</span>Does the integration shim survive git object-layout changes?</h3>
+<ul>
+<li>where: <code>test/integration/test/pod-utils_test.go:668-680</code>
+</li>
+<li>concern: the injected failure locates the merged blob at <code>.git/objects/xx/yyyy…</code> and fails the test if git wrote it into a pack (which is reportedly what older git does on some merge paths). It passes with the local git 2.56, but it is a harness portability risk rather than a product assertion; setting <code>gc.auto=0</code> or tolerating a packed object would harden it.
+</li>
+<li>excerpt:<pre><code>object=&quot;.git/objects/$(echo &quot;$blob&quot; | cut -c1-2)/$(echo &quot;$blob&quot; | cut -c3-)&quot;
+if [ ! -f &quot;$object&quot; ]; then
+  echo &quot;expected a loose merge-result blob at $object&quot; &gt;&amp;2</code></pre>
+</li></ul>
+<h3><span class="tag c-blue">question</span>What is the plan for the underlying git regression?</h3>
+<ul>
+<li>where: <code>pkg/pod-utils/clone/clone.go:95-110</code>
+</li>
+<li>concern: this works around a git behaviour change in the 2026-10-23 base image, and #1043 also asks for a rollback or pin. The recovery makes the regression silent (and expensive) rather than visible. Is there a tracked follow-up to pin or roll back <code>gcr.io/k8s-staging-test-infra/git</code> and/or report upstream, and should the fallback rate be queryable (e.g. via <code>fell_back_to_full_fetch</code>) so the workaround can be retired?
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>No config, API, flag or CRD surface change: <code>Refs</code> fields and JSON tags are untouched, so existing <code>sparse_checkout_files</code> / <code>blobless_fetch</code> / <code>path_alias</code> configs parse and behave identically.
+</li>
+<li>The additive <code>fell_back_to_full_fetch</code> field is <code>omitempty</code> and both readers (<code>pkg/initupload/run.go:87</code>, <code>pkg/crier/reporters/gcs/reporter.go:142</code>) use non-strict <code>json.Unmarshal</code>, so clonerefs/initupload/crier version skew is safe; rollback is a clean image revert with no persisted state.
+</li>
+<li><code>runClone</code> is a behaviour-preserving extraction: <code>Refs</code> is set for both attempts, <code>FinalSHA</code> comes from the winning attempt, and the early returns for user/token generation are unchanged.
+</li>
+<li><code>fullFetch</code> is consulted at exactly the two sites that add <code>--filter=blob:none</code>, so <code>--depth</code>, <code>sparse-checkout init/set</code>, branch handling and <code>submodule update</code> are unchanged.
+</li>
+<li>A successful fallback leaves <code>Failed == false</code> while the stale failing <code>Command</code> remains in <code>Commands</code>; the only success decision is <code>record.Failed</code> in <code>pkg/clonerefs/run.go:175</code>, so records and logs stay consistent.
+</li>
+<li>Merge conflicts still fail the job: <code>CONFLICT</code> / <code>Automatic merge failed</code> output is recognised and covered by a unit test case.
+</li>
+<li>Total <code>Duration</code> spans both attempts (single <code>startTime</code> in <code>Run</code>), and per-command durations are retained for each attempt; token censoring applies per command across both runs.
+</li>
+<li>A fresh repository is the correct recovery: retrying <code>git merge</code> in place would hit "Already up to date" once the merge commit exists, leaving the object store broken.
+</li>
+<li>Exactly one retry, no loop; removal failure aborts with a recorded diagnostic command.
+</li>
+<li>Tests run locally with the module toolchain (<code>GOTOOLCHAIN=go1.27.3</code>): <code>go test ./pkg/pod-utils/clone/... ./pkg/clonerefs/...</code>, <code>go test ./test/integration/test/ -run TestClonerefsRecoversFromPostMergeFailure -args -run-integration-test</code>, <code>go build ./...</code>, <code>go vet</code> on the touched packages, <code>gofmt -l</code> clean, <code>git diff --check</code> clean.
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>Does <code>blobless_fetch: true</code> without <code>sparse_checkout_files</code> reproduce the crash? If yes, should the predicate key off the filter actually being applied rather than off sparse checkout?
+</li>
+<li>Should the retry be narrowed to the known failure signature so unrelated non-conflict merge failures do not pay for a full blob fetch on very large repos?
+</li>
+<li>Should <code>FellBackToFullFetch</code> mean "retried" or "retried successfully"?
+</li>
+<li>Is there a tracked follow-up for the git base-image pin/rollback and an upstream report, so this recovery path can eventually be removed?
+</li></ul>
+</main></body></html>

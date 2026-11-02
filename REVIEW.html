@@ -1,163 +1,268 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>Review of kubernetes-sigs/prow#859</title>
-<style>
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-    line-height: 1.6;
-    color: #1a1a1a;
-    max-width: 860px;
-    margin: 2rem auto;
-    padding: 0 1.5rem;
-    background: #fdfdfd;
-  }
-  code, pre {
-    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    font-size: 0.92em;
-  }
-  pre {
-    background: #f4f4f4;
-    border: 1px solid #ddd;
-    border-radius: 6px;
-    padding: 0.75rem 1rem;
-    overflow-x: auto;
-  }
-  code.inline {
-    background: #f0f0f0;
-    padding: 0.1em 0.35em;
-    border-radius: 4px;
-  }
-  header {
-    border-bottom: 2px solid #333;
-    padding-bottom: 1rem;
-    margin-bottom: 1.5rem;
-  }
-  header h1 { margin-bottom: 0.25rem; font-size: 1.4rem; }
-  header .meta { color: #555; font-size: 0.92rem; }
-  header .meta div { margin: 0.15rem 0; }
-  h2 {
-    border-bottom: 1px solid #ccc;
-    padding-bottom: 0.3rem;
-    margin-top: 2.2rem;
-  }
-  .verdict {
-    background: #e9f7ef;
-    border-left: 4px solid #2e8b57;
-    padding: 0.75rem 1rem;
-    border-radius: 4px;
-    margin-bottom: 1.5rem;
-  }
-  .verdict .label {
-    font-weight: 700;
-    text-transform: uppercase;
-    color: #2e8b57;
-    letter-spacing: 0.03em;
-    font-size: 0.85rem;
-  }
-  .finding {
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    padding: 1rem 1.25rem;
-    margin: 1rem 0;
-  }
-  .finding h3 { margin: 0 0 0.4rem 0; font-size: 1.05rem; }
-  .finding .loc {
-    display: inline-block;
-    background: #eef1f5;
-    padding: 0.1em 0.5em;
-    border-radius: 4px;
-    font-size: 0.85rem;
-    margin-bottom: 0.6rem;
-  }
-  .sev-should-fix { border-left: 4px solid #d9822b; }
-  .sev-nit { border-left: 4px solid #6c757d; }
-  .sev-blocking { border-left: 4px solid #c0392b; }
-  .sev-question { border-left: 4px solid #2b7fd9; }
-  .badge {
-    font-size: 0.72rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-    padding: 0.15em 0.5em;
-    border-radius: 4px;
-    margin-right: 0.5em;
-  }
-  .badge-nit { background: #e9ecef; color: #444; }
-  .badge-should-fix { background: #fbe6d0; color: #7a3f00; }
-  .badge-blocking { background: #f8d7da; color: #7a1a1a; }
-  ul { padding-left: 1.4rem; }
-  li { margin: 0.35rem 0; }
-</style>
-</head>
-<body>
-
-<header>
-  <h1>Review of <a href="https://github.com/kubernetes-sigs/prow/pull/859">kubernetes-sigs/prow#859</a></h1>
-  <div class="meta">
-    <div><strong>Title:</strong> Migrate to Pub/Sub v2</div>
-    <div><strong>Head SHA:</strong> <code class="inline">578f7668f880883394c56d9da777c27b119dd79a</code></div>
-    <div><strong>Base:</strong> main</div>
-    <div><strong>Reviewed at:</strong> 2026-08-25T15:25:07Z</div>
-    <div><strong>PR state:</strong> merged</div>
-  </div>
-</header>
-
-<div class="verdict">
-  <div class="label">Verdict: Approve</div>
-  <p>Clean, well-tested migration off the deprecated Pub/Sub v1 client. The one behavior change worth scrutiny (dropping <code class="inline">Synchronous</code> mode) was verified against the v2 library's flow-control source and does not regress fairness. Only two low-severity nits found, neither blocking.</p>
-</div>
-
-<h2>What this PR does</h2>
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#859</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>Migrate to Pub/Sub v2</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/859">kubernetes-sigs/prow#859</a> · base <code>main</code> · head_sha <code>578f7668f880</code> · reviewed_at <code>2026-08-25T15:25:07Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span></div>
+<details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#859
+title: &quot;Migrate to Pub/Sub v2&quot;
+head_sha: 578f7668f880883394c56d9da777c27b119dd79a
+base: main
+reviewed_at: 2026-08-25T15:25:07Z
+verdict: approve
+pr_state: merged
+refresh_log:
+  - at: 2026-08-25T15:25:07Z
+    old_sha: 578f7668f880883394c56d9da777c27b119dd79a
+    new_sha: 578f7668f880883394c56d9da777c27b119dd79a
+    summary: No code changes. ameukam left /lgtm /hold (2026-08-24T10:20:39Z); cblecker cleared the hold (2026-08-24T19:42:03Z) and PR was merged.</code></pre></details>
+<h2>Summary</h2>
 <ul>
-  <li>Migrates <code class="inline">pkg/pubsub</code> and its callers from <code class="inline">cloud.google.com/go/pubsub</code> v1 to <code class="inline">cloud.google.com/go/pubsub/v2</code>.</li>
-  <li>Replaces the removed <code class="inline">ReceiveSettings.Synchronous = true</code> with <code class="inline">NumGoroutines = 1</code> on the subscriber, relying on v2's default client-wide flow controller for cross-replica fairness.</li>
-  <li>Adds shared test fixture helpers in <code class="inline">pkg/testutil/fixtures.go</code> (<code class="inline">WriteCredentialsFile</code>, <code class="inline">WriteAuthorizedUserCredentialsFile</code>) and adopts them in some tests.</li>
-  <li>Build and full test suite pass on the PR head.</li>
-</ul>
-
+<li>Migrates <code>pkg/pubsub</code> (and callers) from <code>cloud.google.com/go/pubsub</code> v1 client API to <code>cloud.google.com/go/pubsub/v2</code>.
+</li>
+<li>Replaces <code>ReceiveSettings.Synchronous = true</code> with <code>NumGoroutines = 1</code> on the subscriber, relying on v2's default client-wide flow controller (keyed on <code>MaxOutstandingMessages</code>, shared across streams) for fairness instead of the removed <code>Synchronous</code> mode.
+</li>
+<li>Adds shared test fixture helpers (<code>pkg/testutil/fixtures.go</code>: <code>WriteCredentialsFile</code>, <code>WriteAuthorizedUserCredentialsFile</code>) and starts using them in some tests.
+</li>
+<li>Build and full test suite pass; one pre-existing test panic in <code>pkg/pubsub/subscriber/subscriber_test.go</code> verified to also occur on the pre-PR commit (out of scope for this PR).
+</li></ul>
 <h2>Findings</h2>
-
-<div class="finding sev-nit">
-  <span class="badge badge-nit">Nit</span>
-  <h3>Comment misattributes fairness guarantee to NumGoroutines</h3>
-  <div class="loc"><code>pkg/pubsub/subscriber/server.go:98</code></div>
-  <pre>// Use one pull stream so multiple subscriber replicas can share work fairly.
-NumGoroutines: 1,</pre>
-  <p>The comment attributes fairness to the stream count, but in pubsub/v2 fairness actually comes from the default (non-per-stream) client-wide flow controller keyed on <code class="inline">MaxOutstandingMessages</code>, which applies regardless of <code class="inline">NumGoroutines</code>. Pinning <code class="inline">NumGoroutines = 1</code> mainly guards against the library's documented future default flip of <code class="inline">EnablePerStreamFlowControl</code> to <code class="inline">true</code> (which would multiply the outstanding-message cap by <code class="inline">NumGoroutines</code>). A future contributor trusting this comment could raise <code class="inline">NumGoroutines</code> for throughput and reintroduce that problem once the default flips.</p>
-</div>
-
-<div class="finding sev-nit">
-  <span class="badge badge-nit">Nit</span>
-  <h3>Duplicated credentials-fixture logic instead of reusing new test helper</h3>
-  <div class="loc"><code>pkg/io/opener_test.go:134</code></div>
-  <pre>f, err := os.CreateTemp(t.TempDir(), "creds-*.json")
+<h3><span class="tag c-gray">nit</span>Comment misattributes fairness guarantee to NumGoroutines</h3>
+<ul>
+<li>where: <code>pkg/pubsub/subscriber/server.go:98</code>
+</li>
+<li>concern: The comment justifying <code>NumGoroutines = 1</code> ("Use one pull stream so multiple subscriber replicas can share work fairly") attributes fairness to the stream count. In pubsub/v2, fairness actually comes from the default (non-per-stream) client-wide flow controller keyed on <code>MaxOutstandingMessages</code>, which applies regardless of <code>NumGoroutines</code>. Pinning <code>NumGoroutines = 1</code> instead mainly guards against the library's documented future default flip of <code>EnablePerStreamFlowControl</code> to <code>true</code> (which would multiply the outstanding-message cap by <code>NumGoroutines</code>). A future contributor could read the current comment, conclude raising <code>NumGoroutines</code> for throughput is safe, and reintroduce the multiplied-cap problem once that default flips.
+</li>
+<li>excerpt:<pre><code>// Use one pull stream so multiple subscriber replicas can share work fairly.
+NumGoroutines: 1,</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">nit</span>Duplicated credentials-fixture logic instead of reusing new test helper</h3>
+<ul>
+<li>where: <code>pkg/io/opener_test.go:134</code>
+</li>
+<li>concern: This PR adds <code>pkg/testutil/fixtures.go</code> (<code>WriteCredentialsFile</code>/<code>WriteAuthorizedUserCredentialsFile</code>) and uses it earlier in <code>opener_test.go</code>, but <code>Test_opener_SignedURL</code> a few lines below still hand-rolls an equivalent <code>os.CreateTemp</code>+<code>Write</code>+<code>Close</code> credentials fixture. The same duplicate pattern remains in <code>pkg/spyglass/storageartifact_fetcher_test.go</code> (~line 443), a file this PR already edits nearby for unrelated error-string updates. Leaves three independent implementations of the same fake-credentials-file fixture that can drift out of sync.
+</li>
+<li>excerpt:<pre><code>f, err := os.CreateTemp(t.TempDir(), &quot;creds-*.json&quot;)
 ...
 f.Write(...)
-f.Close()</pre>
-  <p>This PR adds <code class="inline">pkg/testutil/fixtures.go</code> and uses it earlier in this same file, but <code class="inline">Test_opener_SignedURL</code> a few lines below still hand-rolls an equivalent credentials fixture. The same duplicate pattern also remains in <code class="inline">pkg/spyglass/storageartifact_fetcher_test.go</code> (~line 443), a file this PR already edits nearby. Three independent copies of the same fixture logic can now drift out of sync.</p>
-</div>
-
-<h2>Things I checked and was fine with</h2>
+f.Close()</code></pre>
+</li></ul>
+<h2>Checked</h2>
 <ul>
-  <li>Build and full test suite pass on the PR head.</li>
-  <li>The pre-existing panic in <code class="inline">pkg/pubsub/subscriber/subscriber_test.go</code> also reproduces on the pre-PR commit — unrelated to this change.</li>
-  <li>Verified by reading vendored <code class="inline">cloud.google.com/go/pubsub/v2@v2.6.0</code> source that replacing <code class="inline">Synchronous=true</code> with <code class="inline">NumGoroutines=1</code> does not regress per-replica fairness: <code class="inline">MaxOutstandingMessages</code> is enforced by a client-wide flow controller shared across streams by default, independent of <code class="inline">NumGoroutines</code>.</li>
-</ul>
-
-<h2>Open questions for the author</h2>
+<li>Build and full test suite pass on PR head.
+</li>
+<li>Pre-existing panic in <code>pkg/pubsub/subscriber/subscriber_test.go</code> reproduced on pre-PR commit too — unrelated to this change.
+</li>
+<li>Verified (by reading vendored <code>cloud.google.com/go/pubsub/v2@v2.6.0</code> source) that replacing <code>Synchronous=true</code> with <code>NumGoroutines=1</code> does not regress per-replica fairness: <code>MaxOutstandingMessages</code> is enforced by a client-wide flow controller shared across streams by default, independent of <code>NumGoroutines</code>.
+</li></ul>
+<h2>Open questions</h2>
 <ul>
-  <li>Would you consider rewording the <code class="inline">NumGoroutines = 1</code> comment to reference the future <code class="inline">EnablePerStreamFlowControl</code> default flip rather than implying the fairness guarantee comes from the stream count itself?</li>
-  <li>Any interest in a quick follow-up to converge <code class="inline">Test_opener_SignedURL</code> and <code class="inline">storageartifact_fetcher_test.go</code> onto the new <code class="inline">testutil</code> credential-fixture helpers, now that they exist?</li>
-</ul>
-
+<li>Would you consider rewording the <code>NumGoroutines = 1</code> comment to reference the future <code>EnablePerStreamFlowControl</code> default flip rather than implying the fairness guarantee comes from the stream count itself?
+</li>
+<li>Any interest in a quick follow-up to converge <code>opener_test.go</code>'s <code>Test_opener_SignedURL</code> and <code>storageartifact_fetcher_test.go</code> onto the new <code>testutil</code> credential-fixture helpers, now that they exist?
+</li></ul>
 <h2>Activity since previous review (2026-08-18T21:04:05Z)</h2>
 <ul>
-  <li><strong>2026-08-24T10:20:39Z</strong> — ameukam (MEMBER) commented <code class="inline">/lgtm</code> <code class="inline">/hold</code>.</li>
-  <li><strong>2026-08-24T19:42:03Z</strong> — cblecker (MEMBER) commented <code class="inline">/hold cancel</code>, thanking ameukam.</li>
-  <li>PR merged (head SHA unchanged at <code class="inline">578f7668f880883394c56d9da777c27b119dd79a</code>). Neither nit finding was addressed before merge; they remain valid as follow-up candidates.</li>
-</ul>
+<li>2026-08-24T10:20:39Z: ameukam (MEMBER) commented <code>/lgtm</code> <code>/hold</code>.
+</li>
+<li>2026-08-24T19:42:03Z: cblecker (MEMBER) commented <code>/hold cancel</code>, thanking ameukam.
+</li>
+<li>PR merged (head SHA unchanged at 578f7668f880883394c56d9da777c27b119dd79a). Neither nit finding was addressed before merge; they remain valid as follow-up candidates.
+</li></ul>
+<h2>Followups</h2>
+<p>Recorded 2026-11-01, post-merge of <code>d5c03da058aa2ceccffc1346d6948dab1d183b9c</code> (PR head <code>578f7668f880883394c56d9da777c27b119dd79a</code>). All four are <code>Mode: deliver</code>.</p>
+<h3><span class="tag c-gray">should</span>Make the subscriber fairness guard explicit instead of a misleading comment</h3>
+<ul>
+<li>category: deferred-review
+</li>
+<li>where: <code>pkg/pubsub/subscriber/server.go:95-100</code>
+</li>
+<li>mode: deliver
+</li>
+<li>necessity: should — the unaddressed nit from the merge review; without it, a future throughput tweak can silently reintroduce the multiplied-cap problem when v2 flips <code>EnablePerStreamFlowControl</code> on.
+</li>
+<li>why followup: it is a comment/API-clarity fix, not a merge blocker, so it did not belong in the migration PR.
+<pre><code>In kubernetes-sigs/prow, following the merge of PR #859 (&quot;Migrate to Pub/Sub v2&quot;, merge
+commit d5c03da058aa2ceccffc1346d6948dab1d183b9c), make the subscriber&#x27;s fairness guard
+explicit in `pubSubClient.subscription` in `pkg/pubsub/subscriber/server.go` (currently
+lines 95-100).
 
-</body>
-</html>
+Background: PR #859 replaced v1&#x27;s `ReceiveSettings.Synchronous = true` with
+`NumGoroutines = 1`. In cloud.google.com/go/pubsub/v2@v2.6.0, `NumGoroutines` already
+defaults to 1 (`DefaultReceiveSettings`), and per-replica fairness comes from the default
+client-wide flow controller keyed on `MaxOutstandingMessages`.
+`EnablePerStreamFlowControl` defaults to false but is documented to default to true in the
+next major version; with that on, `MaxOutstandingMessages` is enforced per stream, so the
+effective cap becomes cap x `NumGoroutines` and one replica can take more than its share.
+
+Task:
+1. Replace the comment `// Use one pull stream so multiple subscriber replicas can share
+   work fairly.` with one that states (a) fairness comes from the shared, client-wide
+   `MaxOutstandingMessages` flow controller, and (b) `EnablePerStreamFlowControl` must stay
+   off, because per-stream enforcement would multiply the cap by `NumGoroutines` and let a
+   single replica exhaust the shared budget.
+2. Set `sub.ReceiveSettings.EnablePerStreamFlowControl = false` explicitly alongside
+   `MaxOutstandingMessages` and `NumGoroutines = 1`, so a future library default flip
+   cannot change Prow&#x27;s behaviour silently.
+3. Add `pkg/pubsub/subscriber/server_test.go` with a test that builds a client against
+   `cloud.google.com/go/pubsub/v2/pstest` (pattern: `newTestReporter` in
+   `pkg/crier/reporters/pubsub/reporter_test.go`), calls
+   `(&amp;pubSubClient{client: client}).subscription(&quot;sub&quot;, 7)`, type-asserts the result to
+   `*pubSubSubscription` and asserts `sub.ReceiveSettings.MaxOutstandingMessages == 7`,
+   `NumGoroutines == 1`, and `EnablePerStreamFlowControl == false`.
+
+Acceptance criteria: `go build ./pkg/pubsub/...` passes and
+`go test ./pkg/pubsub/subscriber/ -run TestSubscription` passes (use `-run`; the package&#x27;s
+`TestHandleMessage` currently panics for unrelated reasons — separate followup). No
+behaviour change at runtime.
+
+Scope guard: do not change `NumGoroutines`, the `MaxOutstandingMessages` config plumbing,
+the receive loop, or `pkg/config`. Do not fix the `TestHandleMessage` panic here.</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">should</span>Stop <code>TestHandleMessage</code> from segfaulting on ignored setup errors</h3>
+<ul>
+<li>category: tests
+</li>
+<li>where: <code>pkg/pubsub/subscriber/subscriber_test.go:340-341</code> (duplicate setup at <code>:586-587</code>)
+</li>
+<li>mode: deliver
+</li>
+<li>necessity: should — a nil-pointer panic aborts the whole package's test run, so this package currently gives no signal in environments where the git client factory fails; the PR touched this file, so fixing it now is natural.
+</li>
+<li>why followup: the panic predates PR #859 (verified during review and reproduced again on 2026-11-01), so it was out of scope for the migration.
+<pre><code>In kubernetes-sigs/prow, following PR #859 (&quot;Migrate to Pub/Sub v2&quot;, merge commit
+d5c03da058aa2ceccffc1346d6948dab1d183b9c), fix the nil-pointer panic in
+`pkg/pubsub/subscriber/subscriber_test.go`.
+
+Both `TestHandleMessage` (lines ~340-341) and the second call site (lines ~586-587) do:
+
+    gitClient, _ := (&amp;flagutil.GitHubOptions{}).GitClientFactory(&quot;abc&quot;, nil, true, false)
+    cache, _ := config.NewInRepoConfigCache(100, ca, gitClient)
+
+Both errors are discarded. When `GitClientFactory` fails (it does in a plain checkout with
+no GitHub credentials), `cache` is a nil `*config.InRepoConfigCache`, and the
+`PresubmitForGitHub` subtest panics in
+`config.(*InRepoConfigCache).GetProwYAMLWithoutDefaults` (pkg/config/cache.go:358) via
+`gangway.HandleProwJob` (pkg/gangway/gangway.go:917), aborting the entire package run
+instead of failing one subtest.
+
+Task:
+1. Capture both errors and fail fast with `t.Fatalf`/`t1.Fatalf` and a readable message,
+   e.g. `t.Fatalf(&quot;create git client factory: %v&quot;, err)` /
+   `t.Fatalf(&quot;create in-repo config cache: %v&quot;, err)`.
+2. Factor the shared setup into a small helper used by both call sites so the two copies
+   cannot drift.
+
+Acceptance criteria: `go test ./pkg/pubsub/subscriber/` never panics; it either passes or
+reports the setup error against the affected test. No test is skipped or deleted.
+
+Scope guard: do not change `Subscriber`, `handleMessage`, `pkg/gangway`, or
+`pkg/config`&#x27;s caching behaviour. Do not build new fakes to make `GitClientFactory`
+succeed — the deliverable is graceful failure, not new test infrastructure. Leave the
+`RequireTenantID`/`allowedApiClient` arguments at the second call site alone.</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">could</span>Converge duplicated fake-credentials fixtures onto the new testutil helpers</h3>
+<ul>
+<li>category: deferred-review
+</li>
+<li>where: <code>pkg/io/opener_test.go:131-150</code>, <code>pkg/spyglass/storageartifact_fetcher_test.go:440-456</code>
+</li>
+<li>mode: deliver
+</li>
+<li>necessity: could — cosmetic test hygiene; three independent copies of the same fixture can drift, but nothing is broken today.
+</li>
+<li>why followup: both files were edited by PR #859 but these blocks were left hand-rolled; a test-only cleanup would have padded the migration diff.
+<pre><code>In kubernetes-sigs/prow, following PR #859 (&quot;Migrate to Pub/Sub v2&quot;, merge commit
+d5c03da058aa2ceccffc1346d6948dab1d183b9c), converge the hand-rolled fake-credentials-file
+fixtures onto the helpers that PR added in `pkg/testutil/fixtures.go`
+(`WriteCredentialsFile`, `WriteAuthorizedUserCredentialsFile`).
+
+The duplicated block appears in `Test_opener_SignedURL`
+(`pkg/io/opener_test.go:131-150`) and in the spyglass signed-URL test
+(`pkg/spyglass/storageartifact_fetcher_test.go:440-456`): `os.CreateTemp(&quot;&quot;, &quot;fake-creds&quot;)`,
+`fp.Write([]byte(...))`, `fp.Close()`, `defer os.Remove(...)`.
+
+Task:
+1. Replace each block with `testutil.WriteCredentialsFile(t, tt.fakeCreds)` (or the local
+   table field name) inside the existing `if fakeCreds != &quot;&quot;` guard, assigning the returned
+   path; the helper already writes into `t.TempDir()` and cleans up, so drop the manual
+   remove/close.
+2. Remove imports/variables that become unused in the two files.
+
+Acceptance criteria: `go test ./pkg/io/... ./pkg/spyglass/...` passes and `gofmt -l` is
+clean on both files; `rg &#x27;os.CreateTemp\(&quot;&quot;, &quot;fake-creds&quot;\)&#x27;` returns nothing.
+
+Scope guard: only these two test files. Do not change `pkg/testutil`&#x27;s helper signatures or
+production code. Leave unrelated `os.CreateTemp` uses (secret agent, interrupts,
+statusreconciler, pod-utils) alone.</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">could</span>Cache the crier Pub/Sub client/publisher instead of building one per report</h3>
+<ul>
+<li>category: tech-debt
+</li>
+<li>where: <code>pkg/crier/reporters/pubsub/reporter.go:114-133</code>
+</li>
+<li>mode: deliver
+</li>
+<li>necessity: could — saves repeated gRPC dial/auth and publisher goroutine churn on every reported ProwJob; no correctness problem today.
+</li>
+<li>why followup: the <code>TODO: Consider caching the pubsub client.</code> is pre-existing and the per-report lifecycle is unchanged by the migration, so it is a performance/style improvement rather than a fix.
+<pre><code>In kubernetes-sigs/prow, following PR #859 (&quot;Migrate to Pub/Sub v2&quot;, merge commit
+d5c03da058aa2ceccffc1346d6948dab1d183b9c), remove the per-report client/publisher
+construction in `Client.Report` (`pkg/crier/reporters/pubsub/reporter.go:114-133`, which
+still carries `// TODO: Consider caching the pubsub client.`).
+
+Today every report calls `newPubSubClient`, creates `client.Publisher(topic)`, publishes
+one message, `publisher.Stop()`s, and `client.Close()`s. Since v2, `Publisher` owns
+batching goroutines and `Close()` tears down the gRPC connection plus the
+`TopicAdminClient` used on the publish-failure path, so the per-report cost is real.
+
+Task:
+1. Cache one `*pubsub.Client` per project (and, if it keeps the error paths intact, one
+   `*pubsub.Publisher` per project/topic) on `Client`, created lazily under a mutex/singleflight.
+2. Keep the injectable `newPubSubClient` seam so `reporter_test.go` can still point at a
+   `pstest` server; make the cache test-overridable (e.g. reset it in `newTestReporter`).
+3. If crier offers no shutdown hook to call `Client.Close`/`Publisher.Stop`, keep the
+   cached objects for the process lifetime (as other long-lived clients do) and say so in a
+   comment rather than inventing a lifecycle.
+
+Acceptance criteria: `go test ./pkg/crier/reporters/pubsub/...` and
+`go test ./pkg/crier/...` pass; the three existing `TestReport` cases (existing topic,
+missing topic =&gt; user error, publish PermissionDenied =&gt; non-user error) still pass
+unchanged; a second `Report` call for the same project does not dial a new client (cover
+with a counter around `newPubSubClient`).
+
+Scope guard: do not change `ReportMessage`, metric names, the NotFound =&gt;
+`criercommonlib.UserError` classification, or the 10s report timeout. Do not touch the
+subscriber side.</code></pre>
+</li></ul>
+</main></body></html>

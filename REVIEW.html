@@ -31,13 +31,13 @@ ul, ol { padding-left:1.5rem; }
 details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
 </style></head><body><main>
 <h1>plank: persist pod revival count before deleting the pod</h1>
-<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1006">kubernetes-sigs/prow#1006</a> · base <code>main</code> · head_sha <code>acfc9e71aed8</code> · reviewed_at <code>2026-10-21T11:33:40Z</code></div>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1006">kubernetes-sigs/prow#1006</a> · base <code>main</code> · head_sha <code>acfc9e71aed8</code> · reviewed_at <code>2026-11-02T14:29:46Z</code></div>
 <div class="badges"><span class="badge c-red">verdict: request-changes</span><span class="badge c-red">gate: do-not-merge</span></div>
 <details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#1006
 title: &quot;plank: persist pod revival count before deleting the pod&quot;
 head_sha: acfc9e71aed8d45a25685a5cfbf5013803f8ca5b
 base: main
-reviewed_at: 2026-10-21T11:33:40Z
+reviewed_at: 2026-11-02T14:29:46Z
 verdict: request-changes
 refresh_log:
   - at: 2026-10-15T22:51:17Z
@@ -48,6 +48,10 @@ refresh_log:
     old_sha: 357b80eb511d6b0f932e5e77edc23cf0e56e74a1
     new_sha: acfc9e71aed8d45a25685a5cfbf5013803f8ca5b
     summary: &quot;Author amended the commit message and rebased; the patch is unchanged. New comments address LGTM and EasyCLA co-signing.&quot;
+  - at: 2026-11-02T14:29:46Z
+    old_sha: acfc9e71aed8d45a25685a5cfbf5013803f8ca5b
+    new_sha: acfc9e71aed8d45a25685a5cfbf5013803f8ca5b
+    summary: &quot;No code changes; Prucek submitted an approving review with no inline comments and the approval-notifier reported the PR as not yet approved.&quot;
 gate:
   decision: do-not-merge
   gated_at: 2026-10-10T17:06:35Z
@@ -59,6 +63,8 @@ gate:
 <p><strong>Gating list</strong></p>
 <ul>
 <li><code>REVIEW.md</code> blocking finding (<code>pkg/plank/reconciler.go:483-515</code>): <code>revivalAlreadyCounted</code> is always false for an empty build ID. The current code still writes an empty annotation, allowing repeated stale or terminating observations to consume multiple revival attempts. Add a stable fallback identity and test that path before merging.
+</li>
+<li>Prucek submitted an <code>APPROVED</code> review at <code>acfc9e7</code> on Nov 2 with no inline comments; it does not address the blocking finding above.
 </li>
 <li>No substantive GitHub review submissions or inline comments add other gating findings.
 </li></ul>
@@ -80,6 +86,8 @@ gate:
 </li></ul>
 <p>Since previous review:</p>
 <ul>
+<li>The head is unchanged at <code>acfc9e7</code>; the PR diff remains three files (+174/-24). On Nov 2, Prucek submitted an approving review with an empty body and no inline comments, and the approval-notifier bot reported the PR as not yet approved pending the <code>lgtm</code> label. The empty-build-ID blocking finding remains unaddressed.
+</li>
 <li>The head changed from <code>357b80e</code> to <code>acfc9e7</code> after the commit message was amended and the branch rebased on <code>main</code>; the commit patch ID is unchanged and the PR diff remains three files (+174/-24). The empty-build-ID finding remains.
 </li>
 <li>On Oct 19, Prucek posted <code>/lgtm</code> and raised an EasyCLA concern about co-signing a commit with an AI tool. @jwendell replied that the commit body was amended and the branch rebased; the Prow bot then reported the LGTM label was removed after new changes. No inline comments or review submissions were added.

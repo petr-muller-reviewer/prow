@@ -3,7 +3,7 @@ pr: kubernetes-sigs/prow#1006
 title: "plank: persist pod revival count before deleting the pod"
 head_sha: acfc9e71aed8d45a25685a5cfbf5013803f8ca5b
 base: main
-reviewed_at: 2026-10-21T11:33:40Z
+reviewed_at: 2026-11-02T14:29:46Z
 verdict: request-changes
 refresh_log:
   - at: 2026-10-15T22:51:17Z
@@ -14,6 +14,10 @@ refresh_log:
     old_sha: 357b80eb511d6b0f932e5e77edc23cf0e56e74a1
     new_sha: acfc9e71aed8d45a25685a5cfbf5013803f8ca5b
     summary: "Author amended the commit message and rebased; the patch is unchanged. New comments address LGTM and EasyCLA co-signing."
+  - at: 2026-11-02T14:29:46Z
+    old_sha: acfc9e71aed8d45a25685a5cfbf5013803f8ca5b
+    new_sha: acfc9e71aed8d45a25685a5cfbf5013803f8ca5b
+    summary: "No code changes; Prucek submitted an approving review with no inline comments and the approval-notifier reported the PR as not yet approved."
 gate:
   decision: do-not-merge
   gated_at: 2026-10-10T17:06:35Z
@@ -32,6 +36,7 @@ The author amended the commit message and rebased the PR, but the patch is uncha
 **Gating list**
 
 - `REVIEW.md` blocking finding (`pkg/plank/reconciler.go:483-515`): `revivalAlreadyCounted` is always false for an empty build ID. The current code still writes an empty annotation, allowing repeated stale or terminating observations to consume multiple revival attempts. Add a stable fallback identity and test that path before merging.
+- Prucek submitted an `APPROVED` review at `acfc9e7` on Nov 2 with no inline comments; it does not address the blocking finding above.
 - No substantive GitHub review submissions or inline comments add other gating findings.
 
 **Independent merge risk**
@@ -50,6 +55,7 @@ Request changes. The revival count is persisted before pod deletion, but the per
 - Guards `getPodBuildID` when the pod has no containers.
 
 Since previous review:
+- The head is unchanged at `acfc9e7`; the PR diff remains three files (+174/-24). On Nov 2, Prucek submitted an approving review with an empty body and no inline comments, and the approval-notifier bot reported the PR as not yet approved pending the `lgtm` label. The empty-build-ID blocking finding remains unaddressed.
 - The head changed from `357b80e` to `acfc9e7` after the commit message was amended and the branch rebased on `main`; the commit patch ID is unchanged and the PR diff remains three files (+174/-24). The empty-build-ID finding remains.
 - On Oct 19, Prucek posted `/lgtm` and raised an EasyCLA concern about co-signing a commit with an AI tool. @jwendell replied that the commit body was amended and the branch rebased; the Prow bot then reported the LGTM label was removed after new changes. No inline comments or review submissions were added.
 

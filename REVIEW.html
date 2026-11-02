@@ -31,37 +31,84 @@ ul, ol { padding-left:1.5rem; }
 details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
 </style></head><body><main>
 <h1>peribolos: add --ignore-repos flag for team repo reconciliation</h1>
-<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/802">kubernetes-sigs/prow#802</a> · base <code>main</code> · head_sha <code>fccd7841c84d</code> · reviewed_at <code>2026-10-20T15:21:11Z</code></div>
-<div class="badges"><span class="badge c-red">verdict: request-changes</span></div>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/802">kubernetes-sigs/prow#802</a> · base <code>main</code> · head_sha <code>28dd406ae653</code> · reviewed_at <code>2026-11-01T23:20:43Z</code></div>
+<div class="badges"><span class="badge c-red">verdict: request-changes</span><span class="badge c-red">gate: do-not-merge</span></div>
 <details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#802
 title: &quot;peribolos: add --ignore-repos flag for team repo reconciliation&quot;
-head_sha: fccd7841c84dca2990f854c949f3cbb66b25d202
+head_sha: 28dd406ae653902cd35767d540f99ce26cec1686
 base: main
-reviewed_at: 2026-10-20T15:21:11Z
+reviewed_at: 2026-11-01T23:20:43Z
 verdict: request-changes
+gate:
+  decision: do-not-merge
+  gated_at: 2026-11-02T12:32:36Z
+  gated_head_sha: 28dd406ae653902cd35767d540f99ce26cec1686
+  reviewed_head_sha: 28dd406ae653902cd35767d540f99ce26cec1686
 refresh_log:
   - old_sha: fccd7841c84dca2990f854c949f3cbb66b25d202
     new_sha: fccd7841c84dca2990f854c949f3cbb66b25d202
     at: 2026-10-20T15:21:11Z
-    summary: No code changes; recorded lifecycle, Tide merge-conflict status, and ok-to-test activity while the PR remains open.</code></pre></details>
-<h2>Summary</h2>
-<p>Implements #737: <code>--ignore-repos</code> flag for peribolos, excluding named repos (case-insensitive, comma-separated + repeatable) from team-repo permission reconciliation, propagated to child teams. That part is correct, well-tested, and matches the linked issue.</p>
-<p>The PR also adds <code>--ignore-private-repos</code> and <code>--ignore-internal-repos</code> (new <code>github.Repo.Visibility</code> field), undisclosed in the issue/PR description, and these two flags have a confirmed correctness bug: they only protect repos the team already has, not new grants.</p>
+    summary: No code changes; recorded lifecycle, Tide merge-conflict status, and ok-to-test activity while the PR remains open.
+  - old_sha: fccd7841c84dca2990f854c949f3cbb66b25d202
+    new_sha: 28dd406ae653902cd35767d540f99ce26cec1686
+    at: 2026-11-01T23:20:43Z
+    summary: Rebased onto main c06373a3e and force-pushed twice on 2026-11-01. Adopted upstream&#x27;s typed RepoVisibility constant and go 1.27&#x27;s SplitSeq, dropped the local Repo.Visibility field (upstream now provides it). PR hunks otherwise unchanged; want-only gap and undisclosed flags remain.</code></pre></details>
+<h2>Gate</h2>
+<p><strong>Decision: do-not-merge</strong> — both blocking findings from the review still stand unchanged at <code>28dd406ae</code>, and one of them is an access-control over-grant in the two undeclared flags.</p>
+<p>All findings were originally raised at <code>fccd7841</code> and re-verified against <code>28dd406ae</code> (the 2026-11-01 rebase touched three style lines only). The private/internal sets are still populated exclusively from the team's current repos, so a private or internal repo newly declared for a team is still granted despite <code>--ignore-private-repos</code>/<code>--ignore-internal-repos</code>; the PR body still documents only <code>--ignore-repos</code>. Issue discussion shows the extra flags were requested (<code>StarMiner99</code>, 2026-07-16), so they are not arbitrary, but the description never says so and the flags' failure mode is silent over-granting of repository access. The rest of the PR (<code>--ignore-repos</code> itself) is sound, opt-in, and well tested.</p>
+<p><strong>Gating items</strong></p>
+<ul>
+<li>[blocking] want-only private/internal grant gap — <code>cmd/peribolos/main.go:1767-1795</code> (<code>REVIEW.md</code>). Current code still builds <code>privateRepos</code>/<code>internalRepos</code> only from <code>ListTeamReposBySlug</code> (the "have" side) and skips those names only in the "want" loop, so a private/internal repo present in <code>team.Repos</code> but not yet granted is still added. Tests cover only the have side (<code>cmd/peribolos/main_test.go:4195-4244</code>); no want-only case exists. Disposition: blocks merge.
+</li>
+<li>[blocking] undisclosed scope beyond issue #737 — <code>cmd/peribolos/main.go:66-68,97-100</code> (<code>REVIEW.md</code>). PR body still lists only <code>--ignore-repos</code>. Partially mitigated by public issue comments (<code>StarMiner99</code> asking for <code>--ignore-internal-repos</code> at 2026-07-16T11:59Z; author reporting <code>--ignore-private-repos</code> added at 11:30Z), but reviewers still cannot see the extra surface from the description. Disposition: blocks merge until documented or split out.
+</li>
+<li>[should-fix] no logging when repos are skipped — <code>cmd/peribolos/main.go:1767-1782</code> (<code>REVIEW.md</code>). Unchanged. Not merge-blocking on its own, but it is what makes the two flags above fail invisibly.
+</li></ul>
+<p><strong>Merge risk (Area 2)</strong></p>
+<ul>
+<li>API surface: none. The diff touches only <code>cmd/peribolos/</code> (+256/−25); the <code>pkg/github</code> change was dropped in the rebase, so no exported API, CRD, or config-schema change.
+</li>
+<li>CLI surface: three new opt-in flags with no-op defaults (<code>flagutil.Strings{}</code>, <code>false</code>), so existing peribolos invocations behave identically. Blast radius is limited to operators who pass them.
+</li>
+<li>Access-control risk when passed: <code>--ignore-private-repos</code>/<code>--ignore-internal-repos</code> can still grant team access to repos they are meant to exclude, the inverse of what an operator asking for containment expects.
+</li>
+<li>GHES caveat: <code>github.Repo.Visibility</code> can be empty on older GitHub Enterprise Server releases; <code>--ignore-internal-repos</code> then silently matches nothing and peribolos may remove team permissions on internal repos the operator asked it to leave alone.
+</li>
+<li>Docs: neither new flag is documented in <code>site/content/en/docs/components/cli-tools/peribolos.md</code>; the PR changes no docs.
+</li>
+<li>External review evidence: none beyond the local review — the PR has zero submitted GitHub reviews and no inline comments. No repo-specific compatibility skill applied; none is in scope for a CLI-only diff.
+</li></ul>
+<p><strong>What unblocks merge</strong>: drop or split out <code>--ignore-private-repos</code>/<code>--ignore-internal-repos</code> and merge <code>--ignore-repos</code> alone; or fix want-side detection, add a want-only test, document all three flags in the PR body/docs, and log skipped repos.</p>
+<h2>Verdict</h2>
+<p>Request changes — <code>--ignore-repos</code> is correct and well tested, but the two undeclared private/internal flags can still grant the access they exist to prevent.</p>
+<p>Implements #737 correctly: <code>--ignore-repos</code> excludes named repos (case-insensitive, comma-separated + repeatable) from team-repo permission reconciliation, propagated to child teams, and matches the linked issue. The same PR also adds <code>--ignore-private-repos</code> and <code>--ignore-internal-repos</code>, undisclosed in the issue/PR description, and those two flags have a confirmed correctness bug: they only protect repos the team already has, not new grants.</p>
 <p>Reviewed via <code>/review</code> (single-pass) and <code>/muller-maintainer-review</code> (3 parallel specialist reviewers + advisor synthesis) — the private/internal "add" gap and the undisclosed scope were independently identified by every reviewer across both passes.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Adds <code>--ignore-repos</code> to peribolos: comma-separated, repeatable, case-insensitive repo names excluded from team-repo reconciliation on both the add and remove sides, inherited by child teams (fixes #737).
+</li>
+<li>Adds <code>ignoredRepos()</code> to split/trim/lowercase the flag values into a <code>sets.Set[string]</code> and threads it through <code>configureTeamRepos</code> recursion.
+</li>
+<li>Adds two undeclared flags, <code>--ignore-private-repos</code> and <code>--ignore-internal-repos</code>, which build skip-sets from the repos the team already has and use them to avoid updates and removals.
+</li>
+<li>Adds ~236 lines of tests in <code>main_test.go</code> covering flag parsing, case-insensitive matching, top-level team behaviour, and child-team propagation.
+</li></ul>
 <p>Since previous review:</p>
 <ul>
-<li>No code changes: the PR head remains <code>fccd7841c84dca2990f854c949f3cbb66b25d202</code>; there are no new commits or diff changes.
+<li>Code changed (<code>fccd7841</code> → <code>28dd406ae</code>) but only by rebasing onto current <code>main</code> (<code>c06373a3e</code>, 2026-11-01). Two force-pushes at 09:01:12Z and 09:52:17Z; the PR's own hunks changed in exactly three lines.
 </li>
-<li><code>k8s-triage-robot</code> marked the PR <code>lifecycle/stale</code> at 01:59:03Z on 2026-10-20. Tide reported a merge conflict at 01:59:36Z. At 15:19:43Z, <code>petr-muller</code> issued <code>/ok-to-test</code>; the bot added <code>ok-to-test</code> and removed <code>needs-ok-to-test</code>. No new inline comments or submitted reviews were found.
+<li><code>strings.Split</code> → <code>strings.SplitSeq</code> in <code>ignoredRepos</code> (go 1.27 style, <code>main.go:172</code>), and <code>repo.Visibility == &quot;internal&quot;</code> → <code>github.RepoVisibilityInternal</code> (<code>main.go:1773</code>), using the typed <code>RepoVisibility</code> enum upstream now carries.
 </li>
-<li>The PR remains open.
+<li>The PR's one-line <code>Visibility</code> field on <code>pkg/github/types.go</code> was dropped: <code>main</code> already added <code>RepoVisibility</code> plus a documented <code>Repo.Visibility</code> field, so the public-API part of the undisclosed scope is gone; the two undisclosed flags remain.
+</li>
+<li>Bot activity only: <code>kubernetes-prow[bot]</code> posted the <code>APPROVALNOTIFIER</code> "NOT APPROVED" note at 2026-11-01T09:52:52Z (author self-approval does not count). No new reviews or inline comments. PR still open, still <code>lifecycle/stale</code>.
 </li></ul>
 <h2>Findings</h2>
 <h3><span class="tag c-red">blocking</span>--ignore-private-repos/--ignore-internal-repos don't prevent new grants</h3>
 <ul>
-<li>where: <code>cmd/peribolos/main.go:1498-1523</code>
+<li>where: <code>cmd/peribolos/main.go:1767-1795</code>
 </li>
-<li>concern: <code>privateRepos</code>/<code>internalRepos</code> sets are populated only from repos <code>ListTeamReposBySlug</code> currently returns for the team (the "have" side). The "want" loop checks <code>privateRepos.Has(repoName) || internalRepos.Has(repoName)</code> to skip updates/removals, but a private/internal repo present in <code>team.Repos</code> (want) that the team does <strong>not yet</strong> have is never added to those sets — so peribolos will still <strong>add</strong> it despite the flag. Example: <code>org.yaml</code> declares <code>team-x</code> should get <code>Write</code> on private repo <code>secret-repo</code>, <code>team-x</code> doesn't have it yet — <code>--ignore-private-repos</code> will not stop the grant. Contradicts the PR description's "skip ignored repos on both sides of the diff" claim for these two flags (true only for <code>--ignore-repos</code>, which is name-based and doesn't depend on current association). Independently flagged by all 3 specialist reviewers (code-quality, maintainability, deployment-risk) in the maintainer-review pass. No test exercises this "want-only" case.
+<li>concern: <code>privateRepos</code>/<code>internalRepos</code> sets are populated only from repos <code>ListTeamReposBySlug</code> currently returns for the team (the "have" side). The "want" loop checks <code>privateRepos.Has(repoName) || internalRepos.Has(repoName)</code> to skip updates/removals, but a private/internal repo present in <code>team.Repos</code> (want) that the team does <strong>not yet</strong> have is never added to those sets — so peribolos will still <strong>add</strong> it despite the flag. Example: <code>org.yaml</code> declares <code>team-x</code> should get <code>Write</code> on private repo <code>secret-repo</code>, <code>team-x</code> doesn't have it yet — <code>--ignore-private-repos</code> will not stop the grant. Contradicts the PR description's "skip ignored repos on both sides of the diff" claim for these two flags (true only for <code>--ignore-repos</code>, which is name-based and doesn't depend on current association). Independently flagged by all 3 specialist reviewers (code-quality, maintainability, deployment-risk) in the maintainer-review pass. No test exercises this "want-only" case. Unchanged by the rebase.
 </li>
 <li>excerpt:<pre><code>for wantRepo, wantPermission := range want {
     repoName := strings.ToLower(wantRepo)
@@ -71,79 +118,70 @@ refresh_log:
 </li></ul>
 <h3><span class="tag c-red">blocking</span>undisclosed scope expansion beyond linked issue</h3>
 <ul>
-<li>where: <code>cmd/peribolos/main.go:65-67,98-99</code>, <code>pkg/github/types.go:335</code>
+<li>where: <code>cmd/peribolos/main.go:66-68,97-100</code>
 </li>
-<li>concern: Issue #737 and the PR body describe only <code>--ignore-repos</code>. The diff also adds <code>--ignore-private-repos</code>, <code>--ignore-internal-repos</code>, and a new <code>Visibility</code> field on the public <code>github.Repo</code> type, none of which are disclosed. All 3 maintainer-review specialists flagged this independently as a reviewability/governance concern. Should be split into a separate PR or the description updated to justify it, especially given finding #1 above.
+<li>concern: Issue #737 and the PR body describe only <code>--ignore-repos</code>. The diff still also adds <code>--ignore-private-repos</code> and <code>--ignore-internal-repos</code>, neither disclosed in the issue or the PR description (re-read 2026-11-01: body lists only <code>--ignore-repos</code>), and both carry finding #1 above. All 3 maintainer-review specialists flagged this independently as a reviewability/governance concern. Should be split into a separate PR or the description updated to justify it. Note the public-API half of this finding is now moot: the rebase dropped the PR's own <code>pkg/github/types.go</code> change because upstream landed <code>RepoVisibility</code>.
 </li>
 <li>excerpt:<pre><code>ignoreRepos           flagutil.Strings
 ignorePrivateRepos    bool
 ignoreInternalRepos   bool</code></pre>
 </li></ul>
-<h3><span class="tag c-amber">should-fix</span>no typed constant for "internal" visibility literal</h3>
-<ul>
-<li>where: <code>cmd/peribolos/main.go:1510</code>
-</li>
-<li>concern: <code>repo.Visibility == &quot;internal&quot;</code> is a bare string comparison with no constant/enum defined in <code>pkg/github</code>, unlike other GitHub API enums in the package. A typo or GitHub API change would silently break the feature with no compiler assistance.
-</li>
-<li>excerpt:<pre><code>if ignoreInternalRepos &amp;&amp; repo.Visibility == &quot;internal&quot; {</code></pre>
-</li></ul>
 <h3><span class="tag c-amber">should-fix</span>no logging when repos are skipped by ignore flags</h3>
 <ul>
-<li>where: <code>cmd/peribolos/main.go:1503-1516</code>
+<li>where: <code>cmd/peribolos/main.go:1767-1782</code>
 </li>
 <li>concern: Ignored/private/internal repos are silently excluded from reconciliation with no <code>logrus</code> line, unlike other reconciliation actions in this file. Reduces operator visibility when auditing dry-run (<code>--confirm=false</code>) output to understand why a repo present in config isn't being managed.
 </li></ul>
 <h3><span class="tag c-gray">nit</span>ignoredRepos manual comma-splitting undocumented</h3>
 <ul>
-<li>where: <code>cmd/peribolos/main.go:163-174</code>
+<li>where: <code>cmd/peribolos/main.go:169-180</code>
 </li>
 <li>concern: <code>flagutil.Strings.Set</code> does not split on commas itself (confirmed in <code>pkg/flagutil/strings.go</code>) — it appends the raw arg once per <code>--flag=value</code> occurrence. <code>ignoredRepos</code> correctly splits/trims/lowercases itself, but duplicates logic that could largely reuse the existing (non-splitting) <code>Strings.StringSet()</code> helper. A short comment explaining the manual split would help future readers.
 </li>
 <li>excerpt:<pre><code>func ignoredRepos(values []string) sets.Set[string] {
     repos := sets.Set[string]{}
     for _, value := range values {
-        for _, repo := range strings.Split(value, &quot;,&quot;) {</code></pre>
+        for repo := range strings.SplitSeq(value, &quot;,&quot;) {</code></pre>
 </li></ul>
 <h3><span class="tag c-gray">nit</span>configureTeamRepos growing to 8 parameters</h3>
 <ul>
-<li>where: <code>cmd/peribolos/main.go:1490</code>
+<li>where: <code>cmd/peribolos/main.go:1753</code>
 </li>
 <li>concern: 3 new ignore-related params threaded through unchanged on every recursive child-team call. Consider bundling <code>ignoreRepos</code>/<code>ignorePrivateRepos</code>/<code>ignoreInternalRepos</code> into a small struct if more ignore knobs are added later.
 </li></ul>
-<h3><span class="tag c-gray">nit</span>new Visibility field lacks doc comment</h3>
-<ul>
-<li>where: <code>pkg/github/types.go:335</code>
-</li>
-<li>concern: <code>Visibility string</code> has three-way semantics (<code>public</code>/<code>private</code>/<code>internal</code>) but no comment. Also worth noting it may be empty on older GitHub Enterprise Server versions that predate this API field — in which case <code>--ignore-internal-repos</code> fails safe (never matches) but silently, which could confuse operators expecting it to work.
-</li>
-<li>excerpt:<pre><code>Private       bool   `json:&quot;private&quot;`
-Visibility    string `json:&quot;visibility&quot;`</code></pre>
-</li></ul>
 <h3><span class="tag c-gray">nit</span>cmp.Diff argument order reversed in new test</h3>
 <ul>
-<li>where: <code>cmd/peribolos/main_test.go:196</code>
+<li>where: <code>cmd/peribolos/main_test.go:201</code>
 </li>
 <li>concern: <code>cmp.Diff(actual, expected)</code> reverses the conventional <code>cmp.Diff(want, got)</code> order used elsewhere; harmless here (sets compare symmetrically) but inconsistent with typical diff framing.
 </li></ul>
 <h3><span class="tag c-blue">question</span>have map keying vs. case-insensitive ignore matching</h3>
 <ul>
-<li>where: <code>cmd/peribolos/main.go:1516</code>
+<li>where: <code>cmd/peribolos/main.go:1780-1789</code>
 </li>
 <li>concern: <code>have[repo.Name]</code> is still keyed by original case while the new ignore matching is case-insensitive. Pre-existing exact-case want/have matching predates this PR — intentional, or worth revisiting given the new case-insensitive semantics layered on top?
 </li></ul>
+<h2>Resolved</h2>
+<ul>
+<li><strong>[should-fix] no typed constant for "internal" visibility literal</strong> — fixed in <code>28dd406ae</code>: the check is now <code>repo.Visibility == github.RepoVisibilityInternal</code> (<code>cmd/peribolos/main.go:1773</code>), using the typed enum upstream added (<code>pkg/github/types.go:322-333</code>).
+</li>
+<li><strong>[nit] new Visibility field lacks doc comment</strong> — obsolete: the rebase dropped the PR's <code>Visibility string</code> field entirely; upstream's <code>RepoVisibility</code> type, constants, and <code>Repo.Visibility RepoVisibility</code> field are all documented (<code>pkg/github/types.go:322-333,370</code>), including the <code>RepoVisibilityInternal</code> case.
+</li></ul>
 <h2>Checked</h2>
 <ul>
-<li><code>go build ./cmd/peribolos/... ./pkg/github/...</code> succeeds
+<li><code>go build ./cmd/peribolos/...</code> succeeds at <code>28dd406ae</code> (Go 1.26.10 local, <code>go.mod</code> says 1.26.4)
 </li>
-<li><code>go test ./cmd/peribolos/...</code> passes, including new tests for ignoredRepos, ignore-repos/private/internal in configureTeamRepos, and child-team propagation
+<li><code>go test ./cmd/peribolos/...</code> passes at <code>28dd406ae</code>
+</li>
+<li>the only code differences vs. the previously reviewed head are the 3 lines listed under "Since previous review" — the private/internal logic is byte-for-byte identical after rebase
 </li>
 <li><code>--ignore-repos</code> matching is case-insensitive consistently in both the have-building and want-diffing loops
 </li>
 <li>flag naming follows existing <code>--ignore-*</code> convention (<code>--ignore-secret-teams</code>, <code>--ignore-enterprise-teams</code>)
 </li>
-<li>no markdown docs reference these flags, so none needed updating
+<li>no markdown docs reference these flags at <code>28dd406ae</code> (<code>git grep</code> over <code>site/</code>), so none needed updating
 </li>
-<li>new <code>Visibility</code> field is additive-only on <code>github.Repo</code>; grepped other consumers (pluginhelp/hook, plugins/blunderbuss, plugins/lgtm, plugins/project, github/fakegithub, branchprotector, checkconfig) — none reference <code>.Visibility</code>, no deserialization risk for existing payloads
+<li>the rebase pulled in large unrelated <code>main</code> peribolos changes (<code>--fix-org-roles</code>, enterprise-team dump filtering, org-role diffing); the PR's hunks do not touch those paths and the package still builds/tests green, but the PR has not been re-examined against that new code beyond compilation
 </li>
 <li>all new flags default to no-op values (empty <code>flagutil.Strings</code>, <code>false</code> booleans) — no behavior change for operators who don't pass them; safe rollback, no config migration needed
 </li></ul>

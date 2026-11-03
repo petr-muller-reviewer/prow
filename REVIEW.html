@@ -31,14 +31,19 @@ ul, ol { padding-left:1.5rem; }
 details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
 </style></head><body><main>
 <h1>branchprotector: add <code>require_last_push_approval</code> and <code>bypass_pull_request_allowances.apps</code></h1>
-<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/995">kubernetes-sigs/prow#995</a> · base <code>main</code> · head_sha <code>f14b640b59d7</code> · reviewed_at <code>2026-10-14T15:55:59Z</code></div>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/995">kubernetes-sigs/prow#995</a> · base <code>main</code> · head_sha <code>f14b640b59d7</code> · reviewed_at <code>2026-11-03T11:55:44Z</code></div>
 <div class="badges"><span class="badge c-green">verdict: approve</span><span class="badge c-amber">gate: hold</span></div>
 <details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#995
 title: &quot;branchprotector: add `require_last_push_approval` and `bypass_pull_request_allowances.apps`&quot;
 head_sha: f14b640b59d7f9f82dda202cfa904fd58f5fbe99
 base: main
-reviewed_at: 2026-10-14T15:55:59Z
+reviewed_at: 2026-11-03T11:55:44Z
 verdict: approve
+refresh_log:
+  - at: 2026-11-03T11:55:44Z
+    old_sha: f14b640b59d7f9f82dda202cfa904fd58f5fbe99
+    new_sha: f14b640b59d7f9f82dda202cfa904fd58f5fbe99
+    summary: &quot;No code changes; incorporated two author status pings (2026-10-20, 2026-11-03).&quot;
 gate:
   decision: hold
   gated_at: 2026-10-15T10:49:09Z
@@ -80,6 +85,14 @@ gate:
 <li>Preserves current GitHub settings when these new fields are omitted, with warnings to configure them explicitly.
 </li>
 <li>Adds tests and updates configuration examples and operator documentation.
+</li></ul>
+<p>Since previous review:</p>
+<ul>
+<li>No code changes: PR head is still <code>f14b640b59d7f9f82dda202cfa904fd58f5fbe99</code>; PR remains open and unmerged.
+</li>
+<li>@relusc posted status pings on 2026-10-20 and 2026-11-03 asking whether anything is missing; no submitted reviews or inline comments were added.
+</li>
+<li>The open should-fix finding (inherited app allowance behavior) is still unanswered, so the earlier gate HOLD rationale is unchanged.
 </li></ul>
 <h2>Findings</h2>
 <h3><span class="tag c-amber">should-fix</span>Clarify inherited app allowance behavior</h3>

@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Triage: kubernetes-sigs/prow#194</title>
+<style>
+  body { margin: 0; background: #f6f8fa; color: #1f2328; font: 16px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  main { max-width: 900px; margin: 32px auto; padding: 0 24px 48px; }
+  section, header { background: #fff; border: 1px solid #d0d7de; border-radius: 8px; padding: 24px; margin: 18px 0; }
+  h1, h2, h3 { line-height: 1.25; } h1 { margin-top: 0; } h2 { margin-top: 0; font-size: 1.25rem; }
+  h3 { font-size: 1rem; margin-bottom: 0.25rem; } p, ul { margin-top: 0.4rem; }
+  .meta { display: grid; grid-template-columns: max-content 1fr; gap: 4px 16px; }
+  .meta dt { font-weight: 600; } .verdict { border-left: 5px solid #1a7f37; }
+  code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; } pre { overflow: auto; background: #f6f8fa; padding: 12px; border-radius: 6px; }
+  a { color: #0969da; }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>Triage: kubernetes-sigs/prow#194</h1>
+  <p><a href="https://github.com/kubernetes-sigs/prow/issues/194">Allow <code>ok-to-test</code> label to approve GitHub workflow runs for new contributors #25210</a></p>
+  <dl class="meta">
+    <dt>State</dt><dd>open</dd>
+    <dt>Labels</dt><dd>kind/feature, help wanted, sig/contributor-experience, area/plugins</dd>
+    <dt>Triaged at</dt><dd>2026-09-22T00:20:51Z</dd>
+    <dt>Main SHA</dt><dd><code>4eec6cb88572c8a3d6e82bd9f9cf4e8836c3252f</code></dd>
+    <dt>Verdict</dt><dd>accepted</dd>
+  </dl>
+</header>
+<section class="verdict">
+  <h2>Verdict: accepted</h2>
+  <p>This is an actionable Prow trigger-plugin bug. GitHub Actions workflow approval is broken both at initial <code>/ok-to-test</code> and after later pushes; the issue has a live API investigation and two focused open fixes.</p>
+</section>
+<section>
+  <h2>What the issue reports</h2>
+  <ul>
+    <li>Fork PR workflows should be approved after a maintainer establishes <code>ok-to-test</code> trust.</li>
+    <li>New commits create new approval-gated workflow runs that still require manual action.</li>
+    <li>The feature must remain controlled by <code>trigger_github_workflows</code>.</li>
+    <li>The original implementation in #612 did not fully deliver the behavior.</li>
+  </ul>
+</section>
+<section>
+  <h2>Analysis</h2>
+  <h3>Reproducibility / observed behavior</h3>
+  <p>@dklima measured that GitHub treats a multi-event <code>event</code> value as an exact string. <code>event=pull_request OR pull_request_target</code> returns no runs, including on cluster-api and kubeflow/notebooks. See <a href="https://github.com/kubernetes-sigs/prow/issues/194#issuecomment-5757126975">the issue report</a>.</p>
+  <h3>Probable cause</h3>
+  <ul>
+    <li><code>GetPendingApprovalActionRuns()</code> and <code>GetFailedActionRunsByHeadBranch()</code> use unsupported <code>OR</code> event filters, so neither path discovers relevant workflow runs.</li>
+    <li>Approval is called only from the <code>/ok-to-test</code> comment handler, not from later trusted push or human-applied label events.</li>
+    <li>Approval-gated runs are <code>completed</code> with conclusion <code>action_required</code>; they must not be rerun as failures.</li>
+  </ul>
+  <h3>Related code</h3>
+  <p><code>pkg/github/client.go:2194-2302</code> builds the Actions queries and exposes the approval endpoint:</p>
+  <pre>query.Add("event", "pull_request OR pull_request_target")
+query.Add("status", "action_required")</pre>
+  <p><code>pkg/plugins/trigger/generic-comment.go:147-154</code> contains the one-shot approval path:</p>
+  <pre>if isOkToTest &amp;&amp; trigger.TriggerGitHubWorkflows {
+    approveGitHubActionsWorkflowRuns(c, org, repo, pr.Head.Ref, headSHA)
+}</pre>
+  <p><code>pkg/plugins/trigger/pull-request.go:123-151</code> handles synchronize and label events but does not call approval.</p>
+  <h3>Related issues / PRs</h3>
+  <ul>
+    <li><a href="https://github.com/kubernetes-sigs/prow/pull/955">#955</a>: removes the invalid event query, paginates results, filters events client-side, and excludes <code>action_required</code> from retest candidates.</li>
+    <li><a href="https://github.com/kubernetes-sigs/prow/pull/956">#956</a>: depends on #955; approves after qualifying trusted PR events with bounded polling and revalidation.</li>
+    <li><a href="https://github.com/kubernetes-sigs/prow/pull/612">#612</a>: original comment-only implementation; incomplete.</li>
+    <li><a href="https://github.com/kubernetes/test-infra/issues/25210">kubernetes/test-infra#25210</a>: pre-migration source issue.</li>
+  </ul>
+</section>
+<section>
+  <h2>What I checked</h2>
+  <ul>
+    <li>Issue state, labels, discussion, and the 2026-09-21 root-cause report.</li>
+    <li>Current <code>pkg/github</code> and trigger-plugin code and existing unit tests.</li>
+    <li>Open PRs #955 and #956; project CI jobs succeeded while Tide was pending at triage time.</li>
+    <li><code>trigger_github_workflows</code> remains the opt-in configuration gate.</li>
+  </ul>
+</section>
+<section>
+  <h2>Recommended next steps</h2>
+  <ol>
+    <li>Review and merge #955 before #956.</li>
+    <li>Validate both on a fork PR with <code>trigger_github_workflows: true</code>, GitHub App <code>actions: write</code>, <code>/ok-to-test</code>, and a subsequent push.</li>
+    <li>Decide whether #956's bounded in-handler polling and accumulated waiters need queueing or concurrency limits.</li>
+    <li>After merge and live validation, close #194 as fixed and consider changing <code>kind/feature</code> to <code>kind/bug</code>.</li>
+  </ol>
+</section>
+<section>
+  <h2>Open questions</h2>
+  <ul>
+    <li>Is up to roughly 30 seconds of additional hook-handler lifetime acceptable under a burst of qualifying pushes?</li>
+    <li>Do all opted-in deployments grant the GitHub App <code>actions: write</code>?</li>
+    <li>Should a future <code>workflow_run</code> webhook design replace polling despite its broader deployment cost?</li>
+  </ul>
+</section>
+</main>
+</body>
+</html>

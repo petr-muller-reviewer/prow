@@ -1,100 +1,194 @@
 <!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Triage: kubernetes-sigs/prow#194</title>
-<style>
-  body { margin: 0; background: #f6f8fa; color: #1f2328; font: 16px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-  main { max-width: 900px; margin: 32px auto; padding: 0 24px 48px; }
-  section, header { background: #fff; border: 1px solid #d0d7de; border-radius: 8px; padding: 24px; margin: 18px 0; }
-  h1, h2, h3 { line-height: 1.25; } h1 { margin-top: 0; } h2 { margin-top: 0; font-size: 1.25rem; }
-  h3 { font-size: 1rem; margin-bottom: 0.25rem; } p, ul { margin-top: 0.4rem; }
-  .meta { display: grid; grid-template-columns: max-content 1fr; gap: 4px 16px; }
-  .meta dt { font-weight: 600; } .verdict { border-left: 5px solid #1a7f37; }
-  code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; } pre { overflow: auto; background: #f6f8fa; padding: 12px; border-radius: 6px; }
-  a { color: #0969da; }
-</style>
-</head>
-<body>
-<main>
-<header>
-  <h1>Triage: kubernetes-sigs/prow#194</h1>
-  <p><a href="https://github.com/kubernetes-sigs/prow/issues/194">Allow <code>ok-to-test</code> label to approve GitHub workflow runs for new contributors #25210</a></p>
-  <dl class="meta">
-    <dt>State</dt><dd>open</dd>
-    <dt>Labels</dt><dd>kind/feature, help wanted, sig/contributor-experience, area/plugins</dd>
-    <dt>Triaged at</dt><dd>2026-09-22T00:20:51Z</dd>
-    <dt>Main SHA</dt><dd><code>4eec6cb88572c8a3d6e82bd9f9cf4e8836c3252f</code></dd>
-    <dt>Verdict</dt><dd>accepted</dd>
-  </dl>
-</header>
-<section class="verdict">
-  <h2>Verdict: accepted</h2>
-  <p>This is an actionable Prow trigger-plugin bug. GitHub Actions workflow approval is broken both at initial <code>/ok-to-test</code> and after later pushes; the issue has a live API investigation and two focused open fixes.</p>
-</section>
-<section>
-  <h2>What the issue reports</h2>
-  <ul>
-    <li>Fork PR workflows should be approved after a maintainer establishes <code>ok-to-test</code> trust.</li>
-    <li>New commits create new approval-gated workflow runs that still require manual action.</li>
-    <li>The feature must remain controlled by <code>trigger_github_workflows</code>.</li>
-    <li>The original implementation in #612 did not fully deliver the behavior.</li>
-  </ul>
-</section>
-<section>
-  <h2>Analysis</h2>
-  <h3>Reproducibility / observed behavior</h3>
-  <p>@dklima measured that GitHub treats a multi-event <code>event</code> value as an exact string. <code>event=pull_request OR pull_request_target</code> returns no runs, including on cluster-api and kubeflow/notebooks. See <a href="https://github.com/kubernetes-sigs/prow/issues/194#issuecomment-5757126975">the issue report</a>.</p>
-  <h3>Probable cause</h3>
-  <ul>
-    <li><code>GetPendingApprovalActionRuns()</code> and <code>GetFailedActionRunsByHeadBranch()</code> use unsupported <code>OR</code> event filters, so neither path discovers relevant workflow runs.</li>
-    <li>Approval is called only from the <code>/ok-to-test</code> comment handler, not from later trusted push or human-applied label events.</li>
-    <li>Approval-gated runs are <code>completed</code> with conclusion <code>action_required</code>; they must not be rerun as failures.</li>
-  </ul>
-  <h3>Related code</h3>
-  <p><code>pkg/github/client.go:2194-2302</code> builds the Actions queries and exposes the approval endpoint:</p>
-  <pre>query.Add("event", "pull_request OR pull_request_target")
-query.Add("status", "action_required")</pre>
-  <p><code>pkg/plugins/trigger/generic-comment.go:147-154</code> contains the one-shot approval path:</p>
-  <pre>if isOkToTest &amp;&amp; trigger.TriggerGitHubWorkflows {
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#194</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>Allow <code>ok-to-test</code> label to approve GitHub workflow runs for new contributors #25210</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/issues/194">kubernetes-sigs/prow#194</a> · main_sha <code>4eec6cb88572</code> · state <code>open</code> · labels <code>kind/feature, help wanted, sig/contributor-experience, area/plugins</code> · triaged_at <code>2026-11-03T22:13:21Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: accepted</span></div>
+<details><summary>Full metadata</summary><pre><code>issue: kubernetes-sigs/prow#194
+title: &quot;Allow `ok-to-test` label to approve GitHub workflow runs for new contributors #25210&quot;
+state: open
+labels: kind/feature, help wanted, sig/contributor-experience, area/plugins
+main_sha: 4eec6cb88572c8a3d6e82bd9f9cf4e8836c3252f
+triaged_at: 2026-11-03T22:13:21Z
+verdict: accepted
+refresh_log:
+  - at: 2026-11-03T22:13:21Z
+    since: 2026-09-22T00:20:51Z
+    summary: &quot;#955 merged 2026-09-30; #956 rebased onto post-#955 main and still open with green CI; no new issue comments, labels, or cross-references.&quot;
+advice:
+  advised_at: 2026-11-03T22:14:08Z
+  based_on_triaged_at: 2026-11-03T22:13:21Z</code></pre></details>
+<h2>What the issue reports</h2>
+<ul>
+<li>GitHub Actions workflow runs for new contributors stay at <code>action_required</code> until a maintainer approves them, even though Prow's <code>ok-to-test</code> label already grants trust.
+</li>
+<li><code>/ok-to-test</code> should approve the pending runs, including for later trusted pushes and a human-applied <code>ok-to-test</code> label, under the existing <code>trigger_github_workflows</code> opt-in.
+</li>
+<li>Migrated from kubernetes/test-infra#25210.
+</li></ul>
+<p>Since previous triage:</p>
+<ul>
+<li>#955 merged on 2026-09-30, fixing the workflow-run lookup and <code>/retest</code> candidate filtering.
+</li>
+<li>#956 remains open, rebased onto post-#955 <code>main</code>, mergeable, with all required CI green and Tide still pending; no reviews yet.
+</li>
+<li>No new issue comments, labels, or cross-references since 2026-09-22.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-blue">reproducibility</span>Actions lookup returns no runs</h3>
+<ul>
+<li>detail: @dklima measured that GitHub treats the multi-event <code>event</code> value as an exact string; <code>event=pull_request OR pull_request_target</code> returns no matches. The same behavior was observed against cluster-api and kubeflow/notebooks.
+</li>
+<li>evidence: <a href="https://github.com/kubernetes-sigs/prow/issues/194#issuecomment-5757126975">https://github.com/kubernetes-sigs/prow/issues/194#issuecomment-5757126975</a>
+</li></ul>
+<h3><span class="tag c-amber">cause</span>Approval only occurs on the comment path</h3>
+<ul>
+<li>detail: Approval is invoked for <code>/ok-to-test</code> comments, not for later trusted pushes or a human-applied <code>ok-to-test</code> label. Those events can create fresh approval-gated runs.
+</li>
+<li>evidence: <code>pkg/plugins/trigger/generic-comment.go:147-154</code>; <code>pkg/plugins/trigger/pull-request.go:123-151</code>
+</li>
+<li>status: Unchanged; addressed by open #956, not yet merged.
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>Trigger approval paths</h3>
+<ul>
+<li>where: <code>pkg/plugins/trigger/generic-comment.go:147-154</code>
+</li>
+<li>excerpt:<pre><code>if isOkToTest &amp;&amp; trigger.TriggerGitHubWorkflows {
     approveGitHubActionsWorkflowRuns(c, org, repo, pr.Head.Ref, headSHA)
-}</pre>
-  <p><code>pkg/plugins/trigger/pull-request.go:123-151</code> handles synchronize and label events but does not call approval.</p>
-  <h3>Related issues / PRs</h3>
-  <ul>
-    <li><a href="https://github.com/kubernetes-sigs/prow/pull/955">#955</a>: removes the invalid event query, paginates results, filters events client-side, and excludes <code>action_required</code> from retest candidates.</li>
-    <li><a href="https://github.com/kubernetes-sigs/prow/pull/956">#956</a>: depends on #955; approves after qualifying trusted PR events with bounded polling and revalidation.</li>
-    <li><a href="https://github.com/kubernetes-sigs/prow/pull/612">#612</a>: original comment-only implementation; incomplete.</li>
-    <li><a href="https://github.com/kubernetes/test-infra/issues/25210">kubernetes/test-infra#25210</a>: pre-migration source issue.</li>
-  </ul>
-</section>
-<section>
-  <h2>What I checked</h2>
-  <ul>
-    <li>Issue state, labels, discussion, and the 2026-09-21 root-cause report.</li>
-    <li>Current <code>pkg/github</code> and trigger-plugin code and existing unit tests.</li>
-    <li>Open PRs #955 and #956; project CI jobs succeeded while Tide was pending at triage time.</li>
-    <li><code>trigger_github_workflows</code> remains the opt-in configuration gate.</li>
-  </ul>
-</section>
-<section>
-  <h2>Recommended next steps</h2>
-  <ol>
-    <li>Review and merge #955 before #956.</li>
-    <li>Validate both on a fork PR with <code>trigger_github_workflows: true</code>, GitHub App <code>actions: write</code>, <code>/ok-to-test</code>, and a subsequent push.</li>
-    <li>Decide whether #956's bounded in-handler polling and accumulated waiters need queueing or concurrency limits.</li>
-    <li>After merge and live validation, close #194 as fixed and consider changing <code>kind/feature</code> to <code>kind/bug</code>.</li>
-  </ol>
-</section>
-<section>
-  <h2>Open questions</h2>
-  <ul>
-    <li>Is up to roughly 30 seconds of additional hook-handler lifetime acceptable under a burst of qualifying pushes?</li>
-    <li>Do all opted-in deployments grant the GitHub App <code>actions: write</code>?</li>
-    <li>Should a future <code>workflow_run</code> webhook design replace polling despite its broader deployment cost?</li>
-  </ul>
-</section>
-</main>
-</body>
-</html>
+}</code></pre>
+</li></ul>
+<h3><span class="tag c-blue">related-pr</span>#955 fixes workflow discovery</h3>
+<ul>
+<li>ref: kubernetes-sigs/prow#955
+</li>
+<li>relevance: Merged 2026-09-30 (commit b934e31c7, merge 7626c76a3). Removes the unsupported event query, handles pagination, filters supported events client-side, and prevents <code>/retest</code> from rerunning <code>action_required</code> runs.
+</li></ul>
+<h3><span class="tag c-blue">related-pr</span>#956 approves runs after qualifying PR events</h3>
+<ul>
+<li>ref: kubernetes-sigs/prow#956
+</li>
+<li>relevance: Rebased onto post-#955 <code>main</code> (base ae4792128, head 47b3b7911); adds bounded polling and revalidation for trusted pushes, reopen, ready-for-review, base changes, and human-applied <code>ok-to-test</code> labels. Open, mergeable, all required CI green, Tide pending, no reviews.
+</li></ul>
+<h3><span class="tag c-blue">related-pr</span>#612 was incomplete</h3>
+<ul>
+<li>ref: kubernetes-sigs/prow#612
+</li>
+<li>relevance: Added approval for <code>/ok-to-test</code> comments but did not handle the invalid lookup or subsequent events.
+</li></ul>
+<h3><span class="tag c-blue">related-issue</span>Original issue</h3>
+<ul>
+<li>ref: kubernetes/test-infra#25210
+</li>
+<li>relevance: Pre-migration origin of the request.
+</li></ul>
+<h2>Resolved</h2>
+<h3><span class="tag c-amber">cause</span>Invalid multi-event query breaks approval and retest</h3>
+<ul>
+<li>detail: <code>GetPendingApprovalActionRuns()</code> and <code>GetFailedActionRunsByHeadBranch()</code> used an unsupported <code>OR</code> event filter, so both returned no runs.
+</li>
+<li>resolved: #955 merged 2026-09-30 (commit b934e31c7, merge 7626c76a3); the <code>event</code> parameter is dropped, results are paginated and filtered client-side, and <code>action_required</code> is excluded from <code>/retest</code> candidates.
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>Actions workflow-run client</h3>
+<ul>
+<li>where: <code>pkg/github/client.go</code> (<code>listWorkflowRuns</code>, <code>GetFailedActionRunsByHeadBranch</code>)
+</li>
+<li>excerpt:<pre><code>runs, err := c.listWorkflowRuns(org, repo, url.Values{
+    &quot;per_page&quot;: []string{&quot;100&quot;},
+    &quot;head_sha&quot;: []string{headSHA},
+    &quot;branch&quot;:   []string{branchName},
+})</code></pre>
+</li>
+<li>resolved: Replaced by #955; the original invalid-query excerpt no longer exists on <code>main</code>.
+</li></ul>
+<h3><span class="tag c-amber">cause</span>Approval-gated runs are not failed runs</h3>
+<ul>
+<li>detail: A gated run reports <code>status=completed</code> and <code>conclusion=action_required</code>; the corrected lookup had to exclude that conclusion from <code>/retest</code> candidates.
+</li>
+<li>resolved: #955 adds <code>action_required</code> to <code>nonRetestableWorkflowRunConclusions</code>, so approval-gated runs are not re-run by <code>/retest</code>.
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>Issue state, labels, discussion, and the 2026-09-21 root-cause report.
+</li>
+<li>Current <code>pkg/github</code> and trigger-plugin code and its existing unit tests.
+</li>
+<li>Open PRs #955 and #956; their reported project CI jobs succeeded while Tide remained pending at triage time.
+</li>
+<li><code>trigger_github_workflows</code> is the existing opt-in gate.
+</li>
+<li>Refresh on 2026-11-03: issue state/labels/comments/timeline, #955 merge, #956 rebase/CI/reviews, and upstream/main movement (173 commits since 4eec6cb; only #955 relevant).
+</li></ul>
+<h2>Next steps</h2>
+<ul>
+<li>Review and merge #956 (#955 is merged; #956 is rebased, mergeable, and green apart from Tide).
+</li>
+<li>Validate both PRs on a fork PR with <code>trigger_github_workflows: true</code>, GitHub App <code>actions: write</code>, <code>/ok-to-test</code>, and a subsequent push.
+</li>
+<li>Decide whether #956's bounded in-handler polling and accumulated waiters are acceptable or need queueing/concurrency limits.
+</li>
+<li>After merge and live validation, close #194 as fixed; consider replacing <code>kind/feature</code> with <code>kind/bug</code>.
+</li></ul>
+<h2>Advice</h2>
+<p>Current state: #194 is open, unchanged labels, assigned to @AaruniAggarwal since 2025-10-22 (by k8s-ci-robot). #955 merged 2026-09-30. #956 is open, mergeable, two commits, no reviews, all required CI green, Tide pending.</p>
+<ol>
+<li>Review and approve #956. It is the only remaining gap: the <code>[cause] Approval only occurs on the comment path</code> finding is unchanged, and #956 adds approval after trusted pushes, reopen, ready-for-review, base changes, and a human-applied <code>ok-to-test</code> label.
+<pre><code>gh pr checkout 956
+go test ./pkg/plugins/trigger/... ./pkg/github/...
+gh pr review 956 --repo kubernetes-sigs/prow --approve --body &quot;LGTM
+
+/approve
+/lgtm&quot;</code></pre>
+</li>
+<li>Post a status comment on #194 and confirm the assignee is still active. No issue comment has arrived since 2026-09-21, and the stale assignment predates both PRs.
+<pre><code>gh issue comment 194 --repo kubernetes-sigs/prow --body &quot;&gt; *This was generated by AI during triage.*
+
+#955 (workflow-run lookup fix) merged on 2026-09-30. #956 (approval on trusted pushes and the ok-to-test label) is rebased on post-#955 main, mergeable, and green apart from Tide; it is waiting for review. @dklima, thanks for the fix. @AaruniAggarwal, are you still working on this?&quot;</code></pre>
+</li>
+<li>After #956 merges, validate on a fork PR with <code>trigger_github_workflows: true</code>, GitHub App <code>actions: write</code>, <code>/ok-to-test</code>, and a subsequent push. Check the run conclusions directly:
+<pre><code>gh api &#x27;repos/&lt;fork-owner&gt;/&lt;fork-repo&gt;/actions/runs?head_sha=&lt;sha&gt;&amp;per_page=100&#x27; --jq &#x27;.workflow_runs[] | {id,event,status,conclusion}&#x27;</code></pre>
+</li>
+<li>Only after live validation: relabel as a bug and close #194 as fixed.
+<pre><code>gh issue edit 194 --repo kubernetes-sigs/prow --remove-label kind/feature --add-label kind/bug
+gh issue close 194 --repo kubernetes-sigs/prow --comment &quot;&gt; *This was generated by AI during triage.*
+
+Fixed by #955 and #956. Verified on a fork PR with trigger_github_workflows enabled: /ok-to-test, later pushes, and a human-applied ok-to-test label all approve the pending workflow runs.&quot;</code></pre>
+</li></ol>
+<p>No label additions are needed now: <code>help wanted</code>, <code>sig/contributor-experience</code>, and <code>area/plugins</code> are already present. No milestone or duplicate candidate applies.</p>
+<h2>Open questions</h2>
+<ul>
+<li>Is up to roughly 30 seconds of extra hook-handler lifetime acceptable under a burst of qualifying pushes?
+</li>
+<li>Do all opted-in deployments grant the GitHub App <code>actions: write</code>?
+</li>
+<li>Should a future <code>workflow_run</code> webhook design replace polling despite its broader deployment cost?
+</li></ul>
+</main></body></html>

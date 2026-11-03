@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#824</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>Deck PR status page shows stale contexts for renamed or removed presubmit jobs.</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/issues/824">kubernetes-sigs/prow#824</a> · main_sha <code>c8b6c2ce8b13</code> · state <code>open</code> · labels <code>area/status-reconciler, area/deck</code> · triaged_at <code>2026-08-17T22:40:36Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: accepted</span></div>
+<details><summary>Full metadata</summary><pre><code>issue: kubernetes-sigs/prow#824
+title: &quot;Deck PR status page shows stale contexts for renamed or removed presubmit jobs.&quot;
+state: open
+labels: area/status-reconciler, area/deck
+main_sha: c8b6c2ce8b130126a73672324a6ced4bd83df8a4
+triaged_at: 2026-08-17T22:40:36Z
+verdict: accepted
+advice:
+  advised_at: 2026-10-26T15:52:58Z
+  based_on_triaged_at: 2026-08-17T22:40:36Z</code></pre></details>
+<h2>Findings</h2>
+<h3><span class="tag c-amber">cause</span>status-reconciler's retirement pass is one-shot with no re-visit mechanism</h3>
+<ul>
+<li>detail: <code>pkg/statusreconciler</code> retires a removed/renamed presubmit's GitHub context once, synchronously, when the config delta that removed it is processed. There is no persisted record of which contexts/PRs were actually retired — only the whole config snapshot persists — so nothing can detect or catch up on missed work later. This produces two independent, confirmed blind spots below.
+</li>
+<li>evidence: <code>pkg/statusreconciler/controller.go:161-322</code>, <code>pkg/statusreconciler/status.go:73-95</code>
+</li></ul>
+<h3><span class="tag c-amber">cause</span>In-flight job at retirement time is not aborted or rechecked</h3>
+<ul>
+<li>detail: <code>retireRemovedContexts</code> retires a context immediately with no check against ProwJob state. <code>processPR</code> has no ProwJob lookup, and there is no abort/cancellation logic anywhere in <code>pkg/statusreconciler</code> (confirmed via grep, zero hits). A ProwJob still running when its job is removed from config can finish afterward and re-report its own (now stale) status via crier, silently overwriting the retirement.
+</li>
+<li>evidence: <code>pkg/statusreconciler/controller.go:294-322</code>, <code>pkg/statusreconciler/migrator/migrator.go:232-249</code>
+</li></ul>
+<h3><span class="tag c-amber">cause</span>Closed-then-reopened PR is permanently missed</h3>
+<ul>
+<li>detail: <code>GetPullRequests</code> hits <code>/repos/%s/%s/pulls</code> with no <code>state</code> parameter, defaulting to GitHub's <code>state=open</code>. <code>migrator.Migrate()</code> and <code>controller.go</code>'s <code>triggerNewPresubmits</code> both consume it this way. A PR closed at the moment a config delta is processed is invisible to that retirement pass; since each delta's diff only reports jobs that transitioned out of config in that specific delta, a later reopen of the PR is never revisited and its stale context is permanently missed.
+</li>
+<li>evidence: <code>pkg/github/client.go:2144-2169</code>, <code>pkg/statusreconciler/migrator/migrator.go:252-268</code>, <code>pkg/statusreconciler/controller.go:228</code>, <code>pkg/statusreconciler/controller.go:409-437</code> (<code>removedPresubmits</code>)
+</li></ul>
+<h3><span class="tag c-blue">reproducibility</span>Third hypothesis investigated and retracted</h3>
+<ul>
+<li>detail: An initially suspected gap — a stale context "spreading" to a brand-new PR/commit after retirement — was checked and ruled out. <code>getHeadContexts</code> only ever queries the current HEAD SHA via <code>GetCombinedStatus</code>/<code>ListCheckRuns</code>; there is no mechanism for an old commit's status to appear on an unrelated new commit.
+</li>
+<li>evidence: <code>pkg/prstatus/prstatus.go</code>
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>Sequential controller loop constrains any in-flight-job fix</h3>
+<ul>
+<li>where: <code>pkg/statusreconciler/controller.go:161-183</code>
+</li>
+<li>excerpt:<pre><code>func (c *Controller) Run(ctx context.Context) {
+  changes, err := c.statusClient.Load()
+  if err != nil {
+    logrus.WithError(err).Error(&quot;Error loading saved status.&quot;)
+    return
+  }
+
+  for {
+    select {
+    case change := &lt;-changes:
+      start := time.Now()
+      log := logrus.WithField(...)
+      if err := c.reconcile(change, log); err != nil {
+        log.WithError(err).Error(&quot;Error reconciling statuses.&quot;)
+      }
+      log.WithField(&quot;duration&quot;, ...).Info(&quot;Statuses reconciled&quot;)
+      c.statusClient.Save()
+    case &lt;-ctx.Done():
+      logrus.Info(&quot;status-reconciler is shutting down...&quot;)
+      return
+    }
+  }
+}</code></pre>
+</li>
+<li>relevance: <code>Run()</code> is single-goroutine and fully sequential — one delta's <code>reconcile</code> (trigger/retire/migrate) completes, then <code>statusClient.Save()</code> is called unconditionally, even if <code>reconcile</code> returned an error, before the next delta is read. Any fix that blocks mid-retirement (e.g. waiting for a job to finish) would stall every subsequent delta across every repo, not just the affected one.
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>Existing abort + crier-skip pattern a fix could reuse</h3>
+<ul>
+<li>where: <code>pkg/plugins/trigger/pull-request.go:170-199</code>, <code>pkg/crier/reporters/github/reporter.go:72-87</code>
+</li>
+<li>excerpt:<pre><code>// abortAllJobs (pull-request.go): sets Status.State/Status.Description only
+job.Status.State = prowapi.AbortedState
+job.Status.Description = abortedDescription
+// ShouldReport (github reporter.go): checks Spec.Report first
+func (c *Client) ShouldReport(_ context.Context, _ *logrus.Entry, pj *v1.ProwJob) bool {
+  if !pj.Spec.Report {
+    return false
+  }
+  ...
+}</code></pre>
+</li>
+<li>relevance: <code>abortAllJobs</code> does not touch <code>Spec.Report</code>. Crier's github reporter <code>ShouldReport</code> checks <code>Spec.Report</code> first and skips entirely if false. A status-reconciler abort that additionally sets <code>Spec.Report = false</code> in the same update would prevent a report race with crier without needing direct coordination — verified both sides of this claim in code.
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>ProwJobClient reaches the controller but not the migrator</h3>
+<ul>
+<li>where: <code>pkg/statusreconciler/controller.go:41-70</code>
+</li>
+<li>excerpt:<pre><code>func NewController(..., prowJobClient prowv1.ProwJobInterface, githubClient github.Client, ...) *Controller {
+  ...
+  return &amp;Controller{
+    ...
+    prowJobTriggerer: &amp;kubeProwJobTriggerer{
+      prowJobClient: prowJobClient,
+      githubClient:  githubClient,
+      ...
+    },
+    githubClient: githubClient,
+    statusMigrator: &amp;gitHubMigrator{
+      githubClient:    githubClient,
+      continueOnError: continueOnError,
+    },
+    ...
+  }
+}</code></pre>
+</li>
+<li>relevance: <code>prowJobClient</code> is passed into <code>NewController</code> and used only to build <code>kubeProwJobTriggerer</code> (the presubmit-triggering path); <code>gitHubMigrator</code> (the retirement/migration path) is constructed with only <code>githubClient</code>, no ProwJob awareness at all. A fix needs to thread <code>prowJobClient</code> into <code>gitHubMigrator</code> as well. <code>ProwJobSpec.Context</code> is a plain string field (<code>pkg/apis/prowjobs/v1/types.go:171</code>), directly usable for matching without any annotation scheme.
+</li></ul>
+<h3><span class="tag c-blue">related-pr</span>kubernetes-sigs/prow#615</h3>
+<ul>
+<li>ref: kubernetes-sigs/prow#615
+</li>
+<li>relevance: Prior attempt at a Deck-side fix for the originally-reported symptom (drop GitHub-only contexts client-side). Rejected in review by ivankatliarchuk for silently hiding non-Prow required contexts; closed unmerged by the stale bot. Superseded once the issue was reframed around status-reconciler; retained as evidence against re-attempting a client-side hide.
+</li></ul>
+<h3><span class="tag c-blue">related-issue</span>kubernetes/test-infra#36399</h3>
+<ul>
+<li>ref: kubernetes/test-infra#36399
+</li>
+<li>relevance: Likely origin of the "please file in kubernetes-sigs/prow" redirect that led to #824. Describes a related-but-distinct symptom (stale results in the prow bot's PR comment, attributed to delta-vs-full-recompute state), not the status-reconciler retirement gaps identified here.
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>Independently re-verified every technical claim from the issue thread's 2026-08-14 comment against the actual code (not trusted as-is). All confirmed except one: the claim that a follow-up <code>GetPullRequest</code> call is needed per match is inaccurate — <code>Migrate()</code> already receives full <code>PullRequest</code> structs (head SHA, base ref) from <code>GetPullRequests</code> and uses them directly.
+</li>
+<li>Confirmed <code>Controller.Run()</code>'s sequential single-channel model (relevant to any blocking-vs-abort design for the in-flight-job fix).
+</li>
+<li>Checked <code>pkg/statusreconciler/controller_test.go</code> and <code>pkg/statusreconciler/migrator/migrator_test.go</code> — no existing coverage for ProwJob running-state, aborts, or closed/reopened PRs; both use a consistent table-driven + interface-fake pattern a fix would extend.
+</li>
+<li>Confirmed upstream <code>main</code> has not moved on <code>pkg/statusreconciler/*</code> or <code>cmd/deck/static/pr/pr.ts</code> since the prior (2026-08-13) triage's anchor SHA.
+</li>
+<li>Re-read the full issue thread (body + all comments through 2026-08-14) and PR #615 (body, comments, reviews) to confirm the scope shift from Deck to status-reconciler is accurate and not a misreading.
+</li></ul>
+<h2>Next steps</h2>
+<ul>
+<li>Retitle the issue (or add a clarifying top comment) to reflect the actual scope: status-reconciler retirement gaps, not a Deck display bug.
+</li>
+<li>Consider removing the <code>area/deck</code> label — the Deck-side proposal was explicitly rejected on the issue, and research confirms the real gaps are entirely within status-reconciler.
+</li>
+<li>Split into two independently-shippable pieces given very different risk profiles: (1) closed-then-reopened-PR revisit cursor, (2) in-flight-job abort.
+</li>
+<li>Before any implementation on the in-flight-job piece, get explicit maintainer sign-off on the abort-vs-block trade-off (sunk CI compute vs. a residual report-race window) — this is a product decision, not an implementation detail.
+</li>
+<li>Once cursor-persistence semantics (per-repo scoping, only-advance-on-full-success) are agreed, the closed-PR piece could be scoped as a standalone, lower-effort follow-up issue.
+</li></ul>
+<h2>Advice</h2>
+<p>Recorded 2026-10-26T15:52:58Z against the triage of 2026-08-17T22:40:36Z. Issue is still open, has no <code>kind/*</code> or <code>triage/*</code> label, and no PR implements either gap. Note: the issue also cross-references #847 (2026-08-12), an open Deck-side patch held by the maintainer; it is not listed under <code>[related-pr]</code> above but its rationale matches the #615 rejection.</p>
+<ol>
+<li>Add the missing kind and triage-state labels; drop <code>area/deck</code> now that the Deck-side approach is rejected.
+</li></ol>
+<p>Rationale: the verdict is <code>accepted</code>, the repo carries <code>kind/bug</code> and <code>triage/accepted</code>, and the issue currently has only area labels. <code>area/deck</code> no longer matches the confirmed scope (<code>## Next steps</code>).</p>
+<pre><code>gh issue edit 824 --repo kubernetes-sigs/prow --add-label kind/bug,triage/accepted
+gh issue edit 824 --repo kubernetes-sigs/prow --remove-label area/deck</code></pre>
+<ol>
+<li>Retitle to the confirmed scope and post one top comment stating the two gaps and asking the abort-vs-block question, tagging the package approver from <code>pkg/statusreconciler/OWNERS</code> (stevekuznetsov).
+</li></ol>
+<p>Rationale: the title still describes the originally reported Deck symptom, which <code>## Findings</code> shows is not where the defect is; the in-flight-job piece needs the product decision in <code>## Open questions</code> recorded on the issue.</p>
+<pre><code>gh issue edit 824 --repo kubernetes-sigs/prow --title &quot;status-reconciler: retired presubmit contexts can reappear from in-flight jobs and closed-then-reopened PRs&quot;
+
+gh issue comment 824 --repo kubernetes-sigs/prow --body &quot;$(cat &lt;&lt;&#x27;EOF&#x27;
+The confirmed scope is status-reconciler, not Deck. Two gaps in the one-shot retirement pass (`retireRemovedContexts`, pkg/statusreconciler/controller.go) let stale contexts survive:
+
+1. An in-flight ProwJob whose job is removed or renamed can finish after retirement and re-report its own status. status-reconciler has no ProwJob awareness and nothing aborts the job.
+2. `GetPullRequests` only lists open PRs, so a PR that is closed when the config delta is processed is never retired; reopening it later leaves the stale context permanently, because that delta is never reprocessed.
+
+The Deck-side proposals (#615, #847) hide the context client-side but leave the stale status on the commit, where it can still affect merge gating.
+
+Decision needed (@stevekuznetsov, per pkg/statusreconciler/OWNERS): should retirement abort an in-flight job (sunk CI compute) or leave it running (residual late-report race)?
+
+The closed-PR-revisit gap needs no product decision and is being split out as a separate issue.
+EOF
+)&quot;</code></pre>
+<ol>
+<li>Split the closed-PR revisit cursor into its own issue so it can ship without waiting on the abort decision.
+</li></ol>
+<p>Rationale: <code>## Next steps</code> proposes exactly this split; the cursor fix is lower risk, while the abort fix needs maintainer sign-off. Add <code>help wanted</code>/<code>good first issue</code> to the new issue, not to the umbrella.</p>
+<pre><code>gh issue create --repo kubernetes-sigs/prow --title &quot;status-reconciler: retired context is permanently missed on PRs closed during a config change&quot; --label area/status-reconciler,kind/bug --body &quot;$(cat &lt;&lt;&#x27;EOF&#x27;
+`retireRemovedContexts` (pkg/statusreconciler/controller.go) runs once per config delta and only considers the presubmits that delta removed. `GetPullRequests` (pkg/github/client.go, `/repos/%s/%s/pulls` with no `state` parameter) returns open PRs only, so a PR that is closed when the delta is processed is never retired. Reopening it later leaves the stale context forever, since that delta is never reprocessed.
+
+Proposal: persist a per-repo revisit cursor and re-check recently closed/updated PRs against the set of retired contexts, advancing the cursor only after a fully successful pass.
+
+Context: #824
+EOF
+)&quot;</code></pre>
+<ol>
+<li>Keep #847 on hold and record why on the PR.
+</li></ol>
+<p>Rationale: #847 is a client-side hide in <code>cmd/deck/static/pr/pr.ts</code>; <code>## Findings</code> shows the stale context stays on the commit and can still gate merges, so hiding it in Deck leaves the cause in place.</p>
+<pre><code>gh pr comment 847 --repo kubernetes-sigs/prow --body &quot;$(cat &lt;&lt;&#x27;EOF&#x27;
+Holding this: hiding the context in Deck leaves the stale status on the commit, where it still affects merge gating. The real gaps are in status-reconciler&#x27;s one-shot retirement pass, tracked in #824.
+EOF
+)&quot;</code></pre>
+<h2>Open questions</h2>
+<ul>
+<li>Should status-reconciler abort an in-flight job whose context is being retired (accepting sunk CI compute cost), or leave it running (accepting the residual race where its late report could overwrite the retirement)?
+</li>
+<li>Should the closed-PR-revisit cursor be scoped globally or per-repo, and should it only advance after a fully successful pass, to avoid silently reproducing the same "missed retirement" bug class it's meant to fix?
+</li>
+<li>Is there an existing Prow pattern for rate-limit-aware GitHub Search API batching across many repos in one config delta, or would this be the first such use?
+</li>
+<li>Should these two gaps be tracked and worked on as one issue, or split into separate issues given their very different effort levels?
+</li></ul>
+</main></body></html>

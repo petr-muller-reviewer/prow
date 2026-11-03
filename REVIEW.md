@@ -38,3 +38,12 @@ None.
 - 2026-08-17T20:40:04Z: cblecker submitted an APPROVED review (no body).
 - 2026-08-17T20:40:12Z: kubernetes-prow[bot] posted the `[APPROVALNOTIFIER]` comment confirming approval by cblecker and dependabot[bot] (self-approval).
 - PR state: MERGED (head SHA unchanged at c0237b8e).
+
+## Dependency followups
+
+No opportunities identified (checked 2026-11-03, PR merged in `de7332b9`).
+
+- Examined, direct: `aws-sdk-go-v2` v1.43.4→v1.43.5, `config` v1.32.35→v1.32.36, `credentials` v1.19.34→v1.19.35, `service/s3` v1.107.0→v1.107.1.
+- Examined, transitive and exercised through our call sites (`config.LoadDefaultConfig` credential chain + S3 client): `smithy-go` v1.27.6→v1.27.7, `feature/ec2/imds` v1.18.35→v1.18.36, `service/sts` v1.45.4→v1.45.5, `service/sso`/`ssooidc`/`signin`, `internal/configsources`, `internal/endpoints/v2`, `internal/v4a`, `service/internal/{checksum,s3shared,presigned-url,accept-encoding}`, `aws/protocol/eventstream`.
+- Reason: every release in the 2026-08-06/07/10 range is "Dependency Update" churn or bug fixes (smithy-go: JSON unset-document serialization, recursive-shape deserialization panic), plus the behavior-preserving middleware→codegen refactor aws/aws-sdk-go-v2#3480. No new APIs, features, or defaults.
+- No deprecation applies: the only `Deprecated:` markers reachable from `pkg/io/providers/aws.go` (`EndpointResolver`/`WithEndpointResolver` in `config` and `s3.Options`, `UseDualStackEndpoint`) are byte-identical at v1.43.4/v1.107.0 — they predate this bump and none are used (we set `UsePathStyle`, `HTTPClient`, `BaseEndpoint`).

@@ -52,3 +52,10 @@ Both bumped releases are functionally inert for this codebase (the substantive u
 ## Open questions
 
 - Is there urgency to take this now (e.g. keeping pace with dependabot security scanning), or can it wait a few more days for more soak time given both releases are under a week old?
+
+## Dependency followups
+
+No followup opportunities identified (mined 2026-11-03, post-merge).
+
+- `golang.org/x/net` v0.57.0 -> v0.58.0 (direct in root `go.mod`, indirect in `hack/tools/go.mod`): the range changes `internal/http3`, `quic`, `http2`/`http2/hpack`, `http/httpproxy`, and `dns/dnsmessage`; the only packages this repo imports are `xsrftoken` (`pkg/githuboauth/githuboauth.go:33`) and `html` (`pkg/spyglass/lenses/html/html.go:27`), neither of which is touched. The diff adds no `Deprecated` markers.
+- `golang.org/x/crypto` v0.54.0 -> v0.55.0 (indirect in both modules): this repo imports nothing from it directly. The range is `ssh` hardening/race fixes, an `ocsp.ParseRequest` error-condition tightening, `acme` test fixes, and an `x509roots` bundle refresh. `ocsp` is not in the compiled package graph; `x/crypto/ssh` arrives only via `github.com/go-git/go-git/v5/plumbing/transport/ssh` (no call sites of ours). The diff adds no `Deprecated` markers.

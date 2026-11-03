@@ -65,15 +65,15 @@ Since previous review:
 
 ## Followups
 
-Accepted: 2 (one deliverable, one probe). Skipped: 0.
+Accepted: 2 (one deliverable, one probe). Skipped: 1.
 
-### Exclude non-reporting jobs from the required manual selection
+### Use `ContextRequired()` in the manual-required predicate
 
 - Category: correctness
 - Necessity: should
 - Mode: deliver
-- Where: `pkg/pjutil/filter.go:275`, `pkg/pjutil/filter_test.go`, `pkg/plugins/trigger/generic-comment_test.go`
-- Why followup: the saved required-context finding remains in the merged implementation; `skip_report: true` manual jobs can be selected despite publishing no required GitHub context.
+- Where: `pkg/pjutil/filter.go:299-304` (current `main`), `pkg/pjutil/filter_test.go`, `pkg/plugins/trigger/generic-comment_test.go`
+- Why followup: the saved should-fix finding merged unfixed. `ps.Optional` still admits `optional: false, skip_report: true` jobs, which publish no GitHub context and therefore cannot be a required presubmit context.
 
 ```text
 In kubernetes-sigs/prow, following PR #735 — "trigger: add /test-manual-required command"
@@ -81,19 +81,25 @@ In kubernetes-sigs/prow, following PR #735 — "trigger: add /test-manual-requir
 default branch containing that merge and first check whether this issue is already fixed.
 
 Update TestManualRequiredFilter.ShouldRun in pkg/pjutil/filter.go to use
-Presubmit.ContextRequired() when selecting required jobs. Add regression coverage
-for an otherwise eligible manual job with Optional:false and SkipReport:true:
-/test-manual-required must not select or start it. Preserve the selection of
-reporting required manual jobs and the exclusion of optional, automatic, and
-file-conditional jobs. Reuse the existing pjutil and trigger fixtures.
+Presubmit.ContextRequired() instead of ps.Optional. The predicate should become
+`if !ps.ContextRequired() || !ps.NeedsExplicitTrigger() { return false, false, false }`;
+the explicit RunIfChanged and SkipIfOnlyChanged checks can be dropped because
+NeedsExplicitTrigger() already returns false when RegexpChangeMatcher.CouldRun() is true.
 
-Acceptance criteria: the regression case demonstrates the original issue and
-passes with the fix; existing relevant selections remain unchanged; run
-go test ./pkg/pjutil ./pkg/plugins/trigger successfully.
+Add regression coverage in TestPresubmitFilter in pkg/pjutil/filter_test.go for an
+otherwise eligible manual job with Optional:false and SkipReport:true:
+/test-manual-required must not select or start it. Add the equivalent trigger-plugin
+case in pkg/plugins/trigger/generic-comment_test.go. Keep the existing expectations for
+reporting required manual jobs and for excluding optional, always_run, and
+file-conditional jobs.
+
+Acceptance criteria: the new skip_report cases fail before the fix and pass after it;
+existing relevant selections are unchanged; `go test ./pkg/pjutil ./pkg/plugins/trigger`
+passes.
 
 Scope: only this command's required-job predicate and focused regression coverage.
-Do not change /retest-required, Tide policy, trust handling, or unrelated filters.
-Leave the result local for review; do not publish or open a PR.
+Do not change /retest-required, Tide policy, trust handling, help text, or unrelated
+filters. Leave the result local for review; do not publish or open a PR.
 ```
 
 ### Probe trust handling and branch restrictions
@@ -102,7 +108,7 @@ Leave the result local for review; do not publish or open a PR.
 - Necessity: could
 - Mode: probe
 - Where: `pkg/plugins/trigger/generic-comment_test.go`, `pkg/pjutil/filter_test.go`
-- Why followup: the PR discussion confirmed trust behavior, but its three new integration cases all use a trusted commenter; the new force-run path also merits exercising branch restrictions.
+- Why followup: the three new integration cases all use a trusted commenter, and the filter's `forced=true` result interacts with the brancher in `Presubmit.ShouldRun`; neither the trust gate nor branch filtering is exercised for the new command.
 
 ```text
 In kubernetes-sigs/prow, following PR #735 — "trigger: add /test-manual-required command"
@@ -111,28 +117,28 @@ default branch containing that merge. Mode: probe.
 
 Write temporary tests using the existing trigger and pjutil fixtures to exercise
 /test-manual-required across these boundaries:
-1. An untrusted commenter on an untrusted PR without ok-to-test cannot start jobs
-   and receives the existing trust response.
-2. A trusted commenter can start required manual jobs on that PR without granting
-   persistent ok-to-test approval or removing needs-ok-to-test.
-3. An untrusted commenter on a PR with ok-to-test can start eligible jobs.
+1. An untrusted commenter on an untrusted PR without ok-to-test cannot start jobs,
+   starts nothing, and receives the existing trust-denial response.
+2. A trusted commenter can start eligible required manual jobs on that untrusted PR
+   without adding the ok-to-test label or removing needs-ok-to-test.
+3. A trusted commenter on a PR that already has ok-to-test can start eligible jobs.
 4. A required manual job excluded by its branch filter does not run despite the
    command's forced=true selection.
 
-Inspect the current implementation and fixtures before setting expectations. Run
-the affected tests and classify each failure as an implementation bug, an incorrect
+Inspect the current implementation and fixtures before setting expectations. Run the
+affected tests and classify each failure as an implementation bug, an incorrect
 expectation, or a fixture mistake. A real bug means unauthorized execution, an
-unintended persistent trust grant, failure to execute an eligible authorized job,
-or execution of a job excluded by its branch filter.
+unintended persistent trust grant, failure to execute an eligible authorized job, or
+execution of a job excluded by its branch filter.
 
-Acceptance criteria: exercise every named case and explain any failures with
-evidence. Apply only minimal production fixes for confirmed bugs. Remove all
-temporary probe tests before finishing; if no bugs are found, leave no files
-changed. After any production fix, run go test ./pkg/pjutil ./pkg/plugins/trigger.
-Report the failing case for each confirmed bug so the user can choose whether to
-retain a regression test separately.
+Acceptance criteria: exercise every named case and explain any failures with evidence.
+Apply only minimal production fixes for confirmed bugs. Remove all temporary probe
+tests before finishing; if no bugs are found, leave no files changed. After any
+production fix, run `go test ./pkg/pjutil ./pkg/plugins/trigger`. Report the failing
+case for each confirmed bug so the user can choose whether to retain a regression test
+separately.
 
-Scope: no permanent test deliverable, test-only fixes, Tide policy changes, new
-labels, help redesign, or unrelated cleanup. Preserve pre-existing user changes.
-Leave any fixes local for review; do not publish or open a PR.
+Scope: no permanent test deliverable, test-only fixes, Tide policy changes, new labels,
+help redesign, or unrelated cleanup. Preserve pre-existing user changes. Leave any
+fixes local for review; do not publish or open a PR.
 ```

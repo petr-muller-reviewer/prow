@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#1051</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>allow merging plank.job_queue_capacities from supplemental Prow config</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1051">kubernetes-sigs/prow#1051</a> · base <code>main</code> · head_sha <code>d1ce7c271f0e</code> · reviewed_at <code>2026-11-02T18:58:17Z</code></div>
+<div class="badges"><span class="badge c-red">verdict: request-changes</span><span class="badge c-red">gate: do-not-merge</span></div>
+<details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#1051
+title: &quot;allow merging plank.job_queue_capacities from supplemental Prow config&quot;
+head_sha: d1ce7c271f0ee91ac552bc680e296964fb5ed480
+base: main
+reviewed_at: 2026-11-02T18:58:17Z
+verdict: request-changes
+gate:
+  decision: do-not-merge
+  gated_at: 2026-11-02T19:01:18Z
+  gated_head_sha: d1ce7c271f0ee91ac552bc680e296964fb5ed480
+  reviewed_head_sha: d1ce7c271f0ee91ac552bc680e296964fb5ed480</code></pre></details>
+<h2>Gate</h2>
+<p><strong>Decision: do-not-merge</strong> — the only blocking item is the stale supplemental-config docs; the code itself is ready.</p>
+<p>No commits landed since the review (<code>d1ce7c2</code> is still both the reviewed and current head), so every finding in the review stands unchanged. The independent risk pass found no unacceptable merge risk: the change is additive and opt-in, the YAML key and map shape are unchanged, and the exported-field type change is assignability-compatible with <code>map[string]int</code>. The PR cannot merge as-is only because <code>site/content/en/docs/config.md</code> still tells users that supplemental files support five fields and that other Prow settings belong in the main config.</p>
+<h3>Findings disposition</h3>
+<ul>
+<li><strong>Not addressed</strong> — [REVIEW.md, blocking] Supplemental-config docs still claim only five Prow fields are mergeable (<code>site/content/en/docs/config.md:23-26</code>). The current head is unchanged; this blocks merge.
+</li>
+<li><strong>Not addressed</strong> — [REVIEW.md, should-fix] No YAML-level or checkconfig hierarchy coverage (<code>pkg/config/config_test.go:8727</code>, <code>cmd/checkconfig/main_test.go:2042</code>). The current head is unchanged. Not itself a merge blocker, but it is the kind of contract test that would catch the docs/allow-list drift.
+</li>
+<li><strong>Not addressed (non-gating)</strong> — [REVIEW.md, should-fix] Redundant <code>map[string]int</code> conversions (<code>pkg/config/config.go:2347</code>, <code>pkg/plank/controller_test.go:107</code>, <code>pkg/plank/reconciler_test.go:417</code>, <code>pkg/config/config_test.go:2040</code>).
+</li></ul>
+<h3>Merge risk</h3>
+<ul>
+<li><strong>Exported API (low)</strong> — <code>Plank.JobQueueCapacities</code> changes from <code>map[string]int</code> to the new named <code>config.JobQueueCapacities</code>. Assignment, indexing, range, and <code>nil</code> comparison remain source-compatible; only reflection or type assertions on the old unnamed type would break. Blast radius: external importers of <code>sigs.k8s.io/prow/pkg/config</code>.
+</li>
+<li><strong>Configuration (low, opt-in)</strong> — <code>plank.job_queue_capacities</code> is newly accepted in root supplemental shards. Existing configs parse and behave identically and no default changes. Shards adopting the field require the new binary and <code>checkconfig</code>, and must drop it before rolling back.
+</li>
+<li><strong>Behavioral (low)</strong> — capacities are merged installation-wide and duplicate queue names are a hard error. No existing valid shard config could use the field before this PR, so there is no regression for current deployments.
+</li>
+<li>No CRD, Kubernetes API, proto, or flag changes; no repo compatibility skill was applicable.
+</li></ul>
+<h3>Gating list</h3>
+<ol>
+<li>Update <code>site/content/en/docs/config.md:23-26</code> to list <code>plank.job_queue_capacities</code> and document root-global scope, cross-file uniqueness, and <code>0</code>/negative semantics.
+</li></ol>
+<h2>Verdict</h2>
+<p>Implementation is correct; update the supplemental-config docs (and ideally the loader tests) before merge.</p>
+<p>Multi-perspective maintainer review: Code Quality APPROVE, Maintainability COMMENT (LOW burden), Deployment Risk LOW. All three found the merge logic correct and consistent with the existing <code>SlackReporterConfigs</code> pattern. The blocker is documentation drift: <code>site/content/en/docs/config.md</code> still enumerates only the five pre-existing mergeable fields and says other Prow settings belong in the main config, while this PR makes <code>plank.job_queue_capacities</code> legal in root shards. Deployment note: operators must upgrade Prow binaries and <code>checkconfig</code> before adding the field to shards, and remove it from shards before rolling back; a duplicate-name error leaves hot-reloaded components on the last good config but fails restarts and <code>checkconfig</code>.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Introduces a named <code>config.JobQueueCapacities</code> type in place of the inline <code>map[string]int</code> for <code>Plank.JobQueueCapacities</code>, so it can carry a <code>mergeFrom</code> method.
+</li>
+<li>Adds <code>JobQueueCapacities.mergeFrom</code>, which adds entries from an additional map and returns an aggregated error for any queue name already present.
+</li>
+<li>Adds <code>plank.job_queue_capacities</code> to the <code>ProwConfig.mergeFrom</code> allow-list (<code>emptyReference</code>) and updates the "only ... may be set via additional config" error text.
+</li>
+<li>Wires the new merge into <code>ProwConfig.mergeFrom</code>: assign the map when the base is nil, otherwise merge and reject duplicates.
+</li>
+<li>Adapts existing <code>pkg/plank</code> tests to the named type and adds unit + fuzz-property coverage for the merge.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-red">blocking</span>Supplemental-config docs still claim only five Prow fields are mergeable</h3>
+<ul>
+<li>where: <code>site/content/en/docs/config.md:23-26</code>
+</li>
+<li>concern: CONFIRMED (Maintainability + Deployment Risk, independently). This page tells users exactly which fields a supplemental file may contain and says "Other Prow settings belong in the main config." After this PR that is wrong for <code>plank.job_queue_capacities</code>. Update the list and state that the field is root-global only, queue names must be unique across the main config and all shards, and <code>0</code> blocks while a negative value removes the limit. The analogous Tide-context-options change (<code>e7d18e7ad</code>) updated this same paragraph.
+</li>
+<li>excerpt:<pre><code>Supplemental files support `branch-protection`, `slack_reporter_configs`,
+`tide.merge_method`, `tide.queries`, and `tide.context_options`. They use the
+same YAML structure as the main config, including the top-level `tide:` key.
+Other Prow settings belong in the main config.</code></pre>
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>No YAML-level or checkconfig hierarchy coverage for the new field</h3>
+<ul>
+<li>where: <code>pkg/config/config_test.go:8727</code> and <code>cmd/checkconfig/main_test.go:2042</code>
+</li>
+<li>concern: Flagged by all three reviewers. <code>TestJobQueueCapacitiesMergeFrom</code> and the property test cover the merge helper, and the property test exercises the <code>emptyReference</code> allow-list. Nothing exercises YAML → <code>loadConfig</code>: a <code>TestProwConfigMerging</code> case (main config has queue A, a shard adds B, another repeats A) would catch tag/key or error-wrapping mistakes, and a <code>validateAdditionalProwConfigIsInOrgRepoDirectoryStructure</code> case would lock in that a capacities-only shard is classified global (root accepted, org/repo rejected). The latter follows the precedent set for <code>tide.context_options</code> in <code>e7d18e7ad</code>.
+</li>
+<li>excerpt:<pre><code>func TestProwConfigMerging(t *testing.T) {</code></pre>
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>Explicit <code>map[string]int</code> conversions are unnecessary</h3>
+<ul>
+<li>where: <code>pkg/config/config.go:2347</code>, <code>pkg/plank/controller_test.go:107</code>, <code>pkg/plank/reconciler_test.go:417</code>, <code>pkg/config/config_test.go:2040</code>
+</li>
+<li>concern: Flagged by Code Quality and Maintainability; verified with a compile check. A named map type and its unnamed underlying type are mutually assignable, and <code>sets.KeySet</code> type-infers over the named type. The conversions add diff noise and imply the types are incompatible when they are not.
+</li>
+<li>excerpt:<pre><code>validJobQueueNames := sets.KeySet[string](map[string]int(c.Plank.JobQueueCapacities))</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">nit</span>Type comment omits the global/uniqueness/hard-error contract</h3>
+<ul>
+<li>where: <code>pkg/config/config.go:735</code>
+</li>
+<li>concern: The comment describes the mapping but not the surprising behavior: capacities are global-only, names must be unique across all files, and a repeat is a hard error rather than an override. That rationale currently lives only in the PR description. Putting it on the type/field comment also carries it into godoc and the generated <code>prow-config-documented.yaml</code>.
+</li>
+<li>excerpt:<pre><code>// JobQueueCapacities maps a job queue name to its maximum concurrency.
+type JobQueueCapacities map[string]int</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">nit</span><code>mergeFrom</code> is not total, and the nil-base assignment aliases the shard map</h3>
+<ul>
+<li>where: <code>pkg/config/config.go:738-750</code> and <code>pkg/config/config.go:3482</code>
+</li>
+<li>concern: <code>jqc[name] = capacity</code> panics on a nil receiver with a non-nil argument; the only current caller guards that case, and the method mirrors <code>SlackReporterConfigs.mergeFrom</code>, so this is robustness rather than a bug. Likewise, assigning <code>additional.Plank.JobQueueCapacities</code> directly is harmless because <code>loadConfig</code> discards each shard config, but <code>maps.Clone</code> would make the method safe if a caller ever retains the additional config.
+</li>
+<li>excerpt:<pre><code>if pc.Plank.JobQueueCapacities == nil {
+    pc.Plank.JobQueueCapacities = additional.Plank.JobQueueCapacities
+} else if err := pc.Plank.JobQueueCapacities.mergeFrom(&amp;additional.Plank.JobQueueCapacities); err != nil {</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">nit</span>Duplicate-queue error could be more diagnostic</h3>
+<ul>
+<li>where: <code>pkg/config/config.go:744</code>
+</li>
+<li>concern: The error names only the later file and the queue, not that the name already exists in the main config or an earlier shard. <code>loadConfig</code> does wrap the offending path, so this is adequate today; wording such as "already defined in the main config or another supplemental config" would shorten incident triage.
+</li>
+<li>excerpt:<pre><code>errs = append(errs, fmt.Errorf(&quot;job queue %s passed more than once&quot;, name))</code></pre>
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>Merge semantics: union, duplicate rejection, and a <code>nil</code> additional map all behave as described; the only caller guards the nil receiver.
+</li>
+<li>The <code>emptyReference</code> change still rejects every other <code>Plank</code> field; the existing "Config not supported by merge logic errors" case covers this, and the error text now includes <code>plank.job_queue_capacities</code>.
+</li>
+<li>The read path in <code>pkg/plank/reconciler.go:953</code> is unaffected by the named-type change.
+</li>
+<li>Configuration compatibility: the YAML key, map shape, and <code>json:&quot;,omitempty&quot;</code> tag are unchanged, and the named type is assignment-compatible with <code>map[string]int</code>; existing configs parse and behave identically.
+</li>
+<li><code>ProwConfig.HasConfigFor</code>/<code>hasGlobalConfig</code>: no code change is needed. The structural diff against <code>emptyReference</code> classifies any <code>Plank</code> content as global, so <code>checkconfig</code> allows the field at the shard root and rejects it under <code>&lt;org&gt;/</code> and <code>&lt;org&gt;/&lt;repo&gt;/</code>. An explicit test would prevent regression.
+</li>
+<li>On a load error the config agent logs and keeps the previous config (<code>pkg/config/agent.go:409</code>), so hot reload is not taken down by a duplicate-name conflict; restarts and <code>checkconfig</code> still fail until fixed.
+</li>
+<li><code>go vet</code> and the full <code>pkg/config</code> suite are green (Code Quality reviewer), as are the focused <code>pkg/plank</code> tests locally; CI <code>pull-prow-unit-test</code>, <code>-race-detector-nonblocking</code>, and <code>pull-prow-verify-lint</code> pass. <code>gofmt</code>/<code>git diff --check</code> are clean.
+</li>
+<li><code>pull-prow-integration</code> failure is unrelated: <code>TestRerun</code> in <code>test/integration/test/deck_test.go:522</code> fails waiting for an updated rerun job and then hits a cleanup 404 for ProwJobs. It does not touch ProwConfig merging and looks like the existing timing-sensitive flake.
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>Should the duplicate-queue error include the capacity value or the "already defined in the main config or another supplemental config" wording, so operators do not have to hunt through every file?
+</li>
+<li>Is the nil-receiver/aliasing hardening worth doing, or is mirroring <code>SlackReporterConfigs.mergeFrom</code> the intended convention?
+</li>
+<li>Should <code>TestHasConfigFor</code> get an explicit case for a Plank-only shard, given the global classification currently relies on the generic structural fallback?
+</li></ul>
+</main></body></html>

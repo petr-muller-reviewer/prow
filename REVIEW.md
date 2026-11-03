@@ -111,3 +111,66 @@ Multi-perspective maintainer review: Code Quality APPROVE, Maintainability COMME
 - Should the duplicate-queue error include the capacity value or the "already defined in the main config or another supplemental config" wording, so operators do not have to hunt through every file?
 - Is the nil-receiver/aliasing hardening worth doing, or is mirroring `SlackReporterConfigs.mergeFrom` the intended convention?
 - Should `TestHasConfigFor` get an explicit case for a Plank-only shard, given the global classification currently relies on the generic structural fallback?
+
+## Followups
+
+Accepted post-merge followups for PR #1051 (merged as `43ed23400`). The interactive walk returned no selections, so the `must` and `should` findings were accepted by default; the optional `could` items were skipped.
+
+### docs — Document `plank.job_queue_capacities` as a supplemental-config field
+- necessity: must
+- mode: deliver
+- where: `site/content/en/docs/config.md:23-26`, `pkg/config/config.go:726-736`
+- why: the blocking review finding merged unfixed; the docs now contradict the loader.
+
+```
+In kubernetes-sigs/prow, following PR #1051 ("allow merging plank.job_queue_capacities from supplemental Prow config", merged as 43ed234002b9831fc0b8100c3c467f2146dbc8e3), update the documentation for the newly allowed supplemental-config field.
+
+What and where:
+- site/content/en/docs/config.md, section "Supplemental Prow configuration", specifically the paragraph listing branch-protection, slack_reporter_configs, tide.merge_method, tide.queries, and tide.context_options.
+- pkg/config/config.go, the Plank.JobQueueCapacities field comment (around lines 726-732) and the JobQueueCapacities type comment (around lines 735-736).
+
+Task:
+1. Add plank.job_queue_capacities to the list of fields supplemental files support.
+2. State the contract explicitly: the field is root-global only (checkconfig rejects it in <org>/ and <org>/<repo>/ directories); queue names must be unique across the main config and all supplemental files; a repeated name is a hard config-load error, not an override; capacity 0 blocks all jobs in that queue and a negative value removes the limit.
+3. Add an upgrade-ordering note: deploy Prow binaries and checkconfig that support the field before adding it to shards, and remove it from shards before rolling back, because older binaries reject it through the supplemental allow-list.
+4. Expand the Plank.JobQueueCapacities field comment with the same global/uniqueness/hard-error contract so it flows into godoc and the generated documentation. Keep the type comment accurate as well.
+5. Regenerate pkg/config/prow-config-documented.yaml with the repo generator (hack/gen-prow-documented) so the field-comment change is reflected.
+
+Acceptance criteria:
+- The docs page lists plank.job_queue_capacities and no longer implies that every other Prow setting must live in the main config.
+- The new text covers root-only scope, cross-file uniqueness, duplicate = hard error, and 0/negative semantics.
+- The field comment states the contract and prow-config-documented.yaml is regenerated and checked in.
+- go test ./pkg/config/ and the repo's generated-files verification pass. If the local toolchain is older than .go-version, run tests with GOEXPERIMENT=jsonv2.
+
+Scope guard: documentation and comments, plus the generated documentation file only. Do not change merge behavior, add tests, or touch unrelated pages.
+```
+
+### tests — Add YAML-level merge and checkconfig hierarchy coverage
+- necessity: should
+- mode: deliver
+- where: `pkg/config/config_test.go:8727`, `cmd/checkconfig/main_test.go:2042`
+- why: all three reviewers flagged it; the merge helper is unit-tested, but YAML -> loadConfig and checkconfig's global classification are not.
+
+```
+In kubernetes-sigs/prow, following PR #1051 ("allow merging plank.job_queue_capacities from supplemental Prow config", merged as 43ed234002b9831fc0b8100c3c467f2146dbc8e3), add the missing coverage for the newly allowed field.
+
+What and where:
+- pkg/config/config_test.go: TestProwConfigMerging (the table of main-config plus supplemental-config YAML cases) and TestJobQueueCapacitiesMergeFrom.
+- cmd/checkconfig/main_test.go: TestValidateAdditionalProwConfigIsInOrgRepoDirectoryStructure.
+
+Task:
+1. In TestProwConfigMerging, add cases that load YAML through Load() with supplemental dirs:
+   - main config has plank.job_queue_capacities {queue-a: 1}; one shard adds {queue-b: 2} -> the merged map has both.
+   - main config has {queue-a: 1}; a shard repeats queue-a -> config load fails with the duplicate error and the shard path in the wrapper.
+   - two shards repeat a queue name -> load fails, and non-conflicting entries from the first shard are still present in the merged config (the continue behavior).
+   - a shard sets plank.job_queue_capacities alongside another plank field (for example plank.max_concurrency) -> still rejected by the allow-list.
+2. In TestValidateAdditionalProwConfigIsInOrgRepoDirectoryStructure, add a capacities-only shard case: accepted at root, rejected under <org>/ and <org>/<repo>/ with "contains global config".
+3. If it fits the existing style, extend TestHasConfigFor with a Plank-only config asserting global=true.
+
+Acceptance criteria:
+- The new cases fail against the pre-PR behavior and pass on the merged default branch.
+- The tests exercise YAML -> loadConfig, not just the merge helper.
+- go test ./pkg/config/ and go test ./cmd/checkconfig/ pass. If the local toolchain is older than .go-version, run tests with GOEXPERIMENT=jsonv2.
+
+Scope guard: tests only. Do not change production behavior, comments, or documentation.
+```

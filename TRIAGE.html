@@ -31,18 +31,22 @@ ul, ol { padding-left:1.5rem; }
 details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
 </style></head><body><main>
 <h1><code>tide</code> does not respect required contexts from Github Rulesets</h1>
-<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/issues/624">kubernetes-sigs/prow#624</a> · main_sha <code>d91e0f84e0f2</code> · state <code>closed</code> · labels <code>kind/feature, lifecycle/rotten, area/tide</code> · triaged_at <code>2026-09-14T22:28:28Z</code></div>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/issues/624">kubernetes-sigs/prow#624</a> · main_sha <code>c4ea9da5a9fb</code> · state <code>closed</code> · labels <code>kind/feature, lifecycle/rotten, area/tide</code> · triaged_at <code>2026-11-03T22:09:58Z</code></div>
 <div class="badges"><span class="badge c-red">verdict: wontfix</span></div>
 <details><summary>Full metadata</summary><pre><code>issue: kubernetes-sigs/prow#624
 title: &quot;`tide` does not respect required contexts from Github Rulesets&quot;
 state: closed
 labels: kind/feature, lifecycle/rotten, area/tide
-main_sha: d91e0f84e0f2050b41390b28b69a05f5284ba4a2
-triaged_at: 2026-09-14T22:28:28Z
+main_sha: c4ea9da5a9fbb2c663d4ad449fa6ccb7b037c214
+triaged_at: 2026-11-03T22:09:58Z
 verdict: wontfix
+refresh_log:
+  - at: 2026-11-03T22:09:58Z
+    since: 2026-09-14T22:28:28Z
+    summary: &quot;Incorporated petr-muller&#x27;s 2026-10-10 comment pointing to #846; re-anchored code checks to upstream main c4ea9da5, where Rulesets support is still absent.&quot;
 advice:
-  advised_at: 2026-10-10T16:48:56Z
-  based_on_triaged_at: 2026-09-14T22:28:28Z</code></pre></details>
+  advised_at: 2026-11-03T22:10:40Z
+  based_on_triaged_at: 2026-11-03T22:09:58Z</code></pre></details>
 <h2>Verdict</h2>
 <ul>
 <li>bottom-line: <code>wontfix</code>; the feature gap remains, but the issue was automatically closed as Not Planned on 2026-09-09 after no maintainer or author follow-up.
@@ -57,22 +61,30 @@ advice:
 </li>
 <li>The reporter asks for Rulesets support because GitHub promotes Rulesets.
 </li></ul>
+<p>Since previous triage:</p>
+<ul>
+<li>2026-10-10T16:58:23Z: <code>petr-muller</code> commented "Discussed in #846", pointing at the open Tide Rulesets design issue; the issue was not reopened.
+</li>
+<li>No new cross-references or PRs; state remains <code>CLOSED</code> / <code>NOT_PLANNED</code> with unchanged labels.
+</li>
+<li>Upstream <code>main</code> advanced 181 commits to <code>c4ea9da5a9fbb2c663d4ad449fa6ccb7b037c214</code>; re-checked Tide context policy and the GitHub client, still no Rulesets API support.
+</li></ul>
 <h2>Findings</h2>
 <h3><span class="tag c-blue">reproducibility</span>Rulesets are not used for Tide context inference</h3>
 <ul>
 <li>detail: Current <code>TideContextPolicy</code> has <code>FromBranchProtection</code> but no Rulesets equivalent. <code>GetTideContextPolicy</code> only augments required contexts from <code>GetBranchProtection</code>.
 </li>
-<li>evidence: <code>pkg/config/tide.go:179-194</code>, <code>pkg/config/tide.go:941-971</code> at <code>d91e0f84e0f2050b41390b28b69a05f5284ba4a2</code>.
+<li>evidence: <code>pkg/config/tide.go:180-195</code>, <code>pkg/config/tide.go:1055-1085</code> at <code>c4ea9da5a9fbb2c663d4ad449fa6ccb7b037c214</code>.
 </li></ul>
 <h3><span class="tag c-amber">cause</span>Repository client has no Rulesets retrieval method</h3>
 <ul>
 <li>detail: <code>RepositoryClient</code> declares branch-protection operations, and the concrete client requests <code>/repos/%s/%s/branches/%s/protection</code>; no branch Rulesets endpoint is represented in the interface.
 </li>
-<li>evidence: <code>pkg/github/client.go:174-188</code>, <code>pkg/github/client.go:2839-2864</code> at <code>d91e0f84e0f2050b41390b28b69a05f5284ba4a2</code>.
+<li>evidence: <code>pkg/github/client.go:187-196</code>, <code>pkg/github/client.go:3000-3006</code> at <code>c4ea9da5a9fbb2c663d4ad449fa6ccb7b037c214</code>; no <code>Ruleset</code>-named identifier exists anywhere under <code>pkg/github/</code>.
 </li></ul>
 <h3><span class="tag c-blue">related-code</span>Existing branch-protection path</h3>
 <ul>
-<li>where: <code>pkg/config/tide.go:960-971</code>
+<li>where: <code>pkg/config/tide.go:1074-1084</code>
 </li>
 <li>excerpt:<pre><code>if options.FromBranchProtection != nil &amp;&amp; *options.FromBranchProtection {
     bp, err := c.GetBranchProtection(org, repo, branch, presubmits)
@@ -84,9 +96,15 @@ advice:
 </li></ul>
 <h3><span class="tag c-blue">related-code</span>GitHub reports Ruleset blocking but does not infer checks</h3>
 <ul>
-<li>where: <code>pkg/tide/github.go:633</code>, <code>pkg/tide/status.go:265</code>
+<li>where: <code>pkg/tide/github.go:775</code>, <code>pkg/tide/status.go:266</code>
 </li>
 <li>detail: Tide's merge/status messages mention Rulesets as a possible GitHub-side block; that diagnostic handling does not populate Tide's required-context set.
+</li></ul>
+<h3><span class="tag c-blue">related-issue</span>Maintainer points to #846 as the active design thread</h3>
+<ul>
+<li>ref: kubernetes-sigs/prow#846
+</li>
+<li>relevance: <code>petr-muller</code> commented "Discussed in #846" on 2026-10-10T16:58:23Z. #846 remains open, with no comments after 2026-08-13T12:36:00Z and no recorded design conclusion or implementation.
 </li></ul>
 <h3><span class="tag c-blue">related-issue</span>Automatic closure as Not Planned</h3>
 <ul>
@@ -96,9 +114,9 @@ advice:
 </li></ul>
 <h2>Checked</h2>
 <ul>
-<li>Current issue state, labels, comments, and issue events through 2026-09-14T22:28:28Z; no linked PR or cross-reference was returned.
+<li>Current issue state (<code>CLOSED</code> / <code>NOT_PLANNED</code>), labels, comments, and timeline through 2026-11-03T22:09:58Z; no new cross-reference events or linked PRs.
 </li>
-<li>Current upstream <code>main</code> at <code>d91e0f84e0f2050b41390b28b69a05f5284ba4a2</code> for Tide context-policy fields and GitHub client API coverage.
+<li>Upstream <code>main</code> at <code>c4ea9da5a9fbb2c663d4ad449fa6ccb7b037c214</code> (181 commits past the prior baseline) for Tide context-policy fields and GitHub client API coverage.
 </li>
 <li>Ruleset-related strings in Tide are diagnostic text, not Rulesets API support.
 </li></ul>
@@ -106,25 +124,19 @@ advice:
 <ul>
 <li>Leave closed unless a contributor intends to implement and maintain Rulesets support.
 </li>
+<li>The #846 cross-reference is now recorded on #624; the earlier suggestion to comment on #846 adds little unless a concrete design proposal appears there.
+</li>
 <li>If revived, reopen the issue and propose an opt-in context-policy field, Rulesets API types/client method, tests, and a documented union behavior with branch protection.
 </li></ul>
 <h2>Advice</h2>
-<h3>Carry #624's Tide use case into #846</h3>
 <ul>
-<li>Rationale: <code>kubernetes-sigs/prow#846</code> is open and directly covers Tide support for Rulesets. In a 2026-08-13 comment, <code>petr-muller</code> described Tide integration as part of broader Prow Rulesets support and asked contributors to start with a design discussion. Keep #624 closed as <code>NOT_PLANNED</code>; point the active design discussion at its specific required-context inference use case.
+<li>No action needed. #624 is already <code>CLOSED</code> / <code>NOT_PLANNED</code>, <code>petr-muller</code> recorded "Discussed in #846" on 2026-10-10T16:58:23Z, and there have been no comments, label changes, or new cross-references since triage.
 </li>
-<li>Command:
-<pre><code>gh issue comment 846 --repo kubernetes-sigs/prow --body &#x27;&gt; *This was generated by AI during triage.*
-
-Related prior report: kubernetes-sigs/prow#624 was closed as not planned on 2026-09-09, but it specifically asks Tide to infer required status contexts from GitHub Rulesets. Please include this use case in the design discussion here.&#x27;</code></pre>
-</li></ul>
-<h3>Related Rulesets work</h3>
-<ul>
-<li><code>kubernetes-sigs/prow#994</code> is open and discusses branchprotector changes versus eventual Rulesets adoption; it is adjacent planning context, not the Tide context-inference request.
+<li>Do not post another #846 comment: #846 has had no comments since 2026-08-13T12:36:00Z, so the earlier suggested comment has no new design discussion to attach to.
 </li>
-<li><code>kubernetes-sigs/prow#575</code> is closed after the attempted <code>Restrict updates</code> behavior was reverted; it does not implement required-context inference.
+<li>If #846 produces a design proposal for Rulesets-backed required-context inference, reopen #624 or cite its use case in that proposal.
 </li>
-<li>The pre-triage reference to merged <code>openshift/release#83442</code> changes Tide label requirements for one repository's branch queries and is unrelated to Rulesets API support.
+<li>Background: open <code>kubernetes-sigs/prow#994</code> covers branchprotector versus Rulesets planning; closed <code>kubernetes-sigs/prow#575</code> was a reverted <code>Restrict updates</code> attempt. Neither implements required-context inference.
 </li></ul>
 <h2>Open questions</h2>
 <ul>

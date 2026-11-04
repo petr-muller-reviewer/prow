@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#1055</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>invalid import <code>encoding/json/jsontext</code> breaks builds on declared Go version</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/issues/1055">kubernetes-sigs/prow#1055</a> · main_sha <code>091a7d73761d</code> · state <code>open</code> · labels <code></code> · triaged_at <code>2026-11-04T16:19:32Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: accepted</span></div>
+<h2>Verdict</h2>
+<p><code>accepted</code> — a reproducible build regression in this repository, already fixed by open PR #1056.</p>
+<p><code>pkg/config/zz_generated.deepcopy.go</code> imports <code>encoding/json/jsontext</code>, a package that Go 1.26 only exposes behind <code>goexperiment.jsonv2</code>, while <code>go.mod</code> declares <code>go 1.26.4</code>. The import leaked in when the file was regenerated with the dev toolchain (1.27.3, from <code>.go-version</code>), where <code>encoding/json.RawMessage</code> became an alias for <code>jsontext.Value</code>; <code>deepcopy-gen</code> printed the alias target. Any downstream module honoring the declared minimum fails to build <code>pkg/config</code> and everything importing it. PR #1056 pins <code>deepcopy-gen</code> to the <code>go</code> directive from <code>go.mod</code> and regenerates the file; CI is green.</p>
+<h2>What the issue reports</h2>
+<ul>
+<li>Building any package that imports <code>pkg/config</code> (reporter used <code>./cmd/crier</code>) on Go 1.26 fails: <code>build constraints exclude all Go files in .../encoding/json/jsontext</code>.
+</li>
+<li>The offending import is in generated code, <code>pkg/config/zz_generated.deepcopy.go</code>, not hand-written source.
+</li>
+<li>Generating that file with Go 1.27 pollutes it with a package only available in 1.27.
+</li>
+<li>Reporter proposes two fixes: run the generators under Go 1.26, or bump the version in <code>go.mod</code>.
+</li>
+<li>Reproduction given verbatim: <code>GOTOOLCHAIN=go1.26.4 go build ./cmd/crier</code>.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-blue">reproducibility</span>failure reproduces on main with the declared minimum toolchain</h3>
+<ul>
+<li>detail: <code>GOTOOLCHAIN=go1.26.4 go build ./cmd/crier</code> on HEAD <code>091a7d7</code> fails with the exact error from the report; the toolchain is downloaded automatically and the failure is in <code>pkg/config</code> import resolution.
+</li>
+<li>evidence: <code>package sigs.k8s.io/prow/cmd/crier / imports sigs.k8s.io/prow/pkg/config / imports encoding/json/jsontext: build constraints exclude all Go files in .../toolchain@v0.0.1-go1.26.4.linux-amd64/src/encoding/json/jsontext</code>
+</li></ul>
+<h3><span class="tag c-amber">cause</span>deepcopy-gen built with Go 1.27 resolves the RawMessage alias and prints its target</h3>
+<ul>
+<li>detail: In Go 1.27 <code>encoding/json.RawMessage</code> is <code>type RawMessage = jsontext.Value</code> (confirmed with <code>GOTOOLCHAIN=go1.27.3 go doc encoding/json.RawMessage</code>). <code>deepcopy-gen</code> uses the <code>go/types</code> of the toolchain it was compiled with and emits the resolved package path, producing <code>jsontext &quot;encoding/json/jsontext&quot;</code> and <code>new(jsontext.Value)</code>.
+</li>
+<li>evidence: <code>pkg/config/zz_generated.deepcopy.go:25,285</code>
+</li></ul>
+<h3><span class="tag c-amber">cause</span>culprit commit regenerated the file with the 1.27 dev toolchain</h3>
+<ul>
+<li>detail: Commit <code>4b994a5c2</code> ("chore: regenerate deepcopy code with go 1.27") changed only the import and the <code>new(...)</code> call, introducing the 1.27-only dependency into a module declaring <code>go 1.26.4</code>.
+</li>
+<li>evidence: <code>git show --stat 4b994a5c2</code> → <code>pkg/config/zz_generated.deepcopy.go | 4 ++--</code>
+</li></ul>
+<h3><span class="tag c-amber">cause</span>the module minimum and the dev toolchain intentionally differ</h3>
+<ul>
+<li>detail: <code>go.mod</code> declares <code>go 1.26.4</code> (raised by a dependency bump), while <code>.go-version</code> is <code>1.27.3</code> and <code>hack/build/setup-go.sh</code> installs that for generators and CI. Anything generated by the dev toolchain can therefore be newer than the module's promise.
+</li>
+<li>evidence: <code>go.mod:3</code>, <code>.go-version</code>, <code>hack/build/setup-go.sh:23</code>
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>source field that triggers the generated code</h3>
+<ul>
+<li>where: <code>pkg/config/inrepoconfig.go:94</code>, <code>pkg/config/config.go:143</code>
+</li>
+<li>excerpt:<pre><code>ProwIgnored *json.RawMessage `json:&quot;prow_ignored,omitempty&quot;`</code></pre>
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>generator invocation</h3>
+<ul>
+<li>where: <code>hack/make-rules/update/codegen.sh:41-42,96-101</code>
+</li>
+<li>excerpt:<pre><code>go build -o &quot;${deepcopygen}&quot; k8s.io/code-generator/cmd/deepcopy-gen
+...
+&quot;$deepcopygen&quot; --output-file zz_generated.deepcopy.go \
+  sigs.k8s.io/prow/pkg/apis/prowjobs/v1 sigs.k8s.io/prow/pkg/config</code></pre>
+</li></ul>
+<h3><span class="tag c-blue">related-pr</span>open fix pins deepcopy-gen to the module's Go version</h3>
+<ul>
+<li>ref: kubernetes-sigs/prow#1056
+</li>
+<li>relevance: Changes <code>codegen.sh</code> to derive <code>GOTOOLCHAIN</code> from the <code>go</code> directive in <code>go.mod</code>, builds and runs only <code>deepcopy-gen</code> with it, and regenerates <code>pkg/config/zz_generated.deepcopy.go</code> to <code>encoding/json</code> / <code>new(json.RawMessage)</code>. CI green; tide only waiting on <code>/approved</code>.
+</li></ul>
+<h3><span class="tag c-blue">related-issue</span>downstream Prow bumps blocked by this breakage</h3>
+<ul>
+<li>ref: openshift/ci-chat-bot#652, openshift/release-controller#838, openshift/ci-tools#5505, openshift/ci-tools-standalone#73
+</li>
+<li>relevance: All four open PRs are titled "Bump Prow to latest 52aea4401dc4" and cross-reference this issue; they cannot build until the generated import is fixed.
+</li></ul>
+<h2>Resolved</h2>
+<p>None yet.</p>
+<h2>Checked</h2>
+<ul>
+<li><code>go.mod</code> declares <code>go 1.26.4</code>; <code>.go-version</code> is <code>1.27.3</code> — the split is deliberate (dev/CI toolchain vs. consumer minimum), not a typo.
+</li>
+<li><code>rg jsontext</code> finds exactly one occurrence in the tree (<code>pkg/config/zz_generated.deepcopy.go</code>); no other generated or hand-written file depends on it.
+</li>
+<li><code>pkg/apis</code> contains no <code>json.RawMessage</code>/<code>jsontext</code> types, so only <code>pkg/config</code> output is affected.
+</li>
+<li><code>hack/tools/go.mod</code> declares <code>go 1.26.3</code>; building <code>deepcopy-gen</code> with <code>GOTOOLCHAIN=go1.26.4</code> succeeds.
+</li>
+<li>Regenerated all deepcopy output with the 1.26.4-built generator: <code>pkg/apis/prowjobs/v1</code> is byte-identical, <code>pkg/config</code> differs only by <code>encoding/json</code> / <code>new(json.RawMessage)</code> — matching PR #1056's diff exactly.
+</li>
+<li>In Go 1.26, <code>encoding/json/jsontext</code> files carry <code>//go:build goexperiment.jsonv2</code>; in 1.27 the alias makes it unconditional.
+</li>
+<li><code>verify-codegen</code> (<code>hack/make-rules/verify/codegen.sh</code>, run by <code>make verify</code>) regenerates with <code>.go-version</code> (1.27.3), so it reproduces the broken output and cannot catch this class of leak; no CI job builds with the <code>go.mod</code> minimum.
+</li>
+<li>Duplicate search queries (<code>jsontext</code>, <code>build constraints exclude</code>, <code>minimum go version</code>, <code>deepcopy go 1.27</code>, <code>Go version build</code>) found no other Prow issues on this topic.
+</li></ul>
+<h2>Next steps</h2>
+<ul>
+<li>Review and <code>/approve</code> PR #1056; it implements the recommended fix and CI is green.
+</li>
+<li>After merge, verify on the merge commit: <code>GOTOOLCHAIN=go1.26.4 go build ./cmd/crier</code>.
+</li>
+<li>Suggested labels (effort Level 1, easy): <code>kind/bug</code>, <code>kind/regression</code>, <code>priority/important-soon</code>, <code>good first issue</code>.
+</li>
+<li>Consider a follow-up CI job that builds a representative package with the toolchain implied by <code>go.mod</code>'s <code>go</code> directive, so dev-toolchain drift is caught rather than only surfacing downstream.
+</li>
+<li>Mention on the issue that the four OpenShift Prow-bump PRs are unblocked once the fix merges.
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>Should the minimum-Go-version build check run as part of <code>make verify</code> (broad, slow) or as a dedicated presubmit/periodic job?
+</li>
+<li>Is there a documented policy for how far <code>.go-version</code> may lead the <code>go</code> directive in <code>go.mod</code>? Nothing found in <code>CONTRIBUTING.md</code> or <code>RELEASE.md</code>.
+</li></ul>
+</main></body></html>

@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#1048</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>chore(deps): bump cloud.google.com/go/secretmanager from 1.22.0 to 1.23.0</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1048">kubernetes-sigs/prow#1048</a> · base <code>main</code> · head_sha <code>cd5a9072bcef</code> · reviewed_at <code>2026-11-02T17:45:00Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span></div>
+<h2>Verdict</h2>
+<p>Safe to bump now; the only caution is that v1.23.0 is 11 days old.</p>
+<p>Dep-only change: <code>cloud.google.com/go/secretmanager</code> v1.22.0 -&gt; v1.23.0 in <code>go.mod</code> and two <code>go.sum</code> lines. The release adds opt-in gax client tracing/logging to the generated clients and regenerates protos; the exported <code>apiv1</code> API is unchanged, our root module already requires the same or newer versions of everything the new module asks for, and OSV/govulncheck show no vulnerability delta between base and head. We use the package in a single wrapper (<code>cmd/webhook-server/secretmanager</code>) that calls only stable RPC methods, so the change is telemetry-only and off by default for us.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Bumps the direct dependency <code>cloud.google.com/go/secretmanager</code> from v1.22.0 to v1.23.0 (<code>go.mod:9</code>), with the matching <code>go.sum</code> hash updates; no other files change.
+</li>
+<li>Takes googleapis/google-cloud-go release <code>secretmanager/v1.23.0</code> (2026-10-22), whose only substantive change is <code>feat: Update API sources and regenerate (#20728)</code>.
+</li>
+<li>Pulls in generated-client telemetry wiring: tracing and logging call options gated behind <code>GOOGLE_SDK_GO_EXPERIMENTAL_TRACING</code> / <code>GOOGLE_SDK_GO_EXPERIMENTAL_LOGGING</code>, replacing the per-RPC <code>resource_name</code> telemetry context blocks.
+</li>
+<li>Regenerates the Secret Manager protobufs (field-behavior annotation and descriptor churn only); no message fields or client methods used by Prow change.
+</li>
+<li>Adds no new transitive dependencies to this repo: the module's raised requires (iam v1.12.0, gax v2.26.2, api v0.288.0) are all at or below what the root <code>go.mod</code> already pins.
+</li></ul>
+<h2>Findings</h2>
+<p>No findings.</p>
+<h2>Checked</h2>
+<ul>
+<li>Classification: dep-only, 2 files / 3 additions / 3 deletions; no project code, config, docs, or tests touched, so no standard code review applies.
+</li>
+<li>Release provenance: v1.23.0 is a real tag (<code>refs/tags/secretmanager/v1.23.0</code>), not a pseudo-version; published by <code>release-please[bot]</code> on 2026-10-22T21:06Z.
+</li>
+<li>Freshness: 11 days old at review time (2026-11-02), outside the too-fresh window but still inside two weeks.
+</li>
+<li>Usage: direct import only at <code>cmd/webhook-server/secretmanager/secretmanager.go:23-24</code>; <code>go mod why</code> chain is <code>cmd/webhook-server/secretmanager -&gt; cloud.google.com/go/secretmanager/apiv1</code>; instantiated at <code>cmd/webhook-server/main.go:151</code> and consumed through <code>cmd/webhook-server/clients.go:36</code>. <code>apiv1beta2</code> is not imported.
+</li>
+<li>Exported API of <code>apiv1</code> is identical between v1.22.0 and v1.23.0 (same methods and <code>NewClient</code> signature); only the telemetry call options were added.
+</li>
+<li>OSV: no advisories for <code>cloud.google.com/go/secretmanager</code> at v1.22.0 or v1.23.0.
+</li>
+<li>govulncheck module and symbol scans at both merge-base and PR head: identical result sets. Four pre-existing advisories in unrelated modules (GO-2023-1901 tektoncd/pipeline — 32 called, 16 imported-only; GO-2026-5932 x/crypto — imported-only; GO-2026-6860 and GO-2026-6866 x/net — imported-only). None involve secretmanager, so the bump neither fixes nor introduces reachable vulnerabilities.
+</li>
+<li>Changelog diff reviewed at the module level (proxy zips of both versions): only generated client files, regenerated protos, <code>internal/version.go</code>, and the module's own <code>go.mod</code>/<code>go.sum</code> differ.
+</li>
+<li>Logging behavior checked in gax v2.26.2: <code>recordActionableLog</code> fires only on terminal failure and emits metadata (RPC method, error type/status/message, server address) — no request or response payloads, so secret values are not logged.
+</li>
+<li>Build: <code>GOEXPERIMENT=jsonv2 go vet ./cmd/webhook-server/...</code> passes at head. The jsonv2 experiment is pre-existing (<code>pkg/config/zz_generated.deepcopy.go:25</code> imports <code>encoding/json/jsontext</code>), unrelated to this bump.
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>Is 11 days of soak acceptable, or would you rather wait until v1.23.0 is past two weeks? Nothing in the diff argues for holding it.
+</li></ul>
+<h2>Dependency followups</h2>
+<p>No opportunities identified.</p>
+<ul>
+<li><code>cloud.google.com/go/secretmanager</code> v1.22.0 -&gt; v1.23.0 (direct): the only upstream change in range is <code>feat: Update API sources and regenerate (#20728)</code> — opt-in gax tracing/logging wiring plus regenerated protos, with no exported field, method, or constructor changes; nothing we call is deprecated or superseded, and no new API replaces hand-rolled code of ours.
+</li>
+<li>Transitive churn: none. Only the two <code>go.sum</code> lines for secretmanager move; the module's raised requires (iam v1.12.0, gax v2.26.2, api v0.288.0) are already met or exceeded by the root <code>go.mod</code>.
+</li>
+<li>Usage examined: <code>cmd/webhook-server/secretmanager/secretmanager.go</code> (all six wrapper RPCs) and its consumers in <code>cmd/webhook-server/clients.go</code> and <code>cmd/webhook-server/main.go</code>. The new telemetry is env-var gated (<code>GOOGLE_SDK_GO_EXPERIMENTAL_TRACING</code> / <code>_LOGGING</code>) and needs no call-site change.
+</li></ul>
+</main></body></html>

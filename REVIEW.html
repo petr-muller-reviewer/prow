@@ -31,8 +31,19 @@ ul, ol { padding-left:1.5rem; }
 details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
 </style></head><body><main>
 <h1>chore(deps): bump github.com/go-test/deep from 1.1.1 to 1.1.2</h1>
-<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1049">kubernetes-sigs/prow#1049</a> · base <code>main</code> · head_sha <code>907d375010ac</code> · reviewed_at <code>2026-11-02T18:35:15Z</code></div>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1049">kubernetes-sigs/prow#1049</a> · base <code>main</code> · head_sha <code>907d375010ac</code> · reviewed_at <code>2026-11-04T16:55:49Z</code></div>
 <div class="badges"><span class="badge c-green">verdict: approve</span></div>
+<details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#1049
+title: &quot;chore(deps): bump github.com/go-test/deep from 1.1.1 to 1.1.2&quot;
+head_sha: 907d375010acb55b13b82faa61f900126fee83c7
+base: main
+reviewed_at: 2026-11-04T16:55:49Z
+verdict: approve
+refresh_log:
+  - at: 2026-11-04T16:55:49Z
+    from_sha: 907d375010acb55b13b82faa61f900126fee83c7
+    to_sha: 907d375010acb55b13b82faa61f900126fee83c7
+    summary: &quot;No code changes; cblecker approved and the PR was merged 2026-11-04T03:02:39Z.&quot;</code></pre></details>
 <h2>Verdict</h2>
 <p>Safe to merge: test-only dependency, a 20-day-old tagged release, no advisories, and the one behavior change does not touch our call sites.</p>
 <p>The PR is dep-only (<code>go.mod</code> / <code>go.sum</code>; no vendor directory, no project code). <code>github.com/go-test/deep</code> is a direct module requirement but is imported only from three <code>_test.go</code> files, so blast radius is limited to test assertions. The upstream fix in v1.1.2 (honoring <code>Equal()</code> on non-struct values) changes comparison behavior, but the values we compare with <code>deep.Equal</code> are <code>[]string</code>, <code>map[string]ClusterStatus</code>, and <code>*prowapi.Refs</code> — none implement <code>Equal</code> — so the new dispatch path is not exercised. Targeted tests at head pass.</p>
@@ -43,6 +54,14 @@ details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-si
 <li>Pulls in the upstream fix for issue #32 / PR #72: <code>Equal()</code> methods are now honored on non-struct values (e.g. <code>net.IP</code>, named scalars), not only on struct fields.
 </li>
 <li>Brings upstream docs/typo fixes and a CI matrix update to Go 1.24–1.27; the module's minimum Go version becomes 1.24, compatible with our <code>go 1.26.4</code>.
+</li></ul>
+<p>Since previous review:</p>
+<ul>
+<li>No code changes: the head is still <code>907d3750</code>.
+</li>
+<li><code>cblecker</code> approved at 2026-11-04T02:08:12Z; the PR merged at 2026-11-04T03:02:39Z.
+</li>
+<li>All checks, including the previously pending required <code>tide</code> check, are green.
 </li></ul>
 <h2>Findings</h2>
 <p>No findings.</p>
@@ -60,12 +79,12 @@ details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-si
 </li>
 <li>Verification: <code>go test ./pkg/plank -run &#x27;TestProwJobIndexer|TestSyncClusterStatus&#x27;</code> and <code>go test ./pkg/tide -run &#x27;TestIndexFuncPassingJobs|TestDividePool|TestNonFailedBatchByBaseAndPullsIndexFunc&#x27;</code> pass at head; <code>go mod verify</code> reports all modules verified.
 </li>
-<li>PR state: mergeable; CI green except the required <code>tide</code> check, which was still pending at review time.
+<li>PR state: approved and merged 2026-11-04T03:02:39Z; all checks including <code>tide</code> green.
 </li></ul>
 <h2>Open questions</h2>
 <p>None.</p>
 <h2>Dependency followups</h2>
-<p>No improvement opportunities identified.</p>
+<p>No improvement opportunities identified. PR #1049 is merged (merge commit <code>52aea4401dc419b803d912f503418c9e8a517c30</code>, 2026-11-04T03:02:39Z), and the analysis below still applies to the merged tree.</p>
 <ul>
 <li>Examined <code>github.com/go-test/deep</code> <code>v1.1.1 → v1.1.2</code> — the only module changed (direct requirement, test-only imports, no vendor tree).
 </li>

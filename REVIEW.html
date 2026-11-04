@@ -31,46 +31,70 @@ ul, ol { padding-left:1.5rem; }
 details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
 </style></head><body><main>
 <h1>peribolos: add end-of-run change report</h1>
-<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1008">kubernetes-sigs/prow#1008</a> · base <code>main</code> · head_sha <code>617e3a3cc261</code> · reviewed_at <code>2026-11-03T11:35:20Z</code></div>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1008">kubernetes-sigs/prow#1008</a> · base <code>main</code> · head_sha <code>617e3a3cc261</code> · reviewed_at <code>2026-11-04T17:51:41Z</code></div>
 <div class="badges"><span class="badge c-red">verdict: request-changes</span><span class="badge c-red">gate: do-not-merge</span></div>
 <details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#1008
 title: &quot;peribolos: add end-of-run change report&quot;
 head_sha: 617e3a3cc2613c38a3db13e0ea74d648b506623d
 base: main
-reviewed_at: 2026-11-03T11:35:20Z
+reviewed_at: 2026-11-04T17:51:41Z
 verdict: request-changes
 refresh_log:
   - at: 2026-11-03T11:35:20Z
     old_sha: c341b7f065b84442df6dd360f1695992b69ac38a
     new_sha: 617e3a3cc2613c38a3db13e0ea74d648b506623d
     summary: &quot;Docs-only commit documenting that the dry-run report is a best-effort plan; added should-fix for code comments still claiming dry-run/confirm parity. Blocking `none` classification finding unchanged.&quot;
+  - at: 2026-11-04T17:51:41Z
+    old_sha: 617e3a3cc2613c38a3db13e0ea74d648b506623d
+    new_sha: 617e3a3cc2613c38a3db13e0ea74d648b506623d
+    summary: &quot;No code changes. Incorporated @cblecker&#x27;s 2026-11-04 review: added should-fix findings for the dry-run doc overclaim on existing objects, swallowed team-member listing errors, and empty-permission false `add`; extended the unknown-value and stale-comment findings; blocking `none` finding independently corroborated by @cblecker.&quot;
 gate:
   decision: do-not-merge
-  gated_at: 2026-10-15T23:18:51Z
-  gated_head_sha: c341b7f065b84442df6dd360f1695992b69ac38a
-  reviewed_head_sha: c341b7f065b84442df6dd360f1695992b69ac38a</code></pre></details>
+  gated_at: 2026-11-04T17:54:08Z
+  gated_head_sha: 617e3a3cc2613c38a3db13e0ea74d648b506623d
+  reviewed_head_sha: 617e3a3cc2613c38a3db13e0ea74d648b506623d</code></pre></details>
 <h2>Gate</h2>
-<p><strong>Decision: do-not-merge</strong> — a confirmed blocking report-classification defect remains at the current PR head.</p>
-<p>This gate was evaluated at <code>c341b7f065b84442df6dd360f1695992b69ac38a</code>. One docs-only commit (<code>617e3a3cc</code>) has landed since; it does not touch <code>cmd/peribolos</code>, so the decision and the gating list below are unchanged. The six substantive inline comments from <code>@cblecker</code> appear addressed in <code>c341b7f</code>: recording follows successful calls, repo-field limitations are documented, identifiers are normalized/documented, report-path validation and partial-failure output are implemented, before/after values are typed, and CLI documentation was added. The local review's blocking <code>none</code> permission issue remains, along with three should-fix findings.</p>
+<p><strong>Decision: do-not-merge</strong> — the blocking <code>none</code>-classification defect is unchanged at <code>617e3a3cc</code>, and <code>@cblecker</code> independently confirmed it in his 2026-11-04 review.</p>
+<p>Nothing in <code>cmd/peribolos</code> has changed since <code>c341b7f</code>; the only later commit (<code>617e3a3cc</code>) touches documentation. All seven gating findings from the refreshed review still stand in the current code, and <code>@cblecker</code>'s second round (three inline comments, two COMMENTED reviews on 2026-11-04) re-raised four of them and added the empty-permission case. The blast radius is narrow — everything is behind the opt-in <code>--report-path</code> flag — but the feature exists to produce an accurate record, and as written a converged config can never yield an empty report, which defeats the purpose for the primary use case.</p>
 <p>Gating list:</p>
 <ul>
-<li><strong>Not addressed — <code>REVIEW.md</code> (blocking), <code>cmd/peribolos/main.go:1685-1693</code> and <code>1912-1915</code>:</strong> <code>github.None</code> is executed as removal but may be recorded as an add/update. Fix action classification and add regression coverage before merge.
+<li><strong>Not addressed — <code>REVIEW.md</code> (blocking), <code>cmd/peribolos/main.go:1685-1693</code> and <code>1912-1915</code>:</strong> <code>github.None</code> is executed as a removal by the switch but recorded as <code>add</code>/<code>update</code> by the classification branches. <code>@cblecker</code> confirmed the same at <code>main.go:1692</code> (converged config keeps reporting changes).
 </li>
-<li><strong>Not addressed — <code>REVIEW.md</code> (should-fix), <code>site/content/en/docs/components/cli-tools/peribolos.md:234-235</code>:</strong> the schema says new <code>kind</code>/<code>action</code> values are compatible but does not tell consumers how to handle unknown values.
+<li><strong>Not addressed — <code>REVIEW.md</code> + <code>@cblecker</code> (should-fix), <code>cmd/peribolos/main.go:1715-1766</code>:</strong> a permission matching no <code>case</code> (e.g. <code>alice:</code> parsing to an empty level) leaves <code>err</code> nil and still reaches <code>report.record</code>, so a change is reported with no API call. Same shape in <code>configureTeamRepos</code>.
 </li>
-<li><strong>Not addressed — <code>REVIEW.md</code> (should-fix), <code>cmd/peribolos/main.go:218-220</code>:</strong> <code>--report-path</code> matching <code>--config-path</code> truncates the configuration after it has been read. Reject the alias to avoid source-file loss.
+<li><strong>Not addressed — <code>REVIEW.md</code> (should-fix), <code>cmd/peribolos/main.go:218-220</code>:</strong> there is still no guard against <code>--report-path</code> resolving to <code>--config-path</code>; <code>os.Create</code> truncates the config after it was loaded.
+</li>
+<li><strong>Not addressed — <code>REVIEW.md</code> + <code>@cblecker</code> (should-fix), <code>site/content/en/docs/components/cli-tools/peribolos.md:234-235</code> and <code>cmd/peribolos/report.go:193-196</code>:</strong> the compatibility rule still only covers unrecognized property <em>names</em>, not unrecognized <code>kind</code>/<code>action</code> values or new <code>summary</code> keys.
+</li>
+<li><strong>Not addressed — <code>REVIEW.md</code> + <code>@cblecker</code> (should-fix), <code>site/content/en/docs/components/cli-tools/peribolos.md:196</code>:</strong> the docs claim the dry-run plan matches for existing objects; cascaded <code>team_member</code>/<code>org_role_team</code> removes and renamed-repo aborts contradict it.
+</li>
+<li><strong>Not addressed — <code>REVIEW.md</code> + <code>@cblecker</code> (should-fix), <code>cmd/peribolos/main.go:1795-1801</code>:</strong> dry-run downgrades team-member listing errors to warnings, so a 403/5xx silently omits a team from the report while the run exits 0; no completeness signal exists.
+</li>
+<li><strong>Not addressed — <code>REVIEW.md</code> + <code>@cblecker</code> (should-fix), <code>cmd/peribolos/report.go:50-57</code>, <code>cmd/peribolos/report_test.go:346-347</code>, <code>cmd/peribolos/main.go:106</code>:</strong> code comments and flag help still assert dry-run/confirm parity.
+</li></ul>
+<p>Dispositioned, not gating:</p>
+<ul>
+<li>First-round <code>@cblecker</code> inline comments (2026-10-13) are addressed in <code>c341b7f</code>: recording after a successful call, documented repo-field limitations, normalized identifiers, report-path validation and partial-failure output, typed before/after values, CLI documentation.
+</li>
+<li><code>@petr-muller</code> APPROVED at <code>c341b7f</code> on 2026-10-27 with a hold; the LGTM was withdrawn when <code>617e3a3cc</code> landed and does not cover the unaddressed blocking item.
 </li></ul>
 <p>Independent merge risk:</p>
 <ul>
-<li>No exported Go API or configuration schema is changed. Existing runs are unaffected unless they opt into the new, release-noted <code>--report-path</code> flag.
+<li>No exported API surface: every code change is in <code>package main</code> under <code>cmd/peribolos</code> (<code>main.go</code>, new <code>report.go</code>, tests). Blast radius is the peribolos binary only; nothing imports these symbols.
 </li>
-<li>For users enabling reporting, write/close errors are logged but do not change the exit status, so automation may see success without a valid report. Rolling back to an older binary also requires removing the new flag.
+<li><code>--report-path</code> is new and opt-in. With the flag unset, <code>report</code> stays nil and every record path is a no-op, so existing invocations behave identically; the parameter threading is behavior-preserving (<code>else if</code> → early-return refactors on the same paths).
 </li>
-<li>No repository compatibility skill specifically applies to this CLI/report change; compatibility was assessed directly from the diff and current call paths.
+<li>Opt-in report-file creation happens before reconciliation, so a bad path fails fast by design (<code>Fatalf</code>); <code>--report-path</code> cannot be combined with <code>--dump</code>.
+</li>
+<li>Write/close failures are logged but do not change the exit status, so automation can observe success with a truncated or missing report.
+</li>
+<li>Rolling back to a binary without the flag requires removing <code>--report-path</code> from invocations.
+</li>
+<li>No Kubernetes API/CRD, proto, config-schema, or wire-format change; docs change is limited to <code>site/content/en/docs/components/cli-tools/peribolos.md</code>. No repository compatibility skill applies to this CLI-only change.
 </li></ul>
 <h2>Verdict</h2>
 <p>Request changes: configured <code>none</code> permissions can be reported as adds or updates even though reconciliation removes access.</p>
-<p>This makes the report inaccurate for a valid configuration value and undermines its purpose as a record of applied changes. The other perspectives found useful follow-up improvements, but no additional merge blockers. <code>@petr-muller</code> approved at <code>c341b7f</code> on 2026-10-27 (with <code>/hold</code>); that LGTM was removed automatically by the bot when <code>617e3a3cc</code> was pushed. The blocking finding is in <code>cmd/peribolos</code> and is untouched by the new docs commit, so this verdict stands.</p>
+<p>This makes the report inaccurate for a valid configuration value and undermines its purpose as a record of applied changes. <code>@cblecker</code> independently reported the same defect on 2026-11-04 (<code>cmd/peribolos/main.go:1692</code>), noting that a converged config would never produce an empty report. <code>@petr-muller</code> approved at <code>c341b7f</code> on 2026-10-27 (with <code>/hold</code>), but the LGTM was removed when <code>617e3a3cc</code> was pushed, and the second review round found further accuracy problems in the dry-run documentation and error handling. The other perspectives found useful follow-up improvements, but no additional merge blockers.</p>
 <h2>What this PR does</h2>
 <ul>
 <li>Adds an opt-in <code>--report-path</code> flag for a versioned JSON change report.
@@ -81,20 +105,20 @@ gate:
 </li>
 <li>Avoids including changed field values in the report and censors the serialized output.
 </li></ul>
-<p>Since previous review (<code>c341b7f</code> → <code>617e3a3cc</code>):</p>
+<p>Since previous review (no code changes; <code>617e3a3cc</code> unchanged):</p>
 <ul>
-<li><code>@cblecker</code> reported that a dry-run report cannot match <code>--confirm</code> for objects the run would create: a new team's members and child teams are omitted, <code>--fix-team-repos</code>/<code>--fix-collaborators</code> stop the run at a new object, a new repo with <code>default_branch</code> gets a spurious <code>update</code>, and a pending invite with an org role gets a spurious <code>org_role_user</code> add.
+<li><code>@cblecker</code> (2026-11-04, three inline comments and two COMMENTED reviews) extended the dry-run critique to existing objects and to silently skipped objects: cascaded <code>team_member</code>/<code>org_role_team</code> removes, renamed repos via <code>previously</code> with <code>--fix-collaborators</code>, and listing errors swallowed by <code>configureTeamAndMembers</code> in dry-run.
 </li>
-<li><code>@hoxhaeris</code> rewrote the change-report docs to call the dry-run output a best-effort <em>plan</em> and enumerate those four divergences (<code>site/content/en/docs/components/cli-tools/peribolos.md:194-202</code>); no code changed.
+<li>He also independently raised the blocking <code>none</code> classification defect (<code>main.go:1692</code>), an empty-permission false <code>add</code>, and the unknown-<code>kind</code>/<code>action</code> consumer rule.
 </li>
-<li>The code-side follow-through <code>@cblecker</code> also asked for is still missing: the <code>change</code> type comment in <code>cmd/peribolos/report.go</code> and the test comment in <code>cmd/peribolos/report_test.go</code> still assert dry-run/confirm parity.
+<li>No author response or new commits since; the last push remains <code>617e3a3cc</code> from 2026-11-03.
 </li></ul>
 <h2>Findings</h2>
 <h3><span class="tag c-red">blocking</span>Classify <code>none</code> permissions as removals</h3>
 <ul>
 <li>where: <code>cmd/peribolos/main.go:1685-1693</code>
 </li>
-<li>concern: <code>github.None</code> is a valid permission and the execution switch treats it as removal, but these branches classify the action by whether the collaborator exists. The same mismatch exists for team repository permissions at <code>cmd/peribolos/main.go:1912-1915</code>; classify <code>none</code> as remove and cover both cases with tests.
+<li>concern: <code>github.None</code> is a valid permission and the execution switch treats it as removal, but these branches classify the action by whether the collaborator exists. The same mismatch exists for team repository permissions at <code>cmd/peribolos/main.go:1912-1915</code>; classify <code>none</code> as remove and cover both cases with tests. <code>@cblecker</code> adds a concrete symptom (<code>main.go:1692</code>): because the report says <code>add</code>/<code>update</code>, a converged config keeps producing non-empty reports on every run.
 </li>
 <li>excerpt:<pre><code>if currentInfo, exists := currentCollaborators.collaborators[normalizedUser]; exists {
     actions[wantUser] = plannedChange{perm: wantPermission, change: change{Kind: kindCollaborator, Org: orgName, Scope: repoName, Target: normalizedUser, Action: actionUpdate, Before: string(currentInfo.permission), After: string(wantPermission)}}
@@ -106,7 +130,7 @@ gate:
 <ul>
 <li>where: <code>site/content/en/docs/components/cli-tools/peribolos.md:234-235</code>
 </li>
-<li>concern: The schema policy allows adding <code>kind</code> and <code>action</code> values without a version bump but only tells consumers to ignore unknown property names. Consumers also need to handle or skip unrecognized values in these known fields to make the compatibility promise reliable.
+<li>concern: The schema policy allows adding <code>kind</code> and <code>action</code> values without a version bump but only tells consumers to ignore unknown property names. Consumers also need to tolerate unrecognized values in these known fields — and unrecognized keys in <code>summary</code> — to make the compatibility promise reliable. The same sentence is missing from the <code>reportSchemaVersion</code> comment at <code>cmd/peribolos/report.go:193-196</code>.
 </li>
 <li>excerpt:<pre><code>* Backward-compatible changes (a new field, or a new `kind`/`action` value) do **not** bump the version. Consumers **must** ignore properties with names they do not recognize so they keep working against newer peribolos versions.</code></pre>
 </li></ul>
@@ -120,11 +144,46 @@ gate:
     reportFile, err = os.Create(o.reportPath)
     if err != nil {</code></pre>
 </li></ul>
+<h3><span class="tag c-amber">should-fix</span>Dry-run docs still overclaim parity for existing objects</h3>
+<ul>
+<li>where: <code>site/content/en/docs/components/cli-tools/peribolos.md:196</code>
+</li>
+<li>concern: The new text says "For existing objects the plan matches what <code>--confirm</code> would apply". That does not hold, because later reads still observe state the skipped mutations would have changed: removing an org member cascades recorded <code>team_member</code> removes and a deleted team that holds a role cascades an <code>org_role_team</code> remove, neither of which <code>--confirm</code> would perform; a repo renamed via <code>previously</code> with <code>--fix-collaborators</code> fails the listing and aborts the org. The caveat should cover existing objects too, or the claim should be removed.
+</li>
+<li>excerpt:<pre><code>In dry-run every mutating call is a no-op that succeeds, so the report is a best-effort *plan* rather than a guaranteed account of what `--confirm` would do. For existing objects the plan matches what `--confirm` would apply, but for objects the run would create it can diverge, because dry-run still reads current state from GitHub while the skipped mutations return synthesized results:</code></pre>
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>Report can be silently incomplete when team listing fails</h3>
+<ul>
+<li>where: <code>cmd/peribolos/main.go:1795-1801</code>
+</li>
+<li>concern: <code>configureTeamAndMembers</code> downgrades any <code>configureTeamMembers</code> error to a warning in dry-run, so a 403/5xx on an existing team drops that team's members and child teams from the report while the run exits 0. The report is presented as a plan, so consumers need a way to tell a complete plan from a partial one — e.g. a top-level <code>complete</code>/<code>error</code> field (suggested by <code>@cblecker</code> on 2026-11-04). Note that this swallow predates the PR, but the report raises its impact.
+</li>
+<li>excerpt:<pre><code>} else if err = configureTeamMembers(client, orgName, name, gt, team, opt.ignoreInvitees, report); err != nil {
+    if opt.confirm {
+        return fmt.Errorf(&quot;failed to update %s members: %w&quot;, name, err)
+    }
+    logrus.WithError(err).Warnf(&quot;failed to update %s members: %s&quot;, name, err)
+    return nil
+}</code></pre>
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>Empty permission records an add that never happens</h3>
+<ul>
+<li>where: <code>cmd/peribolos/main.go:1715-1766</code>
+</li>
+<li>concern: A config entry like <code>alice:</code> parses to an empty <code>RepoPermissionLevel</code>, which matches no case in the execution switch, so <code>err</code> stays nil and <code>report.record(pa.change)</code> still records an <code>add</code> even though no API call was made. Recording in a <code>default</code> case (or validating the permission during parsing) would keep the report honest. Related to the blocking <code>none</code> classification finding: both record actions that were not applied.
+</li>
+<li>excerpt:<pre><code>    if err != nil {
+        updateErrors = append(updateErrors, fmt.Errorf(&quot;failed to update %s/%s collaborator %s to %s: %w&quot;, orgName, repoName, user, permission, err))
+    } else {
+        report.record(pa.change)
+    }
+}</code></pre>
+</li></ul>
 <h3><span class="tag c-amber">should-fix</span>Code comments still promise dry-run/confirm parity</h3>
 <ul>
 <li>where: <code>cmd/peribolos/report.go:50-57</code>
 </li>
-<li>concern: The <code>change</code> type comment says "in dry-run ... every planned change is recorded; in confirm mode a call that fails records nothing, so the report lists exactly the mutations that took effect" — which is true of the recording rule but reads as a guarantee that the dry-run report equals what <code>--confirm</code> would apply. The same overstatement is repeated at <code>cmd/peribolos/report_test.go:346-347</code> ("the dry-run report is the same"). The new docs text says the opposite for objects the run would create, so the comments should point at that caveat.
+<li>concern: The <code>change</code> type comment says "in dry-run ... every planned change is recorded; in confirm mode a call that fails records nothing, so the report lists exactly the mutations that took effect" — true of the recording rule, but it reads as a guarantee that the dry-run report equals what <code>--confirm</code> would apply. The same overstatement appears at <code>cmd/peribolos/report_test.go:346-347</code> ("the dry-run report is the same") and in the <code>--report-path</code> flag help at <code>cmd/peribolos/main.go:106</code> ("all planned (dry-run) changes"). The new docs text says otherwise for objects the run would create, so these should point at that caveat.
 </li>
 <li>excerpt:<pre><code>// Recording rule, applied at every site: a change is recorded only after its
 // mutating API call returns a nil error, never before. In dry-run the GitHub
@@ -142,13 +201,17 @@ gate:
 </li></ul>
 <h2>Checked</h2>
 <ul>
-<li>Reviewed the full PR diff from merge base <code>0edcac618455b9e7716a08be480d6984ef996eb1</code> to head <code>617e3a3cc2613c38a3db13e0ea74d648b506623d</code>.
+<li>Reviewed the full PR diff from merge base <code>0edcac618455b9e7716a08be480d6984ef996eb1</code> to head <code>617e3a3cc2613c38a3db13e0ea74d648b506623d</code>; no changes since the last refresh.
 </li>
 <li>Confirmed <code>github.None</code> is accepted by <code>RepoPermissionLevel</code> and is handled as a removal by the mutation switch; unchanged by <code>617e3a3cc</code>.
 </li>
-<li>Checked report recording paths, serialization, deterministic ordering, secret censoring, and the documented JSON schema.
+<li>Confirmed at <code>cmd/peribolos/main.go:1715-1759</code> that a permission matching no <code>case</code> leaves <code>err</code> nil and still reaches <code>report.record</code>, so an empty permission yields a reported <code>add</code> with no API call.
 </li>
-<li>Re-read <code>site/content/en/docs/components/cli-tools/peribolos.md:191-236</code> at <code>617e3a3cc</code>; the new dry-run caveat describes real behavior and is consistent with the reconciliation code paths cited in the review comment.
+<li>Confirmed at <code>cmd/peribolos/main.go:1795-1801</code> that dry-run (non-<code>--confirm</code>) downgrades <code>configureTeamMembers</code> errors to a warning and returns nil, so the surrounding team and its children are simply missing from the report.
+</li>
+<li>Re-read <code>site/content/en/docs/components/cli-tools/peribolos.md:191-236</code> at <code>617e3a3cc</code>; the new dry-run caveat describes real behavior except for the "existing objects match" sentence.
+</li>
+<li>Checked report recording paths, serialization, deterministic ordering, secret censoring, and the documented JSON schema.
 </li>
 <li>Existing invocations are unaffected unless they opt into <code>--report-path</code>; rolling back to a binary without the flag requires removing it from the invocation.
 </li>
@@ -157,5 +220,7 @@ gate:
 <h2>Open questions</h2>
 <ul>
 <li>Should report write or close failures make the run exit nonzero when <code>--report-path</code> is requested? They are currently logged while the process can still exit successfully.
+</li>
+<li>Would a top-level completeness indicator (<code>complete</code>/<code>error</code> with counts of skipped objects) be preferable to enumerating every dry-run divergence in prose?
 </li></ul>
 </main></body></html>

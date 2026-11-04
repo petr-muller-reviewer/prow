@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#1054</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>fix(clonerefs): write merge results before merging partial clones</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1054">kubernetes-sigs/prow#1054</a> · base <code>main</code> · head_sha <code>40cea8c6791f</code> · reviewed_at <code>2026-11-04T17:29:26Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span></div>
+<h2>Verdict</h2>
+<p>Approve with suggestions: the workaround is correct and low risk; the remaining feedback is non-blocking polish around cost gating, observability, and tracking its eventual removal.</p>
+<p>Two reviewers and I independently removed the new <code>merge-tree</code> step and reproduced the git 2.54+ signature on git 2.56 (<code>fatal: git upload-pack: not our ref</code>), then confirmed the test passes with it restored, so the fix is real rather than a test artifact. No reviewer found a correctness, safety, or configuration problem, and deployment risk is LOW: there are no config/CRD/flag/API changes, and the behavior ships in the pinned <code>clonerefs</code> utility image, so a control-plane upgrade alone does not change job pods. Operators of jobs with <code>blobless_fetch</code> or <code>sparse_checkout_files</code> will see one extra clone-log step per merged pull and deserve a release note; rollback is safe and mixed-version fleets stay consistent.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Hoists the existing "blobless fetch or sparse checkout" condition into a <code>partialClone</code> flag, reused for the PR-head fetch filter and the new workaround.
+</li>
+<li>In partial clones, runs <code>git merge-tree --write-tree HEAD &lt;pull&gt;</code> before each <code>git merge</code>, so merged blobs are written by another process before <code>git merge</code> populates its object cache.
+</li>
+<li>Wraps that command in <code>bestEffortCommand</code>, which logs failures and returns empty output plus a nil error, so the step can never fail a clone or mark the record failed.
+</li>
+<li>Adds <code>TestRunMergesInPartialClone</code> (blobless, fetch-by-ref, sparse, conflict) and extends <code>TestCommandsForRefs</code> with the new step.
+</li>
+<li>Leaves non-partial clones and merge commit timestamps unchanged.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-amber">should-fix</span>Ignored merge-tree failure leaves no evidence in the clone record</h3>
+<ul>
+<li>where: <code>pkg/pod-utils/clone/clone.go:424-439</code>
+</li>
+<li>concern: <code>bestEffortCommand</code> returns empty output and a nil error, so the clone record shows a successful-looking <code>git merge-tree ...</code> entry with no output while the only failure detail is an <code>Info</code> log. On git &lt; 2.38 (for example 2.34 in Ubuntu 22.04) every partial-clone merge logs an alarming ignored-failure line, and a genuine conflict logs merge-tree's conflict output immediately before <code>git merge</code> reports the same conflict, duplicating <code>CONFLICT</code> text for log-based alerting. Recording a short skipped/failure marker on the <code>Command</code> without setting <code>Failed</code>, plus <code>--quiet</code> (git 2.50+) or Debug-level logging, would keep the trace self-contained and quiet.
+</li>
+<li>excerpt:<pre><code>func (c bestEffortCommand) run() (string, string, error) {
+    cmd, out, err := c.runnable.run()
+    if err != nil {
+        logrus.WithError(err).WithFields(logrus.Fields{
+            &quot;command&quot;: cmd,
+            &quot;output&quot;:  out,
+        }).Info(&quot;Ignoring failure of best-effort command&quot;)
+    }
+    return cmd, &quot;&quot;, nil
+}</code></pre>
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>Pre-pass runs on git versions where the regression cannot occur</h3>
+<ul>
+<li>where: <code>pkg/pod-utils/clone/clone.go:378-386</code>
+</li>
+<li>concern: git 2.38-2.53 (including the 2.47.3 in kubekins-e2e) pays a second full ort merge plus the lazy blob fetches per merged pull for no benefit, and git &lt; 2.38 fails the unsupported <code>--write-tree</code> on every merge. A version or capability gate (&gt;= 2.54) would confine the workaround to affected installs; the trade-off is fragility if a distro backports <code>5946a564</code> or its fix.
+</li>
+<li>excerpt:<pre><code>if partialClone {
+    // Works around a regression in git 2.54 and later: git merge can ask
+    // the server for a blob it just wrote, which fails the merge. Writing
+    // those blobs first in a separate process avoids that. git merge
+    // reports any real problem, so this step&#x27;s result is ignored. Remove
+    // this once clonerefs ships a fixed git.
+    // https://lore.kernel.org/git/yrjh1p92qc7w.fsf@pohly-mobl1.fritz.box/
+    commands = append(commands, bestEffortCommand{g.gitCommand(&quot;merge-tree&quot;, &quot;--write-tree&quot;, &quot;HEAD&quot;, prCheckout)})
+}</code></pre>
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>Temporary workaround has no tracked removal marker</h3>
+<ul>
+<li>where: <code>pkg/pod-utils/clone/clone.go:379-385</code>
+</li>
+<li>concern: The removal condition is prose only, while this repo tracks temporary code with <code>TODO(#NNNN):</code> (for example <code>pkg/deck/jobs/jobs.go:54</code>). A <code>TODO(#1043): remove once clonerefs ships a git with 5946a564 fixed</code> would make the workaround greppable so it does not outlive its cause.
+</li>
+<li>excerpt:<pre><code>// reports any real problem, so this step&#x27;s result is ignored. Remove
+// this once clonerefs ships a fixed git.</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">nit</span>Merge drivers execute twice per partial-clone merge</h3>
+<ul>
+<li>where: <code>pkg/pod-utils/clone/clone.go:378-386</code>
+</li>
+<li>concern: <code>merge-tree</code> honours <code>.gitattributes</code> merge drivers (verified), so a repo with a side-effecting driver runs it once during the pre-pass and again during <code>git merge</code>. This is rare but a real semantic difference; documenting it next to the workaround would save a future investigation.
+</li>
+<li>excerpt:<pre><code>commands = append(commands, bestEffortCommand{g.gitCommand(&quot;merge-tree&quot;, &quot;--write-tree&quot;, &quot;HEAD&quot;, prCheckout)})</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">nit</span>Partial-clone predicate is spelled out in three places</h3>
+<ul>
+<li>where: <code>pkg/pod-utils/clone/clone.go:242,253-255,357</code>
+</li>
+<li>concern: The "blobless fetch or sparse checkout" concept appears as <code>sparseCheckoutSet</code> at 242, again in the base-ref <code>filterArgs</code> condition at 253, and again in <code>partialClone</code> at 357. Adding another partial mode means finding all three; extracting <code>isPartialClone(refs)</code> next to <code>isSparseCheckoutSet</code> keeps the concept in one place.
+</li>
+<li>excerpt:<pre><code>partialClone := (refs.BloblessFetch != nil &amp;&amp; *refs.BloblessFetch) || isSparseCheckoutSet(refs)</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">nit</span>bestEffortCommand contract and multi-pull interleaving are untested</h3>
+<ul>
+<li>where: <code>pkg/pod-utils/clone/clone_test.go:884-1013</code>
+</li>
+<li>concern: <code>bestEffortCommand</code>'s failure-to-nil-error contract has no direct unit test (unlike <code>retryCommand</code>, exercised through <code>TestGitFetch</code>), and <code>TestCommandsForRefs</code> covers only one pull per partial-clone case, so the <code>merge-tree</code>/<code>merge</code> interleaving across multiple pulls is not pinned. The real clonerefs-image integration case the PR mentions is also still missing.
+</li>
+<li>excerpt:<pre><code>// TestRunMergesInPartialClone runs real git against a local server. Git 2.54 and
+// later fail the merge by asking the server for the merged blob when two things
+// hold: the merged blob shares its first OID byte with a blob the merge looked up
+// earlier, which is what seed 9 achieves, and the same lazy fetch needs a blob
+// that really is missing, which is what added.txt is for.</code></pre>
+</li></ul>
+<h3><span class="tag c-blue">question</span>Regression fixture depends on ort's content hash</h3>
+<ul>
+<li>where: <code>pkg/pod-utils/clone/clone_test.go:878-1007</code>
+</li>
+<li>concern: The hardcoded <code>seed 9</code> fixture and the <code>merged[:2] != baseBlob[:2]</code> self-check mean any change in ort's merge output or the fixture content fails with "fixture no longer triggers the bug" for reasons unrelated to this code. Is that deliberate as a coverage canary, or would computing a colliding seed at runtime (and skipping where the bug cannot occur) age better?
+</li>
+<li>excerpt:<pre><code>merged, baseBlob := git(clone, &quot;rev-parse&quot;, &quot;HEAD:&quot;+file), git(server, &quot;rev-parse&quot;, mergeBase+&quot;:&quot;+file)
+if merged[:2] != baseBlob[:2] {
+    t.Errorf(&quot;fixture no longer triggers the bug: merged blob %s and merge-base blob %s have different first OID bytes&quot;, merged, baseBlob)
+}</code></pre>
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>Reproduced the regression on git 2.56.0: with the new step removed, the blobless and sparse cases fail with <code>fatal: git upload-pack: not our ref</code>; restored, all cases pass. The Code Quality reviewer reproduced the same independently.
+</li>
+<li><code>git merge-tree --write-tree</code> uses the same merge machinery as <code>git merge</code> (three-way content merges, rename detection, recursive merge-base consolidation) and honours <code>.gitattributes</code> merge drivers (verified in a scratch repo).
+</li>
+<li>No config, CRD, flag, webhook, or API changes; jobs without <code>blobless_fetch</code>/<code>sparse_checkout_files</code> get the identical command list, and machine consumers of the clone record read only <code>FinalSHA</code>.
+</li>
+<li><code>bestEffortCommand</code> cannot fail a clone and leaves <code>record.Failed</code> false; the conflict case proves <code>git merge</code> still reports real failures.
+</li>
+<li>The step writes objects only: no HEAD, index, worktree, or reflog changes, so <code>FinalSHA</code> and the deterministic fake merge timestamps are preserved; <code>TestCommandsForRefs</code> pins the command ordering.
+</li>
+<li><code>go test ./pkg/pod-utils/clone/ ./pkg/clonerefs/</code>, <code>go vet</code>, and <code>gofmt -l</code> are clean; the new test passes repeatedly with <code>-count=2</code> and is isolated from host git config (<code>GIT_CONFIG_GLOBAL=/dev/null</code>, <code>GIT_CONFIG_NOSYSTEM=1</code>).
+</li>
+<li>No follow-up change to this code is on <code>main</code> after the merge.
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>#1045 takes the fallback-to-full-fetch approach for the same failure; is it being closed in favor of this PR now that this is merged?
+</li>
+<li>The kubevirt merge that segfaults on stock clonerefs: is it tracked as a follow-up, and is it confirmed to be the same <code>5946a564</code> cache regression rather than a separate memory bug this workaround happens to sidestep?
+</li>
+<li>Is a clonerefs-image integration test planned (the PR says one can follow), and would a release note for <code>blobless_fetch</code>/<code>sparse_checkout_files</code> users be worth adding?
+</li></ul>
+<h2>Followups</h2>
+<p>Recorded by <code>/review:followup</code> after PR #1054 merged as <code>5bf71c2882c9513292618ff13dd6e20973e4a1e6</code>. Accepted 3, skipped 4 (removal TODO, git-version gating, docs/release note, SIGSEGV root-cause).</p>
+<h3>Make the ignored pre-pass failure visible and quiet</h3>
+<ul>
+<li>mode: deliver
+</li>
+<li>where: <code>pkg/pod-utils/clone/clone.go:424-439</code>
+</li>
+<li>necessity: should
+<pre><code>In kubernetes-sigs/prow, following PR #1054 — &quot;fix(clonerefs): write merge results before merging partial clones&quot; (merged as 5bf71c2882c9513292618ff13dd6e20973e4a1e6) — change bestEffortCommand in pkg/pod-utils/clone/clone.go so an ignored git merge-tree failure is visible in the clone record without failing the clone.
+
+Context: bestEffortCommand.run currently returns cmd, &quot;&quot;, nil on failure, so Record.Commands shows an empty-output, no-error entry while the failure detail only reaches an Info log. On git &lt; 2.38 the unsupported --write-tree fails on every partial-clone merge; on a genuine conflict merge-tree exits 1 and logs conflict text immediately before git merge fails with the same conflict.
+
+The task:
+- Keep swallowing the error (the clone must not fail), but return a short marker such as &quot;best-effort command failed; continuing&quot; plus the captured output, or the captured output itself, so Command.Output records what happened. Do not set Record.Failed.
+- Stop logging the full output at Info: log at Debug, and/or add --quiet to the merge-tree invocation where supported (git 2.50+). If using --quiet, verify merged blobs are still written on a clean merge.
+- Update TestCommandsForRefs golden expectations and add a focused test that a failing best-effort command records evidence but leaves Record.Failed false.
+
+Acceptance criteria:
+- A failing merge-tree produces a clone-record command entry with non-empty output (or an explicit marker) and no error, and Run continues to git merge.
+- Logs no longer emit merge-tree&#x27;s conflict detail at Info.
+- go test ./pkg/pod-utils/clone/ ./pkg/clonerefs/ passes; gofmt and go vet are clean.
+
+Scope guard: do not change clone behavior, step ordering, or git version handling; do not touch the version-gating or predicate-refactor followups; no commits, pushes, or GitHub actions unless asked.</code></pre>
+</li></ul>
+<h3>Probe the partial-clone merge path</h3>
+<ul>
+<li>mode: probe
+</li>
+<li>where: <code>pkg/pod-utils/clone/clone_test.go:884-1013</code>
+</li>
+<li>necessity: should
+<pre><code>In kubernetes-sigs/prow, following PR #1054 — &quot;fix(clonerefs): write merge results before merging partial clones&quot; (merged as 5bf71c2882c9513292618ff13dd6e20973e4a1e6) — write throwaway tests that probe the partial-clone merge path for real bugs, then discard them.
+
+Context: the new pre-pass in pkg/pod-utils/clone/clone.go (git merge-tree --write-tree HEAD &lt;pull&gt; before each git merge, wrapped in bestEffortCommand) has no direct test, and multi-pull partial-clone interleaving is only covered for a single pull. The existing regression fixture is TestRunMergesInPartialClone in pkg/pod-utils/clone/clone_test.go.
+
+The task: add temporary tests (uncommitted, or under a scratch path) that exercise:
+1. Multiple pulls in one blobless and one sparse-checkout Refs: assert each pull gets merge-tree HEAD &lt;pull&gt; immediately before merge --no-ff &lt;pull&gt;, HEAD advances between pulls, and merge timestamps stay sequential.
+2. bestEffortCommand when the wrapped command fails: assert the clone continues, Record.Failed stays false, and record what the Command entry contains (currently empty output and no error).
+3. The merge-tree-unavailable path (simulate git without --write-tree, e.g. a wrapper script exiting 129 on merge-tree): assert the clone still completes and git merge reports conflicts normally.
+4. Conflict interleaving: first pull conflicts after a successful pre-pass; the second pull is not attempted.
+Run with go test ./pkg/pod-utils/clone/ -run &lt;pattern&gt; -count=1 on the available git.
+
+Acceptance criteria:
+- Every behaviour above was exercised; each failure is classified as a real implementation bug, a wrong test expectation, or an environment limitation, with evidence.
+- If a real bug is found: apply only the minimal fix and report the failing case. If none: no files changed.
+- Delete the probe tests before finishing.
+
+Scope guard: do not submit the probe tests, refactor unrelated code, change production behaviour beyond a minimal bug fix, or post to GitHub / commit / push.</code></pre>
+</li></ul>
+<h3>Keep the partial-clone predicate in one place</h3>
+<ul>
+<li>mode: deliver
+</li>
+<li>where: <code>pkg/pod-utils/clone/clone.go:242</code>, <code>:253-255</code>, <code>:357</code>
+</li>
+<li>necessity: could
+<pre><code>In kubernetes-sigs/prow, following PR #1054 — &quot;fix(clonerefs): write merge results before merging partial clones&quot; (merged as 5bf71c2882c9513292618ff13dd6e20973e4a1e6) — extract the repeated partial-clone predicate into one helper.
+
+Context: the &quot;blobless fetch or sparse checkout&quot; condition appears at pkg/pod-utils/clone/clone.go:242 (sparseCheckoutSet := isSparseCheckoutSet(refs)), :253 (base-ref filterArgs), and :357 (partialClone). Keep isSparseCheckoutSet because sparse-only commands still need it.
+
+The task:
+- Add func isPartialClone(refs prowapi.Refs) bool next to isSparseCheckoutSet, returning (refs.BloblessFetch != nil &amp;&amp; *refs.BloblessFetch) || isSparseCheckoutSet(refs).
+- Use it for the base-ref filterArgs condition and the partialClone variable; leave the sparse-specific command conditions using sparseCheckoutSet.
+- Add table-driven unit tests for nil/true/false BloblessFetch plus empty/non-empty SparseCheckoutFiles, including both set.
+
+Acceptance criteria:
+- No behaviour change: TestCommandsForRefs expectations stay unchanged and pass; go test ./pkg/pod-utils/clone/ ./pkg/clonerefs/ passes; gofmt and go vet are clean.
+- The predicate is defined once and used at both partial-clone sites.
+
+Scope guard: no changes to merge behaviour, logging, version gating, or docs; no commits, pushes, or GitHub actions unless asked.</code></pre>
+</li></ul>
+</main></body></html>

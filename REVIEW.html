@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#1046</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>chore(deps): bump github.com/prometheus/common from 0.72.1 to 0.73.0 in the prometheus group across 1 directory</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1046">kubernetes-sigs/prow#1046</a> · base <code>main</code> · head_sha <code>d8d8d87880d3</code> · reviewed_at <code>2026-11-04T17:42:20Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span></div>
+<h2>Verdict</h2>
+<p>Safe to take: the bump touches no code path we exercise beyond a bug-fix in Accept negotiation, and carries no advisories. Dep-only bump of <code>github.com/prometheus/common</code> v0.72.1 → v0.73.0 (<code>go.mod:52</code>, plus the <code>hack/tools</code> module where it is indirect). The three upstream commits are all <code>expfmt</code>: OpenMetrics 2.0 escaping defaults, a new <code>FmtOpenMetrics_2_0_0_rc</code> constant, and a new ABNF-based OpenMetrics 1.0 parser that pulls in <code>pandatix/go-abnf</code>. Prow uses <code>expfmt</code> only to <em>encode</em> delimited protobuf in the Pushgateway helper, and the <code>model</code> package (whose <code>UTF8Validation</code> we do call) is unchanged, so the encoder path is untouched. The one changed function on a live path — <code>expfmt.NegotiateAccept</code>, reached from <code>promhttp.HandlerFor</code> on every <code>/metrics</code> scrape — only differs for OpenMetrics formats, which prow does not advertise; for proto/text it is a leak fix with identical output. Only cosmetic follow-up: <code>v0.73.1</code> already exists and drops the stray <code>hashicorp/go-uuid</code> that go-abnf 0.5.1 drags in.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Bumps the direct <code>github.com/prometheus/common</code> requirement from v0.72.1 to v0.73.0 in the root module.
+</li>
+<li>Bumps the same module (indirect there) in the separate <code>hack/tools</code> module, keeping its lockfile in sync.
+</li>
+<li>Adds two new indirect modules to both module graphs: <code>github.com/pandatix/go-abnf v0.5.1</code> and, via go-abnf, <code>github.com/hashicorp/go-uuid v1.0.3</code>.
+</li>
+<li>Touches nothing else: <code>git diff --stat</code> is <code>go.mod</code>, <code>go.sum</code>, <code>hack/tools/go.mod</code>, <code>hack/tools/go.sum</code>, 16 insertions / 6 deletions.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-gray">nit</span>Bump already superseded by v0.73.1, which removes the stray go-uuid dependency</h3>
+<ul>
+<li>where: <code>go.mod:52</code>, <code>go.sum:381-382</code>
+</li>
+<li>concern: <code>go-abnf</code> v0.5.1 imports <code>hashicorp/go-uuid</code> (in <code>transition_graph.go</code>), so a 2022-era module with no security relevance to us enters the graph of every prow binary. Upstream common v0.73.1 (2026-10-30) bumps go-abnf to 0.5.3, which drops go-uuid entirely; its changelog contains nothing else. A follow-up bump would shrink the dependency graph for free.
+</li>
+<li>excerpt:<pre><code>github.com/prometheus/common v0.73.0
+...
+github.com/hashicorp/go-uuid v1.0.3 h1:2gKiV6YVmrJ1i2CKKa9obLvRieoRGviZFL26PcT/Co8=</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">nit</span>New small-maintainer parsing dependency is linked into all binaries</h3>
+<ul>
+<li>where: <code>go.sum:449-450</code>
+</li>
+<li>concern: <code>expfmt/openmetrics_parse.go</code> (new in v0.73.0) imports <code>github.com/pandatix/go-abnf</code>, so this single-maintainer module (~16 stars, created 2022, MIT) is compiled into every prow binary — verified with <code>go list -deps ./cmd/hook</code>. It is never executed, since nothing in prow decodes OpenMetrics, so this is a supply-chain surface note rather than a functional risk.
+</li>
+<li>excerpt:<pre><code>github.com/pandatix/go-abnf v0.5.1 h1:iyLvSu2Aq12iE0r4n948Qw21BHDuckLq/8WIXAAF+HI=</code></pre>
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>Classification: dep-only. All four changed files are manifests/lockfiles; no project source, config, or docs touched.
+</li>
+<li>Freshness: v0.73.0 tagged 2026-10-27T07:36Z, published 2026-10-28 — 8 days old at review time. Real tag, not a pseudo-version. No open issues in <code>prometheus/common</code> referencing 0.73.
+</li>
+<li>Advisories: OSV has no entries for <code>github.com/prometheus/common</code> at either v0.72.1 or v0.73.0, so nothing is fixed or inherited.
+</li>
+<li><code>govulncheck -scan module</code>: identical at base (<code>c06373a3e</code>) and head — 4 findings, none in <code>prometheus/*</code>: <code>GO-2023-1901</code> (tektoncd/pipeline, via <code>cmd/pipeline</code>), <code>GO-2026-5932</code> (x/crypto, via go-git), <code>GO-2026-6860</code>/<code>GO-2026-6866</code> (x/net/html, via <code>pkg/spyglass/lenses/html</code>). Pre-existing and unrelated to this bump.
+</li>
+<li>Scoped symbol-level scan of the three importing packages at head: <code>x/net/html</code> is imported but no vulnerable symbol is called (<code>function: null</code>); x/crypto is module-level only. The process was OOM-killed (exit 137) after emitting findings, so treat reachability as indicative. No base-side symbol scan; the module-level findings are byte-identical on both sides and involve no module that this PR changes.
+</li>
+<li>Import surface: only <code>pkg/metrics/push.go</code> imports common — <code>expfmt.NewEncoder</code>/<code>expfmt.NewFormat(expfmt.TypeProtoDelim)</code> at <code>push.go:67</code> and <code>push.go:89</code>, <code>model.UTF8Validation.IsValidLabelName</code> at <code>push.go:52</code>. Everything else in <code>pkg/metrics</code> reaches common indirectly via client_golang.
+</li>
+<li>Encoder path: <code>expfmt.NewEncoder</code>'s <code>TypeOpenMetrics</code> branch and <code>init()</code> registration table changed; the <code>TypeProtoDelim</code> branch, which prow uses, is untouched. The <code>model</code> package has no changes in this range, so <code>UTF8Validation.IsValidLabelName</code> is unchanged.
+</li>
+<li><code>expfmt.NegotiateAccept</code> is live via <code>promhttp.HandlerFor(..., promhttp.HandlerOpts{})</code> at <code>pkg/metrics/metrics.go:64</code>, but prow advertises <code>DefaultAcceptedFormats()</code> (proto delimited/text/compact; <code>EnableOpenMetrics</code> is false), and those lists are unchanged. The escaping change only applies when the matched format is OpenMetrics 2.0, which is never offered; for the formats prow offers the change is the fix for a cross-clause escaping-parameter leak, with identical output.
+</li>
+<li>Build and test: <code>GOEXPERIMENT=jsonv2 go build ./pkg/metrics/...</code> and <code>GOEXPERIMENT=jsonv2 go test ./pkg/metrics/...</code> both pass. (<code>GOEXPERIMENT=jsonv2</code> is a pre-existing repo requirement from <code>pkg/config/zz_generated.deepcopy.go</code>, not caused by this bump.)
+</li>
+<li><code>go mod tidy -diff</code> reports no diff in either the root or <code>hack/tools</code> module, and go.sum verification succeeded during the build.
+</li>
+<li>Toolchain: common's <code>go</code> directive is <code>1.26.0</code> in both versions; prow has <code>go 1.26.4</code>. No toolchain movement.
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>Would you prefer to roll this straight to v0.73.1 rather than land v0.73.0 and then chase it? The only delta upstream is go-abnf 0.5.1 → 0.5.3, which removes <code>hashicorp/go-uuid</code> from the graph.
+</li></ul>
+<h2>Dependency followups</h2>
+<p>Examined <code>github.com/prometheus/common</code> v0.72.1 → v0.73.0 (direct), plus the transitively added <code>github.com/pandatix/go-abnf</code> v0.5.1 and <code>github.com/hashicorp/go-uuid</code> v1.0.3. No deprecations apply: our only call sites already use the current forms (<code>model.UTF8Validation.IsValidLabelName</code> at <code>pkg/metrics/push.go:52</code>, <code>expfmt.NewEncoder</code>/<code>expfmt.NewFormat</code> at <code>push.go:67</code> and <code>push.go:89</code>), and the deprecated <code>Negotiate</code>/<code>NegotiateIncludingOpenMetrics</code> helpers and <code>model</code> legacy-validation functions are not called from prow. The new ABNF-based OpenMetrics decoder and the OpenMetrics 2.0 format constants have no consumer in this repo. One opportunity recorded.</p>
+<ul>
+<li><strong>simplification: bump prometheus/common to v0.73.1 to drop hashicorp/go-uuid</strong> — module: <code>github.com/prometheus/common</code> v0.73.0 → v0.73.1 — where: <code>go.mod:52</code>, <code>hack/tools/go.mod:269</code>, <code>go.sum:381-382</code> — necessity: could.
+<pre><code>In kubernetes-sigs/prow, now that PR #1046 (&quot;chore(deps): bump github.com/prometheus/common from 0.72.1 to 0.73.0&quot;, merged as d6d463db09f58ee49e552a676d29dc7ba2415cb7) has taken github.com/prometheus/common to v0.73.0, bump it once more to v0.73.1.
+
+Why: v0.73.1&#x27;s only change is bumping github.com/pandatix/go-abnf from 0.5.1 to 0.5.3, and go-abnf 0.5.3 dropped its dependency on github.com/hashicorp/go-uuid. In the current tree go.sum:381-382 carries github.com/hashicorp/go-uuid v1.0.3 and go.sum:449-450 carries github.com/pandatix/go-abnf v0.5.1; neither module is imported anywhere in prow&#x27;s own code.
+
+Task:
+- In the root module, update the direct requirement at go.mod:52 to github.com/prometheus/common v0.73.1 and run `go mod tidy`.
+- In the hack/tools module, update the indirect requirement at hack/tools/go.mod:269 to v0.73.1 and run `go mod tidy` there too.
+- Do not hand-edit go.sum; let `go mod tidy` regenerate it.
+
+Acceptance criteria:
+- `grep -n &quot;hashicorp/go-uuid&quot; go.sum hack/tools/go.sum` returns nothing, and `github.com/pandatix/go-abnf` is at v0.5.3 in both go.sum files.
+- `GOEXPERIMENT=jsonv2 go build ./pkg/metrics/...` and `GOEXPERIMENT=jsonv2 go test ./pkg/metrics/...` pass (GOEXPERIMENT=jsonv2 is a pre-existing repo requirement from pkg/config/zz_generated.deepcopy.go).
+- `GOEXPERIMENT=jsonv2 go list -deps ./cmd/hook | grep -E &quot;go-abnf|go-uuid&quot;` reports go-abnf but no go-uuid.
+- `go mod tidy -diff` reports no diff in either module.
+
+Scope guard: dependency manifests and lockfiles only. Do not change pkg/metrics or any other source, do not touch unrelated dependency versions that `go mod tidy` does not require, and do not investigate the OpenMetrics parser that go-abnf backs.</code></pre>
+</li></ul>
+</main></body></html>

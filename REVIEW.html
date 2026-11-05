@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#1057</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>Stop treating plank.job_queue_capacities as global only</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1057">kubernetes-sigs/prow#1057</a> · base <code>main</code> · head_sha <code>bb5631aa3b93</code> · reviewed_at <code>2026-11-04T16:23:20Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span></div>
+<h2>Verdict</h2>
+<p>Approve. The one-line classifier fix is correct and well covered by regression tests.</p>
+<p><code>hasGlobalConfig()</code> builds a reference config containing only the fields that are legitimately allowed to be global; anything outside that reference marks a shard as global, and <code>checkconfig</code> rejects global content inside org/repo directories. #1051 made <code>plank.job_queue_capacities</code> mergeable from supplemental shards but did not teach this classifier about it, so a valid repo shard that declared capacities was rejected with "contains global config". Adding <code>Plank{JobQueueCapacities: ...}</code> to the reference fixes exactly that. I verified both new tests fail without the added line and pass with it, and the full <code>pkg/config</code> and <code>cmd/checkconfig</code> suites pass.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Adds <code>Plank{JobQueueCapacities: ...}</code> to the reference config in <code>ProwConfig.hasGlobalConfig()</code>.
+</li>
+<li>Adds a <code>checkconfig</code> hierarchy regression case for a repo shard carrying <code>job_queue_capacities</code>.
+</li>
+<li>Adds a <code>TestHasConfigFor</code> fuzz case asserting that capacities alone are not global, and clears capacities in the existing "any non-empty config is global" fuzz case.
+</li>
+<li>Is a follow-up to #1051, which added the actual merge logic for the field.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-gray">nit</span>Capacities-only shard produces an error message ending in a dangling "but"</h3>
+<ul>
+<li>where: <code>cmd/checkconfig/main.go:1444-1467</code>
+</li>
+<li>concern: With capacities no longer classified as global, a shard whose only content is <code>plank.job_queue_capacities</code> reaches the repo/org scope error with <code>isGlobal == false</code>, no orgs and no repos, so the message reads <code>... Must only contain config for repo my-org/my-repo, but</code> with nothing after "but". Such a shard was rejected before as well (as global), so acceptance does not regress, but this is now the natural first thing a user hits when trying the newly allowed field alone. Appending something like "contains no org- or repo-scoped config" when no other reason matched would make the message self-explanatory.
+</li>
+<li>excerpt:<pre><code></code></pre>
+</li></ul>
+<p>if !isGlobal &amp;&amp; len(targetedOrgs) == 0 &amp;&amp; len(targetedRepos) == 1 &amp;&amp; targetedRepos.Has(expectedTargetRepo) { return nil }</p>
+<h2>Checked</h2>
+<ul>
+<li>Verified the new tests are meaningful: deleting the added <code>Plank:</code> line makes <code>TestHasConfigFor/Job_queue_capacities_alone_are_not_considered_global</code> fail with <code>expected isGlobal: false, got: true</code>, and the new checkconfig case fail with <code>contains global config</code>.
+</li>
+<li><code>GOEXPERIMENT=jsonv2 go test ./pkg/config ./cmd/checkconfig -count=1</code> passes (the installed Go toolchain gates <code>encoding/json/jsontext</code> behind the <code>jsonv2</code> experiment).
+</li>
+<li><code>gofmt -l</code> is clean on all three changed files.
+</li>
+<li>The top-level global config is unaffected: <code>validateAdditionalConfigIsInOrgRepoDirectoryStructure</code> returns early at depth 0, so the classifier only governs org/repo shards.
+</li>
+<li>Runtime loading is unchanged: <code>loadConfig</code> still calls <code>ProwConfig.mergeFrom</code> for every shard, merging capacities into one plank map and rejecting duplicate queue names.
+</li>
+<li>No user-facing documentation claims the field is global-only (nothing under <code>site/</code> mentions <code>job_queue_capacities</code>), so no docs update is required.
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>A repo shard can now declare capacities without failing hierarchy validation, but the capacity is still applied to the single global queue map: any job in another repo using the same queue name shares the limit. Is that acceptable for the shards this unblocks, or should queue names become repo-scoped before users start declaring per-repo capacities?
+</li></ul>
+</main></body></html>

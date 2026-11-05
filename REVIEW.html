@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#1037</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>peribolos: support org-level repo defaults</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1037">kubernetes-sigs/prow#1037</a> · base <code>main</code> · head_sha <code>9a62ef160563</code> · reviewed_at <code>2026-11-04T18:00:23Z</code></div>
+<div class="badges"><span class="badge c-red">verdict: request-changes</span><span class="badge c-red">gate: do-not-merge</span></div>
+<details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#1037
+title: &quot;peribolos: support org-level repo defaults&quot;
+head_sha: 9a62ef160563080b84e47579e2464329edbf7140
+base: main
+reviewed_at: 2026-11-04T18:00:23Z
+verdict: request-changes
+gate:
+  decision: do-not-merge
+  gated_at: 2026-11-04T22:56:21Z
+  gated_head_sha: 9a62ef160563080b84e47579e2464329edbf7140
+  reviewed_head_sha: 9a62ef160563080b84e47579e2464329edbf7140</code></pre></details>
+<h2>Gate</h2>
+<p><strong>Verdict: do-not-merge.</strong> The PR head is unchanged (<code>9a62ef16</code>), so the review's <code>[blocking]</code> create-path finding still stands, and a new review by @cblecker (2026-11-04, <code>COMMENTED</code>) adds follow-ups that require code changes. Independently of the reviews, the <code>Defined()</code> change makes previously-ignored squash settings take effect on upgrade, which can hard-fail an entire run for configs that never use <code>repo_defaults</code>.</p>
+<p>The gate is blocked on a small, well-scoped set of changes, not on the design. The inheritance model, strict <code>repo_defaults</code> decoding, flat config schema and create/update parity are sound and tested; @cblecker's earlier items (dry-run wording, dump limitations, unknown keys) are addressed. What remains is squash commit title/message validity: GitHub validates the two fields <strong>as a pair</strong>, and this PR sends them independently — defaults resolve field-by-field, so a repo that overrides only one of them can produce a combination GitHub rejects. That breaks <code>repo_defaults</code> adopters on create, and now also breaks existing configs that set squash settings which <code>Defined()</code> previously dropped. Fixing the pair rule once, at the point the request is built, plus narrowing the archived-repo guard, unblocks the merge.</p>
+<h3>Gating list</h3>
+<ol>
+<li><strong>Squash title/message pair is not validated</strong> — <code>cmd/peribolos/main.go:1288-1289</code> (create path) and <code>cmd/peribolos/main.go:1360-1363</code> (update fallback). Source: <code>REVIEW.md</code> <code>[blocking]</code>, confirmed by @cblecker 2026-11-04. <code>newRepoCreateRequest</code> forwards <code>squash_merge_commit_message</code> with no title, and no code in this head validates the effective pair. @cblecker reproduced 422s for an invalid or empty title, for <code>PR_BODY</code> with a <code>COMMIT_OR_PR_TITLE</code> repo (on update <em>and</em> on create), and for squash values sent while squash merge is disabled. Validate the resolved pair before the request and report a clear error naming the repo and field, and document the valid pairs (<code>PR_TITLE</code> with <code>PR_BODY</code>/<code>BLANK</code>/<code>COMMIT_MESSAGES</code>; <code>COMMIT_OR_PR_TITLE</code> with <code>COMMIT_MESSAGES</code>) — this should replace the <code>&quot;&quot;</code>-override test that only covers the update path.
+</li>
+<li><strong>Archived-repo guard is too wide</strong> — <code>cmd/peribolos/main.go:1450-1452</code>. Source: @cblecker 2026-11-04; supersedes the review's documentation-only <code>[should-fix]</code>. The skip fires on <code>existing.Archived &amp;&amp; wantRepo.Archived == nil</code>, so an archived repo silently drops <em>explicit</em> per-repo settings (a new <code>description</code>, a <code>previously</code> rename) that used to fail the run loudly. Limit the skip to inherited values by computing the delta from <code>orgConfig.Repos[wantName]</code>, add a <code>TestConfigureRepos</code> case (explicit <code>description</code>, unset <code>archived</code>, no defaults), and document: "Repositories archived on GitHub do not inherit defaults unless the config sets <code>archived: false</code>, which is reported as an unsupported unarchive."
+</li>
+<li><strong>Squash settings are sent when squash merging will be disabled, and the backfill should go</strong> — <code>pkg/config/org/org.go:119</code>, <code>cmd/peribolos/main.go:1360-1363</code>, <code>site/content/en/docs/components/cli-tools/peribolos.md:117</code>. Source: @cblecker 2026-11-04. Omit <code>squash_merge_commit_title</code>/<code>squash_merge_commit_message</code> from the request whenever squash merge will be off (disabled by this request or already off) — otherwise the PATCH 422s and takes unrelated changes with it. Drop the title backfill in <code>newRepoUpdateRequest</code> (@cblecker does not believe GitHub needs it; it is also the source of the empty-title case). Delete "Configs without <code>repo_defaults</code> behave as before" from the docs: after <code>pkg/github/types.go:491-495</code>, configs that set squash settings without <code>repo_defaults</code> now send them, so the claim is false and the upgrade is behavior-changing.
+</li></ol>
+<h3>Merge risk</h3>
+<ul>
+<li><strong>Behavioral, upgrade-time (highest)</strong>: <code>pkg/github/types.go:491-495</code> adds the squash title/message to <code>Defined()</code>. Any installation whose config already sets these fields — no <code>repo_defaults</code> required — starts sending them after upgrade; where that resolves to an invalid pair, the update 422s and aborts the whole run before collaborators and teams are reconciled. Blast radius: every peribolos installation with squash commit settings. Not opt-in, not currently documented, and contradicted by the docs line above.
+</li>
+<li><strong>Behavioral</strong>: archived repos with <code>archived</code> unset stop syncing in every installation (INFO log, clean exit), changing both drift enforcement and the exit-code signal, not only for adopters of <code>repo_defaults</code>.
+</li>
+<li><strong>Go API</strong>: embedding <code>RepoSettings</code> in the exported <code>org.Repo</code> breaks keyed literals such as <code>org.Repo{HasIssues: ...}</code> for downstream importers (openshift/ci-tools <code>private-org-peribolos-sync</code> reported by @cblecker). In-tree callers are migrated; no runtime impact, but a mechanical fix is required downstream and deserves a release note and a line in the PR description.
+</li>
+<li><strong>Config</strong>: <code>repo_defaults</code> is opt-in, <code>nil</code> defaults are a no-op, and the on-disk shape stays flat (round-trip tested); older binaries ignore the unknown key under non-strict parsing, so a rollback is safe.
+</li>
+<li><strong>Rollout</strong>: one default can mutate every listed repo in a single run with no per-repo opt-out, and the dry run reports repo names only, which makes reviewing a defaults rollout hard. No compatibility break, but worth a release note.
+</li></ul>
+<p>Non-gating: <code>repo_defaults</code> decode errors omit the owning org (<code>pkg/config/org/org.go:133-142</code>); the two hand-maintained field lists (<code>org.go:146-178</code>, <code>types.go:491-495</code>) still lack a completeness guard; <code>RepoDefaults</code> vs <code>PruneRepoDefaults</code> naming.</p>
+<h2>Verdict</h2>
+<p>Request changes. The feature is well-scoped, well-tested and backward-compatible, but the create path does not honor the message-only squash contract the update path was fixed for.</p>
+<p>The PR adds <code>repo_defaults</code> with per-repo overrides, resolves them through a pure <code>WithDefaults</code>, skips archived repos unless config sets <code>archived: false</code>, and rejects unknown <code>repo_defaults</code> keys via a dedicated <code>RepoDefaults</code> type. Inheritance, explicit <code>false</code>, <code>null</code>, create/update parity, unlisted/archived repos and flat JSON/YAML round-trips are covered. The blocker is <code>newRepoCreateRequest</code> sending <code>squash_merge_commit_message</code> without a title: a message-only default, which the docs list as supported, breaks creation with a 422 unless the update-side backfill is mirrored. The remaining items are non-blocking hardening and documentation gaps.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Adds an optional <code>repo_defaults</code> block to each org config, inherited by every repo listed under <code>repos</code>.
+</li>
+<li>Factors defaultable repo fields into a shared <code>RepoSettings</code> type embedded in <code>org.Repo</code>, keeping the repo JSON/YAML shape flat.
+</li>
+<li>Resolves defaults in <code>configureRepos</code> before creation and update, honoring explicit values (including <code>false</code>); <code>null</code> means inherit.
+</li>
+<li>Skips repos GitHub reports as archived unless the config sets <code>archived: false</code>, and includes the current squash title on message-only updates.
+</li>
+<li>Rejects unsupported <code>repo_defaults</code> keys through a dedicated strict <code>RepoDefaults</code> type and documents the dump/dry-run limitations.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-red">blocking</span>Create path sends a squash commit message without a title</h3>
+<ul>
+<li>where: <code>cmd/peribolos/main.go:1288-1289</code>
+</li>
+<li>concern: <code>newRepoCreateRequest</code> forwards <code>SquashMergeCommitMessage</code> without <code>SquashMergeCommitTitle</code>. With <code>repo_defaults</code> supplying a message-only default (a configuration the docs list as supported), creating a listed repo sends a create request missing the title and fails with a 422. This is the creation-side counterpart of the update fix at <code>main.go:1360-1363</code>. Mirror the backfill (default the title to <code>PR_TITLE</code>) or reject message-only configs at load time, and add a create-with-message-only test. The code path is CONFIRMED; GitHub enforcing the constraint on create is PLAUSIBLE — the update fix already relies on the same rule, but it was not verified here.
+</li>
+<li>excerpt:<pre><code>SquashMergeCommitTitle:   definition.SquashMergeCommitTitle,
+SquashMergeCommitMessage: definition.SquashMergeCommitMessage,</code></pre>
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>Hand-maintained field lists have no completeness guard</h3>
+<ul>
+<li>where: <code>pkg/config/org/org.go:146-178</code>
+</li>
+<li>concern: <code>WithDefaults</code> hand-copies the <code>RepoSettings</code> field set, and <code>RepoRequest.Defined()</code> (<code>pkg/github/types.go:491-495</code>) hand-enumerates another. This PR fixes a silent skip caused by an omission in <code>Defined()</code>, but adding a field to either struct still compiles and silently leaves it undefaulted or undetected; the tests hard-code the same set. Add a reflection-based completeness test so drift fails loudly.
+</li>
+<li>excerpt:<pre><code>func (r Repo) WithDefaults(defaults *RepoDefaults) Repo {
+    if defaults == nil {
+        return r
+    }
+    if r.AllowSquashMerge == nil {
+        r.AllowSquashMerge = defaults.AllowSquashMerge
+    }</code></pre>
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>Archived-repo skip is not documented</h3>
+<ul>
+<li>where: <code>cmd/peribolos/main.go:1450-1452</code>
+</li>
+<li>concern: Archived repos with <code>archived</code> unset now stop syncing for every installation, not just those adopting defaults. The behavior is sensible, but <code>peribolos.md</code> never mentions it (it only says archival remains per-repository only), so operators lose drift enforcement and the exit-code signal without notice. Add a docs line.
+</li>
+<li>excerpt:<pre><code>if existing.Archived &amp;&amp; (wantRepo.Archived == nil || *wantRepo.Archived) {
+    repoLogger.Infof(&quot;repo %q is archived, skipping changes&quot;, wantName)
+    continue
+}</code></pre>
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span><code>repo_defaults</code> decode errors do not name the owning org</h3>
+<ul>
+<li>where: <code>pkg/config/org/org.go:133-142</code>
+</li>
+<li>concern: A strict-decode failure reads <code>repo_defaults: unknown field &quot;...&quot;</code> with no org context. <code>FullConfig</code> is decoded in one <code>yaml.Unmarshal</code>, so an operator with many orgs must search each block. Wrap the error with the org name (or field path) where possible.
+</li>
+<li>excerpt:<pre><code>func (r *RepoDefaults) UnmarshalJSON(data []byte) error {
+    var settings RepoSettings
+    decoder := json.NewDecoder(bytes.NewReader(data))
+    decoder.DisallowUnknownFields()
+    if err := decoder.Decode(&amp;settings); err != nil {
+        return fmt.Errorf(&quot;repo_defaults: %w&quot;, err)
+    }</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">nit</span>Update fallback can send an empty squash title</h3>
+<ul>
+<li>where: <code>cmd/peribolos/main.go:1360-1363</code>
+</li>
+<li>concern: When <code>current.SquashMergeCommitTitle</code> is empty (e.g. an older GHES that does not return the field), the fallback sends <code>&quot;&quot;</code>, which is not a valid enum. Return a clear error or skip the update instead of emitting an invalid request.
+</li>
+<li>excerpt:<pre><code>if repoUpdate.SquashMergeCommitMessage != nil &amp;&amp; repoUpdate.SquashMergeCommitTitle == nil {
+    repoUpdate.SquashMergeCommitTitle = &amp;current.SquashMergeCommitTitle
+}</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">nit</span><code>RepoDefaults</code> values are not validated</h3>
+<ul>
+<li>where: <code>pkg/config/org/org.go:133-142</code>
+</li>
+<li>concern: Strict decoding validates keys but not values; arbitrary strings (including <code>&quot;&quot;</code>) pass for the two squash enums and then fail once per listed repo at the API. Validating the enums at load time surfaces one clear error instead of an org-wide failure run.
+</li></ul>
+<h3><span class="tag c-gray">nit</span><code>RepoDefaults</code> vs <code>PruneRepoDefaults</code>, and pointer aliasing</h3>
+<ul>
+<li>where: <code>pkg/config/org/org.go:130</code>
+</li>
+<li>concern: <code>RepoDefaults</code> (org-level inheritance) and <code>PruneRepoDefaults</code> (<code>pkg/config/org/org.go:326</code>) are easy to confuse; a cross-reference comment would help. Also, <code>WithDefaults</code> copies pointer values, so the returned repo aliases the defaults — safe while config is immutable, but fragile if a caller ever mutates through <code>*repo.X</code>.
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>Config shape: <code>RepoSettings</code> is embedded with no JSON tag; flat keys still deserialize and serialize identically, with JSON/YAML round-trip and legacy <code>private</code> tests.
+</li>
+<li>Inheritance: explicit <code>false</code> wins over a <code>true</code> default, <code>null</code> inherits, nil/empty defaults are no-ops, and create/update parity is tested.
+</li>
+<li>Scope: unlisted repos are untouched and defaults alone manage nothing; explicitly archived repos are skipped.
+</li>
+<li>Strict decoding: <code>visibility</code>, <code>private</code>, <code>archived</code> and typos are rejected in <code>repo_defaults</code>, while per-repo parsing stays permissive.
+</li>
+<li>Message-only updates include the current title; tests cover configured-title and fallback cases.
+</li>
+<li>No new API endpoints, permissions, scopes, flags, or background work; the merge is an O(repos) map copy.
+</li>
+<li>CI on <code>9a62ef16</code> is green (unit, race, lint, integration, image build); targeted tests pass.
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>Should message-only defaults be allowed? If so, the create path needs the same title backfill as updates; if not, reject them at config load.
+</li>
+<li>Should <code>peribolos.md</code> state that archived repos are skipped unless <code>archived: false</code> is set?
+</li>
+<li>Should the release notes call out that squash settings previously ignored will now take effect on upgrade?
+</li>
+<li>Should <code>RepoDefaults</code> decode errors include the owning org name?
+</li>
+<li>Should the two squash enums be validated locally so one typo does not fan out into per-repo API failures?
+</li>
+<li>In dry runs, would logging the effective field delta (instead of just "repo differs") make a defaults rollout reviewable?
+</li></ul>
+</main></body></html>

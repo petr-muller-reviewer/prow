@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#1043</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>clonerefs: blobless+sparse-checkout PR merge fails with 'upload-pack: not our ref' and SIGSEGV after the 2026-10-23 image bump</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/issues/1043">kubernetes-sigs/prow#1043</a> · main_sha <code>091a7d73761d</code> · state <code>closed</code> · labels <code></code> · triaged_at <code>2026-11-04T17:25:20Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: resolved</span></div>
+<details><summary>Full metadata</summary><pre><code>issue: kubernetes-sigs/prow#1043
+title: &quot;clonerefs: blobless+sparse-checkout PR merge fails with &#x27;upload-pack: not our ref&#x27; and SIGSEGV after the 2026-10-23 image bump&quot;
+state: closed
+labels: &quot;&quot;
+main_sha: 091a7d73761d32baf5b1313f9a517d8c222fc5aa
+triaged_at: 2026-11-04T17:25:20Z
+verdict: resolved
+legitimacy: LEGITIMATE
+effort: 3
+recommended_labels: [kind/bug, kind/regression, priority/important-soon]
+refresh_log:
+  - at: 2026-11-04T17:25:20Z
+    since: 2026-10-31T20:16:26Z
+    summary: &quot;issue closed as completed citing merged #1054 (merge-tree pre-write workaround); #1045 closed in favour of it; main re-anchored to 091a7d737&quot;</code></pre></details>
+<h2>Verdict</h2>
+<p><strong>accepted → resolved</strong> — a real regression in the <code>clonerefs</code> init container, caused by the git shipped in the 2026-10-23 base-image bump, not by any <code>clonerefs</code> code change.</p>
+<p>Legitimate on every axis: the component lives in this repo (<code>cmd/clonerefs</code>, <code>pkg/pod-utils/clone</code>), the report carries the exact commands, image tag, blob SHAs, two independent repos and <code>clone-records.json</code> links, and the failure is isolated to this repo's own image bump (#1036) — the same PR head passed hours earlier and no clone-path commit landed in between. Root cause: sparse checkout implies <code>--filter=blob:none</code>, so git may lazily fetch an object it just created; the git 2.54.0 in Alpine 3.24.3 asks the origin for a merge-result blob that only exists locally, gets <code>upload-pack: not our ref</code>, and segfaults instead of failing cleanly. The pre-bump image (git 2.52.0) and the reporter's exact recipe under git 2.56.0 both succeed. Effort is Level 3: the patch is small, but it is the clone path every job's init container uses and the underlying defect is external. The base-image decision (<code>alpine:3.23.7</code> now vs <code>edge</code>/<code>3.25.0</code> later) and the recovery-guard question (#1045 was closed in favour of the merged workaround) are no longer blocking; what remains is shipping a fixed git so the workaround can be removed.</p>
+<p>Resolved on 2026-11-04: #1054 shipped a client-side workaround for partial clones and the issue was closed as completed — see <code>## Resolution</code>. The verdict is now <code>resolved</code>; the base-image and workaround-removal follow-ups remain open.</p>
+<h2>Resolution</h2>
+<p>Resolved by #1054 "fix(clonerefs): write merge results before merging partial clones", merged 2026-11-04T02:06:40Z as <code>5bf71c288</code> (change <code>40cea8c67</code>). Issue closed 2026-11-04T16:31:41Z by petr-muller as COMPLETED with <code>/close — I believe this is resolved with #1054</code>.</p>
+<p><strong>Classification: sufficient</strong> — as a workaround for the triaged cause, not as a git fix.</p>
+<ul>
+<li>Matches the recorded cause: for partial clones (<code>BloblessFetch</code> or <code>SparseCheckoutFiles</code>) it runs <code>git merge-tree --write-tree HEAD &lt;pull&gt;</code> before <code>git merge</code>, so the merged blobs are written by a separate process and are on disk before <code>git merge</code> fills its loose-object cache — exactly the "merge writes a blob, the cache misses it, a later bulk prefetch asks the server" mechanism in the findings. The step's result is swallowed by <code>bestEffortCommand</code>; <code>git merge</code> still reports real problems.
+</li>
+<li>Broader than the triaged remedy and cheaper than #1045: it also covers blobless full checkouts and needs no re-clone, which is why #1045's full-fetch retry was dropped in its favour.
+</li>
+<li>Verified against the cases this triage cited: <code>kubernetes/kubernetes#143721</code>, <code>kubevirt/hyperconverged-cluster-operator#4681</code> and <code>Azure/ARO-HCP#7828</code> served without their merged blobs — stock clonerefs fails on all three, the branch passes; <code>TestRunMergesInPartialClone</code> fails on git 2.54.0 without the step and passes with it (2.47.3 and 2.52.0 unaffected).
+</li>
+<li>Not fixed: git 2.54.0 is still the pod-utils base image (<code>.ko.yaml</code> pin unchanged on <code>091a7d737</code>) and the segfault itself is not root-caused. The PR states it is "a workaround, to be removed once clonerefs ships a fixed git".
+</li></ul>
+<h2>What the issue reports</h2>
+<ul>
+<li>Since the 2026-10-23 utility-image rebuild, jobs whose refs set <code>sparse_checkout_files</code> fail in the <code>clonerefs</code> init container before any test runs — the same PR head that passed earlier the same day.
+</li>
+<li>The merge succeeds (<code>Merge made by the &#x27;ort&#x27; strategy.</code>), then git tries to fetch a blob it just created, gets <code>fatal: remote error: upload-pack: not our ref &lt;sha&gt;</code>, and dies with <code>signal: segmentation fault (core dumped)</code>.
+</li>
+<li>Trigger is a merge producing new content for an out-of-cone (skip-worktree) path, i.e. the same file changed on the PR and on the base since the merge base; trivial merges pass, so failures look intermittent and track base-branch activity rather than the PR.
+</li>
+<li>Affects at least Azure/ARO-HCP (#7828, #7662) and kubevirt/hyperconverged-cluster-operator (#4681); the reporter says <code>sparse_checkout_files</code> is used by presubmits across many OpenShift repos (origin, os, api, oc, hive, quay, stolostron/ocm, medik8s/common).
+</li>
+<li>Asks: roll back the git/clonerefs image, say whether dropping <code>sparse_checkout_files</code> is the recommended interim mitigation, and point at the right upstream tracking location.
+</li></ul>
+<p><strong>Since previous triage (2026-10-31):</strong> the issue was closed 2026-11-04 as completed; #1054 merged a partial-clone workaround (pre-writing merge results with <code>merge-tree --write-tree</code>); #1045 was closed in favour of it; no affected repo has reported recurrence since.</p>
+<h2>Findings</h2>
+<h3><span class="tag c-blue">reproducibility</span>exact recipe fails only on the new base image, passes on 2.56.0</h3>
+<ul>
+<li>detail: The reporter's recipe (ARO-HCP base <code>4ce838f7293c…</code>, PR head <code>e006fbbf7f45…</code>, 13 sparse paths, <code>--filter=blob:none</code>, <code>git merge --no-ff</code>) exits 0 with git 2.51.1 on a workstation and, verified during triage, with git 2.56.0 here: diffstat printed, merge-result blob present and readable locally, no remote contact. It fails only inside the <code>v20261023-*</code> image.
+</li>
+<li>evidence: <code>git merge --no-ff e006fbbf7f45ef2398c29613d7d256b8c6bb4261</code> run locally, exit 0; failing runs <a href="https://storage.googleapis.com/test-platform-results-public/pr-logs/pull/Azure_ARO-HCP/7828/pull-ci-Azure-ARO-HCP-main-test-unit/2115807042240253952/clone-records.json">https://storage.googleapis.com/test-platform-results-public/pr-logs/pull/Azure_ARO-HCP/7828/pull-ci-Azure-ARO-HCP-main-test-unit/2115807042240253952/clone-records.json</a> and <a href="https://storage.googleapis.com/test-platform-results-public/pr-logs/pull/kubevirt_hyperconverged-cluster-operator/4681/pull-ci-kubevirt-hyperconverged-cluster-operator-main-hco-e2e-upgrade-prev-operator-sdk-sno-azure/2115671286276427776/clone-records.json">https://storage.googleapis.com/test-platform-results-public/pr-logs/pull/kubevirt_hyperconverged-cluster-operator/4681/pull-ci-kubevirt-hyperconverged-cluster-operator-main-hco-e2e-upgrade-prev-operator-sdk-sno-azure/2115671286276427776/clone-records.json</a>
+</li></ul>
+<h3><span class="tag c-blue">reproducibility</span>same PR head passed before the bump on a trivial merge</h3>
+<ul>
+<li>detail: ARO-HCP PR #7828 head <code>e006fbbf</code> passed <code>pull-ci-Azure-ARO-HCP-main-e2e-parallel</code> earlier on 2026-10-23; the later <code>test-unit</code> run of the same head failed. Consistent with "needs overlapping changes on both sides", not with PR content.
+</li>
+<li>evidence: <a href="https://prow.ci.openshift.org/view/gs/test-platform-results-public/pr-logs/pull/Azure_ARO-HCP/7828/pull-ci-Azure-ARO-HCP-main-e2e-parallel/2115727005218508800">https://prow.ci.openshift.org/view/gs/test-platform-results-public/pr-logs/pull/Azure_ARO-HCP/7828/pull-ci-Azure-ARO-HCP-main-e2e-parallel/2115727005218508800</a>
+</li></ul>
+<h3><span class="tag c-amber">cause</span>git regression pinned to 5946a564, mechanism confirmed</h3>
+<ul>
+<li>detail: <code>git merge</code> in a partial clone writes the merged blob but its loose-object cache does not see the write, so a later bulk prefetch asks the promisor remote for it; the server rejects the whole fetch (<code>upload-pack: not our ref</code>). Bisected to git <code>5946a564</code> by the author of #1054, with an upstream report on the git mailing list. The segfault on the rejected fetch is still not root-caused.
+</li>
+<li>evidence: kubernetes-sigs/prow#1054 description and <a href="https://lore.kernel.org/git/yrjh1p92qc7w.fsf@pohly-mobl1.fritz.box/T/#u">https://lore.kernel.org/git/yrjh1p92qc7w.fsf@pohly-mobl1.fritz.box/T/#u</a>; <code>TestRunMergesInPartialClone</code> fails only on git 2.54.0 (passes on 2.47.3 and 2.52.0 without the workaround)
+</li></ul>
+<h3><span class="tag c-amber">cause</span>the base image itself is brand new, and no newer stable Alpine exists yet</h3>
+<ul>
+<li>detail: <code>alpine:3.24.3</code> was pushed 2026-10-23T05:24Z — the same day test-infra#38144 merged (20:02Z) and #1036 landed (21:29Z) — so this is a same-day point-release regression, not stale drift. The 3.24 line started 2026-06-10; the replaced image used <code>3.23.4</code> (2026-04-15). <code>3.23.7</code> was published the same day and still ships git 2.52.0. There is no <code>3.25-stable</code> branch, no <code>3.25</code>/<code>4.x</code> tag, <code>latest</code> is still 3.24.3, and Alpine cuts release branches each May and November.
+</li>
+<li>evidence: Docker Hub <code>library/alpine</code> tag push times; aports branches <code>3.24-stable</code>, <code>master</code> only; kubernetes/test-infra <code>images/git/Dockerfile</code> (<code>FROM alpine:3.24.3</code>)
+</li></ul>
+<h3><span class="tag c-amber">cause</span>sparse checkout implies a blobless partial clone with the PR URL as promisor remote</h3>
+<ul>
+<li>detail: <code>sparseCheckoutFiles</code> forces <code>--filter=blob:none</code> on both the base and the PR fetch, so every sparse job is a partial clone; the merge result of a content merge is a brand-new object that no promisor remote can serve.
+</li>
+<li>evidence: <code>pkg/pod-utils/clone/clone.go:253-255</code>, <code>pkg/pod-utils/clone/clone.go:355-360</code>
+</li></ul>
+<h3><span class="tag c-amber">cause</span>no retry or fallback in the clone path</h3>
+<ul>
+<li>detail: <code>Run</code> executes the generated argv in order, records each command in <code>Record.Commands</code>, and aborts on the first failure — no error classification, no alternative fetch strategy, no notion of a recoverable failure.
+</li>
+<li>evidence: <code>pkg/pod-utils/clone/clone.go:79-105</code>
+</li></ul>
+<h3><span class="tag c-amber">cause</span>the bump arrived automatically from a repo prow does not control</h3>
+<ul>
+<li>detail: test-infra rebuilds <code>gcr.io/k8s-staging-test-infra/git</code> from <code>images/git/Dockerfile</code> and republishes <code>:latest</code>; the hourly <code>ci-prow-autobump-base-images</code> job runs <code>generic-autobumper --config=hack/autobump.yaml</code> (<code>targetVersion: latest</code>, prefix <code>gcr.io/k8s-staging-test-infra</code>, <code>extraFiles: [.ko.yaml]</code>), which produced #1036. A hand-edited <code>.ko.yaml</code> pin is therefore undone on the next run unless <code>targetVersion</code> is pinned to an explicit tag — which applies to every staging image, not just <code>git</code>.
+</li>
+<li>evidence: <code>hack/autobump.yaml</code>, <code>.ko.yaml</code>, kubernetes/test-infra <code>config/jobs/kubernetes/sig-k8s-infra/trusted/sig-k8s-infra-prow.yaml</code> (<code>ci-prow-autobump-base-images</code>)
+</li></ul>
+<h3><span class="tag c-amber">cause</span>no end-to-end coverage of blobless+sparse+overlapping-history merges</h3>
+<ul>
+<li>detail: Sparse coverage is argv assertions only; the integration suite never exercises a sparse clone. Nothing in the repo would have caught this (it only manifests on a specific git version), and nothing documents the partial-clone coupling or a minimum git version — <code>SparseCheckoutFiles</code> is described solely as "limits the working tree to only the listed paths".
+</li>
+<li>evidence: <code>pkg/pod-utils/clone/clone_test.go:610-690</code> (argv only), zero occurrences of "sparse" in <code>test/integration/test/pod-utils_test.go</code>, <code>pkg/apis/prowjobs/v1/types.go</code> field comment
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>sparse-checkout command builders</h3>
+<ul>
+<li>where: <code>pkg/pod-utils/clone/clone.go:242-244</code>, <code>:253-255</code>, <code>:257</code>, <code>:272-290</code>, <code>:296-308</code>, <code>:348-385</code>
+</li>
+<li>excerpt:<pre><code>sparseCheckoutSet := isSparseCheckoutSet(refs)
+if sparseCheckoutSet {
+	commands = append(commands, g.gitCommand(&quot;sparse-checkout&quot;, &quot;init&quot;))
+}
+...
+if (refs.BloblessFetch != nil &amp;&amp; *refs.BloblessFetch) || sparseCheckoutSet {
+	filterArgs = append(filterArgs, &quot;--filter=blob:none&quot;)
+}
+...
+gitMergeCommand := g.gitCommand(&quot;merge&quot;, &quot;--no-ff&quot;, prCheckout)</code></pre>
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>no clone-path change in the regression window</h3>
+<ul>
+<li>where: commits <code>43e2154a6</code> ("feat(clonerefs): add sparse-checkout mode"), <code>7b19dc1d0</code> ("fix(clonerefs): remove cloneDepth=1 from sparseCheckout")
+</li>
+<li>excerpt:<pre><code>git log -- pkg/pod-utils/clone/clone.go shows nothing between those commits and the 2026-10-23 bump, so the behaviour change in the window is external.</code></pre>
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>merge-tree pre-write step in the clone command list</h3>
+<ul>
+<li>where: <code>pkg/pod-utils/clone/clone.go:378-386</code> (<code>40cea8c67</code>), <code>pkg/pod-utils/clone/clone.go:421-437</code> (<code>bestEffortCommand</code>)
+</li>
+<li>excerpt:<pre><code>if partialClone {
+	// Works around a regression in git 2.54 and later: git merge can ask
+	// the server for a blob it just wrote, which fails the merge. ...
+	commands = append(commands, bestEffortCommand{g.gitCommand(&quot;merge-tree&quot;, &quot;--write-tree&quot;, &quot;HEAD&quot;, prCheckout)})
+}</code></pre>
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>base image pin and previous tag</h3>
+<ul>
+<li>where: <code>.ko.yaml:5-40</code> (<code>baseImageOverrides</code>), <code>.prow-images.yaml:31</code> (<code>cmd/clonerefs</code>), <code>Makefile:126</code> (<code>push-images</code>)
+</li>
+<li>excerpt:<pre><code>sigs.k8s.io/prow/cmd/clonerefs: gcr.io/k8s-staging-test-infra/git:v20261023-d6356df2e8
+(previous, pre-regression: gcr.io/k8s-staging-test-infra/git:v20260512-1f34ef0df3)</code></pre>
+</li></ul>
+<h3><span class="tag c-blue">related-pr</span>#1054 merged the workaround that resolves this issue</h3>
+<ul>
+<li>ref: kubernetes-sigs/prow#1054
+</li>
+<li>relevance: Merged 2026-11-04T02:06:40Z as <code>5bf71c288</code> (change <code>40cea8c67</code>), +167/−2 across <code>pkg/pod-utils/clone/clone.go</code> and <code>clone_test.go</code>. Runs <code>merge-tree --write-tree</code> before <code>git merge</code> for blobless or sparse clones and ignores its result; adds <code>TestRunMergesInPartialClone</code>. Self-described workaround, removable once a fixed git ships.
+</li></ul>
+<h3><span class="tag c-blue">related-pr</span>#1045 recovers failed sparse merges with a complete fetch</h3>
+<ul>
+<li>ref: kubernetes-sigs/prow#1045
+</li>
+<li>relevance: Open at <code>66eb058c0c9e</code>, CI green (unit, integration, lint, image build), mergeable, no review decision. Extracts <code>runClone</code>, adds <code>shouldFallBackToFullFetch</code> (sparse set, last command is <code>git merge --no-ff</code>, output has no <code>CONFLICT</code>/<code>Automatic merge failed</code>), removes the failed clone dir, re-runs with <code>g.fullFetch</code>, keeps the failed commands and sets <code>Record.FellBackToFullFetch</code> (rendered as <code># Sparse checkout merge failed, retried with a full object fetch</code>). Its integration test injects the failure with a <code>git</code> shim because a working git cannot reproduce it. Closed 2026-11-04T08:06:31Z by its author (<code>/close in favor of https://github.com/kubernetes-sigs/prow/pull/1054</code>) after cblecker suggested #1054 covers it; never merged.
+</li></ul>
+<h3><span class="tag c-blue">related-issue</span>OpenShift CI tracks the same failure as DPTP-5469</h3>
+<ul>
+<li>ref: private JIRA DPTP-5469 (author comment 2026-10-29T19:53:44Z)
+</li>
+<li>relevance: Their mitigation ask is pinning the <code>/pod-utils</code> utility image tag on OpenShift build clusters; they note any Prow instance on the new base image is equally affected.
+</li></ul>
+<h2>Resolved</h2>
+<h3><span class="tag c-amber">cause</span>git regression between 2.52.0 and 2.54.0, apparently fixed by 2.55+</h3>
+<ul>
+<li>resolved: 2026-11-04 — the regression is pinned to git <code>5946a564</code> and the failure mechanism is confirmed (see the <code>[cause] git regression pinned to 5946a564</code> finding), so the "exact commit unidentified / inference only" caveat no longer applies.
+</li>
+<li>prior detail: Alpine 3.23.x ships git 2.52.0 (pre-bump image), Alpine 3.24.3 ships git 2.54.0 (post-bump image), Alpine <code>edge</code>/aports <code>master</code> ships git 2.56.0; evidence pointed at the promisor lazy-fetch path treating a locally written merge-result blob as missing, then segfaulting on the rejected fetch.
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>Duplicate search: <code>gh issue list --search &quot;sparse blobless merge&quot;</code> and <code>&quot;clonerefs sparse&quot;</code> return only #1043; no older duplicate.
+</li>
+<li>Timeline (paginated), as of the 2026-10-31 triage: one <code>cross-referenced</code> event (#1045) and one author comment (DPTP-5469); no maintainer response, no labels.
+</li>
+<li><code>git log -- pkg/pod-utils/clone/clone.go</code>: no clone-path commit between the sparse feature/<code>cloneDepth</code> fix and the bump.
+</li>
+<li><code>.ko.yaml</code> history: previous pin <code>v20260512-1f34ef0df3</code> (2026-05-12), so a rollback target exists.
+</li>
+<li>Local reproduction with the reporter's exact SHAs under git 2.56.0: passes. Could not reproduce the failure — no container runtime and no zlib/curl dev headers to build git 2.52/2.54, so "broken on 2.54.0" rests on the reporter's image plus the Alpine package mapping.
+</li>
+<li>Base image age: <code>alpine:3.24.3</code> pushed 2026-10-23T05:24Z; <code>3.24.0</code> 2026-06-10; <code>3.23.4</code> 2026-04-15; <code>3.23.7</code> 2026-10-23 (still git 2.52.0).
+</li>
+<li>Alpine release line: no <code>3.25-stable</code> branch, no <code>3.25</code>/<code>4.x</code> tags, <code>latest</code> = 3.24.3, <code>edge</code> is the only newer stream; release branches each May and November.
+</li>
+<li>Test coverage: zero occurrences of "sparse" in <code>test/integration/test/pod-utils_test.go</code>; sparse unit tests assert argv only.
+</li>
+<li>Label set: <code>kubernetes-sigs/prow</code> has no <code>area/pod-utils</code>; <code>kind/bug</code>, <code>kind/regression</code>, <code>priority/important-soon</code> all exist.
+</li>
+<li>Refresh at 2026-11-04: timeline since 2026-10-31T20:16:26Z shows <code>cross-referenced</code> #1054 (2026-11-04T01:21:41Z), the maintainer's <code>/close</code> comment (16:31:34Z) and the <code>closed</code> event (16:31:41Z), plus the bot's close comment; no other activity.
+</li>
+<li>#1045 ended CLOSED on 2026-11-04T08:06:31Z (author self-close in favour of #1054), never merged.
+</li>
+<li>Upstream main moved from <code>c06373a3e</code> to <code>091a7d737</code>; the only clone-path change in that range is <code>40cea8c67</code> (#1054). <code>.ko.yaml</code> still pins <code>gcr.io/k8s-staging-test-infra/git:v20261023-d6356df2e8</code> (git 2.54.0), so the workaround is still load-bearing.
+</li>
+<li>No post-merge comment from ARO-HCP, kubevirt or OpenShift CI claiming the failure persists.
+</li>
+<li>Briefed the maintainer in slide form on 2026-10-31 (overview, legitimacy, root cause, technical detail, solution, effort, recommendations) plus follow-ups on how a base-image bump propagates, the age of <code>alpine:3.24.3</code>, available Alpine versions, and whether a fixed git alone is enough. Maintainer subsequently closed the issue as resolved via #1054 (2026-11-04).
+</li></ul>
+<h2>Next steps</h2>
+<ul>
+<li>Nothing blocking: the issue is closed and the workaround merged. Watch the previously failing jobs (ARO-HCP <code>test-unit</code>, kubevirt HCO) for a repeat of <code>upload-pack: not our ref</code>; if one shows up, this needs a full re-triage rather than another workaround.
+</li>
+<li>Still open long-term: move the pod-utils base image off git 2.54.0 (<code>alpine:3.25</code> when the branch is cut, or <code>edge</code>), then delete the <code>merge-tree --write-tree</code> step and its comment in <code>commandsForPullRefs</code> (<code>clone.go:378-386</code>) and drop the <code>bestEffortCommand</code> shim if nothing else uses it; keep <code>TestRunMergesInPartialClone</code> as the regression test.
+</li>
+<li>Consider an integration test that runs in the clonerefs image: CI's <code>kubekins-e2e</code> carries git 2.47.3, so <code>TestRunMergesInPartialClone</code> passes there with or without the workaround and cannot catch its removal.
+</li>
+<li>Check the cost: the step runs for every pull merge in every blobless or sparse job (a second merge computation per PR), which is new overhead on large repos.
+</li>
+<li>Optionally answer the reporter's ask #3 on the closed issue: the upstream tracking is the git mailing-list thread linked from #1054, and the base-image decision lives in kubernetes/test-infra <code>images/git/Dockerfile</code>.
+</li>
+<li>Labels: the issue is closed with none applied; <code>kind/bug</code> and <code>kind/regression</code> remain unset if the project wants bookkeeping.
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>When will a fixed git land in the pod-utils base image so the <code>merge-tree --write-tree</code> workaround can be removed, and should prow track that with its own issue?
+</li>
+<li>Is the extra <code>merge-tree --write-tree</code> per pull merge acceptable on large repos long term, or does it need a cheaper equivalent once git is fixed?
+</li>
+<li>Should <code>clonerefs</code> surface a clearer diagnostic when a promisor fetch of a locally created object fails, given the segfault itself is still unexplained upstream?
+</li></ul>
+</main></body></html>

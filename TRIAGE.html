@@ -46,7 +46,10 @@ recommended_labels: [kind/bug, kind/regression, priority/important-soon]
 refresh_log:
   - at: 2026-11-04T17:25:20Z
     since: 2026-10-31T20:16:26Z
-    summary: &quot;issue closed as completed citing merged #1054 (merge-tree pre-write workaround); #1045 closed in favour of it; main re-anchored to 091a7d737&quot;</code></pre></details>
+    summary: &quot;issue closed as completed citing merged #1054 (merge-tree pre-write workaround); #1045 closed in favour of it; main re-anchored to 091a7d737&quot;
+advice:
+  advised_at: 2026-11-06T12:04:22Z
+  based_on_triaged_at: 2026-11-04T17:25:20Z</code></pre></details>
 <h2>Verdict</h2>
 <p><strong>accepted → resolved</strong> — a real regression in the <code>clonerefs</code> init container, caused by the git shipped in the 2026-10-23 base-image bump, not by any <code>clonerefs</code> code change.</p>
 <p>Legitimate on every axis: the component lives in this repo (<code>cmd/clonerefs</code>, <code>pkg/pod-utils/clone</code>), the report carries the exact commands, image tag, blob SHAs, two independent repos and <code>clone-records.json</code> links, and the failure is isolated to this repo's own image bump (#1036) — the same PR head passed hours earlier and no clone-path commit landed in between. Root cause: sparse checkout implies <code>--filter=blob:none</code>, so git may lazily fetch an object it just created; the git 2.54.0 in Alpine 3.24.3 asks the origin for a merge-result blob that only exists locally, gets <code>upload-pack: not our ref</code>, and segfaults instead of failing cleanly. The pre-bump image (git 2.52.0) and the reporter's exact recipe under git 2.56.0 both succeed. Effort is Level 3: the patch is small, but it is the clone path every job's init container uses and the underlying defect is external. The base-image decision (<code>alpine:3.23.7</code> now vs <code>edge</code>/<code>3.25.0</code> later) and the recovery-guard question (#1045 was closed in favour of the merged workaround) are no longer blocking; what remains is shipping a fixed git so the workaround can be removed.</p>
@@ -231,6 +234,38 @@ gitMergeCommand := g.gitCommand(&quot;merge&quot;, &quot;--no-ff&quot;, prChecko
 <li>Optionally answer the reporter's ask #3 on the closed issue: the upstream tracking is the git mailing-list thread linked from #1054, and the base-image decision lives in kubernetes/test-infra <code>images/git/Dockerfile</code>.
 </li>
 <li>Labels: the issue is closed with none applied; <code>kind/bug</code> and <code>kind/regression</code> remain unset if the project wants bookkeeping.
+</li></ul>
+<h2>Advice</h2>
+<p>Verdict is <code>resolved</code> and the issue is already closed (COMPLETED, 2026-11-04T16:31:41Z), so there is no disposition action left. What remains is confirming the workaround actually reaches the affected consumer, and not losing track of its removal.</p>
+<h3>1. Ask the reporter for post-merge verification (the fix was never confirmed by them)</h3>
+<ul>
+<li>why: #1054 is verified by its author against ARO-HCP#7828, kubevirt HCO#4681 and kubernetes#143721, but the reporter never confirmed it, and OpenShift CI builds its own utility images on its own <code>/pod-utils</code> tags — the merged fix reaches them only when they rebuild from prow main. The pod-utils base image still ships git 2.54.0, so a stale rebuild will still fail.
+</li>
+<li>command:
+<pre><code>gh issue comment 1043 --repo kubernetes-sigs/prow --body &quot;#1054 is merged (`40cea8c67`) and pre-writes merge results with `git merge-tree --write-tree` before `git merge` for blobless and sparse clones, so the failing prefetch no longer happens. The pod-utils base image still ships git 2.54.0, so this is a workaround rather than a git fix — it only helps once your utility images are rebuilt from prow main.
+
+Could you confirm the ARO-HCP #7828 and kubevirt HCO #4681 jobs go green after rebuilding `/pod-utils`? If any still shows `upload-pack: not our ref`, please reopen with the clone record — that would mean the workaround misses a case.&quot;</code></pre>
+</li></ul>
+<h3>2. Open a tracking issue for removing the workaround</h3>
+<ul>
+<li>why: #1054 describes itself as "a workaround, to be removed once clonerefs ships a fixed git". <code>.ko.yaml</code> on current main still pins <code>gcr.io/k8s-staging-test-infra/git:v20261023-d6356df2e8</code> (git 2.54.0), <code>images/git/Dockerfile</code> in kubernetes/test-infra has not changed since 2026-10-23, and no existing prow issue tracks the removal. Without a tracker, the <code>merge-tree --write-tree</code> step and its <code>bestEffortCommand</code> shim will outlive the bug that motivated them.
+</li>
+<li>command:
+<pre><code>gh issue create --repo kubernetes-sigs/prow --title &quot;clonerefs: remove the merge-tree --write-tree workaround once a fixed git ships&quot; --body &quot;Follow-up to #1043 / #1054 (merged 2026-11-04, `40cea8c67`).
+
+For blobless and sparse clones, `commandsForPullRefs` now runs `git merge-tree --write-tree HEAD &lt;pull&gt;` before `git merge`, ignoring its result, to avoid git 2.54+ prefetching a merge-result blob it just wrote (git `5946a564`, https://lore.kernel.org/git/yrjh1p92qc7w.fsf@pohly-mobl1.fritz.box/T/#u).
+
+Remove it once the pod-utils base image ships a fixed git:
+- bump `.ko.yaml` `cmd/clonerefs` off `gcr.io/k8s-staging-test-infra/git:v20261023-d6356df2e8` (git 2.54.0, from alpine 3.24.3) to a base with git &gt; 2.54 — alpine 3.25 when the branch is cut, or edge
+- delete the `merge-tree --write-tree` step and its comment in `commandsForPullRefs` (`pkg/pod-utils/clone/clone.go`), and `bestEffortCommand` if nothing else uses it
+- keep `TestRunMergesInPartialClone`; note it only fails on git 2.54.0, and CI&#x27;s kubekins-e2e has git 2.47.3, so an integration case running in the clonerefs image would be needed to catch a regression&quot;</code></pre>
+</li></ul>
+<h3>3. Optional: label the closed issue for history</h3>
+<ul>
+<li>why: the issue carries no labels, so it does not show up under <code>kind/bug</code> or <code>kind/regression</code> searches when someone hits a similar git/promisor failure later.
+</li>
+<li>command:
+<pre><code>gh issue edit 1043 --repo kubernetes-sigs/prow --add-label kind/bug --add-label kind/regression</code></pre>
 </li></ul>
 <h2>Open questions</h2>
 <ul>

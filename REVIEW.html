@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#1037</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>peribolos: support org-level repo defaults</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1037">kubernetes-sigs/prow#1037</a> · base <code>main</code> · head_sha <code>80e1e26595f5</code> · reviewed_at <code>2026-11-06T10:08:27Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span><span class="badge c-green">gate: merge</span></div>
+<details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#1037
+title: &quot;peribolos: support org-level repo defaults&quot;
+head_sha: 80e1e26595f5c055bb0ef8ee42b9f5b998649060
+base: main
+reviewed_at: 2026-11-06T10:08:27Z
+verdict: approve
+gate:
+  decision: merge
+  gated_at: 2026-11-06T10:08:27Z
+  gated_head_sha: 2930af9fa960fe74d13efd67837b3191f9abedc7
+  reviewed_head_sha: 80e1e26595f5c055bb0ef8ee42b9f5b998649060</code></pre></details>
+<h2>Gate</h2>
+<p><strong>Verdict: merge</strong> at <code>2930af9fa960fe74d13efd67837b3191f9abedc7</code>.</p>
+<p>The substantive prior findings are addressed. The latest commit, <code>2930af9fa</code>, restores Go 1.26.4, uses nested settings literals, and removes the unrelated Jira receiver, rifle helper, lint and module changes. The PR description now gives the downstream keyed-literal migration and explicitly says squash fixes affect configurations without defaults. The remaining source compatibility change has a documented mechanical migration and was explicitly accepted as such in the reviewer discussion; it does not change the deployed YAML format. No unacceptable independent merge risk was found.</p>
+<h3>Findings disposition</h3>
+<ul>
+<li><strong>Addressed — Go minimum and unrelated API changes</strong>, raised by @cblecker on 2026-11-05: <code>go.mod:3</code> is back to <code>go 1.26.4</code>; <code>cmd/peribolos/main.go:465-483</code> uses nested <code>RepoSettings</code> literals; Jira and rifle changes are absent from the final PR diff.
+</li>
+<li><strong>Acceptably dispositioned — keyed <code>org.Repo</code> literals</strong>, raised by @cblecker and the deployment reviewer: <code>pkg/config/org/org.go:63-64</code> still embeds <code>RepoSettings</code>, so Go 1.26 importers using promoted fields in keyed literals must switch to the nested form. The current PR description includes the exact migration. This remains a source compatibility caveat, not an unresolved blocker.
+</li>
+<li><strong>Addressed — compatibility claim</strong>, raised by @cblecker and the deployment reviewer: the current description removes the blanket claim and states that effective-pair validation and the <code>Defined()</code> fix affect all configs.
+</li>
+<li><strong>Addressed — archived and squash behavior</strong>, raised by @cblecker and the earlier local review: the reviewer explicitly accepted these changes on 2026-11-05. Current code retains explicit archived-repo settings (<code>cmd/peribolos/main.go:1492-1502</code>), validates effective squash pairs on create and update (<code>1476-1479</code>, <code>1506-1509</code>), and omits squash settings when disabled (<code>1294-1296</code>, <code>1387-1393</code>).
+</li>
+<li>The two local maintenance suggestions below are optional and do not gate merge.
+</li></ul>
+<h3>Independent merge risk</h3>
+<ul>
+<li><strong>Go source API:</strong> consumers constructing <code>org.Repo</code> with keyed defaultable fields on Go 1.26 must nest those fields in <code>RepoSettings</code>. This affects source importers, not prebuilt deployments; migration is documented in the PR description. Include it in release notes when publishing.
+</li>
+<li><strong>Existing configuration behavior:</strong> <code>pkg/github/types.go:491-495</code> activates squash-only updates. Invalid effective combinations return an error at <code>cmd/peribolos/main.go:1506-1509</code>, which stops subsequent reconciliation through <code>1217-1218</code>. This affects existing configs even without defaults. The description now states the scope and the docs describe valid combinations and disabled-squash omission. Audit these settings on upgrade; this is an intentional validation/fix, not a merge blocker.
+</li>
+<li><strong>Opt-in rollout:</strong> defaults can update every listed repository, and null does not opt a repository out. Deploy the binary before migrating settings; retain explicit configuration for rollback. The docs cover scope, overrides, dump limitations and deployment ordering (<code>peribolos.md:115-124</code>).
+</li>
+<li>No new credentials, permissions, external endpoints, or background workers. No additional repository-specific compatibility skill applied.
+</li></ul>
+<h3>Gating list</h3>
+<p>None. No unresolved blocking or substantive should-fix feedback remains.</p>
+<h3>Evidence and limits</h3>
+<p>Read all paginated PR reviews, inline comments and issue comments, and inspected the complete <code>80e1e2659..2930af9fa</code> delta plus current code through <code>git show</code>. The local source checkout remains at the earlier reviewed code, with its review-artifact commit; it was not reset. Tests recorded below ran at <code>80e1e2659</code>, not the latest head. The latest delta changes literal structure and reverts unrelated changes without changing repository reconciliation logic; no new test run or live GitHub write was performed for this gate.</p>
+<h2>Verdict</h2>
+<p>Approve with suggestions. No merge-blocking code findings.</p>
+<p>The three-perspective maintainer review of <code>80e1e26595f5c055bb0ef8ee42b9f5b998649060</code> found sound code quality and low maintenance burden. Deployment risk is moderate because squash-only settings now take effect for existing configurations and defaults can update many listed repositories. Race and JSON v2 compatibility tests passed at that head. The review recommended an upgrade note and narrowing the compatibility claim, with optional completeness-test and diagnostic improvements; the gate above separately evaluates the newer head and the author's subsequent changes.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Shares nine repository settings through an optional org-level <code>repo_defaults</code> block; listed repositories inherit unset values and retain explicit overrides, including <code>false</code>.
+</li>
+<li>Embeds the shared settings in <code>org.Repo</code>, preserves flat JSON/YAML and legacy <code>private</code> parsing, and rejects unsupported default keys.
+</li>
+<li>Validates effective squash title/message pairs before repository writes, omits these settings when squash merging is disabled, and recognizes squash-only update requests.
+</li>
+<li>Ignores inherited defaults on archived repositories with unset archival while continuing to check explicit per-repository settings.
+</li>
+<li>Requires Go 1.27, flattens selected embedded-field literals, and includes small Jira error-receiver and rifle string-helper changes.
+</li></ul>
+<h2>Findings</h2>
+<p>These are optional maintainer suggestions, not correctness defects or merge blockers.</p>
+<h3><span class="tag c-gray">nit</span>Detect omissions when future settings are added</h3>
+<ul>
+<li>where: <code>pkg/config/org/org.go:146-178</code>
+</li>
+<li>concern: The current inheritance list covers every field. Optionally add a test that discovers <code>RepoSettings</code> fields so a future addition cannot be omitted from both the inheritance implementation and its handwritten fixtures.
+</li>
+<li>excerpt:<pre><code>func (r Repo) WithDefaults(defaults *RepoDefaults) Repo {
+    if defaults == nil {
+        return r
+    }
+    if r.AllowSquashMerge == nil {
+        r.AllowSquashMerge = defaults.AllowSquashMerge
+    }</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">nit</span>Include the owning org in default-decoding errors</h3>
+<ul>
+<li>where: <code>pkg/config/org/org.go:133-139</code>
+</li>
+<li>concern: Errors identify the defaults block and unsupported key, but a configuration with many orgs still requires locating the relevant block. Consider attaching the org name or configuration location when decoding.
+</li>
+<li>excerpt:<pre><code>func (r *RepoDefaults) UnmarshalJSON(data []byte) error {
+    var settings RepoSettings
+    decoder := json.NewDecoder(bytes.NewReader(data))
+    decoder.DisallowUnknownFields()
+    if err := decoder.Decode(&amp;settings); err != nil {
+        return fmt.Errorf(&quot;repo_defaults: %w&quot;, err)
+    }</code></pre>
+</li></ul>
+<h2>Resolved</h2>
+<p>These entries preserve earlier review history. The gate above records subsequent changes at the current PR head.</p>
+<ul>
+<li><strong>Create-path squash message without a compatible title:</strong> <code>configureRepos</code> now validates against the default title/message pair before creation. Incompatible message-only creation is rejected locally with repository context; updates use current values for unspecified fields. Tests cover both paths.
+</li>
+<li><strong>Archived-repository skip and missing documentation:</strong> when <code>archived</code> is unset, the delta now uses the explicit repository config without inherited defaults. Description and rename tests preserve the existing error behavior for archived repositories, and the documentation explains the distinction.
+</li>
+<li><strong>Squash settings while squash merging is disabled:</strong> create and update requests omit both squash fields when squash merging will be off, preserving other requested changes.
+</li>
+<li><strong>Empty-title update fallback:</strong> the title backfill was removed. Validation uses the current pair without adding an empty title to the request.
+</li>
+<li><strong>Unvalidated squash enum values:</strong> effective values are now checked before create/update requests. Invalid or empty values produce local errors instead of reaching the GitHub write call.
+</li>
+<li><strong>Field-list completeness guard:</strong> no present defect was demonstrated. The maintainer review retains a future-proofing test only as the optional nit above.
+</li>
+<li><strong>Decode errors without org context:</strong> no correctness regression was found; the maintainer review retains additional context only as the optional diagnostic nit above.
+</li>
+<li><strong>Naming and pointer aliasing:</strong> no unsafe mutation through inherited pointers was found in the call paths reviewed. The earlier naming and hypothetical mutation concerns are not retained as defects.
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>Independent Code Quality and Maintainability reviewers both recommended approval. The Deployment Risk reviewer rated risk medium and found no deployment blocker. No concern was independently raised by multiple reviewers.
+</li>
+<li>Current-head gate checked all substantive GitHub feedback against fetched commit <code>2930af9fa</code>; the Go 1.27 requirement and unrelated Jira/rifle changes described in the historical feature summary above have been removed. The PR description now explains the keyed-literal migration and the squash fixes' applicability to all configs.
+</li>
+<li>Compared all 12 changed paths against merge base <code>091a7d73761d32baf5b1313f9a517d8c222fc5aa</code>, using <code>upstream/main</code>, which is ahead of local <code>main</code>.
+</li>
+<li><code>git rev-parse HEAD</code> returned <code>d6e6b92f6e8bd91e1a2ae6c70bea7e5853cec956</code>, a local review-artifact commit whose only changed files are <code>REVIEW.md</code> and <code>REVIEW.html</code>. Its parent <code>80e1e26595f5c055bb0ef8ee42b9f5b998649060</code> is the reviewed PR head, also confirmed through read-only GitHub metadata. The frontmatter records that PR head so later refreshes compare code revisions correctly.
+</li>
+<li>Inheritance covers nil/empty defaults, explicit true/false, null inheritance, supported fields, source-config immutability, and unlisted repositories.
+</li>
+<li>JSON/YAML round trips remain flat; legacy <code>private</code> parsing and permissive per-repository decoding are preserved, while default keys are checked strictly.
+</li>
+<li>Squash pair validation covers create/update paths, inherited and overridden combinations, partial updates, invalid and empty values, enablement, and disabled-setting omission. <code>RepoRequest.Defined()</code> recognizes either squash field.
+</li>
+<li>Archived-repository coverage includes inherited defaults, explicit description changes, previous-name renames, and matching explicit settings.
+</li>
+<li>Reviewed repository request serialization, create/update call sites, Jira error construction and type handling, and rifle directory-selection behavior.
+</li>
+<li>Passed with Go 1.27 selected through <code>GOTOOLCHAIN=auto</code>: <code>go test -race ./pkg/config/org ./cmd/peribolos ./pkg/github</code>.
+</li>
+<li>Passed with <code>GOTOOLCHAIN=auto GOEXPERIMENT=jsonv2</code>: <code>go test ./pkg/config/... ./pkg/github/... ./cmd/peribolos ./pkg/jira ./pkg/plugins/rifle</code>.
+</li>
+<li>GitHub write behavior was evaluated through code and test fakes; no live API mutation or full end-to-end GitHub test was performed. External downstream importers were not built.
+</li></ul>
+<h2>Open questions</h2>
+<p>None.</p>
+</main></body></html>

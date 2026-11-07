@@ -30,15 +30,15 @@ ul, ol { padding-left:1.5rem; }
 .c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
 details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
 </style></head><body><main>
-<h1>cherrypicker: add a flag to support <code>git cherry-pick -x</code> style commit messages</h1>
-<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/issues/500">kubernetes-sigs/prow#500</a> · main_sha <code>52c1eeb13bd2</code> · state <code>open</code> · labels <code>kind/feature, area/plugins</code> · triaged_at <code>2026-10-10T14:39:56Z</code></div>
+<h1>cherrypicker: add a flag to support <code>git cherry-pick -x</code> style commit messages for</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/issues/500">kubernetes-sigs/prow#500</a> · main_sha <code>52c1eeb13bd2</code> · state <code>open</code> · labels <code>kind/feature, lifecycle/stale, area/plugins</code> · triaged_at <code>2026-11-07T20:55:04Z</code></div>
 <div class="badges"><span class="badge c-green">verdict: accepted</span></div>
 <details><summary>Full metadata</summary><pre><code>issue: kubernetes-sigs/prow#500
-title: &quot;cherrypicker: add a flag to support `git cherry-pick -x` style commit messages&quot;
+title: &quot;cherrypicker: add a flag to support `git cherry-pick -x` style commit messages for&quot;
 state: open
-labels: kind/feature, area/plugins
+labels: kind/feature, lifecycle/stale, area/plugins
 main_sha: 52c1eeb13bd2f1a241b2314b5ca06ed55ab17b2e
-triaged_at: 2026-10-10T14:39:56Z
+triaged_at: 2026-11-07T20:55:04Z
 verdict: accepted
 refresh_log:
   - timestamp: 2026-06-02T23:43:12Z
@@ -47,6 +47,8 @@ refresh_log:
     summary: Label changed stale→rotten (k8s-triage-robot), no substantive activity
   - timestamp: 2026-10-10T14:39:56Z
     summary: Refreshed since 2026-06-30; petr-muller removed lifecycle/rotten, with no new PR references
+  - timestamp: 2026-11-07T20:55:04Z
+    summary: Refreshed since 2026-10-10; k8s-triage-robot added lifecycle/stale, PR #661 still open with a 2026-10-15 review ping
 advice:
   advised_at: 2026-10-10T14:42:00Z
   based_on_triaged_at: 2026-10-10T14:39:56Z</code></pre></details>
@@ -58,9 +60,11 @@ advice:
 </li></ul>
 <p>Since previous triage:</p>
 <ul>
-<li>On 2026-08-08, petr-muller commented <code>/remove-lifecycle rotten</code>; the current labels are <code>kind/feature</code> and <code>area/plugins</code>.
+<li>On 2026-11-06, k8s-triage-robot applied <code>lifecycle/stale</code> after 90 days of inactivity and posted the standard stale notice; current labels are <code>kind/feature</code>, <code>lifecycle/stale</code>, <code>area/plugins</code>.
 </li>
-<li>The issue remains open. There are no other new comments or cross-referenced PRs since 2026-06-30.
+<li>PR #661 is still open; AaruniAggarwal pinged petr-muller for review on 2026-10-15 and no review has been submitted since.
+</li>
+<li>The issue remains open. No new cross-referenced PRs since 2026-10-10.
 </li></ul>
 <h2>Findings</h2>
 <h3><span class="tag c-amber">cause</span>No post-apply commit message modification in cherry-pick flow</h3>
@@ -136,13 +140,15 @@ if err := p.Push(r, newBranch, true); err != nil {</code></pre>
 </li>
 <li><code>getPatch</code> returns raw patch bytes from GitHub, suitable for pre-processing before <code>Am()</code>
 </li>
-<li>PR #661 by AaruniAggarwal explicitly addresses this request; it remains open, was updated 2026-09-29, and changes the cherrypicker flag, server, and tests. Its review decision is unset and mergeability is unknown.
+<li>PR #661 by AaruniAggarwal explicitly addresses this request; it remains open, was last updated 2026-10-15 by an author review ping, and changes the cherrypicker flag, server, and tests. Its review decision is unset and mergeability is unknown.
 </li>
-<li>Upstream main has advanced since <code>main_sha</code>; PR #9404 adds kind-label propagation to cherry-pick PR bodies but does not change the patch-apply/push path relevant to this request.
+<li>Upstream <code>main</code> advanced 488 commits since <code>main_sha</code>; the only cherrypicker changes are <code>9404b76f0</code> (kind-label propagation, PR #638), <code>bcf4297e5</code> (merge of #638), <code>dd76a9069</code> (gofmt), and <code>b94a0f19a</code> (label attribution). None touch the patch-apply/push path relevant to this request.
 </li></ul>
 <h2>Next steps</h2>
 <ul>
-<li>Review/track PR #661 before assigning duplicate implementation work. If it stalls or closes without merging, check with AaruniAggarwal; if inactive, remove the assignment and add <code>help wanted</code>.
+<li>Clear <code>lifecycle/stale</code> (<code>/remove-lifecycle stale</code>): PR #661 is still open and awaiting review, so the issue is not inactive; the bot will close it around 2026-12-06 without further activity.
+</li>
+<li>Review PR #661 before assigning duplicate implementation work; its author pinged for review on 2026-10-15. If it stalls or closes without merging, check with AaruniAggarwal; if inactive, remove the assignment and add <code>help wanted</code>.
 </li>
 <li>Maintainer implementation guidance in the 2026-02-23 comment is solid reference for any contributor
 </li>

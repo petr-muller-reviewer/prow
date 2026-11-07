@@ -1,10 +1,10 @@
 ---
 issue: kubernetes-sigs/prow#500
-title: "cherrypicker: add a flag to support `git cherry-pick -x` style commit messages"
+title: "cherrypicker: add a flag to support `git cherry-pick -x` style commit messages for"
 state: open
-labels: kind/feature, area/plugins
+labels: kind/feature, lifecycle/stale, area/plugins
 main_sha: 52c1eeb13bd2f1a241b2314b5ca06ed55ab17b2e
-triaged_at: 2026-10-10T14:39:56Z
+triaged_at: 2026-11-07T20:55:04Z
 verdict: accepted
 refresh_log:
   - timestamp: 2026-06-02T23:43:12Z
@@ -13,6 +13,8 @@ refresh_log:
     summary: Label changed stale→rotten (k8s-triage-robot), no substantive activity
   - timestamp: 2026-10-10T14:39:56Z
     summary: Refreshed since 2026-06-30; petr-muller removed lifecycle/rotten, with no new PR references
+  - timestamp: 2026-11-07T20:55:04Z
+    summary: Refreshed since 2026-10-10; k8s-triage-robot added lifecycle/stale, PR #661 still open with a 2026-10-15 review ping
 advice:
   advised_at: 2026-10-10T14:42:00Z
   based_on_triaged_at: 2026-10-10T14:39:56Z
@@ -23,8 +25,9 @@ advice:
 - The request is for a flag that adds `git cherry-pick -x`-style source trailers.
 
 Since previous triage:
-- On 2026-08-08, petr-muller commented `/remove-lifecycle rotten`; the current labels are `kind/feature` and `area/plugins`.
-- The issue remains open. There are no other new comments or cross-referenced PRs since 2026-06-30.
+- On 2026-11-06, k8s-triage-robot applied `lifecycle/stale` after 90 days of inactivity and posted the standard stale notice; current labels are `kind/feature`, `lifecycle/stale`, `area/plugins`.
+- PR #661 is still open; AaruniAggarwal pinged petr-muller for review on 2026-10-15 and no review has been submitted since.
+- The issue remains open. No new cross-referenced PRs since 2026-10-10.
 
 ## Findings
 
@@ -84,11 +87,12 @@ Since previous triage:
 - `Interactor` interface has no commit-amend or rebase methods, but patch-modification approach avoids needing them
 - No existing configuration surface for cherry-pick commit message formatting
 - `getPatch` returns raw patch bytes from GitHub, suitable for pre-processing before `Am()`
-- PR #661 by AaruniAggarwal explicitly addresses this request; it remains open, was updated 2026-09-29, and changes the cherrypicker flag, server, and tests. Its review decision is unset and mergeability is unknown.
-- Upstream main has advanced since `main_sha`; PR #9404 adds kind-label propagation to cherry-pick PR bodies but does not change the patch-apply/push path relevant to this request.
+- PR #661 by AaruniAggarwal explicitly addresses this request; it remains open, was last updated 2026-10-15 by an author review ping, and changes the cherrypicker flag, server, and tests. Its review decision is unset and mergeability is unknown.
+- Upstream `main` advanced 488 commits since `main_sha`; the only cherrypicker changes are `9404b76f0` (kind-label propagation, PR #638), `bcf4297e5` (merge of #638), `dd76a9069` (gofmt), and `b94a0f19a` (label attribution). None touch the patch-apply/push path relevant to this request.
 
 ## Next steps
-- Review/track PR #661 before assigning duplicate implementation work. If it stalls or closes without merging, check with AaruniAggarwal; if inactive, remove the assignment and add `help wanted`.
+- Clear `lifecycle/stale` (`/remove-lifecycle stale`): PR #661 is still open and awaiting review, so the issue is not inactive; the bot will close it around 2026-12-06 without further activity.
+- Review PR #661 before assigning duplicate implementation work; its author pinged for review on 2026-10-15. If it stalls or closes without merging, check with AaruniAggarwal; if inactive, remove the assignment and add `help wanted`.
 - Maintainer implementation guidance in the 2026-02-23 comment is solid reference for any contributor
 - Recommended approach: modify patch file before `Am()` to inject `(cherry picked from commit <SHA>)` trailers — avoids interactor interface changes
 

@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#857</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>chore(deps): bump golang.org/x/net from 0.57.0 to 0.58.0 in the golang-x group across 1 directory</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/857">kubernetes-sigs/prow#857</a> · base <code>main</code> · head_sha <code>8196d2d52a08</code> · reviewed_at <code>2026-08-18T23:22:50Z</code></div>
+<div class="badges"><span class="badge c-amber">verdict: needs-discussion</span></div>
+<details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#857
+title: &quot;chore(deps): bump golang.org/x/net from 0.57.0 to 0.58.0 in the golang-x group across 1 directory&quot;
+head_sha: 8196d2d52a08e5be786c4c1585f4bf17ee29c93e
+base: main
+reviewed_at: 2026-08-18T23:22:50Z
+verdict: needs-discussion
+refresh_log:
+  - old_sha: b2e66c300bfbbb6d9295d0d3553c8635c223833e
+    new_sha: 8196d2d52a08e5be786c4c1585f4bf17ee29c93e
+    summary: PR merged as-is; dependabot rebased the branch onto a main that had advanced (unrelated commits 250424c17, a6561e582, 406c912aa), but the x/net/crypto bump content itself is byte-identical to what was reviewed. No new findings.</code></pre></details>
+<h2>What this PR does</h2>
+<ul>
+<li>Dependabot group bump: <code>golang.org/x/net</code> v0.57.0 -&gt; v0.58.0 (direct dep in root <code>go.mod</code>, indirect in <code>hack/tools/go.mod</code>).
+</li>
+<li>Drags along transitive <code>golang.org/x/crypto</code> v0.54.0 -&gt; v0.55.0 (indirect in both <code>go.mod</code>s).
+</li>
+<li>Dep-only PR: only <code>go.mod</code>/<code>go.sum</code> in root and <code>hack/tools/</code> changed. No project source touched.
+</li></ul>
+<p>Since previous review:</p>
+<ul>
+<li>PR merged 2026-08-17T19:57Z (commit <code>8196d2d52a08e5be786c4c1585f4bf17ee29c93e</code> on <code>main</code>).
+</li>
+<li>Dependabot's branch was rebased onto a <code>main</code> that had advanced with 3 unrelated commits (<code>250424c17</code> kubernetes-group bump, <code>a6561e582</code> deepcopy-gen fix, <code>406c912aa</code> merge of #853) between the original review and merge; the dependency-bump content itself (<code>golang.org/x/net</code> v0.57.0→v0.58.0, <code>golang.org/x/crypto</code> v0.54.0→v0.55.0) is unchanged.
+</li>
+<li>Approved by cblecker (<code>/lgtm</code> from stmcginnis, approval + <code>/easycla</code> from cblecker); no review comments raised the freshness question noted below.
+</li></ul>
+<h2>Verdict rationale</h2>
+<p>Both bumped releases are functionally inert for this codebase (the substantive upstream changes land in packages we don't import), but both are very fresh (5-6 days old as of review). Low risk either way; flagging for a soak-time judgment call rather than blocking outright.</p>
+<h2>Findings</h2>
+<h3><span class="tag c-blue">question</span>golang.org/x/net v0.58.0 is only 5 days old</h3>
+<ul>
+<li>where: <code>go.mod:65</code>
+</li>
+<li>concern: Released 2026-08-12 (real tag, not a pseudo-version). Under the ~5-day soak-time guideline. Changelog for this range is dominated by <code>internal/http3</code>, <code>quic</code>, <code>http2</code>/<code>http2/hpack</code> changes, one <code>dns/dnsmessage</code> OOB boundary-check fix, and an <code>http/httpproxy</code> env-var priority fix. We only import <code>golang.org/x/net/xsrftoken</code> (<code>pkg/githuboauth/githuboauth.go</code>) and <code>golang.org/x/net/html</code> (<code>pkg/spyglass/lenses/html/html.go</code>) — neither package appears in the commit range for this release. Functionally a no-op for us; safe to take now or wait, exposure is effectively zero either way.
+</li>
+<li>excerpt:<pre><code>-	golang.org/x/net v0.57.0
++	golang.org/x/net v0.58.0</code></pre>
+</li></ul>
+<h3><span class="tag c-blue">question</span>golang.org/x/crypto v0.55.0 is only 6 days old, but unused</h3>
+<ul>
+<li>where: <code>go.mod:169</code>
+</li>
+<li>concern: Released 2026-08-11, indirect-only, riding along with the x/net bump. Zero import surface in our source (<code>grep</code> for the import path returns nothing outside go.mod/go.sum). Changelog is almost entirely <code>golang.org/x/crypto/ssh</code> hardening fixes plus <code>ocsp</code>/<code>x509roots</code>/<code>acme</code> changes — none reachable from our code. No exposure regardless of freshness.
+</li>
+<li>excerpt:<pre><code>-	golang.org/x/crypto v0.54.0 // indirect
++	golang.org/x/crypto v0.55.0 // indirect</code></pre>
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>Diff scope confirmed dep-only: <code>go.mod</code>, <code>go.sum</code>, <code>hack/tools/go.mod</code>, <code>hack/tools/go.sum</code> only.
+</li>
+<li>Import surface for <code>golang.org/x/net</code>: 2 non-test files (<code>pkg/githuboauth/githuboauth.go</code>, <code>pkg/spyglass/lenses/html/html.go</code>) plus 1 test file.
+</li>
+<li>Import surface for <code>golang.org/x/crypto</code>: zero hits in project source.
+</li>
+<li>Commit range <code>golang/net@v0.57.0...v0.58.0</code> and <code>golang/crypto@v0.54.0...v0.55.0</code> reviewed for changes touching <code>xsrftoken</code>, <code>html</code>, or <code>ssh</code> (none of ours) — no overlap with our usage.
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>Is there urgency to take this now (e.g. keeping pace with dependabot security scanning), or can it wait a few more days for more soak time given both releases are under a week old?
+</li></ul>
+<h2>Dependency followups</h2>
+<p>No followup opportunities identified (mined 2026-11-03, post-merge).</p>
+<ul>
+<li><code>golang.org/x/net</code> v0.57.0 -&gt; v0.58.0 (direct in root <code>go.mod</code>, indirect in <code>hack/tools/go.mod</code>): the range changes <code>internal/http3</code>, <code>quic</code>, <code>http2</code>/<code>http2/hpack</code>, <code>http/httpproxy</code>, and <code>dns/dnsmessage</code>; the only packages this repo imports are <code>xsrftoken</code> (<code>pkg/githuboauth/githuboauth.go:33</code>) and <code>html</code> (<code>pkg/spyglass/lenses/html/html.go:27</code>), neither of which is touched. The diff adds no <code>Deprecated</code> markers.
+</li>
+<li><code>golang.org/x/crypto</code> v0.54.0 -&gt; v0.55.0 (indirect in both modules): this repo imports nothing from it directly. The range is <code>ssh</code> hardening/race fixes, an <code>ocsp.ParseRequest</code> error-condition tightening, <code>acme</code> test fixes, and an <code>x509roots</code> bundle refresh. <code>ocsp</code> is not in the compiled package graph; <code>x/crypto/ssh</code> arrives only via <code>github.com/go-git/go-git/v5/plumbing/transport/ssh</code> (no call sites of ours). The diff adds no <code>Deprecated</code> markers.
+</li></ul>
+</main></body></html>

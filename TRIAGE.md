@@ -10,6 +10,9 @@ refresh_log:
   - at: 2026-11-07T22:53:48Z
     since: 2026-11-04T16:19:32Z
     summary: "PR #1056 merged 2026-11-05; issue closed as COMPLETED; verified upstream/main builds with Go 1.26.4 and contains no jsontext import."
+advice:
+  advised_at: 2026-11-07T22:58:18Z
+  based_on_triaged_at: 2026-11-07T22:53:48Z
 legitimacy: LEGITIMATE
 effort: 1
 recommended_labels: [kind/bug, kind/regression, priority/important-soon, good first issue]
@@ -103,6 +106,22 @@ Since previous triage:
 - None required on the issue: it is closed and the fix is verified on `upstream/main` (`GOTOOLCHAIN=go1.26.4 go build ./cmd/crier` succeeds).
 - Optional follow-up (not filed): a CI job that builds a representative package with the toolchain implied by `go.mod`'s `go` directive, so dev-toolchain drift is caught before release.
 - The four OpenShift Prow-bump PRs (ci-chat-bot#652, release-controller#838, ci-tools#5505, ci-tools-standalone#73) should now be unblocked.
+
+## Advice
+
+No change since the 2026-11-07 refresh: #1055 is closed as `COMPLETED`, fixed by merged PR #1056, with no comments, labels, assignees, or milestone. The verdict is `resolved`, so there is nothing to do on the issue itself; the labels listed under `recommended_labels` were never applied and adding them now would serve no purpose.
+
+1. **Do nothing on #1055.** The fix is merged (`a23969f4`, 2026-11-05T12:09:15Z) and post-merge verification passed on `upstream/main`: `GOTOOLCHAIN=go1.26.4 go build ./cmd/crier` exits 0 and `rg jsontext` finds nothing.
+
+2. **Optional — file the follow-up from `## Open questions`** (a new issue, not a change to #1055): CI never builds with the Go version declared in `go.mod`, which is why this regression only surfaced downstream.
+
+```bash
+gh issue create --repo kubernetes-sigs/prow \
+  --title "Presubmit: build with the Go version declared in go.mod" \
+  --body "The #1055 regression (generated code requiring Go 1.27 while go.mod declares 1.26.4) was only caught by downstream consumers. verify-codegen regenerates with .go-version (1.27.3), so it cannot detect toolchain drift against the declared minimum. Proposal: add a presubmit, or extend make verify, that runs go build on a representative package set (e.g. ./cmd/crier) with GOTOOLCHAIN pinned to the version from the go directive in go.mod. Refs: #1055, #1056."
+```
+
+3. **Optional — no comment needed on #1055 or #1056.** Both are complete, and the four OpenShift Prow-bump PRs (ci-chat-bot#652, release-controller#838, ci-tools#5505, ci-tools-standalone#73) are unblocked by the merge without any cross-posting.
 
 ## Open questions
 

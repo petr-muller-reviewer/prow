@@ -1,79 +1,92 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>Review: prow#835</title>
-<style>
-  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; line-height: 1.6; max-width: 860px; margin: 2rem auto; padding: 0 1.5rem; color: #1a1a1a; }
-  code, pre { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; background: #f4f4f4; padding: 0.1rem 0.35rem; border-radius: 3px; font-size: 0.92em; }
-  pre { padding: 0.75rem 1rem; overflow-x: auto; }
-  pre code { background: none; padding: 0; }
-  h1 { font-size: 1.4rem; }
-  h2 { font-size: 1.15rem; border-bottom: 1px solid #ddd; padding-bottom: 0.3rem; margin-top: 2rem; }
-  .meta { background: #f7f7f7; border: 1px solid #e0e0e0; border-radius: 6px; padding: 1rem 1.25rem; font-size: 0.95rem; }
-  .meta div { margin: 0.15rem 0; }
-  .verdict { background: #eafaf0; border-left: 4px solid #2ea043; padding: 0.75rem 1rem; border-radius: 4px; }
-  ul { padding-left: 1.4rem; }
-  .badge { display: inline-block; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; padding: 0.1rem 0.5rem; border-radius: 3px; margin-right: 0.5rem; }
-  .none { color: #666; font-style: italic; }
-</style>
-</head>
-<body>
-
-<h1>Review: prow#835</h1>
-<div class="meta">
-  <div><strong>PR:</strong> <a href="https://github.com/kubernetes-sigs/prow/pull/835">kubernetes-sigs/prow#835</a></div>
-  <div><strong>Title:</strong> chore(deps): bump github.com/google/cel-go from 0.26.0 to 0.29.0</div>
-  <div><strong>Head SHA:</strong> <code>72b0241741c3886387cd811f0080a7d7a112b5f2</code></div>
-  <div><strong>Base:</strong> main</div>
-  <div><strong>Reviewed at:</strong> 2026-08-18T12:51:53Z</div>
-</div>
-
-<h2>Verdict</h2>
-<div class="verdict"><strong>Approve.</strong> Dep-only dependabot PR bumping an indirect, transitively-used dependency (cel-go) to a well-soaked release with only correctness/robustness fixes and no direct usage in prow's own code. No project code changed, nothing to block on.</div>
-
-<h2>What this PR does</h2>
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#835</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>chore(deps): bump github.com/google/cel-go from 0.26.0 to 0.29.0</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/835">kubernetes-sigs/prow#835</a> · base <code>main</code> · head_sha <code>72b0241741c3</code> · reviewed_at <code>2026-08-18T12:51:53Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span></div>
+<h2>Summary</h2>
+<p>Dep-only dependabot PR. Only <code>go.mod</code>/<code>go.sum</code> changed, no project source.</p>
 <ul>
-  <li>Bumps <code>github.com/google/cel-go</code> v0.26.0 &rarr; v0.29.0 (indirect)</li>
-  <li>Bumps <code>github.com/antlr4-go/antlr/v4</code> v4.13.0 &rarr; v4.13.1 (indirect, transitive of cel-go)</li>
-  <li>Drops <code>github.com/stoewer/go-strcase</code> v1.3.0 (indirect, no longer required — incidental <code>go mod tidy</code> pruning)</li>
-  <li>Only <code>go.mod</code> / <code>go.sum</code> touched — no project source changes</li>
-</ul>
-
+<li><code>github.com/google/cel-go</code> v0.26.0 -&gt; v0.29.0 (indirect)
+</li>
+<li><code>github.com/antlr4-go/antlr/v4</code> v4.13.0 -&gt; v4.13.1 (indirect, transitive of cel-go)
+</li>
+<li><code>github.com/stoewer/go-strcase</code> v1.3.0 removed (indirect, unrelated tidy pruning)
+</li></ul>
 <h2>Dependency analysis</h2>
-
-<h3>github.com/google/cel-go v0.26.0 &rarr; v0.29.0</h3>
+<h3>github.com/google/cel-go v0.26.0 -&gt; v0.29.0</h3>
 <ul>
-  <li><strong>Freshness:</strong> v0.29.0 tagged 2026-07-02 (<code>fa16799e</code>, real tag, not a pseudo-version) &mdash; ~47 days old at review time. Fine, well soaked.</li>
-  <li><strong>Usage:</strong> Indirect only. <code>go mod why -m github.com/google/cel-go</code> resolves as <code>sigs.k8s.io/prow/cmd/pipeline &rarr; github.com/tektoncd/pipeline/pkg/apis/pipeline/v1 &rarr; github.com/google/cel-go/cel</code>. Zero direct imports of cel-go anywhere in prow's own source.</li>
-  <li><strong>Changelog &amp; exposure:</strong> Fixes across v0.27.x&ndash;v0.29.0 include an optional-unwrapping fix, a <code>has()</code> unknown-propagation fix during partial eval, expression-size-limit enforcement before source construction, out-of-range timezone-minute rejection, an int32/uint32 map-key-narrowing guard in <code>qualifyInternal</code>, and an OOM guard added to <code>ext/lists</code> <code>genRange()</code>. These are correctness/robustness fixes in the CEL evaluator itself &mdash; no CVEs. Exposure is <strong>light</strong>: prow never constructs or evaluates CEL expressions itself; the only path is via vendored Tekton Pipeline API validation inside <code>cmd/pipeline</code>, not a hot or sensitive path for prow's own code.</li>
-  <li><strong>Take:</strong> Safe to bump now.</li>
-</ul>
-
-<h3>github.com/antlr4-go/antlr/v4 v4.13.0 &rarr; v4.13.1</h3>
+<li>freshness: v0.29.0 tagged 2026-07-02 (<code>fa16799e</code>, real tag), ~47 days old at review time. Fine, soaked.
+</li>
+<li>usage: indirect only. <code>go mod why -m github.com/google/cel-go</code> resolves as <code>sigs.k8s.io/prow/cmd/pipeline -&gt; github.com/tektoncd/pipeline/pkg/apis/pipeline/v1 -&gt; github.com/google/cel-go/cel</code>. Zero direct imports of cel-go in prow's own source outside vendor.
+</li>
+<li>changelog: fixes across v0.27.x-v0.29.0 include optional-unwrapping fix, <code>has()</code> unknown-propagation fix, expression-size-limit enforcement, timezone-minute validation, int32/uint32 map-key-narrowing guard, OOM guard in <code>ext/lists</code> <code>genRange()</code>. Correctness/robustness fixes in the CEL evaluator, no CVEs.
+</li>
+<li>exposure: light. Prow never constructs/evaluates CEL expressions itself; only exercised via vendored Tekton Pipeline API validation inside <code>cmd/pipeline</code>. Not a hot or sensitive path for prow's own code.
+</li>
+<li>take: safe to bump now.
+</li></ul>
+<h3>github.com/antlr4-go/antlr/v4 v4.13.0 -&gt; v4.13.1</h3>
 <ul>
-  <li>Released 2024-05-15 &mdash; long soaked, no freshness concern.</li>
-  <li>Incidental patch bump pulled in by cel-go's antlr dependency; not independently deep-dived given the patch-level, indirect nature.</li>
-</ul>
-
+<li>freshness: released 2024-05-15, long soaked.
+</li>
+<li>incidental patch bump pulled in by cel-go's antlr dependency; not independently reviewed further.
+</li></ul>
 <h3>github.com/stoewer/go-strcase (removed)</h3>
 <ul>
-  <li>Pure <code>go mod tidy</code> pruning &mdash; no longer required transitively after the bump. No action needed.</li>
-</ul>
-
+<li>pure <code>go mod tidy</code> pruning, no longer required transitively. No action needed.
+</li></ul>
 <h2>Findings</h2>
-<p class="none">None &mdash; dep-only PR, no project code to review.</p>
-
-<h2>Things I checked and was fine with</h2>
+<p>(none — dep-only PR, no project code to review)</p>
+<h2>Checked</h2>
 <ul>
-  <li><code>git diff --stat</code> confirms only <code>go.mod</code>/<code>go.sum</code> changed</li>
-  <li><code>go mod why -m github.com/google/cel-go</code> for the full import chain</li>
-  <li>proxy.golang.org release timestamps for both bumped modules</li>
-  <li>Dependabot-provided changelog/release notes for cel-go v0.27.0&ndash;v0.29.0</li>
-</ul>
-
-<h2>Open questions for the author</h2>
-<p class="none">None.</p>
-
-</body>
-</html>
+<li><code>git diff --stat</code> confirms only <code>go.mod</code>/<code>go.sum</code> changed
+</li>
+<li><code>go mod why -m github.com/google/cel-go</code> for import chain
+</li>
+<li>proxy.golang.org release timestamps for both bumped modules
+</li>
+<li>dependabot-provided changelog/release notes for cel-go v0.27.0-v0.29.0
+</li></ul>
+<h2>Open questions</h2>
+<p>(none)</p>
+<h2>Dependency followups</h2>
+<p>No improvement opportunities identified (checked 2026-11-07 against PR head <code>72b0241741c3</code>, merged as <code>877ffe33a235</code>). Modules examined:</p>
+<ul>
+<li><code>github.com/google/cel-go</code> v0.26.0 -&gt; v0.29.0: prow's own source never imports cel-go (zero non-vendor hits for <code>google/cel-go</code>); the v0.26.0..v0.29.0 changelog (~84 commits) adds APIs (policy composition, string/regex cost tracking, <code>ext</code> JSON encoder, JSON field-name support, nested element types) and deprecates only cel-go-internal surfaces (<code>common/env</code> <code>TypeDesc</code> embedded-field helpers, REPL/prompt internals). None are reachable from prow. Prow holds Tekton <code>PipelineRunSpec</code> (including any <code>when[].cel</code> strings) as opaque JSON — <code>pkg/config/jobs.go:179</code> only fetches/fills the spec, and prow never calls Tekton's <code>Validate</code>/CEL compiler; <code>when[].cel</code> is compiled by the Tekton API server under Tekton's own cel-go version, not this bump.
+</li>
+<li><code>github.com/antlr4-go/antlr/v4</code> v4.13.0 -&gt; v4.13.1: patch release (Go-target fixes), not imported directly anywhere in prow.
+</li>
+<li><code>github.com/stoewer/go-strcase</code> v1.3.0 removed: no references left in the tree; nothing to migrate.
+</li></ul>
+<p>Reason: the bump touches evaluator internals and new CEL APIs, and prow has no call sites for any of them — changelog only covers code we don't call.</p>
+</main></body></html>

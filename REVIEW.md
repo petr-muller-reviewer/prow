@@ -43,3 +43,13 @@ Dep-only dependabot PR. Only `go.mod`/`go.sum` changed, no project source.
 
 ## Open questions
 (none)
+
+## Dependency followups
+
+No improvement opportunities identified (checked 2026-11-07 against PR head `72b0241741c3`, merged as `877ffe33a235`). Modules examined:
+
+- `github.com/google/cel-go` v0.26.0 -> v0.29.0: prow's own source never imports cel-go (zero non-vendor hits for `google/cel-go`); the v0.26.0..v0.29.0 changelog (~84 commits) adds APIs (policy composition, string/regex cost tracking, `ext` JSON encoder, JSON field-name support, nested element types) and deprecates only cel-go-internal surfaces (`common/env` `TypeDesc` embedded-field helpers, REPL/prompt internals). None are reachable from prow. Prow holds Tekton `PipelineRunSpec` (including any `when[].cel` strings) as opaque JSON — `pkg/config/jobs.go:179` only fetches/fills the spec, and prow never calls Tekton's `Validate`/CEL compiler; `when[].cel` is compiled by the Tekton API server under Tekton's own cel-go version, not this bump.
+- `github.com/antlr4-go/antlr/v4` v4.13.0 -> v4.13.1: patch release (Go-target fixes), not imported directly anywhere in prow.
+- `github.com/stoewer/go-strcase` v1.3.0 removed: no references left in the tree; nothing to migrate.
+
+Reason: the bump touches evaluator internals and new CEL APIs, and prow has no call sites for any of them — changelog only covers code we don't call.

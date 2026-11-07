@@ -29,3 +29,12 @@ Dep-only bot PR. `golang.org/x/time` v0.12.0 → v0.15.0, direct dependency. Onl
 ## Open questions
 
 (none)
+
+## Dependency followups
+
+No improvement opportunities identified.
+
+- Examined: `golang.org/x/time` v0.12.0 → v0.15.0 — the only module whose version changed; the `go.sum` diff confirms no transitive bumps.
+- Changelog between the two tags is three commits: `rate: use time.Time.Equal instead of ==` (internal comparison in `ReserveN` bookkeeping) and two generated Go-directive bumps. `rate/rate.go` differs from v0.12.0 by that single line; no `Deprecated` markers and no new exported API in the `rate` package.
+- Our usage is one call site, `pkg/kube/ratelimiter.go:30` (`rate.NewLimiter(rate.Limit(1000), 50000)` backing a `workqueue.TypedBucketRateLimiter`), which none of the changes affect.
+- PR #831 is merged (merge commit `1ea7a2b077aa981271e54d4072c883c052fb7a69`), so any followup would land on `main` rather than this branch.

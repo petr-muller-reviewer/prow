@@ -61,3 +61,100 @@ The fix pins deepcopy generation to the root module's declared Go version, so `e
 ## Open questions
 
 - `verify-codegen` covers generated output, but nothing compiles hand-written code with `go 1.26.4` (tests and builds use `.go-version`, 1.27.3). Would a cheap minimum-toolchain build check be worth adding so post-minimum stdlib usage is caught before downstream consumers hit it? Follow-up, not required for this fix.
+
+## Followups
+
+### [deferred-review] Fail loudly if the `go` directive cannot be parsed
+- necessity: should
+- mode: deliver
+- where: `hack/make-rules/update/codegen.sh:44-45`
+- prompt:
+
+```text
+In kubernetes-sigs/prow, following post-merge followup to PR #1056 ("codegen: generate deepcopy code with the minimum Go version", merged as a23969f42bcfccdeb82025ed62b7d0b3c53a9191), harden the toolchain pin in hack/make-rules/update/codegen.sh.
+
+Context: line 44 currently does
+  deepcopy_go_version="$(awk '$1 == "go" { print "go" $2; exit }' "${REPO_ROOT}/go.mod")"
+and both line 45 and line 101 use it as GOTOOLCHAIN. If the go directive moves or changes shape, awk prints nothing, GOTOOLCHAIN becomes empty, and the Go command silently falls back to the host toolchain, reintroducing the encoding/json/jsontext leak this PR fixed.
+
+Task:
+- Rename deepcopy_go_version to deepcopy_toolchain (it holds a GOTOOLCHAIN value).
+- Extract the raw version from the root go.mod's go directive into a separate variable, then validate it: non-empty and matching ^[0-9]+\.[0-9]+(\.[0-9]+)?$. On failure, print a clear ERROR to stderr naming hack/make-rules/update/codegen.sh and go.mod, and exit 1.
+- Build the GOTOOLCHAIN value as "go${version}" and keep both call sites (the deepcopy-gen build and the gen-deepcopy invocation) otherwise unchanged.
+
+Acceptance criteria:
+- bash -n hack/make-rules/update/codegen.sh passes.
+- A normal run still regenerates pkg/config/zz_generated.deepcopy.go and pkg/apis/prowjobs/v1/zz_generated.deepcopy.go byte-identically.
+- In a scratch copy of the repo with the "go 1.26.4" line removed from go.mod, the script exits non-zero with the new error instead of proceeding.
+
+Scope guard: do not change the toolchain values, other generators, generated files, or unrelated codegen steps. Do not publish anything to GitHub.
+```
+
+### [deferred-review] Document the pin's provenance and why the runtime `GOTOOLCHAIN` is load-bearing
+- necessity: should
+- mode: deliver
+- where: `hack/make-rules/update/codegen.sh:42-45`, `hack/make-rules/update/codegen.sh:99-104`
+- prompt:
+
+```text
+In kubernetes-sigs/prow, following post-merge followup to PR #1056 ("codegen: generate deepcopy code with the minimum Go version", merge commit a23969f42bcfccdeb82025ed62b7d0b3c53a9191), add the missing rationale comments around the deepcopy toolchain pin in hack/make-rules/update/codegen.sh.
+
+Task:
+- At the extraction (around lines 42-45), extend the comment to state that the root go.mod is read deliberately because it is the module whose code is being generated; hack/tools/go.mod (currently go 1.26.3) is not the source of truth, and neither the toolchain directive nor .go-version (1.27.3) is used.
+- At the gen-deepcopy invocation (around lines 99-104), add a comment on GOTOOLCHAIN="${deepcopy_toolchain}" "$deepcopygen" explaining that it is not a duplicate of the build-time pin: gengo's parser loads packages through go/packages, which shells out to `go list`, so the runtime toolchain must match the one the binary was built with. Note that removing it reintroduces encoding/json/jsontext (see issue #1055).
+
+Acceptance criteria:
+- Comments are concise (about one sentence each) and factual.
+- No behavioral change: bash -n passes and regeneration output is byte-identical.
+- The comments make clear that GOTOOLCHAIN at the invocation is load-bearing.
+
+Scope guard: comments only; do not alter the script logic, generated files, or other generators. Do not publish anything to GitHub.
+```
+
+### [docs] Document the project's Go version policy
+- necessity: could
+- mode: deliver
+- where: `site/content/en/docs/build-test-update.md`
+- prompt:
+
+```text
+In kubernetes-sigs/prow, following post-merge followup to PR #1056 ("codegen: generate deepcopy code with the minimum Go version", merge commit a23969f42bcfccdeb82025ed62b7d0b3c53a9191), document the project's Go version policy for contributors.
+
+Context: the repo has three version sources: .go-version (1.27.3, the toolchain used by setup-go.sh for dev/CI builds and tests), the root go.mod go directive (1.26.4, the minimum supported language/stdlib version), and hack/tools/go.mod (1.26.3, the separate tools module). This split caused issue #1055, and a PR reviewer asked why the project is "back on 1.26".
+
+Task:
+- Add a short "Go version policy" subsection to site/content/en/docs/build-test-update.md, in the build/test section near "How to build and test Prow".
+- Explain each of the three version sources and its purpose.
+- State that make update-codegen builds and runs deepcopy-gen with the root go.mod minimum so generated code stays buildable on the minimum supported Go, that other generators use .go-version, and that generated code must not depend on post-minimum stdlib APIs.
+- Keep it concise (roughly 8-15 lines) and follow the page's existing heading/style conventions.
+
+Acceptance criteria:
+- The page remains valid Hugo content and the new section renders with valid Markdown/headings.
+- The explanation matches the behavior in hack/make-rules/update/codegen.sh and hack/build/setup-go.sh.
+- No code changes.
+
+Scope guard: documentation only; do not change versions, scripts, or generated files. Do not publish anything to GitHub.
+```
+
+### [cleanup] Move the proxy/sumdb exports above the tool-build block
+- necessity: could
+- mode: deliver
+- where: `hack/make-rules/update/codegen.sh:233-235`, `hack/make-rules/update/codegen.sh:38-54`
+- prompt:
+
+```text
+In kubernetes-sigs/prow, following post-merge followup to PR #1056 ("codegen: generate deepcopy code with the minimum Go version", merge commit a23969f42bcfccdeb82025ed62b7d0b3c53a9191), make toolchain and module acquisition deterministic in hack/make-rules/update/codegen.sh.
+
+Context: GO111MODULE=on, GOPROXY=https://proxy.golang.org, and GOSUMDB=sum.golang.org are exported only near the bottom of the script (around lines 233-235), after all codegen tools are built (lines 38-54). The new pinned deepcopy-gen build may download the go1.26.4 toolchain, so it currently relies on ambient proxy configuration.
+
+Task:
+- Move the GO111MODULE/GOPROXY/GOSUMDB export block above the "build codegen tools" section, before any go build or go install runs.
+- Remove the now-duplicate block at the bottom.
+
+Acceptance criteria:
+- bash -n hack/make-rules/update/codegen.sh passes.
+- Running the script with GOPROXY/GOSUMDB/GO111MODULE unset in the environment still resolves modules and the pinned toolchain from the explicit settings, and regenerated output is byte-identical.
+- No other behavior changes.
+
+Scope guard: do not change generator versions, toolchain values, or generated files. Do not publish anything to GitHub.
+```

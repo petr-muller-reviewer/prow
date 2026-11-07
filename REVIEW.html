@@ -1,73 +1,106 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>Review: kubernetes-sigs/prow#833</title>
-<style>
-  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; line-height: 1.6; color: #1a1a1a; max-width: 860px; margin: 2rem auto; padding: 0 1.5rem; }
-  code, pre { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; }
-  header { border-bottom: 2px solid #ddd; padding-bottom: 1rem; margin-bottom: 1.5rem; }
-  header table { border-collapse: collapse; }
-  header td { padding: 2px 8px 2px 0; vertical-align: top; }
-  header td:first-child { font-weight: 600; color: #555; }
-  h1 { font-size: 1.4rem; margin-bottom: 0.3rem; }
-  h2 { font-size: 1.15rem; border-bottom: 1px solid #eee; padding-bottom: 0.3rem; margin-top: 2rem; }
-  .verdict { background: #eafaf0; border: 1px solid #b7e4c7; border-radius: 6px; padding: 1rem 1.2rem; margin: 1rem 0; }
-  .verdict .label { font-weight: 700; text-transform: uppercase; color: #1e7e34; }
-  ul { padding-left: 1.3rem; }
-  li { margin-bottom: 0.4rem; }
-  .none { color: #777; font-style: italic; }
-  code.path { background: #f2f2f2; padding: 1px 5px; border-radius: 4px; }
-  a { color: #0645ad; }
-</style>
-</head>
-<body>
-
-<header>
-  <h1>Review: kubernetes-sigs/prow#833</h1>
-  <table>
-    <tr><td>PR</td><td><a href="https://github.com/kubernetes-sigs/prow/pull/833">kubernetes-sigs/prow#833</a></td></tr>
-    <tr><td>Title</td><td>chore(deps): bump google.golang.org/grpc from 1.79.3 to 1.82.1 in /hack/tools</td></tr>
-    <tr><td>Head SHA</td><td><code>b746fdd01caa2b9d78d484da5b417777d787f6c5</code></td></tr>
-    <tr><td>Base</td><td>main</td></tr>
-    <tr><td>Reviewed at</td><td>2026-08-18T15:13:19Z</td></tr>
-  </table>
-</header>
-
-<div class="verdict">
-  <div class="label">Verdict: Approve</div>
-  <p>Dep-only bump confined to the <code class="path">hack/tools</code> build-tooling module. grpc is only an indirect dependency there with zero import surface in prow's own code, and the root module's own direct grpc dependency (still v1.79.3) is untouched. The new release is ~34 days old, a real tagged release, and includes only a security fix that hardens the gRPC server side &mdash; irrelevant here since this copy of grpc never runs inside a prow binary.</p>
-</div>
-
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#833</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>chore(deps): bump google.golang.org/grpc from 1.79.3 to 1.82.1 in /hack/tools</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/833">kubernetes-sigs/prow#833</a> · base <code>main</code> · head_sha <code>b746fdd01caa</code> · reviewed_at <code>2026-08-18T15:13:19Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span></div>
 <h2>What this PR does</h2>
 <ul>
-  <li>Dependabot bump of <code>google.golang.org/grpc</code> from v1.79.3 to v1.82.1, scoped entirely to <code class="path">hack/tools/go.mod</code>/<code class="path">go.sum</code> (12/36 lines changed).</li>
-  <li>No project source touched.</li>
-  <li>Side-effect transitive bumps in the same module: <code>go.opentelemetry.io/otel{,/metric,/trace}</code> v1.42.0&rarr;v1.43.0 and <code>google.golang.org/genproto/googleapis/{api,rpc}</code> pseudo-versions moving from 2026-03-16 to 2026-04-14.</li>
-  <li><code class="path">hack/tools</code> is a separate, build-tooling-only Go module (see <code class="path">hack/tools/tools.go</code>) that pins binary deps for golangci-lint, k8s code-generator, controller-gen, protoc-gen-go, gotestsum, misspell, and ko &mdash; grpc is transitively pulled in by one of these, not imported by any prow source.</li>
-  <li>The root <code class="path">go.mod</code> (actual prow server binaries) has its own <strong>direct</strong> grpc dependency, still pinned at v1.79.3 and fully unaffected by this PR.</li>
-</ul>
-
+<li>Dependabot bump of <code>google.golang.org/grpc</code> from v1.79.3 to v1.82.1 in the <code>hack/tools</code> submodule only.
+</li>
+<li><code>hack/tools/go.mod</code>/<code>go.sum</code> changed (12/36 lines); no project source touched.
+</li>
+<li>Side-effect transitive bumps in the same module: <code>go.opentelemetry.io/otel{,/metric,/trace}</code> v1.42.0→v1.43.0, <code>google.golang.org/genproto/googleapis/{api,rpc}</code> pseudo-versions 2026-03-16→2026-04-14.
+</li>
+<li><code>hack/tools</code> is a build-tooling-only Go module (see <code>hack/tools/tools.go</code>) pinning binary deps for golangci-lint, k8s code-generator, controller-gen, protoc-gen-go, gotestsum, misspell, ko. grpc is indirect there, pulled in transitively by one of those tools, not imported by any prow source.
+</li>
+<li>Root <code>go.mod</code> (actual prow binaries) has its own direct grpc dependency, unaffected by this PR, still pinned at v1.79.3.
+</li></ul>
 <h2>Dependency analysis</h2>
 <ul>
-  <li><strong>Freshness</strong>: v1.82.1 released 2026-07-15 (real grpc-go tag, not a pseudo-version) &mdash; ~34 days old at review time. Past the soak window, fine.</li>
-  <li><strong>Usage</strong>: indirect only; zero import surface in prow's own code; confined entirely to the <code class="path">hack/tools</code> dev-tooling module.</li>
-  <li><strong>Changelog (1.79.3&rarr;1.82.1)</strong>: xDS/RBAC bug fixes, a balancer-registry case-sensitivity behavior change, and a security fix in 1.82.1 (server-side mitigation for HTTP/2 frame-flooding DoS, plus xDS/RBAC ACL matcher fail-open fixes). None of this is reachable here &mdash; this copy of grpc only executes inside dev-time build/lint/codegen tooling, never inside a shipped prow binary.</li>
-</ul>
-
+<li>Freshness: v1.82.1 released 2026-07-15 (real tag, not pseudo-version) — ~34 days old at review time. Past soak window, fine.
+</li>
+<li>Usage: indirect, zero import surface in prow's own code; confined to <code>hack/tools</code> build tooling.
+</li>
+<li>Changelog 1.79.3→1.82.1: xDS/RBAC bug fixes, balancer registry case-sensitivity change, and a security fix in 1.82.1 (server-side HTTP/2 frame-flood DoS mitigation, xDS/RBAC ACL matcher fail-open fixes). None of this is reachable here since this copy of grpc only runs inside dev-time build/lint/codegen tooling, not any prow server binary.
+</li></ul>
 <h2>Findings</h2>
-<p class="none">None.</p>
-
-<h2>Things I checked and was fine with</h2>
+<p>(none)</p>
+<h2>Checked</h2>
 <ul>
-  <li>Diff scope confined to <code class="path">hack/tools/go.mod</code> and <code class="path">hack/tools/go.sum</code> &mdash; no project code changes.</li>
-  <li>Root module's grpc dependency (v1.79.3, direct) is untouched and unaffected by this bump.</li>
-  <li>grpc import surface in prow source: none (indirect-only, dev tooling module).</li>
-  <li>New grpc release provenance: real tagged release on the grpc-go GitHub repo, not a pseudo-version.</li>
-</ul>
+<li>Diff scope confined to <code>hack/tools/go.mod</code> and <code>hack/tools/go.sum</code> — no project code changes.
+</li>
+<li>Root module's grpc dependency (v1.79.3, direct) is untouched and unaffected by this bump.
+</li>
+<li>grpc import surface in prow source: none (indirect-only, dev tooling module).
+</li>
+<li>New grpc release provenance: real tagged release on grpc-go GitHub, not a pseudo-version.
+</li></ul>
+<h2>Open questions</h2>
+<p>(none)</p>
+<h2>Dependency followups</h2>
+<p>Scope examined: PR #833 (merged <code>e95f0a79</code>) bumping <code>google.golang.org/grpc</code> v1.79.3→v1.82.1 in <code>hack/tools</code>, with its transitive <code>go.opentelemetry.io/otel{,/metric,/trace}</code> v1.42.0→v1.43.0 and <code>google.golang.org/genproto/googleapis/{api,rpc}</code> pseudo-version move 2026-03-16→2026-04-14.</p>
+<p>Per-module outcome:</p>
+<ul>
+<li><code>google.golang.org/grpc</code> v1.79.3→v1.82.1 — one opportunity accepted (below). Deprecations in the range (<code>WithCompressor</code> and its <code>gzip</code> compressor) and new features (xDS SNI/SAN, otel custom per-call labels, <code>mem.Buffer.Slice</code>, <code>WithSharedWriteBuffer</code>) have no call site in prow, so nothing else to adopt.
+</li>
+<li><code>go.opentelemetry.io/otel{,/metric,/trace}</code> v1.42.0→v1.43.0 — root module already pins v1.43.0 (<code>go.mod:169-171</code>); nothing new for us.
+</li>
+<li><code>google.golang.org/genproto/googleapis/{api,rpc}</code> — generated stubs, no changelog; root's older pins for its own module are routine Dependabot territory, not a changelog-driven followup.
+</li></ul>
+<p>Tally: 1 accepted, 0 skipped.</p>
+<h3><span class="tag c-gray">api-upgrade</span>Root module's grpc is still v1.79.3, missing the 1.82.1 frame-flood mitigation</h3>
+<ul>
+<li>module: <code>google.golang.org/grpc</code> v1.79.3→v1.82.1 (this PR bumps only the <code>hack/tools</code> module; root module untouched)
+</li>
+<li>where: root pin <code>go.mod:74</code>; server <code>cmd/gangway/main.go:198</code> (<code>grpc.NewServer</code>); clients <code>pkg/resultstore/client.go:45</code>, <code>pkg/gangway/client/google/google.go:96</code>, <code>pkg/gangway/client/google/google.go:181</code>, <code>test/integration/internal/fakepubsub/fakepubsub.go:64</code>
+</li>
+<li>changelog (v1.82.1, Security): "server: Stop reading from the connection when flooded by HTTP/2 frames. The default value for this limit is 100 frames, excluding DATA and HEADERS, and may be changed by setting environment variable <code>GRPC_GO_EXPERIMENTAL_CONTROL_BUFFER_THROTTLE_LIMIT</code>."
+</li>
+<li>necessity: should — defense in depth for gangway's gRPC endpoint; not a regression introduced by this PR and not a merge blocker.
+</li>
+<li>scope: bump root <code>go.mod</code> to v1.82.1 plus <code>go mod tidy</code>; no call-site changes expected, our usage (<code>NewClient</code>/<code>NewServer</code>, <code>WithTransportCredentials</code>, <code>WithPerRPCCredentials</code>) is unaffected by the 1.80–1.82 behavior changes.
+</li></ul>
+<h4>Handoff prompt</h4>
+<pre><code>In kubernetes-sigs/prow, PR #833 (&quot;chore(deps): bump google.golang.org/grpc from 1.79.3 to 1.82.1 in /hack/tools&quot;, merged as e95f0a79bf3e4f75e8bb3d2ef4b8c98372281ff6) bumped grpc only in the hack/tools module. The root module still pins google.golang.org/grpc v1.79.3 (go.mod:74), which is what prow&#x27;s runtime binaries build against.
 
-<h2>Open questions for the author</h2>
-<p class="none">None.</p>
+Task: bump google.golang.org/grpc to v1.82.1 in the root go.mod and run `go mod tidy` afterwards, so prow&#x27;s binaries - notably the gangway gRPC server built with grpc.NewServer at cmd/gangway/main.go:198 - pick up the v1.82.1 server mitigation: &quot;server: Stop reading from the connection when flooded by HTTP/2 frames&quot; (default limit 100 frames, excluding DATA and HEADERS). Review the resulting go.sum/transitive churn; it should be small, since the root module already pins go.opentelemetry.io/otel v1.43.0.
 
-</body>
-</html>
+Call sites that must keep compiling unchanged: cmd/gangway/main.go:198 (NewServer), pkg/resultstore/client.go:45 (NewClient), pkg/gangway/client/google/google.go:96 and :181 (NewClient), test/integration/internal/fakepubsub/fakepubsub.go:64 (NewClient). They use stable APIs (WithTransportCredentials, WithPerRPCCredentials) that the 1.80-1.82 behavior changes do not affect, so no code edits should be necessary.
+
+Acceptance criteria:
+- root go.mod requires google.golang.org/grpc v1.82.1 and `go mod tidy` leaves no further diff.
+- `go build ./...` passes.
+- `go test ./pkg/gangway/... ./pkg/resultstore/...` passes, or any failure is shown to be pre-existing and unrelated to the bump.
+
+Scope guard: dependency bump only. Do not change gangway server options, interceptors, or deployment config, and do not touch the hack/tools module (already on v1.82.1). Do not refactor grpc call sites to newer APIs.</code></pre>
+</main></body></html>

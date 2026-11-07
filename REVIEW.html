@@ -31,31 +31,36 @@ ul, ol { padding-left:1.5rem; }
 details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
 </style></head><body><main>
 <h1>peribolos: support org-level repo defaults</h1>
-<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1037">kubernetes-sigs/prow#1037</a> · base <code>main</code> · head_sha <code>80e1e26595f5</code> · reviewed_at <code>2026-11-06T10:08:27Z</code></div>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1037">kubernetes-sigs/prow#1037</a> · base <code>main</code> · head_sha <code>2930af9fa960</code> · reviewed_at <code>2026-11-07T22:19:44Z</code></div>
 <div class="badges"><span class="badge c-green">verdict: approve</span><span class="badge c-green">gate: merge</span></div>
 <details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#1037
 title: &quot;peribolos: support org-level repo defaults&quot;
-head_sha: 80e1e26595f5c055bb0ef8ee42b9f5b998649060
+head_sha: 2930af9fa960fe74d13efd67837b3191f9abedc7
 base: main
-reviewed_at: 2026-11-06T10:08:27Z
+reviewed_at: 2026-11-07T22:19:44Z
 verdict: approve
+refresh_log:
+  - at: 2026-11-07T22:19:44Z
+    old_sha: 80e1e26595f5c055bb0ef8ee42b9f5b998649060
+    new_sha: 2930af9fa960fe74d13efd67837b3191f9abedc7
+    summary: &quot;Incorporated 2930af9fa: reverts the Go 1.27 requirement, nested-literal flattening, and unrelated Jira/rifle/lint/module changes; no repository reconciliation behavior change.&quot;
 gate:
   decision: merge
-  gated_at: 2026-11-06T10:08:27Z
+  gated_at: 2026-11-07T22:25:29Z
   gated_head_sha: 2930af9fa960fe74d13efd67837b3191f9abedc7
-  reviewed_head_sha: 80e1e26595f5c055bb0ef8ee42b9f5b998649060</code></pre></details>
+  reviewed_head_sha: 2930af9fa960fe74d13efd67837b3191f9abedc7</code></pre></details>
 <h2>Gate</h2>
 <p><strong>Verdict: merge</strong> at <code>2930af9fa960fe74d13efd67837b3191f9abedc7</code>.</p>
-<p>The substantive prior findings are addressed. The latest commit, <code>2930af9fa</code>, restores Go 1.26.4, uses nested settings literals, and removes the unrelated Jira receiver, rifle helper, lint and module changes. The PR description now gives the downstream keyed-literal migration and explicitly says squash fixes affect configurations without defaults. The remaining source compatibility change has a documented mechanical migration and was explicitly accepted as such in the reviewer discussion; it does not change the deployed YAML format. No unacceptable independent merge risk was found.</p>
+<p>Re-gated at the same head, which is now also the refresh baseline: no commits or GitHub activity since the previous gate. Every substantive reviewer concern is resolved in the current code — Go 1.26.4 retained, nested <code>RepoSettings</code> literals, unrelated Jira/rifle/lint/module changes dropped, archived and squash behavior verified and accepted by the reviewer. The one remaining change is a documented source-compatibility caveat for Go importers; the deployed YAML format is unchanged. No unacceptable independent merge risk.</p>
 <h3>Findings disposition</h3>
 <ul>
-<li><strong>Addressed — Go minimum and unrelated API changes</strong>, raised by @cblecker on 2026-11-05: <code>go.mod:3</code> is back to <code>go 1.26.4</code>; <code>cmd/peribolos/main.go:465-483</code> uses nested <code>RepoSettings</code> literals; Jira and rifle changes are absent from the final PR diff.
+<li><strong>Addressed — Go minimum and unrelated API changes</strong>, raised by @cblecker on 2026-11-05T21:14: verified <code>go.mod:3</code> is <code>go 1.26.4</code>; <code>cmd/peribolos/main.go:465-483</code> uses nested <code>RepoSettings</code> literals; the full diff against merge base <code>091a7d73</code> touches 8 files and includes no <code>pkg/jira</code>, <code>pkg/plugins/rifle</code> or <code>.golangci.yml</code> changes.
 </li>
-<li><strong>Acceptably dispositioned — keyed <code>org.Repo</code> literals</strong>, raised by @cblecker and the deployment reviewer: <code>pkg/config/org/org.go:63-64</code> still embeds <code>RepoSettings</code>, so Go 1.26 importers using promoted fields in keyed literals must switch to the nested form. The current PR description includes the exact migration. This remains a source compatibility caveat, not an unresolved blocker.
+<li><strong>Addressed — archived and squash behavior</strong>, raised by @cblecker on 2026-11-03/04: the reviewer said these "look good to me" on 2026-11-05T21:14. Current code ignores defaults for archived repos with unset archival (<code>cmd/peribolos/main.go:1494-1503</code>), validates effective squash pairs on create and update (<code>1476</code>, <code>1506</code>), and omits squash settings when disabled (<code>1295</code>, <code>1392</code>).
 </li>
-<li><strong>Addressed — compatibility claim</strong>, raised by @cblecker and the deployment reviewer: the current description removes the blanket claim and states that effective-pair validation and the <code>Defined()</code> fix affect all configs.
+<li><strong>Acceptably dispositioned — keyed <code>org.Repo</code> literals</strong>, raised by @cblecker on 2026-11-04: <code>pkg/config/org/org.go:63-64</code> embeds <code>RepoSettings</code>, so Go 1.26 importers using promoted fields in keyed literals must nest them. The PR description gives the exact migration and states the minimum Go version and flat YAML format are unchanged. Source compatibility caveat only, not an unresolved blocker.
 </li>
-<li><strong>Addressed — archived and squash behavior</strong>, raised by @cblecker and the earlier local review: the reviewer explicitly accepted these changes on 2026-11-05. Current code retains explicit archived-repo settings (<code>cmd/peribolos/main.go:1492-1502</code>), validates effective squash pairs on create and update (<code>1476-1479</code>, <code>1506-1509</code>), and omits squash settings when disabled (<code>1294-1296</code>, <code>1387-1393</code>).
+<li><strong>Addressed — compatibility claim and docs</strong>, raised by @cblecker: the description now states that effective-pair validation and the <code>Defined()</code> fix affect all configs, and <code>peribolos.md:107-124</code> documents scope, overrides, dump limits and deployment ordering.
 </li>
 <li>The two local maintenance suggestions below are optional and do not gate merge.
 </li></ul>
@@ -63,16 +68,16 @@ gate:
 <ul>
 <li><strong>Go source API:</strong> consumers constructing <code>org.Repo</code> with keyed defaultable fields on Go 1.26 must nest those fields in <code>RepoSettings</code>. This affects source importers, not prebuilt deployments; migration is documented in the PR description. Include it in release notes when publishing.
 </li>
-<li><strong>Existing configuration behavior:</strong> <code>pkg/github/types.go:491-495</code> activates squash-only updates. Invalid effective combinations return an error at <code>cmd/peribolos/main.go:1506-1509</code>, which stops subsequent reconciliation through <code>1217-1218</code>. This affects existing configs even without defaults. The description now states the scope and the docs describe valid combinations and disabled-squash omission. Audit these settings on upgrade; this is an intentional validation/fix, not a merge blocker.
+<li><strong>Existing configuration behavior:</strong> <code>pkg/github/types.go:491-495</code> activates squash-only updates. Invalid effective combinations return an error at <code>cmd/peribolos/main.go:1506-1509</code> and skip that repository's remaining delta. This affects existing configs even without defaults, as the description states. Audit these settings on upgrade; this is an intentional validation/fix, not a merge blocker.
 </li>
-<li><strong>Opt-in rollout:</strong> defaults can update every listed repository, and null does not opt a repository out. Deploy the binary before migrating settings; retain explicit configuration for rollback. The docs cover scope, overrides, dump limitations and deployment ordering (<code>peribolos.md:115-124</code>).
+<li><strong>Opt-in rollout:</strong> defaults can update every listed repository, and null does not opt a repository out. Deploy the binary before migrating settings; retain explicit configuration for rollback. <code>peribolos.md:124</code> documents the ordering.
 </li>
 <li>No new credentials, permissions, external endpoints, or background workers. No additional repository-specific compatibility skill applied.
 </li></ul>
 <h3>Gating list</h3>
 <p>None. No unresolved blocking or substantive should-fix feedback remains.</p>
 <h3>Evidence and limits</h3>
-<p>Read all paginated PR reviews, inline comments and issue comments, and inspected the complete <code>80e1e2659..2930af9fa</code> delta plus current code through <code>git show</code>. The local source checkout remains at the earlier reviewed code, with its review-artifact commit; it was not reset. Tests recorded below ran at <code>80e1e2659</code>, not the latest head. The latest delta changes literal structure and reverts unrelated changes without changing repository reconciliation logic; no new test run or live GitHub write was performed for this gate.</p>
+<p>Read all paginated PR reviews, inline comments and issue comments again at this re-gate; the newest is the author's 2026-11-05T22:23 report that Go 1.26.4 and the nested literals are restored. PR head is unchanged at <code>2930af9fa</code> since the previous gate, so the review delta is empty; inspected the full PR diff against merge base <code>091a7d73761d32baf5b1313f9a517d8c222fc5aa</code> (8 files, +1248/−101) and the current code through <code>git show</code>. The local checkout's files remain at <code>80e1e2659</code>; tests were not re-run at <code>2930af9fa</code> for this gate (the author reports race and JSON v2 tests pass on Go 1.26.4), and no live GitHub write was performed.</p>
 <h2>Verdict</h2>
 <p>Approve with suggestions. No merge-blocking code findings.</p>
 <p>The three-perspective maintainer review of <code>80e1e26595f5c055bb0ef8ee42b9f5b998649060</code> found sound code quality and low maintenance burden. Deployment risk is moderate because squash-only settings now take effect for existing configurations and defaults can update many listed repositories. Race and JSON v2 compatibility tests passed at that head. The review recommended an upgrade note and narrowing the compatibility claim, with optional completeness-test and diagnostic improvements; the gate above separately evaluates the newer head and the author's subsequent changes.</p>
@@ -86,7 +91,15 @@ gate:
 </li>
 <li>Ignores inherited defaults on archived repositories with unset archival while continuing to check explicit per-repository settings.
 </li>
-<li>Requires Go 1.27, flattens selected embedded-field literals, and includes small Jira error-receiver and rifle string-helper changes.
+<li>Requires Go 1.26.4 and uses nested <code>RepoSettings</code> literals; the unrelated Jira, rifle, lint and module changes from earlier revisions were reverted.
+</li></ul>
+<p>Since previous review (<code>80e1e2659</code> → <code>2930af9fa</code>):</p>
+<ul>
+<li>Reverted <code>go.mod</code> to Go 1.26.4 and removed the dependency churn, restoring nested <code>RepoSettings</code> literals in <code>cmd/peribolos/main.go:465-483</code> and the dump tests.
+</li>
+<li>Reverted the unrelated <code>pkg/jira/jira.go</code>, <code>pkg/plugins/rifle/blame.go</code> and <code>.golangci.yml</code> changes, so the PR no longer touches those areas.
+</li>
+<li>No changes to inheritance, archived-repository handling, squash validation, or repository request serialization; both optional nits below still apply.
 </li></ul>
 <h2>Findings</h2>
 <p>These are optional maintainer suggestions, not correctness defects or merge blockers.</p>
@@ -162,6 +175,8 @@ gate:
 <li>Passed with <code>GOTOOLCHAIN=auto GOEXPERIMENT=jsonv2</code>: <code>go test ./pkg/config/... ./pkg/github/... ./cmd/peribolos ./pkg/jira ./pkg/plugins/rifle</code>.
 </li>
 <li>GitHub write behavior was evaluated through code and test fakes; no live API mutation or full end-to-end GitHub test was performed. External downstream importers were not built.
+</li>
+<li>Refresh at <code>2930af9fa</code> inspected <code>80e1e2659..2930af9fa</code> (1 commit, 8 files, +195/-170 lines) and found no new GitHub comments, inline comments or reviews since <code>2026-11-06T10:08:27Z</code>. The delta is literal restructuring plus reverts; tests were not re-run at this head.
 </li></ul>
 <h2>Open questions</h2>
 <p>None.</p>

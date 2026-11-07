@@ -1,63 +1,72 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>Review: prow#836</title>
-<style>
-  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-         line-height: 1.6; max-width: 860px; margin: 2rem auto; padding: 0 1.5rem; color: #1a1a1a; }
-  code, pre { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; }
-  code { background: #f2f2f2; padding: 0.1em 0.35em; border-radius: 3px; font-size: 0.92em; }
-  pre { background: #f6f8fa; padding: 0.8em 1em; border-radius: 6px; overflow-x: auto; }
-  header { border-bottom: 2px solid #ddd; padding-bottom: 1rem; margin-bottom: 1.5rem; }
-  header h1 { margin-bottom: 0.3rem; font-size: 1.4rem; }
-  .meta { color: #555; font-size: 0.92rem; }
-  .verdict { padding: 1rem 1.2rem; border-radius: 8px; background: #e8f5e9; border: 1px solid #a5d6a7; margin-bottom: 1.5rem; }
-  .verdict .label { font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; color: #2e7d32; }
-  h2 { border-bottom: 1px solid #eee; padding-bottom: 0.3rem; margin-top: 2rem; }
-  ul { padding-left: 1.4rem; }
-  .empty { color: #777; font-style: italic; }
-</style>
-</head>
-<body>
-
-<header>
-  <h1>PR Review: kubernetes-sigs/prow#836</h1>
-  <div class="meta">
-    <div><strong>Title:</strong> chore(deps): bump github.com/go-git/go-git/v5 from 5.19.1 to 5.19.2</div>
-    <div><strong>Head SHA:</strong> <code>aeb64c10509fa319b7db2e3c730f1f15c2f87608</code></div>
-    <div><strong>Base:</strong> main</div>
-    <div><strong>Reviewed at:</strong> 2026-08-18T10:55:33Z</div>
-    <div><strong>Status:</strong> Already merged 2026-08-11</div>
-    <div><a href="https://github.com/kubernetes-sigs/prow/pull/836" target="_blank">View on GitHub</a></div>
-  </div>
-</header>
-
-<div class="verdict">
-  <div class="label">Verdict: Approve</div>
-  <p>Dep-only bump of a direct dependency (go-git v5.19.1 &rarr; v5.19.2), only <code>go.mod</code>/<code>go.sum</code> touched. Release is ~20 days old (past soak window), and while upstream shipped genuine security hardening in this range (path-traversal guard in ref storage, symlink-safe worktree boundary), prow's usage is read-only ref listing plus a test-only fake git server &mdash; neither exercises the fixed code paths. Low-risk, safe to take.</p>
-</div>
-
-<h2>What this PR does</h2>
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#836</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>chore(deps): bump github.com/go-git/go-git/v5 from 5.19.1 to 5.19.2</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/836">kubernetes-sigs/prow#836</a> · base <code>main</code> · head_sha <code>aeb64c10509f</code> · reviewed_at <code>2026-08-18T10:55:33Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span></div>
+<h2>Summary</h2>
+<p>Dep-only bump: <code>github.com/go-git/go-git/v5</code> v5.19.1 -&gt; v5.19.2. Only <code>go.mod</code>/<code>go.sum</code> changed (3 lines). PR already merged 2026-08-11.</p>
+<h2>Dependency analysis</h2>
 <ul>
-  <li>Bumps <code>github.com/go-git/go-git/v5</code> from v5.19.1 to v5.19.2 in <code>go.mod</code>/<code>go.sum</code>.</li>
-  <li>No project source code changed &mdash; pure dependency manifest/lockfile update.</li>
-</ul>
-
+<li>Release: v5.19.2 tagged 2026-07-29, ~20 days before merge. Real tag, not a pseudo-version. Fine on freshness.
+</li>
+<li>Direct dependency (<code>go.mod:33</code>, no <code>// indirect</code>).
+</li>
+<li>Import surface (excluding vendor): <code>pkg/plugins/testfreeze/checker/checker.go</code> (+ its test/fake) using <code>git.NewRemote</code>/<code>ListRefs</code> against in-memory storage (read-only ref listing); <code>test/integration/internal/fakegitserver/fakegitserver.go</code> using <code>PlainOpen</code> (test-only fake server). No <code>Clone</code>/<code>Fetch</code>/<code>Worktree</code> checkout usage, no direct <code>SetRef</code>/<code>RemoveRef</code> calls.
+</li>
+<li>Changelog v5.19.1..v5.19.2 highlights: <code>storage: dotgit, reject path traversal in reference names</code> (#2254, guards <code>SetRef</code>/<code>Ref</code>/<code>RemoveRef</code> against malicious ref names from remotes) and <code>worktree, make the filesystem wrapper a symlink-safe boundary</code> (#2277). Both are real security hardening upstream but land on code paths (write-side ref storage, worktree checkout) that prow does not exercise — only read-only <code>ListRefs</code> and a test-only fake server. Also several transitive <code>golang.org/x/{crypto,net,text}</code> <code>[SECURITY]</code> bumps pulled in by go-git's own deps.
+</li></ul>
 <h2>Findings</h2>
-<p class="empty">None &mdash; dep-only bump, no code to review.</p>
-
-<h2>Things I checked and was fine with</h2>
+<p>(none — dep-only bump, low-risk, no code review needed)</p>
+<h2>Checked</h2>
 <ul>
-  <li>Confirmed this is dep-only: <code>git diff --stat</code> against the merge-base shows only <code>go.mod</code> and <code>go.sum</code> changed.</li>
-  <li><code>go-git/go-git/v5</code> is a direct dependency (no <code>// indirect</code> marker).</li>
-  <li>Import surface in prow (excluding vendor): <code>pkg/plugins/testfreeze/checker/checker.go</code> (+ its test/fake) uses <code>git.NewRemote</code>/<code>ListRefs</code> against in-memory storage &mdash; read-only ref listing. <code>test/integration/internal/fakegitserver/fakegitserver.go</code> uses <code>PlainOpen</code> &mdash; test-only fake server. No <code>Clone</code>/<code>Fetch</code>/<code>Worktree</code> checkout usage anywhere, no direct <code>SetRef</code>/<code>RemoveRef</code> calls.</li>
-  <li>Read upstream changelog v5.19.1..v5.19.2: notable fixes are <code>storage: dotgit, reject path traversal in reference names</code> (#2254) and <code>worktree, make the filesystem wrapper a symlink-safe boundary</code> (#2277), plus several transitive <code>golang.org/x/{crypto,net,text}</code> security bumps pulled in by go-git itself. None land on code paths prow exercises.</li>
-  <li>Release v5.19.2 tagged 2026-07-29 &mdash; a real tag (not a pseudo-version), ~20 days old at merge time. Past the freshness threshold.</li>
-</ul>
-
-<h2>Open questions for the author</h2>
-<p class="empty">None.</p>
-
-</body>
-</html>
+<li>Classified PR as dep-only (only go.mod/go.sum changed).
+</li>
+<li>Verified go-git is a direct dependency and its import surface in prow (4 files, read-only ref listing + test fixture).
+</li>
+<li>Read upstream changelog/commit range between v5.19.1 and v5.19.2; confirmed no exposure to the security-relevant fixes (path traversal in ref storage, worktree symlink escape) since prow doesn't use those code paths.
+</li>
+<li>Confirmed release age (~20 days) is past the soak-time threshold.
+</li></ul>
+<h2>Open questions</h2>
+<p>(none)</p>
+<h2>Dependency followups</h2>
+<p>No improvement opportunities identified.</p>
+<ul>
+<li>Examined: <code>github.com/go-git/go-git/v5</code> v5.19.1 → v5.19.2 (only module whose lines changed in <code>go.mod</code>/<code>go.sum</code>; PR merged as <code>08ac810c3d783aa8e58e69dacf097b4bbbb14f25</code>).
+</li>
+<li>Changelog v5.19.1..v5.19.2 covers two code changes — <code>worktree</code> symlink-safe filesystem boundary (#2277) and Windows backslash handling in the worktree index (#2262) — plus <code>storage/dotgit</code> reference-name containment hardening (#2254) and the new <code>plumbing.ReferenceName.IsSafe</code>. Our only call sites are <code>git.NewRemote</code>/<code>Remote.List</code> with <code>ref.Name().IsBranch()</code>/<code>Short()</code> filtering against a hardcoded <code>kubernetes/kubernetes</code> remote (<code>pkg/plugins/testfreeze/checker/checker.go:162</code>, <code>:314</code>) and test-only <code>PlainOpen</code>/<code>Head</code>/<code>Log</code> in <code>test/integration/internal/fakegitserver/fakegitserver.go:214</code>. We use no worktree/checkout, no write-side ref storage, and <code>IsBranch()</code> already narrows names to <code>refs/heads/</code>, so none of the new APIs or hardening apply.
+</li>
+<li>Transitive <code>golang.org/x/{crypto,net,text}</code> security bumps exist only in go-git's own <code>go.mod</code>; prow's <code>go.sum</code> changed just the two go-git lines, so our module graph versions are unchanged — nothing to adopt or re-pin.
+</li></ul>
+<p>No followup items accepted, no handoff prompts.</p>
+</main></body></html>

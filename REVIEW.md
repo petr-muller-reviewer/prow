@@ -30,3 +30,13 @@ Dep-only bump: `github.com/go-git/go-git/v5` v5.19.1 -> v5.19.2. Only `go.mod`/`
 
 ## Open questions
 (none)
+
+## Dependency followups
+
+No improvement opportunities identified.
+
+- Examined: `github.com/go-git/go-git/v5` v5.19.1 → v5.19.2 (only module whose lines changed in `go.mod`/`go.sum`; PR merged as `08ac810c3d783aa8e58e69dacf097b4bbbb14f25`).
+- Changelog v5.19.1..v5.19.2 covers two code changes — `worktree` symlink-safe filesystem boundary (#2277) and Windows backslash handling in the worktree index (#2262) — plus `storage/dotgit` reference-name containment hardening (#2254) and the new `plumbing.ReferenceName.IsSafe`. Our only call sites are `git.NewRemote`/`Remote.List` with `ref.Name().IsBranch()`/`Short()` filtering against a hardcoded `kubernetes/kubernetes` remote (`pkg/plugins/testfreeze/checker/checker.go:162`, `:314`) and test-only `PlainOpen`/`Head`/`Log` in `test/integration/internal/fakegitserver/fakegitserver.go:214`. We use no worktree/checkout, no write-side ref storage, and `IsBranch()` already narrows names to `refs/heads/`, so none of the new APIs or hardening apply.
+- Transitive `golang.org/x/{crypto,net,text}` security bumps exist only in go-git's own `go.mod`; prow's `go.sum` changed just the two go-git lines, so our module graph versions are unchanged — nothing to adopt or re-pin.
+
+No followup items accepted, no handoff prompts.

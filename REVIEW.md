@@ -3,11 +3,11 @@ pr: kubernetes-sigs/prow#803
 title: "append the release note if there is no release note block"
 head_sha: 94c6c56b65a3e5e0d9db39c77c2e8d6baebfb52a
 base: main
-reviewed_at: 2026-09-27T15:38:26Z
+reviewed_at: 2026-11-07T22:19:14Z
 verdict: approve
 gate:
   decision: hold
-  gated_at: 2026-09-27T15:38:36Z
+  gated_at: 2026-11-07T22:25:43Z
   gated_head_sha: 94c6c56b65a3e5e0d9db39c77c2e8d6baebfb52a
   reviewed_head_sha: 94c6c56b65a3e5e0d9db39c77c2e8d6baebfb52a
 refresh_log:
@@ -17,37 +17,60 @@ refresh_log:
   - from_sha: 94c6c56b65a3e5e0d9db39c77c2e8d6baebfb52a
     to_sha: 94c6c56b65a3e5e0d9db39c77c2e8d6baebfb52a
     summary: no code changes; @cblecker left two inline review comments (COMMENTED review) — a new correctness finding on the pre-existing splice path hardcoding `\r\n`, and a test-coverage suggestion overlapping the existing narrow-coverage finding.
+  - from_sha: 94c6c56b65a3e5e0d9db39c77c2e8d6baebfb52a
+    to_sha: 94c6c56b65a3e5e0d9db39c77c2e8d6baebfb52a
+    summary: no code changes; k8s-triage-robot applied `lifecycle/stale` and posted the stale-triage notice on 2026-11-05; no new reviews, inline comments, or maintainer activity.
 ---
 
 # Review
 
 ## Gate
 
-**Decision: hold.** The PR head is unchanged since the saved review, and the
-append path still adds an extra blank line to bodies with mixed line endings.
-The new CRLF branch also has no test. Resolve the separator behavior and add
-coverage for CRLF bodies, or explicitly accept those two points before merge.
+**Decision: hold.** The head is still `94c6c56b6`, the commit the saved review
+covered, so every prior finding applies verbatim and none of @cblecker's
+2026-08-07 comments has drawn a response. The blockers are small and cheap:
+the new append path can emit an extra blank line for bodies with mixed line
+endings, and its CRLF branch has no test. Fix the separator logic and add a
+CRLF case, or explicitly accept both before merge.
 
 Gating items:
 
 - `REVIEW.md`, `pkg/plugins/releasenote/releasenote.go:511-523`: the append
-  path detects CRLF anywhere in the body but checks only CRLF suffixes. A
-  body with CRLF earlier and LF at the end gets an extra blank line and
-  mixed line endings. **Not addressed; hold for a fix or explicit acceptance.**
+  path picks `lineEnding` by sniffing for CRLF *anywhere* in the body, but
+  compares only CRLF suffixes. A body with CRLF earlier and a bare LF at the
+  end falls through to the double-line-ending separator and gains an extra
+  blank line plus a mixed-style seam (`...text\n\r\n\r\n```release-note`).
+  Extraction is unaffected — the seam is pure whitespace and the block still
+  matches `noteMatcherRE` — but the output is wrong for exactly the
+  mixed-ending bodies the detection tries to handle. **Not addressed; hold
+  for a fix or explicit acceptance.** The fix is a few lines: derive the
+  trailing line ending from the body's actual suffix instead of a global
+  CRLF sniff.
 - `REVIEW.md` and @cblecker, `pkg/plugins/releasenote/releasenote_test.go:767-800`:
-  both new tests use LF-only bodies; the CRLF append branch remains untested.
-  **Not addressed; add a CRLF case or explicitly accept the gap.**
-- @cblecker, `pkg/plugins/releasenote/releasenote.go:528`: the existing-block
-  splice still inserts CRLF into LF bodies. The code is unchanged, and this
-  behavior predates the PR. **Not addressed; confirm whether to handle it in
-  this PR or defer it.**
+  both new tests use LF-only bodies, so the `strings.Contains(ic.Issue.Body,
+  "\r\n")` branch is never exercised. A CRLF case (`Body: "Top\r\nBelow"` →
+  `Top\r\nBelow\r\n\r\n```release-note\r\nThe new note\r\n```\r\n`) would
+  cover it. **Not addressed; add the case or explicitly accept the gap.**
 
-Merge risk: no exported API, configuration, schema, or deployment changes.
-The functional change is limited to an org member invoking
-`/release-note-edit` on a PR body with no release-note block: the command now
-appends a block instead of returning an error. Existing deployments need no
-migration. The command also rejects comments containing multiple recognized
-release-note blocks; confirm that stricter input rule is intended.
+Not gating:
+
+- @cblecker, `pkg/plugins/releasenote/releasenote.go:528`: the existing-block
+  splice path still inserts `\r\n` into LF bodies. The code is unchanged and
+  the behavior predates this PR, so it is not a regression introduced here;
+  deferring it to a follow-up is reasonable. Hoisting the append path's
+  `lineEnding` above the `if`/`else` would fix both at once.
+
+Merge risk: no exported API, flag, config-schema, or persisted-state changes.
+`editReleaseNote` is unexported and the diff touches only
+`pkg/plugins/releasenote/releasenote.go` and its test file. Blast radius is
+any deployment with the `releasenote` plugin enabled, and only when an org
+member runs `/release-note-edit`. Two user-visible deltas: the intended one,
+where a PR body with no block now gets an appended block instead of an error
+reply; and a tightening, where the command comment must contain exactly one
+recognized release-note block (several blocks previously used the first and
+are now rejected). Neither needs a migration. The PR body itself carries no
+release-note block, so this behavior change is not captured for consumers —
+worth a note (or `NONE`) before merge.
 
 ## Verdict
 
@@ -68,8 +91,11 @@ the earlier findings remain recorded below.
 Since previous review:
 
 - No code changes; the reviewed PR head remains `94c6c56b6`.
-- A fresh read-only review corroborated the mixed line-ending finding in the
-  append path. The earlier inline comments and findings remain below.
+- 2026-11-05: `k8s-triage-robot` applied `lifecycle/stale` and posted the
+  stale-triage notice. No maintainer review activity and no new inline
+  comments since 2026-08-07 (@cblecker).
+- All prior gating findings remain unaddressed, so the gate decision stays
+  `hold`; the earlier inline comments and findings remain below.
 
 ## Findings
 

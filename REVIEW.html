@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#1063</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>chore(deps): bump golang.org/x/net from 0.61.0 to 0.62.0 in the golang-x group across 1 directory</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1063">kubernetes-sigs/prow#1063</a> · base <code>main</code> · head_sha <code>4d85ff64ce73</code> · reviewed_at <code>2026-11-07T21:17:31Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span></div>
+<h2>Verdict</h2>
+<p>Safe to bump now; the only reservation is an 11-day soak on a very recent <code>x/net</code> tag.</p>
+<p>This is a dep-only Dependabot bump of <code>golang.org/x/net</code> from v0.61.0 to v0.62.0, touching only <code>go.mod</code>/<code>go.sum</code> in the main module and <code>hack/tools</code>. The new tag is a real release (not a pseudo-version), released 2026-10-27T19:00Z, 11 days before this review — past the "too fresh" threshold but worth noting. It carries two <code>html</code> CVE fixes that OSV reports for v0.61.0 and not for v0.62.0; <code>govulncheck</code> classifies both as imported-only for us, because the only <code>golang.org/x/net/html</code> call site uses the tokenizer, not the vulnerable parser/renderer symbols. No project code changes, no reachable-behavior changes in the packages we import.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Bumps <code>golang.org/x/net</code> v0.61.0 → v0.62.0 in the main module, where it is a direct dependency.
+</li>
+<li>Bumps the same module in <code>hack/tools/go.mod</code>, where it is indirect (tooling-only dependency graph).
+</li>
+<li>Updates the corresponding <code>go.sum</code> hashes in both modules; no other module versions change.
+</li>
+<li>No source, config, test, or vendor changes.
+</li></ul>
+<h2>Findings</h2>
+<p>None.</p>
+<h2>Checked</h2>
+<ul>
+<li>Full diff <code>9f4d1868e..4d85ff64c</code>: only <code>go.mod</code>, <code>go.sum</code>, <code>hack/tools/go.mod</code>, <code>hack/tools/go.sum</code>.
+</li>
+<li>Release provenance: real tag <code>refs/tags/v0.62.0</code> on <code>go.googlesource.com/net</code>, commit <code>3de643db506517b3e652a13cc0b56034cea6b8e6</code>; not a pseudo-version.
+</li>
+<li>OSV for v0.61.0: <code>GO-2026-6860</code> (CVE-2026-78661, quadratic text-node coalescing in <code>html</code>) and <code>GO-2026-6866</code> (CVE-2026-97045, missing ancestor namespace check when rendering raw text). OSV for v0.62.0: none.
+</li>
+<li><code>govulncheck</code> module scan at base and head; symbol-level scan at base over <code>./pkg/...</code> marks both <code>x/net</code> advisories imported-only (package <code>golang.org/x/net/html</code> only, no called symbol). Head has no <code>x/net</code> findings, so no head symbol scan was needed.
+</li>
+<li>Import surface: 3 Go files outside <code>vendor/</code> — pkg/spyglass/lenses/html/html.go:30 (<code>html</code>, only <code>NewTokenizer</code> at :119) and pkg/githuboauth/githuboauth.go:33 (<code>xsrftoken.Generate</code> at :153, <code>Valid</code> at :240), plus one test file.
+</li>
+<li>No imports of <code>x/net/quic</code>, <code>x/net/ipv4</code>, or <code>x/net/ipv6</code>, which is where the rest of the changelog changes land.
+</li>
+<li>Changelog <code>v0.61.0...v0.62.0</code> (9 commits): the two <code>html</code> CVE fixes, a <code>quic</code> per-path connection-ID change, and <code>ipv4</code>/<code>ipv6</code> bounds/panic fixes.
+</li>
+<li><code>go build ./pkg/spyglass/lenses/html/ ./pkg/githuboauth/</code> passes at head.
+</li>
+<li>Unrelated pre-existing imported-only advisories (<code>GO-2023-1901</code> tektoncd/pipeline, <code>GO-2026-5932</code> x/crypto) are identical at base and head and out of scope for this bump.
+</li></ul>
+<h2>Open questions</h2>
+<p>None.</p>
+<h2>Dependency followups</h2>
+<p>No improvement opportunities identified. Examined <code>golang.org/x/net</code> v0.61.0 → v0.62.0 (direct in the main module, indirect in <code>hack/tools</code>); the 9 commits between the tags only fix vulnerabilities and panics in <code>html</code> parse/render, <code>quic</code>, <code>ipv4</code>, and <code>ipv6</code>. We import only <code>golang.org/x/net/html</code> (tokenizer API, unchanged) and <code>golang.org/x/net/xsrftoken</code> (untouched by this bump), and there are no deprecations, replacements, or new APIs in the release that would let us change our call sites.</p>
+</main></body></html>

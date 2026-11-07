@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#1062</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>chore(deps): bump the aws group across 1 directory with 4 updates</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1062">kubernetes-sigs/prow#1062</a> · base <code>main</code> · head_sha <code>e5132fca8fd2</code> · reviewed_at <code>2026-11-07T21:00:00Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span></div>
+<h2>Verdict</h2>
+<p>Approve — routine AWS SDK v2 patch bump with no behavioral delta on the code paths prow exercises.</p>
+<p>Dep-only PR: four direct AWS modules move by patch versions (<code>aws-sdk-go-v2</code> v1.47.4→v1.47.5, <code>config</code> v1.33.11→v1.33.13, <code>credentials</code> v1.20.11→v1.20.13, <code>service/s3</code> v1.114.5→v1.114.6) plus the usual 13–14 indirect module churn in both the root and <code>hack/tools</code> modules. Releases are 8–11 days old, OSV is clean for old and new versions, <code>govulncheck</code> finds no AWS advisories (module level and symbol level, base vs. head identical), and our only S3 usage — client construction in <code>pkg/io/providers/aws.go</code> feeding <code>gocloud.dev/blob/s3blob</code> — gains no new behavior beyond upstream nil-guard and panic-to-error fixes.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Bumps the four direct AWS SDK v2 modules prow imports by one or two patch releases (<code>go.mod:15-18</code>), regenerating <code>go.sum</code>.
+</li>
+<li>Pulls the matching indirect set: <code>smithy-go</code> 1.28.6→1.28.7, <code>sts</code> 1.51.5→1.51.6, <code>sso</code> 1.38.5→1.39.1, <code>ssooidc</code> 1.43.5→1.44.1, <code>signin</code> 1.11.0→1.12.1, <code>feature/ec2/imds</code>, <code>eventstream</code>, <code>internal/{configsources,endpoints/v2,v4a}</code>, <code>service/internal/{accept-encoding,checksum,presigned-url,s3shared}</code> (<code>go.mod:181-195</code>).
+</li>
+<li>Applies the same version set inside the separate <code>hack/tools</code> module, where every AWS entry is indirect.
+</li>
+<li>Changes no project source, config, docs, or tests.
+</li></ul>
+<h2>Findings</h2>
+<p>None.</p>
+<h2>Checked</h2>
+<ul>
+<li>Classification: only <code>go.mod</code>, <code>go.sum</code>, <code>hack/tools/go.mod</code>, <code>hack/tools/go.sum</code> changed relative to <code>9f4d1868e</code> — no project code to line-review.
+</li>
+<li>Freshness: <code>aws-sdk-go-v2</code> v1.47.5 and <code>service/s3</code> v1.114.6 released 2026-10-27 (11 days old); <code>config</code> v1.33.13 and <code>credentials</code> v1.20.13 released 2026-10-30 (8 days old). All tagged releases, not pseudo-versions; past the 5-day threshold, not yet two weeks.
+</li>
+<li>Vulnerabilities: OSV returns no advisories for any of the four direct modules (or <code>smithy-go</code>) at old or new version.
+</li>
+<li><code>govulncheck</code> v1.9.0: module-level scan at merge-base <code>9f4d1868e</code> and head <code>e5132fca8</code>, plus symbol-level scans scoped to <code>./pkg/io/...</code> on both sides. Finding sets are identical base vs. head and contain no AWS modules — only pre-existing, unrelated <code>GO-2023-1901</code> (tektoncd/pipeline) and <code>GO-2026-6860</code>/<code>GO-2026-6866</code> (golang.org/x/net).
+</li>
+<li>Usage: the entire SDK surface is two files — <code>pkg/io/providers/aws.go</code> and <code>pkg/io/providers/aws_test.go</code>. <code>newS3Client</code> uses <code>credentials.NewStaticCredentialsProvider</code> (<code>pkg/io/providers/aws.go:64</code>) and <code>config.LoadDefaultConfig</code> (<code>pkg/io/providers/aws.go:76</code>), then builds an <code>*s3.Client</code> (<code>pkg/io/providers/aws.go:112</code>) handed to <code>s3blob.OpenBucketV2</code>. All <code>GetObject</code>/<code>UploadObject</code> traffic happens inside <code>gocloud.dev/blob/s3blob</code> v0.47.0; prow never calls S3 operations directly.
+</li>
+<li>Blast radius: <code>providers.GetBucket</code> is reached from <code>pkg/io/opener.go:222</code>, and <code>io.NewOpener</code> has 12 call sites (deck, prow-controller-manager, webhook-server, checkconfig, pod-utils/gcs upload, flagutil/storage, gerrit tests) — artifact storage across components, but a single narrow code path.
+</li>
+<li>Changelog: <code>service/s3</code> v1.114.6 is dependency updates only. <code>config</code> v1.33.13 is dependency-only; v1.33.12 is the smithy-go bump. <code>credentials</code> v1.20.12 turns two panics into errors (login token missing fields; STS AssumeRole/AssumeRoleWithWebIdentity response missing credentials). Core <code>aws-sdk-go-v2</code> v1.47.5 carries the smithy-go bump, an <code>stscreds</code> nil guard, and endpoint/API-model refreshes.
+</li>
+<li>Exposure of the awsjson changes: the smithy-go 1.28.7 JSON-union deserialization fix and the 2026-10-30 nil-list/map serialization fix apply to AWS JSON protocols; S3 is restxml and the gocloud reader path uses <code>s3.GetObject</code>, so neither lands in exercised code. Schema-based serialization enabled for <code>sso</code>/<code>ssooidc</code>/<code>signin</code> only matters if the default credential chain resolves to AWS SSO, which is not prow's normal static-key or instance-role setup.
+</li>
+<li>The <code>transfermanager</code> download change in core v1.47.5 does not apply here: <code>feature/s3/transfermanager</code> stays pinned at v0.4.3 (<code>go.mod:183</code>) and gocloud only uses it for uploads.
+</li>
+<li>Build/tests: <code>go build ./pkg/io/...</code> passes, <code>go test ./pkg/io/providers/</code> passes, and <code>go mod tidy -diff</code> is clean in both the root and <code>hack/tools</code> modules, so the lockfile churn is complete and consistent.
+</li></ul>
+<h2>Open questions</h2>
+<p>None.</p>
+<h2>Dependency followups</h2>
+<p>No opportunities identified. Range examined (PR #1062, open, head <code>e5132fca8</code>):</p>
+<ul>
+<li><code>github.com/aws/aws-sdk-go-v2</code> v1.47.4→v1.47.5, <code>config</code> v1.33.11→v1.33.13, <code>credentials</code> v1.20.11→v1.20.13, <code>service/s3</code> v1.114.5→v1.114.6 — direct.
+</li>
+<li><code>aws/smithy-go</code> 1.28.6→1.28.7, <code>sts</code> 1.51.5→1.51.6, <code>sso</code> 1.38.5→1.39.1, <code>ssooidc</code> 1.43.5→1.44.1, <code>signin</code> 1.11.0→1.12.1, <code>feature/ec2/imds</code> 1.20.4→1.20.5, <code>eventstream</code>, <code>internal/{configsources,endpoints/v2,v4a}</code>, <code>service/internal/{accept-encoding,checksum,presigned-url,s3shared}</code> — indirect.
+</li></ul>
+<p>Reason: the changelog windows contain only dependency-version updates and model refreshes; the only behavior changes are two panic-to-error fixes in <code>credentials</code> (no call-site change needed — prow passes static credentials or uses the default chain) and schema-based de/serialization enablement in generated service code (<code>sso</code>, <code>ssooidc</code>, <code>signin</code>) that prow does not import. No deprecations, removals, or new APIs land on the surfaces prow uses: <code>aws</code>, <code>aws/transport/http</code>, <code>config</code>, <code>credentials</code>, and <code>service/s3</code> (only client construction in <code>pkg/io/providers/aws.go</code>).</p>
+</main></body></html>

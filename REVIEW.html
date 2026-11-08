@@ -1,159 +1,128 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>Review: kubernetes-sigs/prow#796</title>
-<style>
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-    line-height: 1.6;
-    color: #1a1a1a;
-    max-width: 900px;
-    margin: 2rem auto;
-    padding: 0 1.5rem;
-    background: #fdfdfd;
-  }
-  code, pre {
-    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
-    font-size: 0.92em;
-  }
-  pre {
-    background: #f4f4f4;
-    padding: 0.8rem 1rem;
-    border-radius: 6px;
-    overflow-x: auto;
-    border: 1px solid #e2e2e2;
-  }
-  code.inline {
-    background: #f0f0f0;
-    padding: 0.1em 0.35em;
-    border-radius: 4px;
-  }
-  header {
-    border-bottom: 2px solid #ddd;
-    padding-bottom: 1rem;
-    margin-bottom: 1.5rem;
-  }
-  header h1 { margin-bottom: 0.3rem; font-size: 1.4rem; }
-  header dl {
-    display: grid;
-    grid-template-columns: max-content 1fr;
-    gap: 0.2rem 1rem;
-    font-size: 0.9rem;
-    color: #444;
-  }
-  header dt { font-weight: 600; }
-  .verdict {
-    background: #fdecea;
-    border-left: 4px solid #d33b2c;
-    padding: 0.8rem 1.2rem;
-    border-radius: 0 6px 6px 0;
-    margin-bottom: 1.5rem;
-  }
-  .verdict .label {
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-    color: #b0281a;
-  }
-  h2 {
-    border-bottom: 1px solid #e5e5e5;
-    padding-bottom: 0.3rem;
-    margin-top: 2rem;
-  }
-  .finding {
-    margin: 1rem 0 1.5rem;
-    padding: 0.8rem 1rem;
-    border-radius: 6px;
-    border-left: 4px solid #ccc;
-  }
-  .finding.blocking { border-left-color: #d33b2c; background: #fdf2f1; }
-  .finding.question { border-left-color: #7a5cff; background: #f7f5ff; }
-  .finding .sev {
-    display: inline-block;
-    font-size: 0.72rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    padding: 0.15em 0.5em;
-    border-radius: 4px;
-    margin-bottom: 0.4rem;
-  }
-  .finding.blocking .sev { background: #fadbd8; color: #922016; }
-  .finding.question .sev { background: #e4ddff; color: #4b2fc9; }
-  .finding .loc { color: #666; font-size: 0.85rem; margin-bottom: 0.5rem; }
-  ul { padding-left: 1.3rem; }
-  li { margin-bottom: 0.4rem; }
-</style>
-</head>
-<body>
-
-<header>
-  <h1>Review: autobump prow base images</h1>
-  <dl>
-    <dt>PR</dt><dd><a href="https://github.com/kubernetes-sigs/prow/pull/796">kubernetes-sigs/prow#796</a></dd>
-    <dt>Head SHA</dt><dd><code class="inline">ab99df655a530e6e7b30a29efad116423e4d8018</code></dd>
-    <dt>Base</dt><dd><code class="inline">main</code></dd>
-    <dt>Reviewed at</dt><dd>2026-07-26T23:35:11Z</dd>
-  </dl>
-</header>
-
-<div class="verdict">
-  <div class="label">Verdict: Request Changes</div>
-  <p>The config is missing the mandatory <code class="inline">includedConfigPaths</code> field. <code class="inline">cmd/generic-autobumper/main.go</code>'s <code class="inline">validateOptions</code> fatally errors whenever that field is empty, so <em>every</em> invocation of the bumper with this config will exit nonzero before ever touching <code class="inline">.ko.yaml</code> — meaning the PR as written does not actually fix #559.</p>
-</div>
-
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#796</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>autobump prow base images</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/796">kubernetes-sigs/prow#796</a> · base <code>main</code> · head_sha <code>ab99df655a53</code> · reviewed_at <code>2026-11-07T23:54:40Z</code></div>
+<div class="badges"><span class="badge c-red">verdict: request-changes</span></div>
+<details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#796
+title: &quot;autobump prow base images&quot;
+head_sha: ab99df655a530e6e7b30a29efad116423e4d8018
+base: main
+reviewed_at: 2026-11-07T23:54:40Z
+verdict: request-changes
+refresh_log:
+  - at: 2026-11-07T23:54:40Z
+    old_sha: ab99df655a530e6e7b30a29efad116423e4d8018
+    new_sha: ab99df655a530e6e7b30a29efad116423e4d8018
+    summary: &quot;No PR code changes; PR merged 2026-08-10 after approval. Post-merge upstream commit 7b32f3d6f relaxed generic-autobumper validation to accept extraFiles alone, resolving the blocking finding; scheduled job then produced merged bot PR #1036 bumping .ko.yaml. Both open questions answered.&quot;</code></pre></details>
 <h2>What this PR does</h2>
 <ul>
-  <li>Adds <code class="inline">hack/autobump.yaml</code>, a new config for the in-tree <code class="inline">cmd/generic-autobumper</code> tool.</li>
-  <li>Targets images under the <code class="inline">gcr.io/k8s-staging-test-infra</code> prefix, referenced as base images in <code class="inline">.ko.yaml</code>, via <code class="inline">extraFiles: [".ko.yaml"]</code>.</li>
-  <li>Fixes <a href="https://github.com/kubernetes-sigs/prow/issues/559">#559</a>: those images now expire after 6 months and <code class="inline">.ko.yaml</code> hadn't been bumped since ~July 2025.</li>
-  <li>Purely additive: one new file, not referenced by any existing build/test/deploy path.</li>
-</ul>
-
+<li>Adds <code>hack/autobump.yaml</code>, a new config for the in-tree <code>cmd/generic-autobumper</code> tool.
+</li>
+<li>Targets images under the <code>gcr.io/k8s-staging-test-infra</code> prefix, referenced as base images in <code>.ko.yaml</code>, via <code>extraFiles: [&quot;.ko.yaml&quot;]</code>.
+</li>
+<li>Fixes #559: those images now expire after 6 months and <code>.ko.yaml</code> hadn't been bumped since ~July 2025.
+</li>
+<li>Purely additive: one new file, not referenced by any existing build/test/deploy path.
+</li></ul>
+<p>Since previous review (<code>ab99df65</code>, unchanged through merge):</p>
+<ul>
+<li>PR merged 2026-08-10T19:58:05Z as merge commit <code>85e45f6d2</code> with an approval from matthyx; <code>hack/autobump.yaml</code> landed exactly as reviewed.
+</li>
+<li>Post-merge, <code>cmd/generic-autobumper/main.go</code> commit <code>7b32f3d6f</code> (2026-10-23) relaxed validation so <code>extraFiles</code> alone is sufficient, which resolves the blocking finding.
+</li>
+<li>The scheduled job in <code>kubernetes/test-infra</code> then produced bot PRs #1035 (closed) and #1036 (merged 2026-10-23), touching only <code>.ko.yaml</code> — the config now works end to end.
+</li></ul>
 <h2>Findings</h2>
-
-<div class="finding blocking">
-  <div class="sev">Blocking</div>
-  <div class="loc"><code class="inline">hack/autobump.yaml</code> (whole file) — validated against <code class="inline">cmd/generic-autobumper/main.go:123,232-234</code></div>
-  <p><code class="inline">IncludedConfigPaths []string \`yaml:"includedConfigPaths"\`</code> is unconditionally required by <code class="inline">validateOptions</code>, which returns <code class="inline">errors.New("includedConfigPaths is mandatory")</code> when empty. <code class="inline">main()</code> calls <code class="inline">validateOptions</code> before any bump logic runs and <code class="inline">logrus.Fatalf</code>s on error. This config never sets <code class="inline">includedConfigPaths</code>, so any invocation exits nonzero immediately, before <code class="inline">.ko.yaml</code> is ever touched. As written this cannot fix #559 — confirmed directly by reading the source, not inferred.</p>
-  <pre>// cmd/generic-autobumper/main.go
-if len(o.IncludedConfigPaths) == 0 {
-    return errors.New("includedConfigPaths is mandatory")
-}
-
-# hack/autobump.yaml — missing field
-extraFiles:
-  - ".ko.yaml"
-prefixes:
-  - name: "k8s-staging-test-infra GCR images"</pre>
-</div>
-
-<div class="finding question">
-  <div class="sev">Question</div>
-  <div class="loc"><code class="inline">hack/autobump.yaml</code> (whole file)</div>
-  <p>Nothing in this repo (<code class="inline">config/jobs/**</code>, <code class="inline">Makefile</code>s, <code class="inline">.github/workflows/**</code>) invokes <code class="inline">generic-autobumper --config=hack/autobump.yaml</code> on a schedule. The periodic + postsubmit jobs likely need to live in a separate infra/job-config repo, but that's invisible from here. Even once the blocking issue is fixed, it's unclear the bump will actually run without that wiring, and #559 could get marked resolved while the automation stays inert.</p>
-  <pre>gitHubToken: "/etc/github-token/token"
-...
-prefixes:
-  - prefix: "gcr.io/k8s-staging-test-infra"</pre>
-</div>
-
-<h2>Things I checked and was fine with</h2>
+<p>No open findings.</p>
+<h2>Resolved</h2>
+<h3><span class="tag c-red">blocking</span>missing <code>includedConfigPaths</code> causes the bumper to fail on every invocation — resolved upstream</h3>
 <ul>
-  <li>All other fields (<code class="inline">gitHubLogin</code>, <code class="inline">gitHubToken</code>, <code class="inline">gitName</code>, <code class="inline">gitEmail</code>, <code class="inline">skipPullRequest</code>, <code class="inline">gitHubOrg</code>, <code class="inline">gitHubRepo</code>, <code class="inline">remoteName</code>, <code class="inline">upstreamURLBase</code>, <code class="inline">targetVersion</code>, <code class="inline">prefixes[].name/prefix/repo/summarise/consistentImages</code>) match the <code class="inline">Options</code>/<code class="inline">Prefix</code> structs in <code class="inline">cmd/generic-autobumper/main.go:121-170</code> and satisfy the other <code class="inline">validateOptions</code> checks (fork mode requires <code class="inline">gitHubToken</code>+<code class="inline">remoteName</code>, both present; <code class="inline">consistentImages: false</code> with no exceptions passes cross-field validation).</li>
-  <li><code class="inline">prefix: "gcr.io/k8s-staging-test-infra"</code> matches exactly the images in <code class="inline">.ko.yaml</code>'s <code class="inline">baseImageOverrides</code> (<code class="inline">alpine</code>, <code class="inline">git</code>, <code class="inline">git-custom-k8s-auth</code>); unrelated images (<code class="inline">gcr.io/distroless/static</code>, <code class="inline">google/cloud-sdk</code>) correctly untouched.</li>
-  <li><code class="inline">targetVersion: "latest"</code> is a supported value per <code class="inline">cmd/generic-autobumper/main_test.go</code>.</li>
-  <li>All CI checks pass (image-build-test, integration, unit-test, race-detector, verify-lint, EasyCLA, Netlify preview) — none of them exercise <code class="inline">hack/autobump.yaml</code> itself, so they don't catch the missing-field bug.</li>
-  <li>Low blast radius: new file isn't referenced anywhere else, so the bug can't regress existing behavior — it only means the bumper fails/no-ops wherever it's eventually invoked.</li>
-</ul>
-
-<h2>Open questions for the author</h2>
+<li>where: <code>hack/autobump.yaml</code> (whole file); was validated against <code>cmd/generic-autobumper/main.go:123,232-234</code>
+</li>
+<li>concern (at review time): <code>IncludedConfigPaths []string \</code>yaml:"includedConfigPaths"\<code></code> was unconditionally required by <code>validateOptions</code>, which returned <code>errors.New(&quot;includedConfigPaths is mandatory&quot;)</code> when empty. <code>main()</code> calls <code>validateOptions</code> before any bump logic runs and <code>logrus.Fatalf</code>s on error, so <code>generic-autobumper --config=hack/autobump.yaml</code> exited nonzero immediately and never reached <code>.ko.yaml</code> via <code>extraFiles</code>.
+</li>
+<li>resolved by: <code>cmd/generic-autobumper/main.go</code>, commit <code>7b32f3d6f</code> on <code>main</code> (2026-10-23, "add dry-run flag to bumper and fix an error in the bumper"), which changed the check to <code>if len(o.IncludedConfigPaths) == 0 &amp;&amp; len(o.ExtraFiles) == 0</code> with the message <code>at least one of includedConfigPaths or extraFiles must be specified</code>. <code>hack/autobump.yaml</code> sets <code>extraFiles: [&quot;.ko.yaml&quot;]</code>, so it now validates.
+</li>
+<li>verified live: scheduled run produced <code>k8s-infra-ci-robot</code> PR #1035 (closed) and #1036 (merged 2026-10-23T21:09Z); both touched only <code>.ko.yaml</code> and #1036 bumped <code>alpine</code>, <code>git</code>, <code>git-custom-k8s-auth</code> from the 2026-05-12 staging images to 2026-10-23.
+</li>
+<li>caveat: the config as merged (2026-08-10) was broken until <code>7b32f3d6f</code> (2026-10-23), so scheduled runs in that window presumably failed and #559 was not actually fixed for ~2.5 months.
+</li></ul>
+<h3><span class="tag c-blue">question</span>no periodic job wired to run this config — answered</h3>
 <ul>
-  <li>Can you add <code class="inline">includedConfigPaths</code> (e.g. <code class="inline">["."]</code> or the actual directories to scan)? Without it the tool exits nonzero on every run.</li>
-  <li>Has this config been dry-run (<code class="inline">generic-autobumper --config hack/autobump.yaml</code>) to confirm it validates and reaches the bump step?</li>
-  <li>Is there a companion PR/job (likely in a separate infra repo) that actually invokes this config on a schedule, and does it mount the <code class="inline">/etc/github-token/token</code> secret this config expects?</li>
-</ul>
+<li>where: <code>hack/autobump.yaml</code> (whole file)
+</li>
+<li>resolved: <code>kubernetes/test-infra</code> file <code>config/jobs/kubernetes/sig-k8s-infra/trusted/sig-k8s-infra-prow.yaml</code> defines job <code>ci-prow-autobump-base-images</code> — cron <code>15 14-20/5 * * 1-5</code>, cluster <code>k8s-infra-prow-build-trusted</code>, <code>extra_refs</code> <code>kubernetes-sigs/prow@main</code>, running <code>generic-autobumper --config=hack/autobump.yaml --labels-override=skip-review</code>, mounting secret <code>k8s-infra-ci-robot-github-token</code> at <code>/etc/github-token</code> (matches <code>gitHubToken: &quot;/etc/github-token/token&quot;</code>).
+</li>
+<li>note: the job already existed before the review (present at test-infra ref <code>2ceed8557</code>, 2026-07-20); the original review only searched this repo, so it missed the external job config.
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>All other fields (<code>gitHubLogin</code>, <code>gitHubToken</code>, <code>gitName</code>, <code>gitEmail</code>, <code>skipPullRequest</code>, <code>gitHubOrg</code>, <code>gitHubRepo</code>, <code>remoteName</code>, <code>upstreamURLBase</code>, <code>targetVersion</code>, <code>prefixes[].name/prefix/repo/summarise/consistentImages</code>) match the <code>Options</code>/<code>Prefix</code> structs in <code>cmd/generic-autobumper/main.go:121-170</code> and satisfy the other <code>validateOptions</code> checks (fork mode requires <code>gitHubToken</code>+<code>remoteName</code>, both present; <code>consistentImages: false</code> with no exceptions passes cross-field validation).
+</li>
+<li><code>prefix: &quot;gcr.io/k8s-staging-test-infra&quot;</code> matches exactly the images in <code>.ko.yaml</code>'s <code>baseImageOverrides</code> (<code>alpine</code>, <code>git</code>, <code>git-custom-k8s-auth</code>); unrelated images (<code>gcr.io/distroless/static</code>, <code>google/cloud-sdk</code>) correctly untouched.
+</li>
+<li><code>targetVersion: &quot;latest&quot;</code> is a supported value per <code>cmd/generic-autobumper/main_test.go</code>.
+</li>
+<li>All CI checks pass (image-build-test, integration, unit-test, race-detector, verify-lint, EasyCLA, Netlify preview) — none of them exercise <code>hack/autobump.yaml</code> itself, so they don't catch the missing-field bug.
+</li>
+<li>Low blast radius: new file isn't referenced anywhere else, so the bug can't regress existing behavior — it only means the bumper fails/no-ops wherever it's eventually invoked.
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>None. All prior questions are answered under "Resolved": <code>includedConfigPaths</code> is no longer required when <code>extraFiles</code> is set, the scheduled job exists and mounts the expected token, and bot PR #1036 demonstrates the bump reaching a real PR.
+</li></ul>
+<h2>Followups</h2>
+<h3>tests: probe the <code>extraFiles</code>-only bump path used by <code>hack/autobump.yaml</code></h3>
+<ul>
+<li>where: <code>cmd/generic-autobumper/main_test.go</code>, <code>cmd/generic-autobumper/bumper/</code>, <code>hack/autobump.yaml</code>
+</li>
+<li>necessity: should
+</li>
+<li>mode: probe
+</li>
+<li>why followup: the config merged invalid and stayed inert until <code>7b32f3d6f</code> fixed <code>validateOptions</code>, yet no test exercises the exact shape it ships with (empty <code>includedConfigPaths</code>, <code>extraFiles: [&quot;.ko.yaml&quot;]</code>). A throwaway probe is the cheapest way to look for remaining bugs in that path before investing in a permanent regression test.
+<pre><code>In `kubernetes-sigs/prow`, following merged PR #796 (&quot;autobump prow base images&quot;, merge commit 85e45f6d25aa66f1ee071705b4f72a425fbaeed4), run a probe on the `cmd/generic-autobumper` code paths exercised by `hack/autobump.yaml` — the config shape with `includedConfigPaths` empty, `extraFiles: [&quot;.ko.yaml&quot;]`, `targetVersion: latest`, and one prefix `gcr.io/k8s-staging-test-infra`.
 
-</body>
-</html>
+Task: write throwaway Go tests (package `main`, reusing existing fakes such as `fakeImageBumperCli` and the temp-dir helpers in `cmd/generic-autobumper/main_test.go`) that exercise:
+1. Loading the real `hack/autobump.yaml` into both `options` and `bumper.Options` (as `parseOptions` does) and calling `validateOptions`.
+2. `updateReferences` with empty `IncludedConfigPaths` and `ExtraFiles: [&quot;.ko.yaml&quot;]` against a temp `.ko.yaml`-shaped file whose `baseImageOverrides` contain `gcr.io/k8s-staging-test-infra/alpine:v20250101-aaaaaaaaaa`, `.../git:v20250101-aaaaaaaaaa`, `.../git-custom-k8s-auth:v20250101-aaaaaaaaaa`, and an unrelated `gcr.io/distroless/static:nonroot`. Assert all three staging tags are replaced with the fake latest tag and the unrelated image is untouched.
+3. PR title/body generation (`PRTitleBody`/`generatePRBody`) when the only change is in an extra file, with `summarise: false`.
+4. Dry-run reporting (`HasChanges`/`processDryRun`): a tree with only `.ko.yaml` modified must report a change and print a PR body; an unchanged tree must report no change.
+
+Run `go test ./cmd/generic-autobumper/...`.
+
+Acceptance criteria: every listed behaviour is exercised; each failure is triaged as a real implementation bug or a wrong expectation, with evidence (test name, actual vs expected). If a real bug is found, apply only the minimal fix in non-test code. If no real bug turns up, change no files. Report each failing case (input, actual, expected) so a regression test can be added later.
+
+Scope guard: the probe tests are throwaway — delete them before finishing; the deliverable is bug fixes, never the tests. Do not fix test-only problems, style, or unrelated code. Do not modify `hack/autobump.yaml`, the validation logic, or anything under `kubernetes/test-infra`. Do not commit or push.</code></pre>
+</li></ul>
+</main></body></html>

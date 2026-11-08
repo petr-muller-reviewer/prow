@@ -1,47 +1,73 @@
 <!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Review: kubernetes-sigs/prow#928</title>
-  <style>
-    body { background: #fff; color: #1f2328; font: 16px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; margin: 0; }
-    main { margin: 2.5rem auto; max-width: 52rem; padding: 0 1.25rem; }
-    h1 { line-height: 1.2; } h2 { border-bottom: 1px solid #d0d7de; margin-top: 2rem; padding-bottom: .35rem; }
-    code { background: #f6f8fa; border-radius: 4px; font: .9em ui-monospace, SFMono-Regular, Consolas, monospace; padding: .12em .3em; }
-    .meta { color: #57606a; } .verdict { background: #dafbe1; border: 1px solid #1a7f37; border-radius: 6px; padding: 1rem; }
-  </style>
-</head>
-<body>
-<main>
-  <h1>Review: <a href="https://github.com/kubernetes-sigs/prow/pull/928">kubernetes-sigs/prow#928</a></h1>
-  <p class="meta"><code>c0eaaba6e7a9b5eb509f31376fd9f78141857f82</code> · base <code>main</code> · reviewed 2026-09-08T20:42:11Z</p>
-
-  <h2>Verdict</h2>
-  <div class="verdict"><strong>Approve.</strong> This is a dependency-only, indirect gRPC update in the isolated <code>hack/tools</code> module. v1.83.1 had about 20 days of soak time and its relevant upstream changes do not reach this module's usage.</div>
-
-  <h2>What this PR does</h2>
-  <ul>
-    <li>Updates indirect <code>google.golang.org/grpc</code> from <code>v1.82.1</code> to <code>v1.83.1</code> in <code>hack/tools/go.mod</code>.</li>
-    <li>Refreshes the corresponding gRPC checksums in <code>hack/tools/go.sum</code>.</li>
-    <li>Updates transitive <code>cel.dev/expr</code> checksums to <code>v0.25.2</code>, as selected by the updated gRPC module requirements.</li>
-    <li>Leaves Prow source code, the root module, and the tools module's direct requirements unchanged.</li>
-  </ul>
-
-  <h2>Findings</h2>
-  <p>No findings.</p>
-
-  <h2>Things I checked and was fine with</h2>
-  <ul>
-    <li>Classified the two-file change (<code>hack/tools/go.mod</code>, <code>hack/tools/go.sum</code>) as dependency-only.</li>
-    <li>Confirmed <code>google.golang.org/grpc v1.83.1</code> is indirect at <code>hack/tools/go.mod:351</code> and is reached through <code>controller-gen</code> / Kubernetes API-server validation dependencies; no Go source in <code>hack/tools</code> imports gRPC.</li>
-    <li>Reviewed grpc-go <code>v1.83.0</code> and <code>v1.83.1</code> release notes: HTTP/2 control-frame flood limiting, xDS/RBAC fail-open fixes, small-frame buffering bounds, and opt-in xDS/auth additions. This tools module has no xDS use.</li>
-    <li>Confirmed v1.83.1 is a tagged release published 2026-08-19, approximately 20 days before review.</li>
-    <li>Ran <code>cd hack/tools &amp;&amp; go mod verify</code> successfully.</li>
-  </ul>
-
-  <h2>Open questions for the author</h2>
-  <p>None.</p>
-</main>
-</body>
-</html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#928</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>chore(deps): bump google.golang.org/grpc from 1.82.1 to 1.83.1 in /hack/tools</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/928">kubernetes-sigs/prow#928</a> · base <code>main</code> · head_sha <code>c0eaaba6e7a9</code> · reviewed_at <code>2026-09-08T20:42:11Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span></div>
+<h2>Verdict</h2>
+<p>Approve. This is a dependency-only, indirect gRPC update in the isolated <code>hack/tools</code> module. v1.83.1 had about 20 days of soak time and its relevant upstream changes do not reach this module's usage.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Updates indirect <code>google.golang.org/grpc</code> from <code>v1.82.1</code> to <code>v1.83.1</code> in <code>hack/tools/go.mod</code>.
+</li>
+<li>Refreshes the corresponding gRPC checksums in <code>hack/tools/go.sum</code>.
+</li>
+<li>Updates transitive <code>cel.dev/expr</code> checksums to <code>v0.25.2</code>, as selected by the updated gRPC module requirements.
+</li>
+<li>Leaves Prow source code, the root module, and the tools module's direct requirements unchanged.
+</li></ul>
+<h2>Findings</h2>
+<p>No findings.</p>
+<h2>Checked</h2>
+<ul>
+<li>Classified the two-file change (<code>hack/tools/go.mod</code>, <code>hack/tools/go.sum</code>) as dependency-only.
+</li>
+<li>Confirmed <code>google.golang.org/grpc v1.83.1</code> is indirect at <code>hack/tools/go.mod:351</code> and is reached through <code>controller-gen</code> / Kubernetes API-server validation dependencies; no Go source in <code>hack/tools</code> imports gRPC.
+</li>
+<li>Reviewed grpc-go <code>v1.83.0</code> and <code>v1.83.1</code> release notes: HTTP/2 control-frame flood limiting, xDS/RBAC fail-open fixes, small-frame buffering bounds, and opt-in xDS/auth additions. This tools module has no xDS use.
+</li>
+<li>Confirmed v1.83.1 is a tagged release published 2026-08-19, approximately 20 days before review.
+</li>
+<li>Ran <code>cd hack/tools &amp;&amp; go mod verify</code> successfully.
+</li></ul>
+<h2>Open questions</h2>
+<p>None.</p>
+<h2>Dependency followups</h2>
+<p>No opportunities identified — nothing in this bump deprecates, replaces, or newly enables anything our code calls.</p>
+<ul>
+<li><code>google.golang.org/grpc</code> v1.82.1 → v1.83.1 (indirect in <code>hack/tools</code>; v1.83.0/v1.83.1 release notes and the full 28-commit range checked for added <code>// Deprecated:</code> markers, found none): the changes are xDS/RBAC fixes and xDS-only features (we use no xDS), plus an automatic server-side HTTP/2 control-frame flood limit and a small-frame buffering bound that need no call-site change. Nothing in <code>hack/tools</code> imports gRPC.
+</li>
+<li><code>cel.dev/expr</code> v0.25.1 → v0.25.2 (checksum-only, selected transitively by gRPC): upstream <code>google/cel-spec</code> changes are conformance tests and language-definition docs with no Go API change, and no package in the repo imports it.
+</li>
+<li>Main-module call sites (<code>cmd/gangway</code>, <code>pkg/gangway</code>, <code>pkg/resultstore</code>, <code>pkg/crier/reporters/pubsub</code>, <code>test/integration/...</code>) build against the root module's own <code>google.golang.org/grpc v1.83.2</code>, so this <code>hack/tools</code>-only bump neither enables nor requires any change there.
+</li></ul>
+</main></body></html>

@@ -33,3 +33,11 @@ No findings.
 ## Open questions
 
 None.
+
+## Dependency followups
+
+No opportunities identified — nothing in this bump deprecates, replaces, or newly enables anything our code calls.
+
+- `google.golang.org/grpc` v1.82.1 → v1.83.1 (indirect in `hack/tools`; v1.83.0/v1.83.1 release notes and the full 28-commit range checked for added `// Deprecated:` markers, found none): the changes are xDS/RBAC fixes and xDS-only features (we use no xDS), plus an automatic server-side HTTP/2 control-frame flood limit and a small-frame buffering bound that need no call-site change. Nothing in `hack/tools` imports gRPC.
+- `cel.dev/expr` v0.25.1 → v0.25.2 (checksum-only, selected transitively by gRPC): upstream `google/cel-spec` changes are conformance tests and language-definition docs with no Go API change, and no package in the repo imports it.
+- Main-module call sites (`cmd/gangway`, `pkg/gangway`, `pkg/resultstore`, `pkg/crier/reporters/pubsub`, `test/integration/...`) build against the root module's own `google.golang.org/grpc v1.83.2`, so this `hack/tools`-only bump neither enables nor requires any change there.

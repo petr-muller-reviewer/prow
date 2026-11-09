@@ -3,7 +3,7 @@ pr: kubernetes-sigs/prow#808
 title: "override: preserve status base SHA when overriding jobs"
 head_sha: 402d33a621297b0172011c6e530351542ef84fb5
 base: main
-reviewed_at: 2026-08-11T11:09:26Z
+reviewed_at: 2026-11-09T12:53:18Z
 verdict: needs-discussion
 refresh_log:
   - from: e2d6a6b1ce031b2896302af67b5bb05af12b3098
@@ -18,6 +18,9 @@ refresh_log:
   - from: 402d33a621297b0172011c6e530351542ef84fb5
     to: 402d33a621297b0172011c6e530351542ef84fb5
     summary: No code change. Prucek commented 2026-08-10T14:17:28Z questioning whether this duplicates #778 ("Add /override-sticky command for persistent overrides", merged 2026-07-14). #778 addresses a different mechanism (a sticky flag that persists overrides across new pushes), not base-SHA preservation on override - the two look complementary rather than duplicative, but worth the author/maintainer confirming explicitly since it's an open question on the PR.
+  - from: 402d33a621297b0172011c6e530351542ef84fb5
+    to: 402d33a621297b0172011c6e530351542ef84fb5
+    summary: No code change and no human comments or reviews. Bot-only activity - k8s-triage-robot applied lifecycle/stale on 2026-11-08T15:03:46Z (90 days without activity) and kubernetes-prow[bot] reported "PR needs rebase" at 2026-11-08T15:03:55Z; GitHub now reports the PR as CONFLICTING/mergeStateStatus DIRTY against main. All findings and open questions remain unaddressed.
 ---
 
 ## What this PR does
@@ -29,7 +32,9 @@ refresh_log:
 - Implements item 2 of issue #789 (follow-up from #778 review).
 
 Since previous review:
-- No code change (head still `402d33a62`). This entry records a second, independent full-diff pass.
+- No code change (head still `402d33a62`); no human comments or reviews since 2026-08-10.
+- `k8s-triage-robot` applied `lifecycle/stale` on 2026-11-08T15:03:46Z after 90 days of inactivity, and `kubernetes-prow[bot]` reports "PR needs rebase" (2026-11-08T15:03:55Z). GitHub reports `mergeable: CONFLICTING` / `mergeStateStatus: DIRTY` against `main`, and the `needs-rebase` label is set.
+- Findings are unchanged - the blocking Tide/stale-base-SHA issue and the Prucek/#778 overlap question are both still open.
 
 ## Findings
 
@@ -105,3 +110,4 @@ Since previous review:
 - Should a `GetRef` failure still guarantee all-or-nothing across the contexts of one `/override` invocation, as it did pre-PR?
 - Should `TestHandleCachesFallbackBaseSHA` be reworked to test `cachedRefGetter` directly (error caching), since the current assertion passes without it?
 - Is this PR complementary to or overlapping with #778 (`/override-sticky`)? Prucek raised this on 2026-08-10; worth an explicit reply distinguishing base-SHA preservation from sticky-override persistence.
+- Will this PR be revived? It is now `lifecycle/stale`, conflicting with `main`, and unaddressed since 2026-08-10; per the k8s triage policy it becomes `lifecycle/rotten` after 30 more days of inactivity and is closed after another 30.

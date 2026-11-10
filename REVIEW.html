@@ -1,59 +1,114 @@
 <!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Review: kubernetes-sigs/prow#945</title>
-  <style>
-    body { margin: 0; background: #f7f8fa; color: #1f2328; font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-    main { max-width: 900px; margin: 2.5rem auto; padding: 0 1.5rem 3rem; }
-    header, section { background: #fff; border: 1px solid #d0d7de; border-radius: 8px; padding: 1.5rem; margin: 1rem 0; }
-    h1, h2, h3 { line-height: 1.25; } h1 { margin-top: 0; } h2 { margin-top: 0; }
-    code { font: 0.9em ui-monospace, SFMono-Regular, Consolas, monospace; background: #f6f8fa; border-radius: 4px; padding: .1em .3em; }
-    .meta { color: #57606a; } .approve { color: #1a7f37; font-weight: 700; }
-  </style>
-</head>
-<body>
-  <main>
-    <header>
-      <h1>Review: kubernetes-sigs/prow#945</h1>
-      <p><a href="https://github.com/kubernetes-sigs/prow/pull/945">tide: keep merged PRs returned by the open PR search out of the pool</a></p>
-      <p class="meta">Base: <code>main</code> · Head: <code>7014957aaef5a2bc7cd41a1f99bb68173d6268d3</code> · Reviewed: 2026-09-22T00:26:21Z</p>
-    </header>
-    <section>
-      <h2>Verdict</h2>
-      <p class="approve">Approve</p>
-      <p>The change filters an authoritative <code>merged</code> state at the search-result boundary before it reaches Tide's pool, with bounded observability and a focused regression test. It introduces no configuration, API, or rollout compatibility risk.</p>
-    </section>
-    <section>
-      <h2>What this PR does</h2>
-      <ul>
-        <li>Requests the pull request <code>merged</code> field in Tide's existing GitHub search selection.</li>
-        <li>Excludes a search result whose authoritative state is already merged before inserting it into the candidate pool.</li>
-        <li>Logs skipped stale results and increments a per-org/repo counter for search-index lag.</li>
-        <li>Tests both pool exclusion and the metric increment.</li>
-      </ul>
-    </section>
-    <section>
-      <h2>Findings</h2>
-      <h3>Blocking</h3><p>None.</p>
-      <h3>Should fix</h3><p>None.</p>
-      <h3>Nits</h3><p>None.</p>
-      <h3>Questions</h3><p>None.</p>
-    </section>
-    <section>
-      <h2>Things I checked and was fine with</h2>
-      <ul>
-        <li><code>pkg/tide/github.go</code>: the guard is applied before the result enters the pool, preventing downstream batch construction from seeing a stale merged PR.</li>
-        <li><code>pkg/tide/tide.go</code>: the GraphQL field is a scalar in the existing request; the new metric has bounded <code>org,repo</code> labels and no extra API calls.</li>
-        <li><code>pkg/tide/tide_test.go</code>: <code>TestQueryIgnoresMergedPRs</code> covers the observable filter behavior and counter increment.</li>
-        <li>Deployment compatibility: no configuration, RBAC, manifests, credentials, or API contract changes.</li>
-      </ul>
-    </section>
-    <section>
-      <h2>Open questions for the author</h2>
-      <p>None.</p>
-    </section>
-  </main>
-</body>
-</html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#945</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>tide: keep merged PRs returned by the open PR search out of the pool</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/945">kubernetes-sigs/prow#945</a> · base <code>main</code> · head_sha <code>7014957aaef5</code> · reviewed_at <code>2026-11-10T01:21:01Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span></div>
+<details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#945
+title: &quot;tide: keep merged PRs returned by the open PR search out of the pool&quot;
+head_sha: 7014957aaef5a2bc7cd41a1f99bb68173d6268d3
+base: main
+reviewed_at: 2026-11-10T01:21:01Z
+verdict: approve
+refresh_log:
+  - at: 2026-11-10T01:21:01Z
+    old_sha: 7014957aaef5a2bc7cd41a1f99bb68173d6268d3
+    new_sha: 7014957aaef5a2bc7cd41a1f99bb68173d6268d3
+    summary: &quot;No code changes; PR merged after two approvals. Recorded Prucek&#x27;s unanswered question about whether the new metric is needed.&quot;</code></pre></details>
+<h2>Verdict</h2>
+<p>Approve. The change filters an authoritative <code>merged</code> state at the search-result boundary before it reaches Tide's pool, with bounded observability and a focused regression test. It introduces no configuration, API, or rollout compatibility risk.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Requests the pull request <code>merged</code> field in Tide's existing GitHub search selection.
+</li>
+<li>Excludes a search result whose authoritative state is already merged before inserting it into the candidate pool.
+</li>
+<li>Logs skipped stale results and increments a per-org/repo counter for search-index lag.
+</li>
+<li>Tests both pool exclusion and the metric increment.
+</li></ul>
+<p>Since previous review:</p>
+<ul>
+<li>No code changes (<code>7014957a</code> throughout); the PR merged on 2026-09-22 at 11:44 UTC.
+</li>
+<li>Reviewed and approved by <code>Prucek</code> (2026-09-22 11:19) and <code>petr-muller</code> (2026-09-22 11:43); approval bot confirmed and Tide merged it.
+</li>
+<li>One inline question was raised on <code>pkg/tide/tide.go:281</code> and left unanswered before merge; recorded under Open questions.
+</li></ul>
+<h2>Findings</h2>
+<p>No findings.</p>
+<h2>Checked</h2>
+<ul>
+<li><code>pkg/tide/github.go</code>: the guard is applied before the result enters the pool, preventing downstream batch construction from seeing a stale merged PR.
+</li>
+<li><code>pkg/tide/tide.go</code>: the GraphQL field is a scalar in the existing request; the new metric has bounded <code>org,repo</code> labels and no extra API calls.
+</li>
+<li><code>pkg/tide/tide_test.go</code>: <code>TestQueryIgnoresMergedPRs</code> covers the observable filter behavior and counter increment.
+</li>
+<li>Deployment compatibility: no configuration, RBAC, manifests, credentials, or API contract changes.
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li><code>Prucek</code> asked inline on <code>pkg/tide/tide.go:281</code> (2026-09-22 11:18) whether the new <code>org,repo</code>-labelled metric is needed at all, suggesting the plain log line may suffice. No reply was posted before the PR merged; the metric shipped as-is. Worth a followup only if the metric turns out to be noise in production dashboards.
+</li></ul>
+<h2>Followups</h2>
+<h3>deferred-review: apply the merged-PR guard to the status controller's search</h3>
+<ul>
+<li>mode: deliver
+</li>
+<li>where: <code>pkg/tide/status.go:686-714</code>, shared helper in <code>pkg/tide/github.go:171</code>
+</li>
+<li>necessity: should
+</li>
+<li>accepted_at: 2026-11-10T01:24:29Z
+</li>
+<li>why: <code>statusController.search()</code> uses the same <code>state:open</code> <code>ghProvider.search()</code> results that PR #945 fixed for the pool, but passes them straight to <code>setStatuses()</code> without the merged check, so a stale merged PR still gets a computed tide status posted to its head.
+<pre><code>In kubernetes-sigs/prow, following PR #945 &quot;tide: keep merged PRs returned by the open PR search out of the pool&quot; (merge commit f36bdc5dd8ddbf45118e7b035fe1a2970666bf52, merged to main), apply the same merged-PR guard to the StatusController&#x27;s search path.
+
+Context: PR #945 added a check in GitHubProvider.Query() (pkg/tide/github.go, around lines 141-148) that skips a search result with pr.Merged == true, logs &quot;Search returned an already merged PR, ignoring it.&quot; and increments tideMetrics.searchMerged (tide_search_merged_prs_total{org,repo}, defined in pkg/tide/tide.go around line 274). That check covers only the pool. statusController.search() in pkg/tide/status.go (around lines 652-718) runs the same ghProvider.search() over openPRsQueries (which start with &quot;is:pr state:open ...&quot;) and appends every result via CodeReviewCommonFromPullRequest at line ~714, so a PR merged while GitHub&#x27;s search index lags is still processed by setStatuses() and typically receives a &quot;Not mergeable.&quot; tide status on its head.
+
+Task:
+1. Make the merged check cover both search consumers. Preferred: move the filter into GitHubProvider.search() (pkg/tide/github.go, around line 171) so every caller inherits it; if you do, keep the status controller&#x27;s LatestPR watermark logic in mind - it uses result[len(result)-1].UpdatedAt, so dropping trailing merged results will hold the watermark slightly further back (an extra re-fetch of the same window, harmless but worth a comment). Filtering in statusController.search()&#x27;s result loop instead is also acceptable if it reads more clearly.
+2. Reuse the existing metric and logging: tideMetrics.searchMerged.WithLabelValues(org, repo).Inc() and a warn-level log with the PR&#x27;s log fields; do not add a second counter or rename the existing one.
+3. Add a regression test next to the existing TestStatusControllerSearch (pkg/tide/status_test.go:2333) proving that a merged PR returned by the search does not reach setStatuses() (and, if practical, that the metric increments once). Extend TestQueryIgnoresMergedPRs only if the refactor changes what it asserts.
+
+Acceptance criteria:
+- A merged PR returned by statusController.search() is excluded before status computation; a non-merged PR in the same result set is still processed.
+- go test ./pkg/tide/ passes, including the new regression test, and golangci-lint is clean.
+- No behaviour change for open PRs or for the Query() pool path.
+
+Scope guard:
+- Do not change search query strings, pagination, rate-limit accounting, or the LatestPR watermark semantics beyond what the filter requires.
+- Do not touch the metric name, labels, or help text; do not refactor unrelated status code.
+- Do not reopen or comment on PR #945 or issue #651; this lands as a new change.</code></pre>
+</li></ul>
+</main></body></html>

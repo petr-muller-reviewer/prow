@@ -1,52 +1,186 @@
 <!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Review: kubernetes-sigs/prow#931</title>
-<style>
-body { font-family: system-ui, sans-serif; line-height: 1.55; color: #202124; margin: 0; background: #f8f9fa; }
-main { max-width: 900px; margin: 2rem auto; padding: 2rem; background: #fff; border: 1px solid #dadce0; border-radius: 8px; }
-h1, h2 { line-height: 1.25; } code { font-family: ui-monospace, monospace; background: #f1f3f4; padding: .1rem .25rem; border-radius: 3px; }
-.meta { color: #5f6368; } .verdict { border-left: 4px solid #1a7f37; padding-left: 1rem; }
-</style>
-</head>
-<body>
-<main>
-<h1>Review: <a href="https://github.com/kubernetes-sigs/prow/pull/931">kubernetes-sigs/prow#931</a></h1>
-<p class="meta"><strong>Title:</strong> chore(deps): bump sigs.k8s.io/controller-runtime from 0.24.1 to 0.25.0 in the kubernetes group across 1 directory<br>
-<strong>Base:</strong> <code>main</code><br>
-<strong>Head:</strong> <code>450cf57da53d1d3412fcde76945f4f45cc63dea1</code><br>
-<strong>Reviewed:</strong> 2026-09-14T21:46:38Z</p>
-
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#931</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>chore(deps): bump sigs.k8s.io/controller-runtime from 0.24.1 to 0.25.0 in the kubernetes group across 1 directory</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/931">kubernetes-sigs/prow#931</a> · base <code>main</code> · head_sha <code>450cf57da53d</code> · reviewed_at <code>2026-11-10T01:14:34Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span></div>
+<details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#931
+title: &quot;chore(deps): bump sigs.k8s.io/controller-runtime from 0.24.1 to 0.25.0 in the kubernetes group across 1 directory&quot;
+head_sha: 450cf57da53d1d3412fcde76945f4f45cc63dea1
+base: main
+reviewed_at: 2026-11-10T01:14:34Z
+verdict: approve
+refresh_log:
+  - at: 2026-11-10T01:14:34Z
+    old_sha: 450cf57da53d1d3412fcde76945f4f45cc63dea1
+    new_sha: 450cf57da53d1d3412fcde76945f4f45cc63dea1
+    summary: &quot;No code changes; approval and merge recorded, pending-CI condition satisfied.&quot;</code></pre></details>
 <h2>Verdict</h2>
-<div class="verdict"><strong>Approve</strong><p>This dependency-only update aligns controller-runtime with Prow's existing Kubernetes v0.37 direct dependencies. The release is 11 days old and has broad production use here, but its breaking and new behavior does not intersect with Prow's imported APIs. Merge after the pending normal CI completes.</p></div>
-
+<p>Approve. This dependency-only update aligns controller-runtime with Prow's existing Kubernetes v0.37 direct dependencies. The release is 11 days old and has broad production use here, but its breaking and new behavior does not intersect with Prow's imported APIs. The review's merge condition was met: the PR was approved and merged on 2026-09-14.</p>
 <h2>What this PR does</h2>
 <ul>
-<li>Updates the direct controller-runtime dependency from v0.24.1 to v0.25.0.</li>
-<li>Updates its indirect k8s.io/apiextensions-apiserver dependency from v0.36.3 to v0.37.0.</li>
-<li>Refreshes the corresponding module checksums only.</li>
-<li>Does not modify Prow source, configuration, or tests.</li>
-</ul>
-
-<h2>Findings</h2>
-<h3>Blocking</h3><p>None.</p>
-<h3>Should fix</h3><p>None.</p>
-<h3>Nits</h3><p>None.</p>
-<h3>Questions</h3><p>None.</p>
-
-<h2>Things I checked and was fine with</h2>
+<li>Updates the direct controller-runtime dependency from v0.24.1 to v0.25.0.
+</li>
+<li>Updates its indirect k8s.io/apiextensions-apiserver dependency from v0.36.3 to v0.37.0.
+</li>
+<li>Refreshes the corresponding module checksums only.
+</li>
+<li>Does not modify Prow source, configuration, or tests.
+</li></ul>
+<p>Since previous review:</p>
 <ul>
-<li><code>go.mod:83</code> declares controller-runtime directly; it is imported by 55 Go files (30 production and 25 test files), covering ProwJob reconcilers, managers, caches, clients, and fake-client tests.</li>
-<li><code>go.mod:166</code> now aligns the transitive apiextensions-apiserver version with Prow's existing direct Kubernetes v0.37.0 dependencies.</li>
-<li>controller-runtime v0.25.0 is a tagged release published 2026-09-03 (11 days before review); the v0.37.0 Kubernetes release was published 2026-08-26.</li>
-<li>Upstream changes include opt-in read-your-writes cache consistency, fake-client enhancements and fixes, controller/cache shutdown fixes, and the Kubernetes v1.37 dependency update. Prow does not use the new read-your-writes, typed informer, EventRecorder, PriorityQueue, or affected fake-client APIs.</li>
-<li>GitHub's published security-advisory endpoint returned no controller-runtime advisory. The PR changes only <code>go.mod</code> and <code>go.sum</code>.</li>
-</ul>
+<li>No code changes: the PR head is still <code>450cf57da53d1d3412fcde76945f4f45cc63dea1</code>.
+</li>
+<li><code>petr-muller</code> approved the PR at 2026-09-14T22:03:35Z; the approval-notifier bot recorded the approval at 2026-09-14T22:04:13Z.
+</li>
+<li>The PR was merged into <code>main</code> at 2026-09-14T22:23:20Z, satisfying the pending-CI condition.
+</li></ul>
+<h2>Findings</h2>
+<p>None.</p>
+<h2>Resolved</h2>
+<ul>
+<li>The merge condition in Open questions was satisfied: the PR merged at 2026-09-14T22:23:20Z.
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li><code>go.mod:83</code> declares controller-runtime directly; it is imported by 55 Go files (30 production and 25 test files), covering ProwJob reconcilers, managers, caches, clients, and fake-client tests.
+</li>
+<li><code>go.mod:166</code> now aligns the transitive apiextensions-apiserver version with Prow's existing direct Kubernetes v0.37.0 dependencies.
+</li>
+<li>controller-runtime v0.25.0 is a tagged release published 2026-09-03 (11 days before review); the v0.37.0 Kubernetes release was published 2026-08-26.
+</li>
+<li>Upstream changes include opt-in read-your-writes cache consistency, fake-client enhancements and fixes, controller/cache shutdown fixes, and the Kubernetes v1.37 dependency update. Prow does not use the new read-your-writes, typed informer, EventRecorder, PriorityQueue, or affected fake-client APIs.
+</li>
+<li>GitHub's published security-advisory endpoint returned no controller-runtime advisory. The PR changes only <code>go.mod</code> and <code>go.sum</code>.
+</li></ul>
+<h2>Open questions</h2>
+<p>None.</p>
+<h2>Dependency followups</h2>
+<p>Followups accepted from the <code>sigs.k8s.io/controller-runtime</code> v0.24.1→v0.25.0 changelog (PR #931, merged as <code>d91e0f84e0f2050b41390b28b69a05f5284ba4a2</code>).</p>
+<p>Examined with no action: <code>k8s.io/apiextensions-apiserver</code> v0.36.3→v0.37.0 (indirect, not imported); <code>GetEventRecorderFor</code> deprecation (the only new deprecation in range, not called by Prow); <code>TypedInformer</code> source (does not supersede <code>source.Kind</code> usage in <code>pkg/plank/reconciler.go:155</code>); webhook server <code>Port: -1</code> (Prow never starts a manager webhook server); fakeclient <code>WithGlobalResourceVersionCounter</code> (no Prow test depends on cross-object resourceVersion ordering).</p>
+<h3><span class="tag c-gray">simplification</span>Enable read-your-writes consistency and drop cache-wait polls</h3>
+<ul>
+<li>unlock: <code>sigs.k8s.io/controller-runtime</code> v0.24.1→v0.25.0
+</li>
+<li>where: <code>pkg/plank/reconciler.go:659</code>, <code>pkg/plank/reconciler.go:775</code>, <code>pkg/plank/reconciler.go:882</code>, <code>pkg/crier/reporters/criercommonlib/updatereportstatus.go:52</code>
+</li>
+<li>necessity: could — experimental upstream feature, but it removes four timeout-based polls that exist solely to wait for the cache to observe a write.
+<pre><code>In kubernetes-sigs/prow, now that PR #931 (&quot;chore(deps): bump sigs.k8s.io/controller-runtime
+from 0.24.1 to 0.25.0 in the kubernetes group across 1 directory&quot;, merged as
+d91e0f84e0f2050b41390b28b69a05f5284ba4a2) bumped sigs.k8s.io/controller-runtime to v0.25.0,
+adopt the new experimental read-your-writes cache consistency and remove Prow&#x27;s hand-rolled
+cache-wait loops.
 
-<h2>Open questions for the author</h2>
-<ul><li>Please merge after the currently pending required CI checks complete.</li></ul>
-</main>
-</body>
-</html>
+What the bump offers: v0.25.0 adds client.Options.Cache.EnableReadYourWritesConsistency
+(*bool, experimental). From controller-runtime v0.25.0 pkg/client/client.go:
+&quot;EnableReadYourWritesConsistency controls if read requests against the cache will block until
+the cache observed all write requests that started before the read request. Lists will wait
+for all pending write requests to the gvk the List is for.&quot; Individual requests can opt out
+with client.DisableReadYourWritesConsistency.
+
+Task:
+1. Set EnableReadYourWritesConsistency (ptr.To(true)) on the cache-backed clients that
+   currently need the polls:
+   - cmd/crier/main.go: add Client: ctrlruntimeclient.Options{Cache:
+     &amp;ctrlruntimeclient.CacheOptions{EnableReadYourWritesConsistency: ptr.To(true)}} to the
+     manager.Options (controller-runtime fills Cache.Reader when nil; see v0.25.0
+     pkg/cluster/cluster.go).
+   - cmd/prow-controller-manager/main.go: same for the plank manager.
+   - pkg/flagutil/kubernetes_cluster_clients.go:365 (BuildClusters overrideOptions): set
+     newOptions.Client.Cache.EnableReadYourWritesConsistency so build-cluster clients get it
+     too; this covers the pod-create visibility wait.
+2. Delete these now-redundant poll loops and their surrounding comments, keeping the
+   returned errors meaningful:
+   - pkg/plank/reconciler.go:659-671 (state-transition wait)
+   - pkg/plank/reconciler.go:775-786 (MaxConcurrency/JobQueueName wait)
+   - pkg/plank/reconciler.go:882-894 (pod-create visibility wait)
+   - pkg/crier/reporters/criercommonlib/updatereportstatus.go:52-65 (report-state wait)
+3. Check whether other components (cmd/sinker, cmd/tide, cmd/deck) have cache-read-after-write
+   assumptions worth opting in for; enable only where such an assumption exists.
+
+Acceptance criteria:
+- go build ./... and go test ./pkg/plank/... ./pkg/crier/... ./pkg/flagutil/... pass.
+- No wait.PollUntilContextTimeout remains at the four call sites.
+- Behaviour is unchanged for state transitions, MaxConcurrency gating, pod creation, and
+  report-state de-duplication (run test/integration/test if the environment allows).
+- The PR description notes that read-your-writes consistency is experimental in v0.25.0 and
+  may change in a future controller-runtime release.
+
+Scope guard:
+- Do not change unrelated controllers, retry backoffs, or the PriorityQueue code path.
+- Do not adopt the feature for read-only clients or deck&#x27;s read path.
+- Do not upgrade controller-runtime further; stay on v0.25.0.</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">new-feature</span>Opt into client-go REST client metrics</h3>
+<ul>
+<li>unlock: <code>sigs.k8s.io/controller-runtime</code> v0.24.1→v0.25.0
+</li>
+<li>where: <code>pkg/metrics/metrics.go:64</code> (the scrape handler that already merges <code>ctrlruntimemetrics.Registry</code>)
+</li>
+<li>necessity: could — observability only; adds API-request latency/size/retry series to every component that uses <code>pkg/metrics</code>.
+<pre><code>In kubernetes-sigs/prow, now that PR #931 (&quot;chore(deps): bump sigs.k8s.io/controller-runtime
+from 0.24.1 to 0.25.0 in the kubernetes group across 1 directory&quot;, merged as
+d91e0f84e0f2050b41390b28b69a05f5284ba4a2) bumped controller-runtime to v0.25.0, expose the
+newly opt-in client-go REST client metrics through Prow&#x27;s metrics endpoint.
+
+What the bump offers: controller-runtime v0.25.0 changed pkg/metrics so that only
+rest_client_requests_total is registered by default; the others are opt-in via
+metrics.RegisterRESTClientMetrics(metrics ...RESTClientMetric) or
+metrics.RegisterRESTClientMetricsWithOptions(RESTClientMetricsOptions{DurationBuckets: ...},
+...). Available: MetricRequestLatency, MetricDNSResolutionLatency, MetricRequestSize,
+MetricResponseSize, MetricRateLimiterLatency, MetricRequestRetry.
+
+Task:
+1. In pkg/metrics/metrics.go, register the opt-in metrics exactly once per process and after
+   controller-runtime&#x27;s metrics package init (e.g. a sync.Once helper called from
+   ExposeMetricsWithRegistry, or a package init in this file).
+2. Use RegisterRESTClientMetricsWithOptions with the Kubernetes-default buckets unless there
+   is a concrete reason to override them; enable all six metrics initially.
+3. No server wiring should be needed: pkg/metrics/metrics.go already merges
+   ctrlruntimemetrics.Registry into the scrape handler — confirm that.
+
+Acceptance criteria:
+- A scrape (or a unit test of pkg/metrics) includes rest_client_request_duration_seconds,
+  rest_client_dns_resolution_duration_seconds, rest_client_request_size_bytes,
+  rest_client_response_size_bytes, rest_client_rate_limiter_duration_seconds, and
+  rest_client_request_retries_total alongside the existing rest_client_requests_total.
+- go test ./pkg/metrics/... passes and no duplicate-registration panic occurs with multiple
+  Prow binaries importing the package.
+- go vet ./pkg/metrics/... is clean.
+
+Scope guard:
+- Do not replace or reconfigure Prow&#x27;s custom metrics, pushgateway behaviour, or the
+  ctrlruntimemetrics.Registry unregistration logic.
+- Do not add per-component labels or rename existing metrics.
+- Stay on controller-runtime v0.25.0.</code></pre>
+</li></ul>
+</main></body></html>

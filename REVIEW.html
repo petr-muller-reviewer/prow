@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#932</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>chore(deps): bump the aws group across 1 directory with 4 updates</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/932">kubernetes-sigs/prow#932</a> · base <code>main</code> · head_sha <code>05ba86bf15f3</code> · reviewed_at <code>2026-11-08T00:08:12Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span></div>
+<details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#932
+title: &quot;chore(deps): bump the aws group across 1 directory with 4 updates&quot;
+head_sha: 05ba86bf15f37512c1727b78ee9d5bc1de91c791
+base: main
+reviewed_at: 2026-11-08T00:08:12Z
+verdict: approve
+refresh_log:
+  - old_sha: 05ba86bf15f37512c1727b78ee9d5bc1de91c791
+    new_sha: 05ba86bf15f37512c1727b78ee9d5bc1de91c791
+    summary: &quot;Reviewed pull-prow-unit-test timeout in pkg/interrupts; unrelated to the AWS dependency update.&quot;
+  - old_sha: 05ba86bf15f37512c1727b78ee9d5bc1de91c791
+    new_sha: 05ba86bf15f37512c1727b78ee9d5bc1de91c791
+    summary: &quot;No code changes; rebuild of pull-prow-unit-test passed and the PR was merged.&quot;</code></pre></details>
+<h2>Verdict</h2>
+<p>Approve. This is a dependency-only update with no incompatible behavior in Prow's S3 client path. The four tagged releases have nine days of soak; that is below a conservative two-week preference but beyond the five-day high-risk window. The PR was merged on 2026-09-14 at 23:11:17Z.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Updates the direct AWS SDK root module from <code>v1.45.1</code> to <code>v1.46.0</code>.
+</li>
+<li>Updates direct config, credentials, and S3 modules by one patch release.
+</li>
+<li>Regenerates the main and <code>hack/tools</code> Go module checksums and AWS transitive-module selections.
+</li>
+<li>Does not alter Prow source, configuration, tests, or generated project code.
+</li></ul>
+<p>Since previous review:</p>
+<ul>
+<li><code>pull-prow-unit-test</code> timed out after 10 minutes in <code>pkg/interrupts.TestInterrupts</code>; no PR commit was added.
+</li>
+<li>The focused test passes locally in 0.434s and neither the test package nor its dependencies are touched by this AWS-only PR.
+</li>
+<li>2026-11-08 refresh: no new commits, no new review comments or reviews, and no code changes since <code>05ba86b</code>.
+</li>
+<li>The retested <code>pull-prow-unit-test</code> build passed at 2026-09-14T22:54:18Z, confirming the earlier failure was a <code>pkg/interrupts</code> flake.
+</li>
+<li>The PR was merged at 2026-09-14T23:11:17Z; nothing remains to review.
+</li></ul>
+<h2>Findings</h2>
+<p>No findings.</p>
+<h2>Checked</h2>
+<ul>
+<li>Classification: only <code>go.mod</code>, <code>go.sum</code>, <code>hack/tools/go.mod</code>, and <code>hack/tools/go.sum</code> change; this is dep-only.
+</li>
+<li><code>github.com/aws/aws-sdk-go-v2 v1.45.1 → v1.46.0</code>, <code>config v1.33.2 → v1.33.3</code>, <code>credentials v1.20.2 → v1.20.3</code>, and <code>service/s3 v1.110.0 → v1.111.0</code> are tagged 2026-09-04 releases.
+</li>
+<li>Prow's complete direct AWS import surface is <code>pkg/io/providers/aws.go:26-29</code>, with assertions in <code>pkg/io/providers/aws_test.go:23-25</code>; it creates an S3 client using the default or static credential chain, an optional endpoint, and an optional insecure TLS transport.
+</li>
+<li>The changed upstream behavior moves credential-source user-agent setup to client construction and retry-loop tracing into retry middleware. It does not change request bytes, retry decisions, or S3 execution; Prow does not configure AWS tracing hooks.
+</li>
+<li>No security fix is identified in the release interval. The 9-day release age is below the preferred 14-day soak but outside the 5-day high-risk window.
+</li>
+<li><code>go test ./pkg/io/providers</code> passed.
+</li>
+<li>CI build <code>2099245540469379072</code> failed only because <code>pkg/interrupts.TestInterrupts</code> blocked in <code>WaitForGracefulShutdown()</code> at <code>pkg/interrupts/interrupts_test.go:183-194</code>; <code>go test ./pkg/interrupts -run &#x27;^TestInterrupts$&#x27; -count=1 -timeout=30s</code> passed locally in 0.434s.
+</li></ul>
+<h2>Open questions</h2>
+<p>None.</p>
+<h2>Dependency followups</h2>
+<p>No opportunities identified (checked 2026-11-08 against PR #932, merged as <code>4f3f8432b423d6e71566bc7c450eb980df9c6ca2</code>).</p>
+<ul>
+<li>Examined direct bumps: <code>github.com/aws/aws-sdk-go-v2 v1.45.1 → v1.46.0</code>, <code>config v1.33.2 → v1.33.3</code>, <code>credentials v1.20.2 → v1.20.3</code>, <code>service/s3 v1.110.0 → v1.111.0</code>.
+</li>
+<li>Examined transitive bumps: <code>feature/ec2/imds v1.19.1 → v1.19.2</code>, <code>internal/configsources v1.5.1 → v1.5.2</code>, <code>internal/endpoints/v2 v2.8.1 → v2.8.2</code>, <code>internal/v4a v1.5.1 → v1.5.2</code>, <code>service/internal/checksum v1.11.1 → v1.11.2</code>, <code>service/internal/presigned-url v1.14.1 → v1.14.2</code>, <code>service/internal/s3shared v1.20.1 → v1.20.2</code>, <code>service/signin v1.8.0 → v1.9.0</code>, <code>service/sso v1.36.0 → v1.37.0</code>, <code>service/ssooidc v1.41.0 → v1.42.0</code>, <code>service/sts v1.48.0 → v1.49.0</code>.
+</li>
+<li>Reason: every changelog entry in these ranges is either an SDK-internal middleware refactor (<code>SetCredentialSourceMiddleware</code> and <code>spanRetryLoop</code> registration removed), a "latest SDK module versions" dependency update, or an AWS API-model regeneration for services Prow does not use. No deprecation, replacement API, or new feature in the range touches the symbols Prow calls in <code>pkg/io/providers/aws.go:54-92</code> (<code>config.LoadDefaultConfig</code>, <code>config.WithCredentialsProvider</code>, <code>config.WithRegion</code>, <code>credentials.NewStaticCredentialsProvider</code>, <code>awshttp.NewBuildableClient</code>, <code>s3.NewFromConfig</code>, <code>s3.Options.UsePathStyle</code>, <code>s3.Options.HTTPClient</code>, <code>s3.Options.BaseEndpoint</code>).
+</li>
+<li><code>service/s3</code> gained no new S3 operations or options in <code>v1.110.0 → v1.111.0</code>; Prow's S3 traffic goes through <code>gocloud.dev/blob/s3blob</code> (<code>pkg/io/providers/aws.go:47</code>), which this bump does not change.
+</li></ul>
+</main></body></html>

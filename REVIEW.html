@@ -1,65 +1,180 @@
 <!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Review: kubernetes-sigs/prow#951</title>
-<style>
-body { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #202124; line-height: 1.55; margin: 0; background: #f8f9fa; }
-main { max-width: 920px; margin: 2rem auto; padding: 2rem; background: #fff; border: 1px solid #dadce0; border-radius: 8px; }
-h1, h2 { line-height: 1.2; } h2 { margin-top: 2rem; border-bottom: 1px solid #dadce0; padding-bottom: .35rem; }
-code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; } code { background: #f1f3f4; padding: .1rem .25rem; border-radius: 3px; }
-.meta { color: #5f6368; } .approve { color: #137333; font-weight: 700; } .none { color: #5f6368; font-style: italic; }
-pre { white-space: pre-wrap; background: #f6f8fa; padding: 1rem; border-radius: 5px; }
-</style>
-</head>
-<body>
-<main>
-  <header>
-    <h1>Review: <a href="https://github.com/kubernetes-sigs/prow/pull/951">kubernetes-sigs/prow#951</a></h1>
-    <p class="meta"><strong>Title:</strong> Map scheduling ProwJob state to GitHub pending status<br>
-    <strong>Base:</strong> main<br>
-    <strong>Head SHA:</strong> <code>3e50f77192258c8513d2664cbd103051b6b8d272</code><br>
-    <strong>Reviewed:</strong> 2026-09-21T23:45:23Z</p>
-  </header>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#951</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>Map scheduling ProwJob state to GitHub pending status</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/951">kubernetes-sigs/prow#951</a> · base <code>main</code> · head_sha <code>3e50f7719225</code> · reviewed_at <code>2026-09-21T23:45:23Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span></div>
+<h2>Verdict</h2>
+<p>Approve. This small, localized fix maps the previously unhandled scheduling ProwJob state to the existing GitHub <code>pending</code> status and covers the externally visible status-reporting behavior. It makes no configuration, API, dependency, or permission changes.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Treats <code>prowapi.SchedulingState</code> as GitHub <code>pending</code> in the GitHub reporter.
+</li>
+<li>Keeps scheduled-but-not-yet-running jobs in the same non-terminal status category as triggered and pending jobs.
+</li>
+<li>Adds a regression case that asserts the pending status emitted for a reporting presubmit job in scheduling state.
+</li></ul>
+<h2>Findings</h2>
+<p>None.</p>
+<h2>Checked</h2>
+<ul>
+<li><code>pkg/github/report/report.go:56-73</code>: the added lifecycle-state mapping uses the existing <code>github.StatusPending</code> constant and preserves the established translation boundary.
+</li>
+<li><code>pkg/github/report/report_test.go:323-330</code>: table-driven regression coverage asserts the externally visible GitHub status for <code>SchedulingState</code>.
+</li>
+<li>Configuration, CRD/API, authorization, and tenant-routing compatibility: unchanged.
+</li>
+<li>Operational impact: status creation remains gated by normal reporting conditions; the additional update is bounded and deduplicated per state transition.
+</li></ul>
+<h2>Open questions</h2>
+<p>None for this PR.</p>
+<h2>Followups</h2>
+<h3><span class="tag c-gray">should</span>Fix SchedulingState handling in the Gerrit reporter</h3>
+<ul>
+<li>category: deferred-review
+</li>
+<li>necessity: should
+</li>
+<li>mode: deliver
+</li>
+<li>where: <code>pkg/crier/reporters/gerrit/reporter.go:175-190</code>, <code>pkg/crier/reporters/gerrit/reporter.go:94-101</code>, <code>pkg/apis/prowjobs/v1/types.go:73-81</code>
+</li>
+<li>rationale: With <code>Scheduler.Enabled</code>, Gerrit presubmit ProwJobs start in <code>SchedulingState</code> (<code>pkg/gerrit/adapter/adapter.go:778</code>), but <code>ShouldReport</code> only skips <code>TriggeredState</code>/<code>PendingState</code>/<code>AbortedState</code>, so a job that has not run yet is reported immediately, renders through the <code>prohibited</code> fallback icon, and votes <code>-1</code> on Code-Review. <code>GetAllProwJobStates()</code> also omits <code>SchedulingState</code>, so a <code>SCHEDULING</code> line can never be parsed back by <code>deserialize</code> (reporter.go:590). This supersedes the earlier "Include SchedulingState in GetAllProwJobStates" followup.
+<pre><code>In kubernetes-sigs/prow, following merged PR #951 (&quot;Map scheduling ProwJob state to GitHub
+pending status&quot;, merge commit cd1c1dbd246180e7183af5eae6cc68c2053ffcdc), fix SchedulingState
+handling in the Gerrit reporter and the shared ProwJob state list.
 
-  <section><h2>Verdict</h2>
-    <p class="approve">APPROVE</p>
-    <p>This small, localized fix maps the previously unhandled scheduling ProwJob state to the existing GitHub <code>pending</code> status and covers the externally visible status-reporting behavior. It makes no configuration, API, dependency, or permission changes.</p>
-  </section>
+Context:
+- pkg/crier/reporters/gerrit/reporter.go: ShouldReport skips TriggeredState, PendingState and
+  AbortedState but not SchedulingState. With Scheduler.Enabled, the Gerrit adapter creates
+  presubmit ProwJobs in SchedulingState (pkg/gerrit/adapter/adapter.go, the
+  pjutil.RequireScheduling(schedulerEnabled) call). The reporter therefore posts a review for a
+  job that has not started, statusIcon falls back to the prohibited icon, and the vote logic
+  selects -1 for a presubmit because report.Success != report.Total.
+- pkg/apis/prowjobs/v1/types.go: GetAllProwJobStates() claims to return all possible states but
+  omits SchedulingState. The Gerrit reporter&#x27;s deserialize validates parsed report lines
+  against it, so a scheduling line can never be read back.
 
-  <section><h2>What this PR does</h2>
-    <ul>
-      <li>Treats <code>prowapi.SchedulingState</code> as GitHub <code>pending</code> in the GitHub reporter.</li>
-      <li>Keeps scheduled-but-not-yet-running jobs in the same non-terminal status category as triggered and pending jobs.</li>
-      <li>Adds a regression case that asserts the pending status emitted for a reporting presubmit job in scheduling state.</li>
-    </ul>
-  </section>
+Do:
+1. In pkg/crier/reporters/gerrit/reporter.go, make ShouldReport return false for
+   v1.SchedulingState, grouped with the existing not-done-yet TriggeredState/PendingState check.
+2. Add v1.SchedulingState mapping to hourglass in the stateIcon map, so aggregated reports that
+   still contain a scheduling job render it as pending rather than prohibited.
+3. Add SchedulingState to GetAllProwJobStates().
+4. Add focused tests: ShouldReport returns false for a scheduling Gerrit presubmit while still
+   returning true for a completed one, and a report line serialized for SchedulingState
+   round-trips through deserialize without error.
 
-  <section><h2>Findings</h2>
-    <h3>Blocking</h3><p class="none">None.</p>
-    <h3>Should fix</h3><p class="none">None.</p>
-    <h3>Nits</h3><p class="none">None.</p>
-    <h3>Questions</h3><p class="none">None.</p>
-  </section>
+Acceptance criteria:
+- go test ./pkg/crier/reporters/gerrit/... and go test ./pkg/apis/prowjobs/... pass.
+- A scheduling Gerrit ProwJob no longer produces a Gerrit review or vote.
+- The GitHub reporter mapping in pkg/github/report is unchanged.
 
-  <section><h2>Things I checked and was fine with</h2>
-    <ul>
-      <li><code>pkg/github/report/report.go:56-73</code>: the added lifecycle-state mapping uses the existing <code>github.StatusPending</code> constant and preserves the established translation boundary.</li>
-      <li><code>pkg/github/report/report_test.go:323-330</code>: table-driven regression coverage asserts the externally visible GitHub status for <code>SchedulingState</code>.</li>
-      <li>Configuration, CRD/API, authorization, and tenant-routing compatibility are unchanged.</li>
-      <li>Status creation remains gated by normal reporting conditions; the additional update is bounded and deduplicated per state transition.</li>
-    </ul>
-  </section>
+Out of scope: the GitHub reporter, voting policy for any other state, and reporter refactors.</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">should</span>Treat SchedulingState as pending in Tide</h3>
+<ul>
+<li>category: bug
+</li>
+<li>necessity: should
+</li>
+<li>mode: deliver
+</li>
+<li>where: <code>pkg/tide/tide.go:837-844</code> (<code>toSimpleState</code>), callers at <code>pkg/tide/tide.go:994</code>, <code>pkg/tide/tide.go:1107</code>, <code>pkg/tide/github.go:692</code>
+</li>
+<li>rationale: Trigger-created presubmits and Tide batches start in <code>SchedulingState</code> when the scheduler is enabled (<code>pkg/plugins/trigger/trigger.go:356</code>, <code>pkg/tide/tide.go:1514</code>), but <code>toSimpleState</code> maps scheduling to <code>failureState</code>. A queued presubmit is bucketed as missing, a queued batch is not returned as <code>pendingBatch</code>, and <code>getProwJobsForPRs</code> does not count it as pending. Now that this PR publishes a <code>pending</code> GitHub status for scheduling jobs, <code>isRetestEligible</code> can treat a Tide-created scheduling job as retest-eligible and trigger a duplicate while it waits for the scheduler.
+<pre><code>In kubernetes-sigs/prow, following merged PR #951 (&quot;Map scheduling ProwJob state to GitHub
+pending status&quot;, merge commit cd1c1dbd246180e7183af5eae6cc68c2053ffcdc), fix Tide&#x27;s
+treatment of SchedulingState.
 
-  <section><h2>Open questions for the author</h2><p class="none">None for this PR.</p></section>
+Context: toSimpleState in pkg/tide/tide.go maps only TriggeredState and PendingState to
+pendingState, so SchedulingState falls through to failureState. With the scheduler enabled,
+trigger-created presubmits and Tide batches are created in SchedulingState
+(pkg/plugins/trigger/trigger.go uses pjutil.RequireScheduling(c.Config.Scheduler.Enabled);
+pkg/tide/tide.go trigger() does the same). Consequently accumulate() puts such a PR in
+missings/missingTests, accumulateBatch() ignores an in-flight batch, and getProwJobsForPRs()
+does not count the job as a pending presubmit. PR #951 now publishes a pending GitHub status
+for these jobs, which makes isRetestEligible() consider a Tide-created scheduling job as
+retest-eligible and can let Tide trigger duplicates while the job is still queued.
 
-  <section><h2>Followups</h2>
-    <h3>Include SchedulingState in GetAllProwJobStates <small>(could)</small></h3>
-    <p><code>pkg/apis/prowjobs/v1/types.go</code>, Gerrit reporter callers</p>
-    <p>The helper's stated all-states contract may omit <code>SchedulingState</code>, allowing similar state-list drift outside the GitHub reporter.</p>
-    <pre>In kubernetes-sigs/prow, inspect GetAllProwJobStates() in pkg/apis/prowjobs/v1/types.go and every caller that depends on its returned lifecycle-state list, especially Gerrit reporting. Add SchedulingState only where the helper's all-states contract requires it, and add or update focused tests proving the caller accepts the scheduling state. Keep this separate from GitHub reporter behavior and avoid changing status mappings beyond the required state-list correction.</pre>
-  </section>
-</main>
-</body>
-</html>
+Do:
+1. In pkg/tide/tide.go, return pendingState from toSimpleState for prowapi.SchedulingState
+   alongside TriggeredState and PendingState.
+2. Add table-driven tests covering toSimpleState for every state, plus a test that a PR whose
+   presubmit is in SchedulingState is bucketed as pending (not missing) and that a batch with a
+   SchedulingState batch job is returned as pendingBatch.
+
+Acceptance criteria:
+- go test ./pkg/tide/... passes.
+- A scheduling presubmit is treated as pending in accumulate() and getProwJobsForPRs(), and a
+  scheduling batch is treated as pending in accumulateBatch().
+- Mapping for all terminal and running states is unchanged.
+
+Out of scope: changing when Tide creates scheduling ProwJobs, reporter changes, and retest
+policy changes.</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">could</span>Allow Deck to abort ProwJobs in SchedulingState</h3>
+<ul>
+<li>category: usability
+</li>
+<li>necessity: could
+</li>
+<li>mode: deliver
+</li>
+<li>where: <code>cmd/deck/abort.go:55-56</code>
+</li>
+<li>rationale: The abort allowlist accepts only <code>TriggeredState</code>/<code>PendingState</code>, so a job waiting on the scheduler cannot be aborted from Deck. Aborting is safe: the scheduler only reconciles scheduling ProwJobs and Plank does not create a pod for a ProwJob whose state is not <code>TriggeredState</code> (<code>pkg/plank/reconciler.go:995</code>).
+<pre><code>In kubernetes-sigs/prow, following merged PR #951 (&quot;Map scheduling ProwJob state to GitHub
+pending status&quot;, merge commit cd1c1dbd246180e7183af5eae6cc68c2053ffcdc), allow Deck to abort
+ProwJobs in SchedulingState.
+
+Context: cmd/deck/abort.go rejects any state other than TriggeredState and PendingState, so a
+job waiting for the scheduler returns &quot;Cannot abort job with state: scheduling&quot;. Aborting such
+a job is safe when the scheduler is enabled: the scheduler only reconciles scheduling
+ProwJobs, and Plank does not create a pod for a ProwJob whose state is not triggered
+(pkg/plank/reconciler.go).
+
+Do:
+1. In cmd/deck/abort.go, accept prowapi.SchedulingState in the abort allowlist next to
+   TriggeredState and PendingState. Keep the existing error for genuinely non-abortable states.
+2. Add a test case to cmd/deck/abort_test.go asserting a scheduling ProwJob is aborted (state
+   becomes Aborted with the expected description), and keep or add a case proving a completed
+   job is still rejected.
+
+Acceptance criteria:
+- go test ./cmd/deck/... passes.
+- A scheduling ProwJob is aborted through the same flow as triggered and pending ProwJobs.
+- Permission checks and the requested state transition are unchanged.
+
+Out of scope: abort semantics for completed jobs, UI changes, and scheduler or Plank changes.</code></pre>
+</li></ul>
+</main></body></html>

@@ -1,16 +1,225 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><title>Triage: kubernetes-sigs/prow#872</title><style>body{font:16px/1.55 system-ui,sans-serif;max-width:960px;margin:2rem auto;padding:0 1rem;color:#18212b}code,pre{font-family:ui-monospace,monospace}pre{background:#f4f6f8;padding:1rem;overflow:auto}dt{font-weight:700}dd{margin:0 0 .5rem}</style></head><body>
-<header><h1>Issue triage: <a href="https://github.com/kubernetes-sigs/prow/issues/872">kubernetes-sigs/prow#872</a></h1><dl><dt>Title</dt><dd>Git fetch will fail when tag was moved</dd><dt>State</dt><dd>open</dd><dt>Labels</dt><dd>none</dd><dt>Triaged at</dt><dd>2026-09-02T11:31:17Z</dd><dt>Main SHA</dt><dd><code>5765df26189ddc41cb9c975e89d613f6c26282ef</code></dd><dt>Verdict</dt><dd>accepted</dd></dl></header>
-<section><h2>Verdict</h2><p><strong>Accepted: fix clonerefs so a moved remote tag cannot fail an otherwise valid clone.</strong></p><p>This is a legitimate Prow bug. Forcing only the existing all-tags fetch is the smallest compatible solution: it preserves tag availability and pruning while updating a stale local tag such as <code>hcpctl-nightly</code>. The deliberate trade-off is that jobs observe the remote's current tag, not a stale one.</p></section>
-<section><h2>What the issue reports</h2><ul><li>An upstream repository intentionally retargets <code>hcpctl-nightly</code> for new builds.</li><li>Prow invokes <code>git fetch &lt;repo&gt; --tags --prune</code>.</li><li>Git rejects overwriting the existing local tag with “would clobber existing tag”.</li><li>clonerefs records a failed clone and the job exits unsuccessfully.</li></ul></section>
-<section><h2>Analysis</h2><h3>Reproducibility / observed behavior</h3><p>A preexisting checkout holding a prior tag object and a remote that moves that tag is sufficient. Git normally protects local tags from this non-forced update. Prow retries this deterministic error for 64.5 seconds before recording failure.</p><h3>Probable cause</h3><p><code>pkg/pod-utils/clone/clone.go:257-284</code> creates an additive all-tags fetch before its targeted base-ref fetch:</p><pre>skipTagFetch := refs.SkipFetchHead || sparseCheckoutSet
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#872</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>Git fetch will fail when tag was moved</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/issues/872">kubernetes-sigs/prow#872</a> · main_sha <code>5765df26189d</code> · state <code>open</code> · triaged_at <code>2026-09-02T11:31:17Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: accepted</span></div>
+<details><summary>Full metadata</summary><pre><code>issue: kubernetes-sigs/prow#872
+title: &quot;Git fetch will fail when tag was moved&quot;
+state: open
+labels:
+main_sha: 5765df26189ddc41cb9c975e89d613f6c26282ef
+triaged_at: 2026-09-02T11:31:17Z
+verdict: accepted
+legitimacy: LEGITIMATE
+effort: 1
+recommended_labels: [kind/bug, area/pod-utils, good-first-issue]
+advice:
+  advised_at: 2026-11-10T01:12:08Z
+  based_on_triaged_at: 2026-09-02T11:31:17Z</code></pre></details>
+<h2>Initial validation</h2>
+<p><strong>Assessment</strong>: LEGITIMATE</p>
+<p>This is a specific, reproducible bug in Prow's <code>clonerefs</code> utility, not a configuration request. The report includes the exact failed command, stderr, an affected public job, and source location. <code>clonerefs</code> and its clone-command construction are maintained here.</p>
+<p><strong>Issue category</strong>: Bug</p>
+<p><strong>Repository scope check</strong>:</p>
+<ul>
+<li>Component: <code>clonerefs</code> / pod utilities.
+</li>
+<li>Exists in this repo: Yes — <code>cmd/clonerefs/main.go</code>, <code>pkg/clonerefs</code>, and <code>pkg/pod-utils/clone</code>.
+</li>
+<li>Relevant code: <code>pkg/pod-utils/clone/clone.go:201-284</code>; <code>pkg/clonerefs/run.go:40-158</code>.
+</li></ul>
+<p><strong>Information completeness</strong>: sufficient. A preexisting workspace holding the old tag, plus a remote that retargets it, reproduces the failure.</p>
+<p><strong>Recommendation</strong>: Keep open and fix as a localized clonerefs bug. No information request is needed.</p>
+<h2>Research findings</h2>
+<h3>Current implementation</h3>
+<ul>
+<li><code>cmd/clonerefs/main.go:27-40</code> loads options and exits fatally if <code>Options.Run</code> returns an error.
+</li>
+<li><code>pkg/clonerefs/run.go:40-158</code> prepares auth/environment, calls <code>clone.Run</code> in parallel for configured <code>prowapi.Refs</code>, writes clone records, and fails when configured to do so and any record failed.
+</li>
+<li><code>pkg/pod-utils/clone/clone.go:39-125</code> runs base-reference commands, then pulls/submodules, recording the first failure.
+</li>
+<li><code>pkg/pod-utils/clone/clone.go:227-304</code> initializes Git, performs an all-tags fetch except for <code>SkipFetchHead</code> or sparse checkout, then fetches and checks out <code>BaseSHA</code>/<code>BaseRef</code>.
+</li></ul>
+<p>The all-tags fetch is additive. The later targeted fetch resolves the checked-out ref; sparse checkout skips the all-tags fetch and passes <code>--no-tags</code> to the targeted fetch.</p>
+<h3>Root cause and reproduction</h3>
+<p>Git rejects an existing local tag when <code>git fetch &lt;uri&gt; --tags --prune</code> advertises the same tag name at another object. Prow requests every tag without <code>--force</code> or a forced tag refspec, so a moved <code>hcpctl-nightly</code> tag stops cloning before the targeted base-ref fetch. Each fetch goes through <code>retryCommand</code>, adding 64.5 seconds of backoff before this deterministic failure is recorded.</p>
+<h3>Related code and tests</h3>
+<ul>
+<li><code>pkg/pod-utils/clone/clone.go:201-220,390-412</code>: retries every fetch without classifying deterministic errors.
+</li>
+<li><code>pkg/pod-utils/clone/clone_test.go:62-864</code>: table tests assert generated commands for regular, auth, depth, blobless, multihead, and sparse cases; non-sparse cases include <code>--tags --prune</code> (first at <code>73-99</code>).
+</li>
+<li><code>pkg/pod-utils/clone/clone_test.go:1024-1079</code>: tests retry counts with a fake runner, not Git tag updates.
+</li>
+<li><code>test/integration/test/pod-utils_test.go:47+</code>: tests decorated-pod cloning via fake Git, but not tag retargeting.
+</li>
+<li><code>site/content/en/docs/components/pod-utilities/clonerefs.md:8-72</code>: documents records/options, not tag-fetch semantics.
+</li></ul>
+<p>The filter-aware construction was touched by <code>6d00893891</code>; sparse checkout was later made to skip tag fetch in <code>43e2154a6</code>. No related PR or duplicate issue was found.</p>
+<h3>Proposed solutions</h3>
+<h4>Approach 1: Force the existing all-tags fetch (recommended)</h4>
+<p>Add <code>--force</code> (or an equivalent forced <code>refs/tags/*</code> refspec) to the all-tags fetch. This retains tags and pruning for ordinary jobs while refreshing intentionally moved tags. Update command-plan expectations and add a real-Git moved-tag regression test. It is low risk, with the intentional behavior that a job sees the remote tag rather than retaining a stale local tag.</p>
+<h4>Approach 2: Remove or make all-tag fetch opt-in</h4>
+<p>Rely only on targeted base-ref fetching. This avoids collision and transfer, but changes implicit tag availability for ordinary job steps and has higher compatibility risk.</p>
+<h4>Approach 3: Avoid retrying deterministic Git errors</h4>
+<p>This improves latency but requires error classification and does not allow moved tags, so it is separate follow-up work.</p>
+<p><strong>Recommendation</strong>: Approach 1, the smallest change matching the report and existing tag-availability behavior.</p>
+<h2>Effort assessment</h2>
+<p><strong>Effort level</strong>: 1 — Easy change</p>
+<p>The preferred fix is a local argument change plus existing table-test updates; a behavioral test is the only added design work.</p>
+<ul>
+<li><strong>Scope</strong>: Small — mainly <code>pkg/pod-utils/clone/clone.go</code> and <code>clone_test.go</code>, under 100 LOC; level 1.
+</li>
+<li><strong>Complexity</strong>: Simple — Git behavior and the failing invocation are explicit; level 1.
+</li>
+<li><strong>Required expertise</strong>: Minimal — Go table tests and basic Git fetch semantics; level 1.
+</li>
+<li><strong>Clarity</strong>: Well-defined — retain tag fetching but permit a moved tag; level 1.
+</li>
+<li><strong>Testing</strong>: Simple/partial — existing tests cover variants; real-Git retarget scenario is missing; level 1.
+</li>
+<li><strong>Backward compatibility</strong>: Intentional minor change — remote tag replaces stale local tag; level 1.
+</li>
+<li><strong>Architectural alignment</strong>: Good fit in clone command construction; level 1.
+</li>
+<li><strong>External dependencies</strong>: Well-supported Git behavior; level 1.
+</li></ul>
+<h3>Recommended labels</h3>
+<ul>
+<li>[x] <code>kind/bug</code>: incorrect clonerefs behavior.
+</li>
+<li>[x] <code>area/pod-utils</code>: affected code is <code>pkg/pod-utils/clone</code>.
+</li>
+<li>[x] <code>good-first-issue</code>: isolated change, clear tests, and no deep Prow expertise required.
+</li></ul>
+<h3>Guidance for contributors</h3>
+<p>Follow <code>TestCommandsForRefs</code> in <code>pkg/pod-utils/clone/clone_test.go</code>; preserve sparse and <code>SkipFetchHead</code> exceptions. A behavioral test should fetch a tag, retarget it in a local/bare remote, then verify forced tag fetch succeeds and updates it.</p>
+<h2>Briefing summary</h2>
+<p>Completed the seven-slide maintainer briefing: the issue is a legitimate, localized clonerefs bug; the all-tags prefetch lacks force semantics; generic retry adds avoidable delay; forcing only that prefetch is preferred; and the work is level 1 with <code>kind/bug</code>, <code>area/pod-utils</code>, and <code>good-first-issue</code> recommended.</p>
+<h2>Findings</h2>
+<h3><span class="tag c-blue">reproducibility</span>Explicit tag fetch rejects a moved local tag</h3>
+<ul>
+<li>detail: The reported <code>git fetch &lt;repo&gt; --tags --prune</code> exits nonzero when the remote tag moved and a local tag of that name points elsewhere.
+</li>
+<li>evidence: kubernetes-sigs/prow#872; <code>pkg/pod-utils/clone/clone.go:257-264</code>.
+</li></ul>
+<h3><span class="tag c-amber">cause</span>clonerefs fetches all tags without force semantics</h3>
+<ul>
+<li>detail: <code>commandsForBaseRef</code> emits an all-tags fetch before the targeted base-ref fetch, but supplies neither <code>--force</code> nor a forced tag refspec.
+</li>
+<li>evidence: <code>pkg/pod-utils/clone/clone.go:257-284</code>.
+</li></ul>
+<h3><span class="tag c-amber">cause</span>Generic retry delays a deterministic failure</h3>
+<ul>
+<li>detail: Fetch retries total 64.5 seconds, then <code>Run</code> records failure before checkout.
+</li>
+<li>evidence: <code>pkg/pod-utils/clone/clone.go:39-125</code>, <code>pkg/pod-utils/clone/clone.go:201-220</code>, <code>pkg/pod-utils/clone/clone.go:390-412</code>.
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>Targeted and sparse paths do not require tag prefetch</h3>
+<ul>
+<li>where: <code>pkg/pod-utils/clone/clone.go:257-284</code>
+</li>
+<li>excerpt:<pre><code>skipTagFetch := refs.SkipFetchHead || sparseCheckoutSet
 if !skipTagFetch {
-    fetchArgs = append(fetchArgs, g.repositoryURI, "--tags", "--prune")
-    commands = append(commands, g.gitFetch(fetchArgs...))
+    fetchArgs = append(fetchArgs, g.repositoryURI, &quot;--tags&quot;, &quot;--prune&quot;)
 }
-...
-fetchArgs = append(fetchArgs, g.repositoryURI, fetchRef)</pre><p>The all-tags invocation lacks <code>--force</code> or a forced tag refspec. The later targeted fetch resolves the checked-out ref. Sparse checkout already omits all-tag fetching and passes <code>--no-tags</code>, confirming the prefetch is tag availability rather than base-ref resolution.</p><h3>Related code and tests</h3><ul><li><code>cmd/clonerefs/main.go:27-40</code> and <code>pkg/clonerefs/run.go:40-158</code> orchestrate clone records and fail the job when configured to do so.</li><li><code>pkg/pod-utils/clone/clone.go:201-220,390-412</code> applies generic retry to every fetch.</li><li><code>pkg/pod-utils/clone/clone_test.go:62-864</code> asserts command construction, but no test retargets a real Git tag. <code>test/integration/test/pod-utils_test.go:47+</code> tests normal decorated cloning only.</li><li><code>site/content/en/docs/components/pod-utilities/clonerefs.md:8-72</code> does not document tag-fetch semantics.</li></ul><p>The command was touched by <code>6d00893891</code>; sparse checkout later skipped it in <code>43e2154a6</code>. No duplicate or fix PR was found. The maintainer's note that Git tags are generally immutable is correct, but Prow may explicitly choose to refresh the tags it requests.</p><h3>Effort assessment</h3><p><strong>Level 1 (easy).</strong> The likely change is one argument in the clone command and its table-test expectations, plus an optional local/bare-repository regression test. It fits a new contributor familiar with Go tests and Git fetch behavior.</p></section>
-<section><h2>What I checked</h2><ul><li>Issue report, maintainer comment, state, labels, events, and linked work.</li><li>clonerefs entrypoint, orchestration, clone command construction, retry behavior, sparse exception, tests, docs, and history.</li><li>No related Prow PR or duplicate issue was found.</li></ul></section>
-<section><h2>Recommended next steps</h2><ol><li>Apply <code>kind/bug</code>, <code>area/pod-utils</code>, and <code>good-first-issue</code> if available.</li><li>Add <code>--force</code>, or an equivalent forced tag refspec, only to the all-tags fetch; retain <code>--tags --prune</code>.</li><li>Update command-plan tests and add a moved-tag behavioral test if practical.</li><li>Consider deterministic Git-error classification as separate retry-policy work.</li></ol></section>
-<section><h2>Open questions</h2><ul><li>Is all-tag availability an intentional compatibility contract, or could it later become opt-in?</li><li>Should forced tag updates apply to all fetched tags, or eventually be configurable?</li></ul></section>
-</body></html>
+if sparseCheckoutSet {
+    fetchArgs = append(fetchArgs, &quot;--no-tags&quot;)
+}
+fetchArgs = append(fetchArgs, g.repositoryURI, fetchRef)</code></pre>
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>Tests cover command construction but not tag retargeting</h3>
+<ul>
+<li>where: <code>pkg/pod-utils/clone/clone_test.go:62-864</code>, <code>test/integration/test/pod-utils_test.go:47+</code>
+</li>
+<li>detail: Existing tests assert invocations and normal decorated clones; none retarget a tag after an earlier fetch.
+</li></ul>
+<h3><span class="tag c-blue">related-issue</span>Git default protects tags but Prow can override deliberately</h3>
+<ul>
+<li>ref: kubernetes-sigs/prow#872
+</li>
+<li>relevance: A maintainer notes tags are generally immutable; Prow may explicitly select different behavior for an all-tags refresh.
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>Issue report, comment, state, labels, events, and linked work via GitHub API.
+</li>
+<li><code>cmd/clonerefs</code>, <code>pkg/clonerefs</code>, <code>pkg/pod-utils/clone</code>, CRD/docs, tests, and command history.
+</li>
+<li>No fix PR or duplicate issue found.
+</li></ul>
+<h2>Next steps</h2>
+<ul>
+<li>Complete the mandatory briefing, then apply recommended labels manually if present in repository taxonomy.
+</li>
+<li>Force only the all-tags invocation while retaining <code>--tags --prune</code>.
+</li>
+<li>Update table tests and add moved-tag regression coverage if practical.
+</li>
+<li>Treat deterministic-error retry classification as separate follow-up.
+</li></ul>
+<h2>Advice</h2>
+<p>Measured against <code>triaged_at: 2026-09-02T11:31:17Z</code>. Live state is unchanged from the advice at <code>2026-11-10T01:05:05Z</code>: issue still <code>OPEN</code>, no labels, no assignee, no milestone, no comments or cross-references, and no open or merged PR referencing #872. This re-run follows an in-session design discussion that pinned the concrete fix and its tradeoff, so the comment draft below now carries the decision rather than just pointing at "Approach 1".</p>
+<h3>Apply labels (primary action)</h3>
+<p>Rationale: the triage's recommended labels use names that do not exist in this repo; <code>kind/bug</code> exists as-is, the area label is <code>area/pod-utilities</code> with a more specific <code>area/podutils/clonerefs</code>, and <code>good-first-issue</code> is <code>good first issue</code>. <code>help wanted</code> sits alongside <code>good first issue</code> per its label description.</p>
+<pre><code>gh issue edit 872 --repo kubernetes-sigs/prow \
+  --add-label &quot;kind/bug&quot; \
+  --add-label &quot;area/pod-utilities&quot; \
+  --add-label &quot;area/podutils/clonerefs&quot; \
+  --add-label &quot;good first issue&quot; \
+  --add-label &quot;help wanted&quot;</code></pre>
+<h3>Optional: post the fix sketch and its tradeoff</h3>
+<p>Rationale: nothing is in flight, and the concrete change is one flag at <code>pkg/pod-utils/clone/clone.go:257-264</code> with a real behavioral tradeoff (local tags stop being append-only). Stating both in the issue keeps a contributor from proposing tag-fetch removal or a best-effort variant without the maintainer's sign-off.</p>
+<pre><code>gh issue comment 872 --repo kubernetes-sigs/prow --body &#x27;&gt; *This was generated by AI during triage.*
+
+Confirmed as a real clonerefs bug. `pkg/pod-utils/clone/clone.go` emits an all-tags prefetch (`git fetch &lt;uri&gt; --tags --prune`) before the targeted base-ref fetch. `--tags` is an implicit non-forced `refs/tags/*:refs/tags/*` refspec, so a tag moved on the remote is rejected with `would clobber existing tag` and the clone fails before checkout.
+
+Suggested fix: add `--force` to that one invocation (equivalent to spelling out `+refs/tags/*:refs/tags/*`), keeping the existing `SkipFetchHead` and sparse-checkout exceptions. Extend `TestCommandsForRefs` in `pkg/pod-utils/clone/clone_test.go` and add a real-Git regression test (the `pkg/git/v2/localgit` helpers used by `TestRunMergesInPartialClone` make this cheap): commit A, tag `v1`, move the tag to commit B, run the generated commands where `v1` already points at A, assert success and `git rev-parse v1` == B.
+
+Tradeoff to accept deliberately: forcing means a force-pushed or mistaken tag silently replaces the workspace tag instead of failing loudly, and with `--depth` the old tag commit becomes unreachable while only the new one is fetched. `--prune` still does not remove tags deleted upstream. If tag immutability is considered a contract, the fallback is to make the tag prefetch best-effort (log and continue to the targeted fetch) rather than forced — a larger change to the failure handling in `Run`. Either way, the 64.5s retry backoff for this deterministic error remains separate follow-up work.&#x27;</code></pre>
+<h3>Not suggested</h3>
+<ul>
+<li>Milestone/project assignment: no milestone is set on comparable open clonerefs bugs, and the triage gives no release target.
+</li>
+<li>Linking a PR: none exists; review it first if one appears rather than duplicating the fix.
+</li>
+<li>A configurable force/opt-in knob: deferred unless a maintainer treats tag immutability as a contract; the comment above records that decision point instead of adding API surface up front.
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>Is all-tag availability an intentional compatibility contract, or could it later become opt-in?
+</li>
+<li>Should force semantics be configurable, or apply to every fetched tag?
+</li></ul>
+</main></body></html>

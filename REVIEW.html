@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#1059</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>config: preserve single-file job configuration settings</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1059">kubernetes-sigs/prow#1059</a> · base <code>main</code> · head_sha <code>6052db28fe81</code> · reviewed_at <code>2026-11-07T22:51:39Z</code></div>
+<div class="badges"><span class="badge c-red">verdict: request-changes</span><span class="badge c-amber">gate: hold</span></div>
+<details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#1059
+title: &quot;config: preserve single-file job configuration settings&quot;
+head_sha: 6052db28fe8167c7617ba2c82a4defa18bb948e3
+base: main
+reviewed_at: 2026-11-07T22:51:39Z
+verdict: request-changes
+gate:
+  decision: hold
+  gated_at: 2026-11-07T22:52:59Z
+  gated_head_sha: 6052db28fe8167c7617ba2c82a4defa18bb948e3
+  reviewed_head_sha: 6052db28fe8167c7617ba2c82a4defa18bb948e3</code></pre></details>
+<h2>Gate</h2>
+<p><strong>hold</strong> — the single-file fix works, but it drops duplicate-preset validation for one-file configs and multi-file configs still ignore the same fields.</p>
+<p>The PR head is unchanged since the review (<code>6052db2</code>), no reviewer feedback has been posted, and neither <code>REVIEW.md</code> finding is addressed. The change is a net improvement for <code>decorate_all_jobs</code> and <code>prow_ignored</code> on single-file loads, but it is not safe to merge as-is because it silently accepts duplicate preset <code>label:value</code> pairs that the base commit rejects.</p>
+<p>Gating items:</p>
+<ul>
+<li><code>pkg/config/config.go:1841-1850</code> (<code>REVIEW.md</code>, should-fix): skipping <code>mergeJobConfigs</code> for the first file removes the only duplicate-preset validation; single-file configs that previously failed now load. Fix by merging as before and copying <code>DecorateAllJobs</code>/<code>ProwIgnored</code> from <code>subConfig</code> when <code>r.count == 0</code>.
+</li>
+<li><code>pkg/config/config.go:2085-2090</code> (<code>REVIEW.md</code>, question): multi-file configs still discard both fields from every file; confirm intended scope or carry the first file's values forward.
+</li></ul>
+<p>Merge risk:</p>
+<ul>
+<li>Behavioral: single-file deployments that set <code>decorate_all_jobs: true</code> or <code>prow_ignored</code> will now have those values honored instead of dropped — the intended bugfix, but it changes decoration for every job in such configs. Blast radius is limited to single-file job config deployments; release-note it.
+</li>
+<li>No exported API, config-schema, or flag changes; the <code>ReadJobConfigs</code> signature is unchanged.
+</li></ul>
+<h2>Verdict</h2>
+<p>Request changes: the single-file case is fixed, but it also silently disables duplicate-preset validation for one-file job configs.</p>
+<p><code>readFile</code> now skips <code>mergeJobConfigs</code> entirely when the file is the first (or only) one. That restores <code>DecorateAllJobs</code> and <code>ProwIgnored</code>, but <code>mergeJobConfigs</code> is also the only place that rejects two presets sharing a <code>label:value</code> pair, so a single-file config with duplicate presets that was rejected before now loads. Keeping the merge and carrying the two fields over from the first file fixes the reported bug without losing the validation.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Fixes <code>ReadJobConfigs</code> dropping file-level <code>decorate_all_jobs</code> and <code>prow_ignored</code> when the job config resolves to exactly one file.
+</li>
+<li>Changes <code>jobConfigReader.readFile</code> to assign the first parsed <code>JobConfig</code> directly and call <code>mergeJobConfigs</code> only for subsequent files.
+</li>
+<li>Extends <code>TestReadJobConfigsFileAndDirectory</code> to assert both fields, adding an empty-directory-plus-file case that reproduces the regression.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-amber">should-fix</span>Duplicate-preset validation is skipped for single-file configs</h3>
+<ul>
+<li>where: <code>pkg/config/config.go:1841-1850</code>
+</li>
+<li>concern: <code>mergeJobConfigs</code> contains the only duplicate-preset <code>label:value</code> check in the tree. By not calling it for the first file, a config that resolves to a single file no longer rejects presets that collide, while the same file still fails once any second file exists. On the base commit both a bare file and a directory containing one file return <code>duplicated preset &#x27;label:value&#x27; pair : foo:bar</code>; with this change both return <code>nil</code>. Merging as before and then copying <code>DecorateAllJobs</code>/<code>ProwIgnored</code> from <code>subConfig</code> when <code>r.count == 0</code> would keep the validation and still fix the bug.
+</li>
+<li>excerpt:<pre><code>// Merging into an empty config would discard file-level settings.
+jc := subConfig
+if r.count &gt; 0 {
+    var err error
+    jc, err = mergeJobConfigs(r.jc, subConfig)
+    if err != nil {
+        r.errs = append(r.errs, err)
+        return
+    }
+}</code></pre>
+</li></ul>
+<h3><span class="tag c-blue">question</span>Multi-file configs still silently drop these settings</h3>
+<ul>
+<li>where: <code>pkg/config/config.go:2085-2090</code>
+</li>
+<li>concern: <code>mergeJobConfigs</code> starts from <code>JobConfig{}</code> and copies only presets and the three job lists, so once a second file exists the first file's <code>decorate_all_jobs</code> and <code>prow_ignored</code> are still discarded. I confirmed with two directories: the one setting <code>decorate_all_jobs: true</code> is ignored when another file is also loaded. The commit message says "preserve the first parsed config and merge only subsequent files", but that only holds when exactly one file is loaded. Is multi-file behavior intentionally left as-is (follow-up), or should the first file's values be carried forward and conflicting definitions rejected?
+</li>
+<li>excerpt:<pre><code>func mergeJobConfigs(a, b JobConfig) (JobConfig, error) {
+    // Merge everything.
+    // *** Presets ***
+    c := JobConfig{}
+    c.Presets = append(a.Presets, b.Presets...)</code></pre>
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li><code>DecorateAllJobs</code> and <code>ProwIgnored</code> are the only JSON-backed <code>JobConfig</code> fields <code>mergeJobConfigs</code> drops; <code>AllRepos</code> and the <code>ProwYAMLGetter*</code> fields are runtime-only.
+</li>
+<li>The new test case fails on the base commit with <code>DecorateAllJobs: false</code> and <code>ProwIgnored: nil</code>, so it does capture the reported regression.
+</li>
+<li><code>go test ./pkg/config -count=1</code> passes on the PR head.
+</li>
+<li>The new test's empty-directory-plus-file setup exercises the same <code>r.count == 0</code> path as a plain single-file or single-file-directory load.
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>Should a second file that also sets <code>decorate_all_jobs</code> or <code>prow_ignored</code> be an error, be ignored, or override the first? Whatever is chosen should be documented on <code>ReadJobConfigs</code>.
+</li></ul>
+</main></body></html>

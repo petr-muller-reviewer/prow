@@ -1,178 +1,188 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>Triage: kubernetes-sigs/prow#846</title>
-<style>
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-    line-height: 1.55;
-    color: #1a1a1a;
-    background: #fff;
-    margin: 0;
-    padding: 2.5rem 1.5rem;
-  }
-  main {
-    max-width: 860px;
-    margin: 0 auto;
-  }
-  code, pre {
-    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
-    font-size: 0.92em;
-  }
-  pre {
-    background: #f4f4f4;
-    border: 1px solid #e0e0e0;
-    border-radius: 4px;
-    padding: 0.75rem 1rem;
-    overflow-x: auto;
-  }
-  code {
-    background: #f4f4f4;
-    padding: 0.1em 0.35em;
-    border-radius: 3px;
-  }
-  pre code { background: none; padding: 0; }
-  header {
-    border: 1px solid #ddd;
-    border-radius: 6px;
-    padding: 1rem 1.25rem;
-    background: #fafafa;
-    margin-bottom: 2rem;
-  }
-  header dl {
-    display: grid;
-    grid-template-columns: max-content 1fr;
-    gap: 0.25rem 1rem;
-    margin: 0;
-  }
-  header dt { font-weight: 600; color: #555; }
-  header dd { margin: 0; }
-  h1 { font-size: 1.4rem; margin-bottom: 0.25rem; }
-  h2 {
-    font-size: 1.15rem;
-    border-bottom: 2px solid #eee;
-    padding-bottom: 0.3rem;
-    margin-top: 2.5rem;
-  }
-  h3 { font-size: 1.02rem; margin-top: 1.5rem; margin-bottom: 0.4rem; }
-  .verdict {
-    font-size: 1.05rem;
-    font-weight: 600;
-    padding: 0.9rem 1.1rem;
-    border-radius: 6px;
-    background: #eaf6ec;
-    border: 1px solid #b7e0bd;
-    color: #1e5c2a;
-  }
-  .tag {
-    display: inline-block;
-    font-family: monospace;
-    font-size: 0.78em;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.02em;
-    background: #eef2ff;
-    color: #3742a3;
-    border-radius: 3px;
-    padding: 0.1em 0.5em;
-    margin-right: 0.5em;
-  }
-  .finding-meta { color: #555; font-size: 0.95em; }
-  ul { padding-left: 1.4rem; }
-  li { margin-bottom: 0.35rem; }
-  a { color: #1a56db; }
-</style>
-</head>
-<body>
-<main>
-
-<header>
-  <h1>Triage: kubernetes-sigs/prow#846</h1>
-  <dl>
-    <dt>Title</dt><dd>&#96;tide&#96; support for Github Rulesets</dd>
-    <dt>State</dt><dd>open</dd>
-    <dt>Labels</dt><dd>(none)</dd>
-    <dt>Triaged at</dt><dd>2026-08-17T22:58:10Z</dd>
-    <dt>Main SHA</dt><dd><code>7e14d333447e988af71131de0bd52db54cd14906</code></dd>
-    <dt>Verdict</dt><dd>accepted</dd>
-    <dt>Link</dt><dd><a href="https://github.com/kubernetes-sigs/prow/issues/846" target="_blank">github.com/kubernetes-sigs/prow/issues/846</a></dd>
-  </dl>
-</header>
-
-<div class="verdict">Verdict: ACCEPTED — legitimate feature/architecture proposal, keep open.</div>
-<p>
-The issue's own cross-link (to #477, a <code>branchprotector</code> bug) is loose, but it accurately captures a real, maintainer-endorsed
-direction: the maintainer (petr-muller) explicitly stated on 2026-08-13, the same day #846 was filed, that <code>branchprotector</code>
-is legacy with a poor configuration surface, and that future effort should go toward GitHub Rulesets support rather than deeper into
-<code>branchprotector</code>. Repository code confirms a genuine, verified gap — no Rulesets API support exists anywhere in Prow.
-</p>
-
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#846</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1><code>tide</code> support for Github Rulesets</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/issues/846">kubernetes-sigs/prow#846</a> · main_sha <code>7e14d333447e</code> · state <code>open</code> · labels <code>kind/feature, area/tide, area/branchprotector, priority/important-longterm</code> · triaged_at <code>2026-11-10T01:03:24Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: accepted</span></div>
+<details><summary>Full metadata</summary><pre><code>issue: kubernetes-sigs/prow#846
+title: &quot;`tide` support for Github Rulesets&quot;
+state: open
+labels: kind/feature, area/tide, area/branchprotector, priority/important-longterm
+main_sha: 7e14d333447e988af71131de0bd52db54cd14906
+triaged_at: 2026-11-10T01:03:24Z
+verdict: accepted
+refresh_log:
+  - at: 2026-11-10T00:56:50Z
+    since: 2026-08-17T22:58:10Z
+    summary: &quot;kind/feature label now applied; petr-muller cross-referenced kubernetes-sigs/prow#624 (2026-10-10, &#x27;Discussed in #846&#x27;), the earlier narrower ruleset-context issue that the lifecycle bot closed as not-planned; re-verified on upstream/main that no functional ruleset code exists.&quot;
+  - at: 2026-11-10T01:03:24Z
+    since: 2026-11-10T00:56:50Z
+    summary: &quot;petr-muller applied area/tide, area/branchprotector and priority/important-longterm and noted @hoxhaeris has looked into ruleset support; no public PR/issue/branch from hoxhaeris on rulesets, so that prior work is not in the repo.&quot;
+advice:
+  advised_at: 2026-11-10T00:58:09Z
+  based_on_triaged_at: 2026-11-10T00:56:50Z</code></pre></details>
+<h2>Verdict</h2>
+<p>Accepted — maintainer-endorsed feature request; the read-only Tide slice is the immediate, uncontroversial part, and ruleset management needs a design note first.</p>
+<p>petr-muller explicitly endorses general Rulesets support and <code>/kind feature</code> is applied. He frames two angles: managing rulesets the way <code>branchprotector</code> manages classic branch protection, and Tide consuming that config plus whatever GitHub's API exposes for mergeability. He asks for a design document before code. The read-only ask is also independently scoped by #624 (Tide respecting required contexts from rulesets, the analogue of <code>tide.context_options.from-branch-protection</code>), which points here as canonical.</p>
 <h2>What the issue reports</h2>
 <ul>
-  <li>Tide (and Prow's branch-protection tooling generally) should support GitHub's newer Repository Rulesets API, not just "classic" branch protection rules.</li>
-  <li>The author (kaovilai) links kubernetes-sigs/prow#477 as related, saying #846 "should include fixes for" it.</li>
-  <li>#477 is actually about a different bug: <code>branchprotector</code> not removing protection from branches added to an <code>exclude</code> pattern.</li>
-  <li>The two issues are connected through the maintainer's own 2026-08-13 comment on #477, not through any shared code path described in #846's body.</li>
-</ul>
-
-<h2>Analysis</h2>
-
-<h3>Reproducibility / observed behavior</h3>
+<li>Prow's <code>tide</code> only understands "classic" branch-protection rules; it does not support GitHub Rulesets.
+</li>
+<li>The author wants the work to also fix kubernetes-sigs/prow#477 (excluded branches retaining branch protection under <code>branchprotector</code>).
+</li>
+<li>petr-muller (2026-08-13) broadened it: Prow has no Rulesets support at all, so a first-class ruleset management concept (peribolos-like, or new) should exist with a dedicated config surface, inferring required ProwJobs from <code>always_run</code>/<code>optional</code>; Tide should consume that config and GitHub's mergeability API surface.
+</li>
+<li>Maintainer condition: start with at least a vague design doc and discussion, not code.
+</li></ul>
+<p>Since previous triage:</p>
 <ul>
-  <li>Not a bug report — no reproduction steps needed. This is an architecture/feature gap: any repo relying on GitHub-side rulesets (rather than Prow-managed classic branch protection) for required checks has those requirements invisible to Tide.</li>
-</ul>
-
-<h3>Probable cause</h3>
-<p>Prow has zero representation of GitHub's Repository Rulesets API. Two distinct code paths are affected differently:</p>
+<li>2026-10-10: petr-muller cross-referenced kubernetes-sigs/prow#624 ("<code>tide</code> does not respect required contexts from Github Rulesets") with the comment "Discussed in #846", confirming #846 is the canonical issue and that the read-only <code>from-branch-protection</code> analogue for rulesets belongs to it.
+</li>
+<li>kubernetes-sigs/prow#624 was auto-closed <code>NOT_PLANNED</code> by <code>k8s-triage-robot</code> on 2026-09-09 via the <code>lifecycle/rotten</code> flow (not a maintainer judgement), so its closure argues nothing about the feature.
+</li>
+<li><code>kind/feature</code> is now applied (frontmatter previously recorded no labels).
+</li>
+<li>No code change: <code>upstream/main</code> advanced 364 commits since <code>main_sha</code>, but has no functional ruleset support yet.
+</li></ul>
+<p>Since previous triage (2026-11-10):</p>
 <ul>
-  <li><strong>Merge-blocking decision</strong> (<code>pkg/tide/github.go:600-641</code>, <code>isAllowedToMerge</code>) already delegates to GitHub's own computed <code>mergeStateStatus</code> field via <code>GitHubMergeBlocksPolicyMap</code> (<code>pkg/config/tide.go:250-256</code>, added Dec 2025 in commit <code>2c14b702b</code>, merged as PR #579). Since GitHub computes <code>mergeStateStatus</code> server-side accounting for rulesets, this path is likely <em>already</em> functionally ruleset-compatible — untested for that specific scenario, but not a code gap.</li>
-  <li><strong>Required-status-context resolution</strong> is genuinely ruleset-blind (and live-branch-protection-blind too): the chain <code>config.Config.GetTideContextPolicy</code> (<code>pkg/config/tide.go:944-995</code>) &rarr; <code>Config.GetBranchProtection</code>/<code>GetPolicy</code> (<code>pkg/config/branch_protection.go:456-524</code>) is fed exclusively from Prow's own declarative <code>branch-protection:</code> config tree, never from a live GitHub call.</li>
-</ul>
-
-<h3>Related code</h3>
-<pre><code>// pkg/tide/github.go:630-634
-if pr.MergeStateStatus == MergeStateStatusBlocked {
-    switch policy := m.config().Tide.GitHubMergeBlocksPolicy(orgRepo); policy {
-    case config.GitHubMergeBlocksBlock:
-        return "PR is blocked from merging by GitHub (check branch protection, required reviews, or rulesets)", nil</code></pre>
+<li>petr-muller applied <code>area/tide</code> and <code>area/branchprotector</code> via <code>/area</code> and <code>priority/important-longterm</code> via <code>/priority</code> (01:01:27Z and 01:01:50Z); those match the triage's recommended labels, with the priority label establishing it as long-term rather than next-release work.
+</li>
+<li>petr-muller added: "I know @hoxhaeris has looked into ruleset support in Prow" (2026-11-10T01:01:27Z), making hoxhaeris the person with prior art to consult before a design note.
+</li>
+<li>No PR, issue or remote branch from hoxhaeris mentions rulesets (searched kubernetes-sigs/prow PRs/issues by author and fetched branches), so that investigation is not visible in the repo.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-amber">cause</span>No Rulesets API support anywhere in Prow</h3>
 <ul>
-  <li><code>pkg/github/client.go:2840-2914</code> &mdash; only classic <code>branches/{branch}/protection</code> REST endpoints (<code>GetBranchProtection</code>, <code>UpdateBranchProtection</code>, <code>RemoveBranchProtection</code>); no Rulesets API methods anywhere in <code>pkg/github</code>.</li>
-  <li><code>pkg/config/branch_protection.go:456-524</code> &mdash; <code>GetBranchProtection</code>/<code>GetPolicy</code>, purely config-tree-derived, no GitHub API call.</li>
-  <li><code>pkg/config/tide.go:944-995</code> &mdash; <code>GetTideContextPolicy</code>, the entry point Tide uses to compute required contexts; sources everything from the config above.</li>
-  <li><code>cmd/branchprotector/protect.go:531</code> &mdash; the one live <code>GetBranchProtection</code> call in the repo, used by the branchprotector reconciler's write-path diff, unrelated to Tide's runtime decisions.</li>
-</ul>
-
-<h3>Related issues / PRs</h3>
+<li>detail: Prow's GitHub client (<code>pkg/github/client.go</code>) is hand-rolled (no vendored <code>go-github</code>) and implements only the classic branch-protection REST endpoints. There is no <code>Ruleset</code> type, no client method, and no config schema for GitHub's Repository Rulesets API anywhere in the repo. A case-insensitive repo-wide grep for "ruleset" returns only 6 files, all comment/string text from an unrelated Dec 2025 change, with zero functional ruleset code or endpoint calls.
+</li>
+<li>evidence: <code>pkg/github/client.go:2840-2914</code> (<code>GetBranchProtection</code>, <code>UpdateBranchProtection</code>, <code>RemoveBranchProtection</code>, all against <code>/repos/{org}/{repo}/branches/{branch}/protection</code>; no <code>/repos/{owner}/{repo}/rulesets</code> or <code>/repos/{owner}/{repo}/rules/branches/{branch}</code> equivalents).
+</li></ul>
+<h3><span class="tag c-amber">cause</span>Tide's required-status-context resolution is config-only, blind to any live GitHub state (classic or ruleset)</h3>
 <ul>
-  <li><a href="https://github.com/kubernetes-sigs/prow/issues/477" target="_blank">kubernetes-sigs/prow#477</a> &mdash; linked in #846's body but is a different, specific <code>branchprotector</code> <code>exclude</code>-handling bug. The maintainer's 2026-08-13 comment there is what actually establishes #846 as an endorsed direction.</li>
-  <li>Commit <code>2c14b702b</code> / PR #579 &mdash; "tide: add configurable GitHub merge blocks enforcement" (Dec 2025 / merged May 2026), added <code>GitHubMergeBlocksPolicyMap</code>, the mechanism most likely to already handle ruleset-blocked merges correctly.</li>
-</ul>
-
-<h2>What I checked</h2>
+<li>detail: The chain <code>config.Config.GetTideContextPolicy</code> → <code>Config.GetBranchProtection</code>/<code>GetPolicy</code> is fed exclusively from Prow's own declarative <code>branch-protection:</code> YAML config tree plus statically-configured presubmit names (<code>BranchRequirements</code>) — never from a GitHub API call. The only live classic-branch-protection call in the repo is in <code>branchprotector</code>'s reconciler, which is a write-path diff unrelated to Tide's runtime pool-sync decisions. So a required check defined only via a GitHub-side ruleset (not mirrored into Prow's <code>branch-protection:</code> config) is invisible to Tide's context policy today.
+</li>
+<li>evidence: <code>pkg/config/tide.go:944-995</code> (<code>GetTideContextPolicy</code>, called from <code>pkg/tide/status.go:790</code> and <code>pkg/tide/tide.go:2399</code>); <code>pkg/config/branch_protection.go:456-524</code> (<code>GetBranchProtection</code>/<code>GetPolicy</code>); <code>cmd/branchprotector/protect.go:531</code> (the one live <code>GetBranchProtection</code> call, unrelated to Tide).
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>Tide's merge-blocking path already delegates to GitHub's computed mergeStateStatus, likely already ruleset-compatible</h3>
 <ul>
-  <li>Repo-wide case-insensitive grep for "ruleset": 6 files, all comment/string-only text from the Dec 2025 <code>GitHubMergeBlocksPolicyMap</code> change &mdash; no functional ruleset code.</li>
-  <li>Confirmed Prow does not vendor <code>go-github</code>; its GitHub client is hand-rolled, so there is no upstream library ruleset support to fall back on.</li>
-  <li>Confirmed <code>cmd/branchprotector</code>/<code>pkg/config/branch_protection.go</code> operate purely on Prow's declarative config, not live GitHub branch-protection/ruleset state (aside from the reconciler's own push/diff calls).</li>
-  <li>Read kubernetes-sigs/prow#477 in full, including the maintainer's 2026-08-13 comment.</li>
-  <li>Grepped <code>pkg/tide</code> for <code>RequiredContexts</code>/<code>ContextPolicy</code>/<code>contextChecker</code> to confirm no GitHub branch-protection or rulesets API calls exist in that package.</li>
-</ul>
-
-<h2>Recommended next steps</h2>
+<li>where: <code>pkg/tide/github.go:600-641</code> (<code>isAllowedToMerge</code>), <code>pkg/config/tide.go:250-256</code> (<code>GitHubMergeBlocksPolicyMap</code>)
+</li>
+<li>excerpt:<pre><code>if pr.MergeStateStatus == MergeStateStatusBlocked {
+	switch policy := m.config().Tide.GitHubMergeBlocksPolicy(orgRepo); policy {
+	case config.GitHubMergeBlocksBlock:
+		return &quot;PR is blocked from merging by GitHub (check branch protection, required reviews, or rulesets)&quot;, nil</code></pre>
+</li>
+<li>detail: <code>GitHubMergeBlocksPolicyMap</code> was added in commit <code>2c14b702b</code> ("tide: add configurable GitHub merge blocks enforcement", Dec 2025, merged via PR #579). Since GitHub computes <code>mergeStateStatus</code> server-side taking rulesets into account, this path is likely already functionally ruleset-compatible for the merge-attempt decision — the "rulesets" wording nearby is documentation catching up to that change, not new ruleset-specific logic. No test currently exercises a ruleset-blocked-PR scenario specifically.
+</li></ul>
+<h3><span class="tag c-blue">related-issue</span>kubernetes-sigs/prow#477 — linked in the issue body but is the wrong specific issue</h3>
 <ul>
-  <li>Ask the author (kaovilai) to clarify intended scope: full ruleset management (branchprotector-equivalent) vs. narrower "Tide should recognize ruleset-driven required checks."</li>
-  <li>Split into (a) a small verification/test task confirming <code>GitHubMergeBlocksPolicyMap</code> correctly handles ruleset-only blocks, and (b) a larger design proposal for ruleset-aware config before any new client/schema work begins.</li>
-  <li>Apply labels: <code>kind/feature</code>, <code>area/tide</code> (and <code>area/branchprotector</code> for cross-reference).</li>
-  <li>Require a short design note before any new Rulesets API client/config work starts, to avoid repeating branchprotector's configuration-surface problems.</li>
-</ul>
+<li>ref: kubernetes-sigs/prow#477
+</li>
+<li>relevance: #477 is a <code>branchprotector</code> bug about excluded branches retaining protection, not about rulesets. The real link to #846 is the maintainer's (petr-muller) 2026-08-13 comment on #477, filed the same day as #846, which explicitly states that <code>branchprotector</code> is legacy with a poor configuration surface and that future effort should go into ruleset support instead — thanking the author for filing #846. That comment, not the issue body's own cross-link, is what establishes #846 as maintainer-endorsed direction.
+</li></ul>
+<h3><span class="tag c-blue">related-issue</span>kubernetes-sigs/prow#624 — earlier narrower ruleset issue, superseded by #846</h3>
+<ul>
+<li>ref: kubernetes-sigs/prow#624
+</li>
+<li>relevance: Filed 2026-02-17, #624 asks specifically for the ruleset analogue of <code>tide.context_options.from-branch-protection</code> ("<code>tide</code> does not respect required contexts from Github Rulesets") and is therefore the clearest statement of the read-only slice. It went <code>lifecycle/rotten</code> and was closed <code>NOT_PLANNED</code> by <code>k8s-triage-robot</code> on 2026-09-09; petr-muller then commented "Discussed in #846" on 2026-10-10, making #846 canonical for that ask rather than #624 being a separate open request.
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>Repo-wide case-insensitive grep for "ruleset": 6 files, all comment/string-only, no functional code (<code>pkg/config/tide.go</code>, <code>pkg/tide/github.go</code>, <code>pkg/tide/status.go</code>, <code>pkg/tide/tide_test.go</code>, <code>pkg/tide/status_test.go</code>, <code>pkg/config/prow-config-documented.yaml</code>).
+</li>
+<li>Confirmed Prow does not vendor <code>go-github</code>; GitHub client is hand-rolled, so no upstream library ruleset support to adopt.
+</li>
+<li>Confirmed <code>cmd/branchprotector</code>/<code>pkg/config/branch_protection.go</code> operate purely on Prow's declarative config, not live GitHub branch-protection/ruleset state (aside from the reconciler's own protection push/diff calls).
+</li>
+<li>Read kubernetes-sigs/prow#477 in full, including the maintainer's 2026-08-13 comment supplying the missing rationale for #846.
+</li>
+<li>Grepped <code>pkg/tide</code> for <code>RequiredContexts</code>/<code>ContextPolicy</code>/<code>contextChecker</code> to confirm no GitHub branch-protection or rulesets API calls exist in that package.
+</li>
+<li>Re-checked <code>upstream/main</code> (364 commits ahead of <code>main_sha</code>) on 2026-11-10: <code>git grep -i ruleset</code> still yields 13 hits in the same 6 files, all comment/string/test text (<code>pkg/config/tide.go:58,258</code>, <code>pkg/tide/github.go:775</code>, <code>pkg/tide/status.go:266</code>, tests, documented YAML). No <code>Ruleset</code> type, no <code>/repos/{owner}/{repo}/rulesets</code> or <code>/repos/{owner}/{repo}/rules/branches/{branch}</code> calls; <code>from-branch-protection</code> remains the only live-source context option.
+</li>
+<li>Checked both remotes for merged/open ruleset PRs: <code>gh search prs</code> finds only #995 (open, classic branch-protection <code>require_last_push_approval</code>/bypass apps, unrelated) and already-triaged #579/#537; no ruleset implementation PR exists.
+</li>
+<li>Searched for hoxhaeris's referenced prior ruleset work (<code>gh search prs/issues --author hoxhaeris ruleset</code>, <code>git log --all --grep=ruleset --author=hoxhaeris</code>, remote branch names): no hits. Their recent Prow work is <code>peribolos</code>-focused (#1008, #977, #961, #710, #555, #497, #583), consistent with the maintainer's view that ruleset management belongs nearer <code>peribolos</code> than <code>branchprotector</code>.
+</li></ul>
+<h2>Next steps</h2>
+<ul>
+<li>Scope the work using #624's framing for the narrow piece: a ruleset analogue of <code>tide.context_options.from-branch-protection</code> so Tide can read required contexts from rulesets; treat full ruleset management as the separate, design-first piece.
+</li>
+<li>Split into (a) a small verification/test task confirming <code>GitHubMergeBlocksPolicyMap</code> correctly handles ruleset-only blocks, and (b) a larger design proposal for ruleset-aware config before any new client/schema work begins.
+</li>
+<li>Labels are settled: <code>kind/feature</code>, <code>area/tide</code>, <code>area/branchprotector</code>, <code>priority/important-longterm</code>. No further label action needed.
+</li>
+<li>Require a short design note before any new Rulesets API client/config work starts, given the maintainer's explicit concern about repeating branchprotector's configuration-surface problems.
+</li>
+<li>Link #624's closure ("Discussed in #846") when next commenting, so readers do not reopen the narrower duplicate.
+</li>
+<li>Ask @hoxhaeris for their prior ruleset investigation notes before drafting the design note; the maintainer flagged it but nothing is in the repo, so the findings would otherwise be lost.
+</li></ul>
+<h2>Advice</h2>
+<p>Superseded in part at 2026-11-10T01:01Z: petr-muller applied <code>area/tide</code>, <code>area/branchprotector</code> and <code>priority/important-longterm</code>, so items 1 and 3 below are done; item 2 (scope comment) is still open, and should additionally ask @hoxhaeris for their prior ruleset findings.</p>
+<p>At the 2026-11-10T00:56:50Z refresh: issue still <code>OPEN</code>, only <code>kind/feature</code> applied, no assignee or milestone (the repo has no milestones), no comments since 2026-08-13, and no PR in flight (<code>gh search prs &quot;ruleset&quot;</code> finds only unrelated open #995). Both cross-references (#477, #624) are already folded into the refresh.</p>
+<h3>1. Add area labels</h3>
+<p>Rationale: the triage's two angles map exactly onto existing labels; without <code>area/tide</code> the issue is not discoverable by the tide maintainers, and <code>area/branchprotector</code> ties it to the #477 management half.</p>
+<pre><code>gh issue edit 846 --repo kubernetes-sigs/prow --add-label &quot;area/tide,area/branchprotector&quot;</code></pre>
+<h3>2. Post the scope-consolidation comment</h3>
+<p>Rationale: #624 is closed as not-planned by the lifecycle bot rather than by a maintainer, so the issue currently reads as two dead ends (#477 "wrong issue", #624 "not planned"). A comment recording that the read-only ask lives here, plus the design-first condition from petr-muller's 2026-08-13 comment, is what makes the issue actionable by a contributor. Keep it a comment, not a close of #477.</p>
+<pre><code>gh issue comment 846 --repo kubernetes-sigs/prow --body &#x27;&gt; *This was generated by AI during triage.*
 
+## Scope: what #846 covers
+
+Consolidating the related requests:
+
+- kubernetes-sigs/prow#624 asked for the ruleset analogue of `tide.context_options.from-branch-protection` (&quot;tide does not respect required contexts from Github Rulesets&quot;). It was closed as not-planned by the lifecycle bot, not by a maintainer; that read-only ask belongs here.
+- kubernetes-sigs/prow#477 (open) is the `branchprotector` &quot;excluded branches retain existing protection&quot; bug that motivated the original report.
+
+Per @petr-muller above, this should start from a short design note rather than code. The note should cover:
+
+- where first-class ruleset management lives (peribolos vs. a new component) and its config surface, including inferring required ProwJobs from `always_run`/`optional` with explicit overrides;
+- how Tide consumes that config and GitHub mergeability API surface (`rules/branches/{branch}` looks like the candidate for the read-only slice);
+- how the design avoids repeating `branchprotector` configuration-surface problems, including #477.
+
+The read-only Tide piece (recognising ruleset-required contexts) looks separable from ruleset management; the design note can propose splitting it out.&#x27; </code></pre>
+<h3>3. Mark it available for a design write-up</h3>
+<p>Rationale: a design note is bounded, needs no maintainer access, and the maintainer explicitly asked for it before code; <code>help wanted</code> signals that to contributors. Do not add <code>good first issue</code> — the note requires understanding both Tide's context policy and <code>branchprotector</code>'s history.</p>
+<pre><code>gh issue edit 846 --repo kubernetes-sigs/prow --add-label &quot;help wanted&quot;</code></pre>
+<p>No PR or linked fix exists to review, so there is no review action to suggest. Milestone assignment is not applicable: the repo has no open milestones.</p>
 <h2>Open questions</h2>
 <ul>
-  <li>"Should ruleset support be a new parallel config surface, or should <code>pkg/config/branch_protection.go</code>'s <code>Policy</code> type be extended to also be populated from rulesets?"</li>
-  <li>"Do we need Prow to manage rulesets (write path, like branchprotector does for classic protection), or only read/respect them for Tide's merge and context-policy decisions? The title here suggests read-only is the immediate need — can you confirm?"</li>
-  <li>"Should we first verify whether the existing <code>github_merge_blocks_policy</code> handling already covers ruleset-blocked PRs, before starting any new client/schema work?"</li>
-</ul>
-
-</main>
-</body>
-</html>
+<li>Should ruleset support be a new parallel config surface, or should <code>pkg/config/branch_protection.go</code>'s <code>Policy</code> type be extended to also be populated from rulesets?
+</li>
+<li>Does Prow need to <em>manage</em> rulesets (write path, like branchprotector does for classic protection), or only <em>read/respect</em> them for Tide's merge and context-policy decisions? The issue title suggests read-only is the immediate need.
+</li>
+<li>Should the existing <code>GitHubMergeBlocksPolicyMap</code>/<code>mergeStateStatus</code> path be explicitly tested against ruleset-blocked PRs before any new work starts, to establish how much of this issue is already solved?
+</li></ul>
+</main></body></html>

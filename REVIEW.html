@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Review: kubernetes-sigs/prow#940</title>
+<style>
+  body { color: #18212f; background: #fff; font: 16px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; margin: 0; }
+  main { max-width: 940px; margin: 42px auto; padding: 0 24px 48px; }
+  h1 { font-size: 1.8rem; line-height: 1.25; margin-bottom: .25rem; }
+  h2 { border-bottom: 1px solid #d8dee7; margin-top: 2rem; padding-bottom: .35rem; }
+  code { background: #f1f3f6; border-radius: 3px; font: .9em ui-monospace, SFMono-Regular, Menlo, monospace; padding: .1em .25em; }
+  .meta { color: #596579; }
+  .verdict { border-left: 4px solid #27864b; background: #effaf2; padding: 1rem 1.2rem; }
+  .none { color: #596579; font-style: italic; }
+  li { margin: .45rem 0; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Review: <a href="https://github.com/kubernetes-sigs/prow/pull/940">kubernetes-sigs/prow#940</a></h1>
+    <p class="meta"><code>main</code> ← <code>a010bf70212c92100171eb4418d9aff78797c927</code><br>Reviewed 2026-09-14T22:43:48Z</p>
+  </header>
+
+  <section>
+    <h2>Verdict</h2>
+    <div class="verdict"><strong>Approve.</strong> Dependency-only update with no incompatible Go-version change, no source changes, and no applicable newly fixed security advisory. The newest tagged releases have six days of soak time; the remaining direct releases are 14–26 days old.</div>
+  </section>
+
+  <section>
+    <h2>What this PR does</h2>
+    <ul>
+      <li>Updates direct root dependencies: <code>golang.org/x/net</code> <code>v0.58.0</code> → <code>v0.59.0</code>, <code>golang.org/x/oauth2</code> <code>v0.36.0</code> → <code>v0.37.0</code>, <code>golang.org/x/sync</code> <code>v0.22.0</code> → <code>v0.23.0</code>, <code>golang.org/x/text</code> <code>v0.41.0</code> → <code>v0.42.0</code>, and <code>golang.org/x/time</code> <code>v0.15.0</code> → <code>v0.16.0</code>.</li>
+      <li>Updates indirect companions: <code>x/crypto</code> <code>v0.55.0</code> → <code>v0.57.0</code>, <code>x/mod</code> <code>v0.38.0</code> → <code>v0.41.0</code>, <code>x/sys</code> <code>v0.47.0</code> → <code>v0.48.0</code>, <code>x/term</code> <code>v0.45.0</code> → <code>v0.46.0</code>, and <code>x/tools</code> <code>v0.48.0</code> → <code>v0.49.0</code>.</li>
+      <li>Synchronizes the applicable versions in <code>hack/tools/go.mod</code> and both checksum files.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Findings</h2>
+    <h3>Blocking</h3><p class="none">None.</p>
+    <h3>Should fix</h3><p class="none">None.</p>
+    <h3>Nits</h3><p class="none">None.</p>
+    <h3>Questions</h3><p class="none">None.</p>
+  </section>
+
+  <section>
+    <h2>Things I checked and was fine with</h2>
+    <ul>
+      <li>Only dependency manifests and checksums changed; no Prow source or generated code changed.</li>
+      <li>All releases are tagged. <code>x/net</code> and <code>x/text</code> are six days old; the other direct releases are 14–26 days old.</li>
+      <li>The new <code>x/*</code> modules require Go 1.26; Prow already requires Go 1.26.4 (and its tools module Go 1.26.3).</li>
+      <li>Prow's direct import surface is limited to OAuth, concurrency, HTML/CSRF handling, language/case handling, and rate limiting. The meaningful upstream changes do not affect the imported <code>x/net</code> paths; OAuth's metadata-path correction is compatible with Prow's ADC/JWT use; semaphore construction remains valid; Unicode normalization changes are outside Prow's <code>cases</code>/<code>language</code> use.</li>
+      <li>No newly fixed advisory applies to Prow's imported packages. <code>git diff --check</code> passes.</li>
+      <li>A focused <code>go test</code> run was cancelled after duplicate cold-cache compilations continued for seven minutes without an error; this is not a passing test result.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Open questions for the author</h2>
+    <p class="none">None.</p>
+  </section>
+</main>
+</body>
+</html>

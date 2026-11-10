@@ -1,53 +1,89 @@
 <!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Review: kubernetes-sigs/prow#950</title>
-  <style>
-    body { font-family: system-ui, -apple-system, sans-serif; line-height: 1.55; color: #1f2937; margin: 2rem auto; max-width: 52rem; padding: 0 1rem; }
-    h1, h2 { color: #111827; } code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; background: #f3f4f6; padding: .1em .25em; border-radius: .2em; } .meta { color: #4b5563; } .verdict { border-left: .3rem solid #15803d; padding: .75rem 1rem; background: #f0fdf4; } .empty { color: #4b5563; }
-  </style>
-</head>
-<body>
-  <header>
-    <h1>Review: <a href="https://github.com/kubernetes-sigs/prow/pull/950">kubernetes-sigs/prow#950</a></h1>
-    <p class="meta">Title: chore(deps): bump github.com/mattn/go-zglob from 0.0.6 to 0.0.7<br>Base: <code>main</code><br>Head: <code>4776522984ed027ab42181ba2c880ba73d49df9d</code><br>Reviewed: 2026-09-21T23:22:20Z</p>
-  </header>
-  <section>
-    <h2>Verdict: approve</h2>
-    <div class="verdict">Approve. This is a manifest-only direct dependency bump. The sole upstream functional change fixes a Unix <code>fastwalk</code> checkptr failure; Prow invokes only <code>zglob.Match</code>, not the changed directory-walking path. Release provenance, module integrity, and PR CI are satisfactory.</div>
-  </section>
-  <section>
-    <h2>What this PR does</h2>
-    <ul>
-      <li>Updates direct production dependency <code>github.com/mattn/go-zglob</code> from <code>v0.0.6</code> to <code>v0.0.7</code>.</li>
-      <li>Updates the corresponding two checksums in <code>go.sum</code>.</li>
-      <li>Takes an upstream Unix <code>fastwalk</code> fix that avoids unsafe overlay of a short directory-entry record.</li>
-    </ul>
-  </section>
-  <section>
-    <h2>Findings</h2>
-    <h3>Blocking</h3><p class="empty">None.</p>
-    <h3>Should fix</h3><p class="empty">None.</p>
-    <h3>Nits</h3><p class="empty">None.</p>
-    <h3>Questions</h3><p class="empty">None.</p>
-  </section>
-  <section>
-    <h2>Things I checked and was fine with</h2>
-    <ul>
-      <li>Diff is limited to <code>go.mod</code> and <code>go.sum</code>; no project code changes.</li>
-      <li><code>v0.0.7</code> is a tagged release from 2026-09-15, approximately six days old at review time; it is not a pseudo-version.</li>
-      <li>Upstream delta is one bug fix plus a regression test: copy a directory-entry record before parsing it, preventing a <code>checkptr</code> failure in <code>fastwalk</code>.</li>
-      <li>Prow directly imports the module in <code>pkg/sidecar/censor.go</code> and <code>pkg/plugins/updateconfig/updateconfig.go</code>, both only through <code>zglob.Match</code>; no Prow call site reaches <code>zglob.Glob</code> or <code>fastwalk</code>.</li>
-      <li>No published GitHub security advisories were reported for the upstream repository.</li>
-      <li><code>go mod verify</code> passed; <code>git diff --check</code> was clean.</li>
-      <li>PR CI passed: image build, integration, unit, nonblocking race, and lint. Tide remains pending required approval/LGTM labels.</li>
-    </ul>
-  </section>
-  <section>
-    <h2>Open questions for the author</h2>
-    <p class="empty">None.</p>
-  </section>
-</body>
-</html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#950</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>chore(deps): bump github.com/mattn/go-zglob from 0.0.6 to 0.0.7</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/950">kubernetes-sigs/prow#950</a> · base <code>main</code> · head_sha <code>4776522984ed</code> · reviewed_at <code>2026-11-10T01:16:53Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span></div>
+<details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#950
+title: &quot;chore(deps): bump github.com/mattn/go-zglob from 0.0.6 to 0.0.7&quot;
+head_sha: 4776522984ed027ab42181ba2c880ba73d49df9d
+base: main
+reviewed_at: 2026-11-10T01:16:53Z
+verdict: approve
+refresh_log:
+  - at: 2026-11-10T01:16:53Z
+    old_sha: 4776522984ed027ab42181ba2c880ba73d49df9d
+    new_sha: 4776522984ed027ab42181ba2c880ba73d49df9d
+    summary: &quot;No code changes; PR approved by petr-muller, labeled lgtm/approved, and merged by Tide at the reviewed SHA.&quot;</code></pre></details>
+<h2>Verdict</h2>
+<p>Approve. This is a manifest-only direct dependency bump. The sole upstream functional change fixes a Unix <code>fastwalk</code> checkptr failure; Prow invokes only <code>zglob.Match</code>, not the changed directory-walking path. Release provenance, module integrity, and PR CI are satisfactory. The PR has since been approved and merged at the reviewed SHA (<code>4776522</code>), so nothing in this review is outstanding.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Updates direct production dependency <code>github.com/mattn/go-zglob</code> from <code>v0.0.6</code> to <code>v0.0.7</code>.
+</li>
+<li>Updates the corresponding two checksums in <code>go.sum</code>.
+</li>
+<li>Takes an upstream Unix <code>fastwalk</code> fix that avoids unsafe overlay of a short directory-entry record.
+</li></ul>
+<p>Since previous review:</p>
+<ul>
+<li>No new commits: the PR head is still <code>4776522</code> (<code>0.0.6</code> → <code>0.0.7</code>, <code>go.mod</code>/<code>go.sum</code> only).
+</li>
+<li><code>petr-muller</code> approved at <code>2026-09-22T11:41:04Z</code>; Prow applied <code>lgtm</code> and <code>approved</code> labels.
+</li>
+<li>Tide merged the PR at <code>2026-09-22T12:04:13Z</code>; the head branch was deleted. <code>kubevirt-bot</code> cross-referenced it on <code>2026-09-25T06:10:39Z</code>.
+</li></ul>
+<h2>Findings</h2>
+<p>No findings.</p>
+<h2>Checked</h2>
+<ul>
+<li>Diff is limited to <code>go.mod</code> and <code>go.sum</code>; no project code changes.
+</li>
+<li><code>v0.0.7</code> is a tagged release from 2026-09-15, approximately six days old at review time; it is not a pseudo-version.
+</li>
+<li>Upstream delta is one bug fix plus a regression test: copy a directory-entry record before parsing it, preventing a <code>checkptr</code> failure in <code>fastwalk</code>.
+</li>
+<li>Prow directly imports the module in <code>pkg/sidecar/censor.go</code> and <code>pkg/plugins/updateconfig/updateconfig.go</code>, both only through <code>zglob.Match</code>; no Prow call site reaches <code>zglob.Glob</code> or <code>fastwalk</code>.
+</li>
+<li>No published GitHub security advisories were reported for the upstream repository.
+</li>
+<li><code>go mod verify</code> passed; <code>git diff --check</code> was clean.
+</li>
+<li>PR CI passed: image build, integration, unit, nonblocking race, and lint.
+</li>
+<li>Post-review: the required approval/LGTM labels were applied and Tide merged the PR at the reviewed SHA, confirming the observations above.
+</li></ul>
+<h2>Open questions</h2>
+<p>None.</p>
+<h2>Dependency followups</h2>
+<p>No opportunities identified. Examined <code>github.com/mattn/go-zglob</code> v0.0.6 → v0.0.7 (direct; the only module changed in this PR). The range contains a single functional commit, <code>392023f2 fastwalk: fix checkptr failure in parseDirEnt</code> (plus its merge <code>d55adcf4</code>), touching only <code>fastwalk/fastwalk_unix.go</code> and adding <code>fastwalk/fastwalk_dirent_test.go</code>; it introduces no deprecations, no new or changed exported API, and no default changes. Prow's only call sites are <code>zglob.Match</code> at <code>pkg/sidecar/censor.go:168</code>, <code>pkg/sidecar/censor.go:177</code>, and <code>pkg/plugins/updateconfig/updateconfig.go:296</code>, none of which reach <code>fastwalk</code> or any other API this release changes.</p>
+</main></body></html>

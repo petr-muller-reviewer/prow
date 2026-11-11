@@ -3,7 +3,7 @@ pr: kubernetes-sigs/prow#707
 title: "approve: fix silent approval bypass when PR exceeds GitHub file list API limit"
 head_sha: f8fb3fd1af69203c783876acd791fbf7d757f275
 base: main
-reviewed_at: 2026-08-12T11:22:19Z
+reviewed_at: 2026-11-11T10:37:55Z
 verdict: request-changes
 refresh_log:
   - old_sha: decefa02a730efb3d44e4df79d6bf4810d6a1267
@@ -15,6 +15,9 @@ refresh_log:
   - old_sha: f8fb3fd1af69203c783876acd791fbf7d757f275
     new_sha: f8fb3fd1af69203c783876acd791fbf7d757f275
     summary: "No code change. Cross-checked review #4463008939 (petr-muller, 2026-06-09) three-point plan against shipped code; expanded direction-divergence finding with the concrete gaps."
+  - old_sha: f8fb3fd1af69203c783876acd791fbf7d757f275
+    new_sha: f8fb3fd1af69203c783876acd791fbf7d757f275
+    summary: "No code change. Author replied 2026-08-13 ('I will try to handle it next week') with no follow-up commit since 2026-06-16. k8s-triage-robot applied lifecycle/stale 2026-11-11 after 90d inactivity. All findings still stand."
 ---
 
 # Review: kubernetes-sigs/prow#707
@@ -30,6 +33,11 @@ Since previous review (`decefa02a` → `f8fb3fd1a`, force-push 2026-06-16):
 - This is a simpler direction than the "option 1" (root approver) discussed on Slack and prototyped on `petr-muller/prow:707-explore`. Current code just blocks entirely on truncation — no root-approver fallback. More conservative but less ergonomic for legitimate large PRs.
 
 Since previous refresh (2026-08-11, no code change): independent `/code-review` pass confirmed the `handleReview` gap with fixture evidence and surfaced four additional findings. `go test ./pkg/plugins/approve/...` passes on `f8fb3fd1a`.
+
+Since previous refresh (2026-11-11, no code change): the PR head is unchanged at `f8fb3fd1a`.
+- jmguzik replied 2026-08-13: "@petr-muller I will try to handle it next week." No commit has landed since 2026-06-16.
+- k8s-triage-robot applied `lifecycle/stale` on 2026-11-11 (90-day inactivity timer); `lifecycle/rotten` follows in 30 days, closure 30 days after that.
+- No comments, inline review comments, or reviews other than that one author reply. All findings remain open; nothing is resolved by this activity.
 
 Off-PR context (Slack, 2026-06-09): the original blocking finding was independently confirmed on the PR (discussion r3195042137 — GetSingleCommit is also limited). Author (jmguzik) intended to refactor toward "option 1": on truncation, require a top-level (root) approver. The actual push took a simpler approach: just block and require manual admin label. The root-approver direction may come in a follow-up.
 

@@ -31,36 +31,40 @@ ul, ol { padding-left:1.5rem; }
 details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
 </style></head><body><main>
 <h1>Deck PR status page shows stale contexts for renamed or removed presubmit jobs.</h1>
-<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/issues/824">kubernetes-sigs/prow#824</a> · main_sha <code>c8b6c2ce8b13</code> · state <code>open</code> · labels <code>area/status-reconciler, area/deck</code> · triaged_at <code>2026-08-17T22:40:36Z</code></div>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/issues/824">kubernetes-sigs/prow#824</a> · main_sha <code>c8b6c2ce8b13</code> · state <code>open</code> · labels <code>lifecycle/stale, area/status-reconciler, area/deck</code> · triaged_at <code>2026-11-12T14:09:27Z</code></div>
 <div class="badges"><span class="badge c-green">verdict: accepted</span></div>
 <details><summary>Full metadata</summary><pre><code>issue: kubernetes-sigs/prow#824
 title: &quot;Deck PR status page shows stale contexts for renamed or removed presubmit jobs.&quot;
 state: open
-labels: area/status-reconciler, area/deck
+labels: lifecycle/stale, area/status-reconciler, area/deck
 main_sha: c8b6c2ce8b130126a73672324a6ced4bd83df8a4
-triaged_at: 2026-08-17T22:40:36Z
+triaged_at: 2026-11-12T14:09:27Z
 verdict: accepted
 advice:
   advised_at: 2026-10-26T15:52:58Z
-  based_on_triaged_at: 2026-08-17T22:40:36Z</code></pre></details>
+  based_on_triaged_at: 2026-08-17T22:40:36Z
+refresh_log:
+  - at: 2026-11-12T14:09:27Z
+    previous_triaged_at: 2026-08-17T22:40:36Z
+    summary: &quot;k8s-triage-robot applied lifecycle/stale and posted the 90-day inactivity notice on 2026-11-12T09:24:49Z; no other issue activity, findings unchanged.&quot;</code></pre></details>
 <h2>Findings</h2>
 <h3><span class="tag c-amber">cause</span>status-reconciler's retirement pass is one-shot with no re-visit mechanism</h3>
 <ul>
 <li>detail: <code>pkg/statusreconciler</code> retires a removed/renamed presubmit's GitHub context once, synchronously, when the config delta that removed it is processed. There is no persisted record of which contexts/PRs were actually retired — only the whole config snapshot persists — so nothing can detect or catch up on missed work later. This produces two independent, confirmed blind spots below.
 </li>
-<li>evidence: <code>pkg/statusreconciler/controller.go:161-322</code>, <code>pkg/statusreconciler/status.go:73-95</code>
+<li>evidence: <code><a href="https://github.com/kubernetes-sigs/prow/blob/c8b6c2ce8b130126a73672324a6ced4bd83df8a4/pkg/statusreconciler/controller.go#L161-L322">pkg/statusreconciler/controller.go:161-322</a></code>, <code><a href="https://github.com/kubernetes-sigs/prow/blob/c8b6c2ce8b130126a73672324a6ced4bd83df8a4/pkg/statusreconciler/status.go#L73-L95">pkg/statusreconciler/status.go:73-95</a></code>
 </li></ul>
 <h3><span class="tag c-amber">cause</span>In-flight job at retirement time is not aborted or rechecked</h3>
 <ul>
 <li>detail: <code>retireRemovedContexts</code> retires a context immediately with no check against ProwJob state. <code>processPR</code> has no ProwJob lookup, and there is no abort/cancellation logic anywhere in <code>pkg/statusreconciler</code> (confirmed via grep, zero hits). A ProwJob still running when its job is removed from config can finish afterward and re-report its own (now stale) status via crier, silently overwriting the retirement.
 </li>
-<li>evidence: <code>pkg/statusreconciler/controller.go:294-322</code>, <code>pkg/statusreconciler/migrator/migrator.go:232-249</code>
+<li>evidence: <code><a href="https://github.com/kubernetes-sigs/prow/blob/c8b6c2ce8b130126a73672324a6ced4bd83df8a4/pkg/statusreconciler/controller.go#L294-L322">pkg/statusreconciler/controller.go:294-322</a></code>, <code><a href="https://github.com/kubernetes-sigs/prow/blob/c8b6c2ce8b130126a73672324a6ced4bd83df8a4/pkg/statusreconciler/migrator/migrator.go#L232-L249">pkg/statusreconciler/migrator/migrator.go:232-249</a></code>
 </li></ul>
 <h3><span class="tag c-amber">cause</span>Closed-then-reopened PR is permanently missed</h3>
 <ul>
 <li>detail: <code>GetPullRequests</code> hits <code>/repos/%s/%s/pulls</code> with no <code>state</code> parameter, defaulting to GitHub's <code>state=open</code>. <code>migrator.Migrate()</code> and <code>controller.go</code>'s <code>triggerNewPresubmits</code> both consume it this way. A PR closed at the moment a config delta is processed is invisible to that retirement pass; since each delta's diff only reports jobs that transitioned out of config in that specific delta, a later reopen of the PR is never revisited and its stale context is permanently missed.
 </li>
-<li>evidence: <code>pkg/github/client.go:2144-2169</code>, <code>pkg/statusreconciler/migrator/migrator.go:252-268</code>, <code>pkg/statusreconciler/controller.go:228</code>, <code>pkg/statusreconciler/controller.go:409-437</code> (<code>removedPresubmits</code>)
+<li>evidence: <code><a href="https://github.com/kubernetes-sigs/prow/blob/c8b6c2ce8b130126a73672324a6ced4bd83df8a4/pkg/github/client.go#L2144-L2169">pkg/github/client.go:2144-2169</a></code>, <code><a href="https://github.com/kubernetes-sigs/prow/blob/c8b6c2ce8b130126a73672324a6ced4bd83df8a4/pkg/statusreconciler/migrator/migrator.go#L252-L268">pkg/statusreconciler/migrator/migrator.go:252-268</a></code>, <code><a href="https://github.com/kubernetes-sigs/prow/blob/c8b6c2ce8b130126a73672324a6ced4bd83df8a4/pkg/statusreconciler/controller.go#L228">pkg/statusreconciler/controller.go:228</a></code>, <code><a href="https://github.com/kubernetes-sigs/prow/blob/c8b6c2ce8b130126a73672324a6ced4bd83df8a4/pkg/statusreconciler/controller.go#L409-L437">pkg/statusreconciler/controller.go:409-437</a></code> (<code>removedPresubmits</code>)
 </li></ul>
 <h3><span class="tag c-blue">reproducibility</span>Third hypothesis investigated and retracted</h3>
 <ul>
@@ -70,7 +74,7 @@ advice:
 </li></ul>
 <h3><span class="tag c-blue">related-code</span>Sequential controller loop constrains any in-flight-job fix</h3>
 <ul>
-<li>where: <code>pkg/statusreconciler/controller.go:161-183</code>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/c8b6c2ce8b130126a73672324a6ced4bd83df8a4/pkg/statusreconciler/controller.go#L161-L183">pkg/statusreconciler/controller.go:161-183</a></code>
 </li>
 <li>excerpt:<pre><code>func (c *Controller) Run(ctx context.Context) {
   changes, err := c.statusClient.Load()
@@ -100,7 +104,7 @@ advice:
 </li></ul>
 <h3><span class="tag c-blue">related-code</span>Existing abort + crier-skip pattern a fix could reuse</h3>
 <ul>
-<li>where: <code>pkg/plugins/trigger/pull-request.go:170-199</code>, <code>pkg/crier/reporters/github/reporter.go:72-87</code>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/c8b6c2ce8b130126a73672324a6ced4bd83df8a4/pkg/plugins/trigger/pull-request.go#L170-L199">pkg/plugins/trigger/pull-request.go:170-199</a></code>, <code><a href="https://github.com/kubernetes-sigs/prow/blob/c8b6c2ce8b130126a73672324a6ced4bd83df8a4/pkg/crier/reporters/github/reporter.go#L72-L87">pkg/crier/reporters/github/reporter.go:72-87</a></code>
 </li>
 <li>excerpt:<pre><code>// abortAllJobs (pull-request.go): sets Status.State/Status.Description only
 job.Status.State = prowapi.AbortedState
@@ -117,7 +121,7 @@ func (c *Client) ShouldReport(_ context.Context, _ *logrus.Entry, pj *v1.ProwJob
 </li></ul>
 <h3><span class="tag c-blue">related-code</span>ProwJobClient reaches the controller but not the migrator</h3>
 <ul>
-<li>where: <code>pkg/statusreconciler/controller.go:41-70</code>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/c8b6c2ce8b130126a73672324a6ced4bd83df8a4/pkg/statusreconciler/controller.go#L41-L70">pkg/statusreconciler/controller.go:41-70</a></code>
 </li>
 <li>excerpt:<pre><code>func NewController(..., prowJobClient prowv1.ProwJobInterface, githubClient github.Client, ...) *Controller {
   ...
@@ -137,7 +141,7 @@ func (c *Client) ShouldReport(_ context.Context, _ *logrus.Entry, pj *v1.ProwJob
   }
 }</code></pre>
 </li>
-<li>relevance: <code>prowJobClient</code> is passed into <code>NewController</code> and used only to build <code>kubeProwJobTriggerer</code> (the presubmit-triggering path); <code>gitHubMigrator</code> (the retirement/migration path) is constructed with only <code>githubClient</code>, no ProwJob awareness at all. A fix needs to thread <code>prowJobClient</code> into <code>gitHubMigrator</code> as well. <code>ProwJobSpec.Context</code> is a plain string field (<code>pkg/apis/prowjobs/v1/types.go:171</code>), directly usable for matching without any annotation scheme.
+<li>relevance: <code>prowJobClient</code> is passed into <code>NewController</code> and used only to build <code>kubeProwJobTriggerer</code> (the presubmit-triggering path); <code>gitHubMigrator</code> (the retirement/migration path) is constructed with only <code>githubClient</code>, no ProwJob awareness at all. A fix needs to thread <code>prowJobClient</code> into <code>gitHubMigrator</code> as well. <code>ProwJobSpec.Context</code> is a plain string field (<code><a href="https://github.com/kubernetes-sigs/prow/blob/c8b6c2ce8b130126a73672324a6ced4bd83df8a4/pkg/apis/prowjobs/v1/types.go#L171">pkg/apis/prowjobs/v1/types.go:171</a></code>), directly usable for matching without any annotation scheme.
 </li></ul>
 <h3><span class="tag c-blue">related-pr</span>kubernetes-sigs/prow#615</h3>
 <ul>
@@ -174,6 +178,8 @@ func (c *Client) ShouldReport(_ context.Context, _ *logrus.Entry, pj *v1.ProwJob
 <li>Before any implementation on the in-flight-job piece, get explicit maintainer sign-off on the abort-vs-block trade-off (sunk CI compute vs. a residual report-race window) — this is a product decision, not an implementation detail.
 </li>
 <li>Once cursor-persistence semantics (per-repo scoping, only-advance-on-full-success) are agreed, the closed-PR piece could be scoped as a standalone, lower-effort follow-up issue.
+</li>
+<li>The issue now carries <code>lifecycle/stale</code> (k8s-triage-robot, 2026-11-12T09:24:49Z). Unless someone runs <code>/remove-lifecycle stale</code>, it turns <code>lifecycle/rotten</code> after 30 more days of inactivity and is then auto-closed — worth clearing once this triage is acted on, since the scope is accepted and the findings stand.
 </li></ul>
 <h2>Advice</h2>
 <p>Recorded 2026-10-26T15:52:58Z against the triage of 2026-08-17T22:40:36Z. Issue is still open, has no <code>kind/*</code> or <code>triage/*</code> label, and no PR implements either gap. Note: the issue also cross-references #847 (2026-08-12), an open Deck-side patch held by the maintainer; it is not listed under <code>[related-pr]</code> above but its rationale matches the #615 rejection.</p>

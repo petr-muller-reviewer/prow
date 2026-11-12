@@ -2,13 +2,17 @@
 issue: kubernetes-sigs/prow#824
 title: "Deck PR status page shows stale contexts for renamed or removed presubmit jobs."
 state: open
-labels: area/status-reconciler, area/deck
+labels: lifecycle/stale, area/status-reconciler, area/deck
 main_sha: c8b6c2ce8b130126a73672324a6ced4bd83df8a4
-triaged_at: 2026-08-17T22:40:36Z
+triaged_at: 2026-11-12T14:09:27Z
 verdict: accepted
 advice:
   advised_at: 2026-10-26T15:52:58Z
   based_on_triaged_at: 2026-08-17T22:40:36Z
+refresh_log:
+  - at: 2026-11-12T14:09:27Z
+    previous_triaged_at: 2026-08-17T22:40:36Z
+    summary: "k8s-triage-robot applied lifecycle/stale and posted the 90-day inactivity notice on 2026-11-12T09:24:49Z; no other issue activity, findings unchanged."
 ---
 
 ## Findings
@@ -115,6 +119,7 @@ advice:
 - Split into two independently-shippable pieces given very different risk profiles: (1) closed-then-reopened-PR revisit cursor, (2) in-flight-job abort.
 - Before any implementation on the in-flight-job piece, get explicit maintainer sign-off on the abort-vs-block trade-off (sunk CI compute vs. a residual report-race window) — this is a product decision, not an implementation detail.
 - Once cursor-persistence semantics (per-repo scoping, only-advance-on-full-success) are agreed, the closed-PR piece could be scoped as a standalone, lower-effort follow-up issue.
+- The issue now carries `lifecycle/stale` (k8s-triage-robot, 2026-11-12T09:24:49Z). Unless someone runs `/remove-lifecycle stale`, it turns `lifecycle/rotten` after 30 more days of inactivity and is then auto-closed — worth clearing once this triage is acted on, since the scope is accepted and the findings stand.
 
 ## Advice
 

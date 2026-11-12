@@ -31,13 +31,13 @@ ul, ol { padding-left:1.5rem; }
 details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
 </style></head><body><main>
 <h1>docs: generate the metrics reference from Go declarations</h1>
-<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1001">kubernetes-sigs/prow#1001</a> · base <code>main</code> · head_sha <code>8c27c2ddf45c</code> · reviewed_at <code>2026-10-21T14:00:32Z</code></div>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1001">kubernetes-sigs/prow#1001</a> · base <code>main</code> · head_sha <code>8c27c2ddf45c</code> · reviewed_at <code>2026-11-11T11:47:49Z</code></div>
 <div class="badges"><span class="badge c-red">verdict: request-changes</span><span class="badge c-red">gate: do-not-merge</span></div>
 <details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#1001
 title: &quot;docs: generate the metrics reference from Go declarations&quot;
 head_sha: 8c27c2ddf45c23ccbd2e89c3382ef82c42cb0d0b
 base: main
-reviewed_at: 2026-10-21T14:00:32Z
+reviewed_at: 2026-11-11T11:47:49Z
 verdict: request-changes
 gate:
   decision: do-not-merge
@@ -52,10 +52,14 @@ refresh_log:
   - old_sha: 7a209d855110d9c9a13b66c418a93d2cdd29c75e
     new_sha: 8c27c2ddf45c23ccbd2e89c3382ef82c42cb0d0b
     at: 2026-10-21T14:00:32Z
-    summary: &quot;PR branch updated onto main; generator unchanged and the missing-help finding remains.&quot;</code></pre></details>
+    summary: &quot;PR branch updated onto main; generator unchanged and the missing-help finding remains.&quot;
+  - old_sha: 8c27c2ddf45c23ccbd2e89c3382ef82c42cb0d0b
+    new_sha: 8c27c2ddf45c23ccbd2e89c3382ef82c42cb0d0b
+    at: 2026-11-11T11:47:49Z
+    summary: &quot;No code changes; incorporated petr-muller&#x27;s help-text comment and recorded documentation losses identified in the local follow-up comparison.&quot;</code></pre></details>
 <h2>Gate</h2>
 <p><strong>Decision: do-not-merge</strong></p>
-<p>The current head, <code>8c27c2ddf45c23ccbd2e89c3382ef82c42cb0d0b</code>, is unchanged from the saved review. Direct inspection confirms that the blocking finding, “Require help text for every generated metric row,” remains unaddressed: the generator accepts absent or empty help and the two documented rows still have blank descriptions. This prevents the reference from meeting the PR's stated requirement that each row includes help text. The PR remains open; GitHub has no submitted reviews, inline comments, or human issue comments adding substantive feedback.</p>
+<p>The gate at <code>2026-11-11T11:17:20Z</code> covered <code>8c27c2ddf45c23ccbd2e89c3382ef82c42cb0d0b</code>, which remains the current head. Direct inspection confirmed that the blocking finding, “Require help text for every generated metric row,” was unaddressed: the generator accepts absent or empty help and the two documented rows have blank descriptions. This prevents the reference from meeting the PR's stated requirement that each row includes help text. There were no submitted reviews, inline comments, or human issue comments at that gate. Since then, @petr-muller requested the same help-text check and submitted a COMMENTED review. This refresh also records documentation losses identified during the local follow-up comparison; the gate has not been rerun against those additional findings.</p>
 <h3>Gating list</h3>
 <ul>
 <li><strong>Not addressed — REVIEW.md, “Require help text for every generated metric row”</strong> (<code><a href="https://github.com/kubernetes-sigs/prow/blob/8c27c2ddf45c23ccbd2e89c3382ef82c42cb0d0b/hack/gen-prow-documented/metrics.go#L298-L312">hack/gen-prow-documented/metrics.go:298-312</a></code>): The parser defaults missing <code>Help</code> to an empty string and only rejects an empty metric name. The declarations at <code><a href="https://github.com/kubernetes-sigs/prow/blob/8c27c2ddf45c23ccbd2e89c3382ef82c42cb0d0b/pkg/jira/metrics.go#L33">pkg/jira/metrics.go:33</a></code> and <code><a href="https://github.com/kubernetes-sigs/prow/blob/8c27c2ddf45c23ccbd2e89c3382ef82c42cb0d0b/pkg/metrics/prowjobs/collector.go#L118">pkg/metrics/prowjobs/collector.go:118</a></code> still omit <code>Help</code>; their generated descriptions at <code><a href="https://github.com/kubernetes-sigs/prow/blob/8c27c2ddf45c23ccbd2e89c3382ef82c42cb0d0b/site/content/en/docs/metrics/_index.md#L106">site/content/en/docs/metrics/_index.md:106</a></code> and <code><a href="https://github.com/kubernetes-sigs/prow/blob/8c27c2ddf45c23ccbd2e89c3382ef82c42cb0d0b/site/content/en/docs/metrics/_index.md#L109">site/content/en/docs/metrics/_index.md:109</a></code> are blank. <strong>Blocks merge:</strong> add both descriptions and reject absent or empty help in the generator.
@@ -63,7 +67,7 @@ refresh_log:
 <h3>Independent merge risk</h3>
 <p>No notable merge risk beyond the unresolved finding. The full PR changes five files (991 insertions, 59 deletions), all in the documentation generator, its tests, the codegen verifier, and the metrics reference. There are no exported runtime API, CRD, deployment configuration, or deployed behavior changes. The generator now rewrites the metrics table and exits with an error when extraction fails (<code><a href="https://github.com/kubernetes-sigs/prow/blob/8c27c2ddf45c23ccbd2e89c3382ef82c42cb0d0b/hack/gen-prow-documented/main.go#L123">hack/gen-prow-documented/main.go:123</a></code>); the verifier also checks this page (<code><a href="https://github.com/kubernetes-sigs/prow/blob/8c27c2ddf45c23ccbd2e89c3382ef82c42cb0d0b/hack/make-rules/verify/codegen.sh#L25">hack/make-rules/verify/codegen.sh:25</a></code>). The blast radius is maintainers running documentation generation and verification; existing Prow installations need no migration or coordinated rollout. No applicable repository compatibility skill was available; this pass used direct code inspection. Tests were not run for this gate.</p>
 <h2>Verdict</h2>
-<p>Request changes. Code Quality and Maintainability reviewers independently confirmed that the generator accepts missing metric help and emits blank descriptions for two rows, contrary to the PR's stated requirement. Deployment risk is low because the change affects documentation tooling and generated docs, not deployed Prow behavior.</p>
+<p>Request changes. Code Quality and Maintainability reviewers independently confirmed that the generator accepts missing metric help and emits blank descriptions for two rows, contrary to the PR's stated requirement. A follow-up comparison also found that the replacement loses operator context from the handcrafted reference. Deployment risk is low because the change affects documentation tooling and generated docs, not deployed Prow behavior.</p>
 <h2>What this PR does</h2>
 <ul>
 <li>Parses Prometheus declarations under <code>cmd/</code> and <code>pkg/</code> to build a metrics reference.
@@ -79,6 +83,14 @@ refresh_log:
 <li>The PR head advanced from <code>7a209d855110d9c9a13b66c418a93d2cdd29c75e</code> to <code>8c27c2ddf45c23ccbd2e89c3382ef82c42cb0d0b</code> while updating onto <code>main</code>. The old-to-new history spans 36 commits, but only the existing feature commit is ahead of current <code>main</code>; the current PR diff remains the same five files, with no changes to the generator implementation.
 </li>
 <li>The generated documentation has updated source line links for <code>cmd/sinker</code>; the two empty descriptions remain. No new reviews, inline comments, or issue comments were added, and the PR remains open.
+</li></ul>
+<p><strong>Since previous review (2026-11-11):</strong></p>
+<ul>
+<li>No code changes: the PR remains open at <code>8c27c2ddf45c23ccbd2e89c3382ef82c42cb0d0b</code>.
+</li>
+<li>@petr-muller added an inline comment at <code>2026-11-11T11:28:10Z</code> on <code><a href="https://github.com/kubernetes-sigs/prow/blob/8c27c2ddf45c23ccbd2e89c3382ef82c42cb0d0b/hack/gen-prow-documented/metrics.go#L307">hack/gen-prow-documented/metrics.go:307</a></code>, requesting nonempty help validation and descriptions for the two exceptions, then submitted a COMMENTED review at <code>2026-11-11T11:33:18Z</code>. This reinforces the existing blocking finding; there are no new issue comments.
+</li>
+<li>The local follow-up comparison found lost Tide interpretation details, component ownership mappings, and static-job metric metadata. These are recorded below as a should-fix finding; the static-job operational guidance, replica warning, Pushgateway explanation, and monitoring link are preserved.
 </li></ul>
 <h2>Findings</h2>
 <h3><span class="tag c-red">blocking</span>Require help text for every generated metric row</h3>
@@ -104,6 +116,16 @@ refresh_log:
         return row, fmt.Errorf(&quot;empty metric name&quot;)
     }</code></pre>
 </li></ul>
+<h3><span class="tag c-amber">should-fix</span>Preserve operator context from the handcrafted reference</h3>
+<ul>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/8c27c2ddf45c23ccbd2e89c3382ef82c42cb0d0b/site/content/en/docs/metrics/_index.md#L11">site/content/en/docs/metrics/_index.md:11</a></code>, <code><a href="https://github.com/kubernetes-sigs/prow/blob/8c27c2ddf45c23ccbd2e89c3382ef82c42cb0d0b/site/content/en/docs/metrics/_index.md#L121">site/content/en/docs/metrics/_index.md:121</a></code>, <code><a href="https://github.com/kubernetes-sigs/prow/blob/8c27c2ddf45c23ccbd2e89c3382ef82c42cb0d0b/site/content/en/docs/metrics/_index.md#L157">site/content/en/docs/metrics/_index.md:157</a></code>
+</li>
+<li>concern: Replacing the handcrafted table loses useful information: Tide descriptions no longer explain pagination, inclusion of partial results in PR counts and error counts, or the completeness ratio's latest nonempty search cycle; source-package links replace component mappings such as Hook and Plank/Jenkins-Operator. The <code>prow_config_static_job_definition</code> row also disappears because its <code>prometheus.NewDesc</code> declaration is unsupported by the extractor, losing its explicit Gauge type and <code>type</code> label even though its explanatory section survives. Preserve the richer Tide wording in Go Help, retain component mappings in surrounding guidance, and document the static-job metric's type and label outside the generated table or extend extraction to cover it.
+</li>
+<li>excerpt:<pre><code>| [pkg/tide](https://github.com/kubernetes-sigs/prow/blob/main/pkg/tide/tide.go#L347) | Gauge | `tide_pool_completeness_ratio` | controller | Fraction of query shards that completed fully. |
+| [pkg/tide](https://github.com/kubernetes-sigs/prow/blob/main/pkg/tide/tide.go#L308) | Histogram | `tide_query_duration_seconds` | controller, result | Duration of individual Tide GitHub search queries per shard. |
+| [pkg/tide](https://github.com/kubernetes-sigs/prow/blob/main/pkg/tide/tide.go#L316) | Histogram | `tide_query_prs_returned` | controller | Number of PRs returned per Tide query shard. |</code></pre>
+</li></ul>
 <h2>Checked</h2>
 <ul>
 <li>The code quality and maintainability reviewers independently confirmed the missing-help issue; the code and generated rows were checked directly.
@@ -115,6 +137,8 @@ refresh_log:
 <li>Deployment review found no runtime, configuration, dependency, or resource changes; deployment risk is low.
 </li>
 <li>No repository-specific code standards were found in <code>CONTRIBUTING.md</code>.
+</li>
+<li>Compared the handcrafted metrics page at <code>8c27c2d^</code> with <code>8c27c2d</code>: the main table expands from 48 unique metric names to 105, but drops the static-job metric row and some operator context. This comparison used static inspection; no tests were run.
 </li></ul>
 <h2>Open questions</h2>
 <ul>

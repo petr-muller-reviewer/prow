@@ -3,7 +3,7 @@ pr: kubernetes-sigs/prow#661
 title: "Add support for git cherry-pick -x style commit messages"
 head_sha: 1d35794f7752d9a169c08478ae6b5125368075fb
 base: main
-reviewed_at: 2026-10-15T22:26:38Z
+reviewed_at: 2026-11-12T14:08:35Z
 verdict: request-changes
 gate:
   decision: do-not-merge
@@ -17,6 +17,9 @@ refresh_log:
   - old_sha: 1d35794f7752d9a169c08478ae6b5125368075fb
     new_sha: 1d35794f7752d9a169c08478ae6b5125368075fb
     summary: "No code changes; incorporated the author's October 15 review reminder."
+  - old_sha: 1d35794f7752d9a169c08478ae6b5125368075fb
+    new_sha: 1d35794f7752d9a169c08478ae6b5125368075fb
+    summary: "No code changes; incorporated AaruniAggarwal's November 10 reminder and the bot's needs-rebase label (PR now conflicts with main)."
 ---
 
 # Review
@@ -26,6 +29,8 @@ refresh_log:
 **Decision: do-not-merge.** At PR head `1d35794f7752d9a169c08478ae6b5125368075fb`, the saved blocking finding remains unchanged. Enabling the new flag makes a valid patch with a line over `bufio.Scanner`'s default 64 KiB limit fail after `git am`, so the cherry-pick branch is never pushed. Handle long patch lines and add a regression test before reconsidering merge.
 
 Rechecked on 2026-10-15 at 23:08:03Z against the current PR head, full diff, and GitHub review discussion. There are no commits since the reviewed head and no new substantive feedback that changes the finding's disposition.
+
+Rechecked again on 2026-11-12 at 14:08:35Z: still no commits since the reviewed head. The PR now also conflicts with `main` (`mergeable: CONFLICTING`, `mergeStateStatus: DIRTY`; the bot applied `needs-rebase` on 2026-11-10 at 10:20:08Z), so a rebase is required on top of the unchanged blocking finding.
 
 ### Gating finding
 
@@ -56,6 +61,7 @@ Since previous review:
 - The author changed the rewrite helper to receive the already configured Git name and email from `Server.handle`, avoiding separate `git config` reads, and updated its tests. The changed Go files total 7 additions and 29 deletions.
 - The PR branch removed previously committed `REVIEW.md` and `REVIEW.html` artifacts. AaruniAggarwal commented on 2026-09-29 at 17:21:02Z that the review comments had been addressed; there were no new inline comments or submitted reviews.
 - No code changed through 2026-10-15. AaruniAggarwal posted a review reminder at 08:21:08Z; there were no new inline comments or submitted reviews. The blocking finding and gate decision remain open.
+- No code changed through 2026-11-12 either. AaruniAggarwal posted another review reminder on 2026-11-10 at 10:20:00Z, and the bot immediately flagged the branch as conflicting with `main` (`needs-rebase`), a state change not caused by the author. There are no new inline comments or submitted reviews; the blocking finding and gate decision remain open.
 
 ## Findings
 

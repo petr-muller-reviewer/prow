@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#698</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>feat: manage non-k8s members assigning issues</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/698">kubernetes-sigs/prow#698</a> · base <code>main</code> · head_sha <code>5a0e394dfd2e</code> · reviewed_at <code>2026-10-26T15:48:20Z</code></div>
+<div class="badges"><span class="badge c-red">verdict: request-changes</span></div>
+<details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#698
+title: &quot;feat: manage non-k8s members assigning issues&quot;
+head_sha: 5a0e394dfd2e0f56718965ddb31d576ec76612b5
+base: main
+reviewed_at: 2026-10-26T15:48:20Z
+verdict: request-changes
+refresh_log:
+  - sha: 773c479cad28d019abfabee63bdba190d2544280
+    refreshed_at: 2026-05-26T12:53:08Z
+    summary: &quot;No code changes; incorporated 5 new comments discussing design direction (TineoC, Amulyam24, lmktfy)&quot;
+  - sha: 773c479cad28d019abfabee63bdba190d2544280
+    refreshed_at: 2026-05-30T23:35:02Z
+    summary: &quot;No code changes; 1 new comment from soltysh raising the member-assigns-non-member scenario&quot;
+  - sha: 773c479cad28d019abfabee63bdba190d2544280
+    refreshed_at: 2026-07-26T23:00:46Z
+    summary: &quot;No code changes; 1 new comment from Amulyam24 clarifying GitHub&#x27;s own assignee restrictions in response to soltysh&#x27;s question&quot;
+  - sha: 5a0e394dfd2e0f56718965ddb31d576ec76612b5
+    refreshed_at: 2026-10-26T15:48:20Z
+    summary: &quot;Full re-review after force-push 773c479 -&gt; 5a0e394 rewrote the feature (+199/-6 vs main)&quot;</code></pre></details>
+<h2>Verdict</h2>
+<p><strong>Request changes.</strong> The rewrite resolves every blocker from the earlier review and the package tests pass, but the self-assignment policy can be bypassed by writing one's own login with different capitalization: the commenter lookup and the self-strip compare raw logins, while GitHub logins are case-insensitive. That should be normalized before merge; the remaining items are a maintainability nit and scope questions.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Blocks a non-member from self-assigning an issue that already has assignees, posting an explanation and a link to unassigned <code>triage/accepted</code> issues.
+</li>
+<li>Posts guidance (assignment still proceeds) when a non-member self-assigns an issue lacking <code>triage/accepted</code>, <code>help wanted</code>, or <code>good first issue</code>.
+</li>
+<li>Exempts PRs, org members, assignments of other users, and users already on the issue; membership and label lookups fail open.
+</li>
+<li>Replaces hardcoded <code>github.com</code> links and <code>CONTRIBUTING.md</code> probing with <code>github.DefaultHost</code> and <code>pkg/labels</code> constants, and isolates the policy in <code>checkSelfAssign()</code>.
+</li></ul>
+<p>Since the previous review (<code>773c479</code>): the author force-pushed <code>5a0e394</code>, replacing the <code>good-first-issue</code> gate with the acceptance-label policy, adding the block-on-assigned behavior, and adding tests for the new matrix.</p>
+<h2>Findings</h2>
+<h3><span class="tag c-amber">should-fix</span>Case-variant self login bypasses the policy</h3>
+<ul>
+<li>where: <code>pkg/plugins/assign/assign.go:151</code>
+</li>
+<li>concern: <code>users</code> is keyed by the raw logins parsed from the comment (<code>parseLogins</code> preserves case), while the gate looks up <code>e.User.Login</code> case-sensitively. GitHub logins are case-insensitive, so a non-member writing <code>/assign @NewBie</code> (canonical login <code>newbie</code>) never enters <code>checkSelfAssign</code> and is assigned to an already-assigned issue without a comment, skipping the unaccepted-issue guidance too. The same comparison at line 198 also fails to strip the commenter from <code>toAdd</code>, so <code>/assign @NewBie @newbie</code> posts "I didn't assign you" and then assigns them anyway. Normalize with <code>github.NormLogin</code> when building and looking up <code>users</code>, and in the strip filter.
+</li>
+<li>excerpt:<pre><code>if h.userType == &quot;assignee(s)&quot; &amp;&amp; users[e.User.Login] {
+...
+    for _, login := range toAdd {
+        if login != e.User.Login {</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">nit</span><code>userType</code> display string doubles as a control-flow discriminator</h3>
+<ul>
+<li>where: <code>pkg/plugins/assign/assign.go:151</code>
+</li>
+<li>concern: <code>handle()</code> is shared by the assign and reviewer handlers and decides whether to run this assign-only policy by comparing <code>h.userType</code> with the human-facing literal <code>&quot;assignee(s)&quot;</code>, which is also used in log messages. Rewording that label silently disables the policy with no compile error. A dedicated field (e.g. <code>appliesSelfAssignPolicy bool</code>) or moving the hook into the assign handler would make the intent explicit.
+</li>
+<li>excerpt:<pre><code>if h.userType == &quot;assignee(s)&quot; &amp;&amp; users[e.User.Login] {</code></pre>
+</li></ul>
+<h2>Resolved</h2>
+<p>Prior-review blockers addressed by the rewrite:</p>
+<ul>
+<li>Unused <code>GetRepo</code>/<code>GetFile</code> interface methods — removed; <code>GetFile</code>-based <code>CONTRIBUTING.md</code> probing dropped.
+</li>
+<li>Membership checked the wrong subject — now gated on the commenter being in <code>toAdd</code>, with an <code>isAssignee</code> early return; member-assigns-non-member is tested.
+</li>
+<li><code>GetIssueLabels</code> error swallowed — membership and label lookups now fail open explicitly.
+</li>
+<li>Hardcoded <code>github.com</code> links — <code>github.DefaultHost</code> is used throughout.
+</li>
+<li>PR description/code mismatch — the PR body now describes blocking on assigned issues and fail-open behavior, matching the code.
+</li>
+<li>Policy ran on PRs — <code>e.IsPR</code> gate plus test.
+</li>
+<li>Inline logic in <code>handle()</code> — extracted into <code>checkSelfAssign()</code>.
+</li>
+<li>Membership checked after the label fetch — reordered.
+</li>
+<li><code>&quot;good-first-issue&quot;</code> literal — replaced by <code>pkg/labels</code> constants.
+</li>
+<li>Test assertions keyed off <code>tc.name</code> — replaced by <code>labels</code>/<code>assignees</code>/<code>isPR</code> fields.
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li><code>e.Assignees</code> is populated for <code>issue_comment</code> events (<code>pkg/github/helpers.go:150</code>), so the assigned-issue check works on the real path.
+</li>
+<li><code>go test ./pkg/plugins/assign/...</code> passes at <code>5a0e394</code>.
+</li>
+<li>Org members, non-self assignments, PRs, and already-assigned users bypass the policy as intended; a comment failure on the guidance path does not block assignment.
+</li>
+<li>The generated search link uses <code>url.QueryEscape</code> and <code>github.DefaultHost</code>.
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>The algorithm quoted in the PR discussion had three rules; the third (flag repeated assignment attempts as contentious regardless of membership) is not implemented. Was it dropped from the agreed scope?
+</li>
+<li>Should the acceptance labels (<code>triage/accepted</code>, <code>help wanted</code>, <code>good first issue</code>) be configurable? They are Kubernetes conventions, and every Prow installation that enables the assign plugin gets this behavior and these links.
+</li></ul>
+</main></body></html>

@@ -1,44 +1,210 @@
 <!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Review: kubernetes-sigs/prow#942</title>
-<style>
-body { font: 16px/1.55 system-ui, sans-serif; color: #18212f; background: #fff; margin: 0; }
-main { max-width: 980px; margin: 0 auto; padding: 2.5rem 1.25rem 4rem; }
-h1, h2, h3 { line-height: 1.2; } h1 { margin-bottom: .25rem; }
-.meta { color: #52606d; margin-top: 0; } .verdict { border-left: .4rem solid #b42318; background: #fef3f2; padding: 1rem 1.25rem; }
-.finding { border: 1px solid #d0d7de; border-radius: .4rem; padding: 1rem 1.25rem; margin: 1rem 0; }
-.severity { font-weight: 700; color: #b42318; text-transform: uppercase; font-size: .8rem; }
-code, pre { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; } code { background: #f3f4f6; padding: .1rem .25rem; }
-pre { overflow-x: auto; background: #f6f8fa; padding: .8rem; border-radius: .3rem; } a { color: #0969da; }
-</style>
-</head>
-<body><main>
-<header>
-<h1>Review: kubernetes-sigs/prow#942</h1>
-<p class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/942">feat(deck): add dark mode support for main prow status dashboard</a><br>
-Base: <code>main</code> · Head: <code>d37116e6bc583ddfadff0288b649db55fe91b2af</code> · Reviewed: <code>2026-09-23T12:15:41Z</code></p>
-</header>
-<section class="verdict"><h2>Verdict: request changes</h2><p>The index-only dark-mode behavior is appropriately scoped, but storage-restricted browsers can leave the toggle uninitialized, and <code>!important</code> dark-mode rules override explicitly configured Deck branding colors.</p></section>
-<section><h2>What this PR does</h2><ul><li>Adds early theme selection on the main Deck dashboard from a saved browser preference or the OS color scheme.</li><li>Adds an index-page header control that persists an explicit light/dark choice.</li><li>Switches the default logo with the theme while leaving custom logos alone.</li><li>Adds index-scoped dark styling for the dashboard's navigation, filters, table, histogram, and dialogs.</li></ul></section>
-<section><h2>Findings</h2>
-<article class="finding"><p class="severity">Blocking</p><h3>Theme initialization assumes browser storage is always available</h3><p><code>cmd/deck/template/base.html:40-45, 143-160, 166-169</code></p><pre>var stored = localStorage.getItem('prow-theme');
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#942</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>feat(deck): add dark mode support for main prow status dashboard</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/942">kubernetes-sigs/prow#942</a> · base <code>main</code> · head_sha <code>d37116e6bc58</code> · reviewed_at <code>2026-09-23T12:15:41Z</code></div>
+<div class="badges"><span class="badge c-red">verdict: request-changes</span></div>
+<h2>Verdict</h2>
+<p>Request changes. The index-only dark-mode behavior is appropriately scoped, but storage-restricted browsers can leave the toggle uninitialized, and <code>!important</code> dark-mode rules override explicitly configured Deck branding colors.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Adds early theme selection on the main Deck dashboard from a saved browser preference or the OS color scheme.
+</li>
+<li>Adds an index-page header control that persists an explicit light/dark choice.
+</li>
+<li>Switches the default logo with the theme while leaving custom logos alone.
+</li>
+<li>Adds index-scoped dark styling for the dashboard's navigation, filters, table, histogram, and dialogs.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-red">blocking</span>Theme initialization assumes browser storage is always available</h3>
+<ul>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/d37116e6bc583ddfadff0288b649db55fe91b2af/cmd/deck/template/base.html#L40-L45">cmd/deck/template/base.html:40-45</a></code>, <code><a href="https://github.com/kubernetes-sigs/prow/blob/d37116e6bc583ddfadff0288b649db55fe91b2af/cmd/deck/template/base.html#L143-L160">cmd/deck/template/base.html:143-160</a></code>, <code><a href="https://github.com/kubernetes-sigs/prow/blob/d37116e6bc583ddfadff0288b649db55fe91b2af/cmd/deck/template/base.html#L166-L169">cmd/deck/template/base.html:166-169</a></code>
+</li>
+<li>concern: <code>localStorage.getItem</code> and <code>setItem</code> may throw when storage is disabled by browser privacy policy or embedding restrictions. An exception at line 144 aborts <code>initTheme</code> before the click handler is registered, so users cannot toggle the theme; later writes can also prevent the UI update. Wrap storage access in helpers and fall back to the system preference plus an in-memory choice for the current page.
+</li>
+<li>excerpt:<pre><code>var stored = localStorage.getItem(&#x27;prow-theme&#x27;);
 ...
-localStorage.setItem('prow-theme', nextTheme);</pre><p><code>localStorage.getItem</code> and <code>setItem</code> may throw when storage is disabled by browser privacy policy or embedding restrictions. An exception at line 144 aborts initialization before the click handler is registered. Wrap access in helpers and fall back to the system preference plus an in-memory choice.</p></article>
-<article class="finding"><p class="severity">Blocking</p><h3>Dark mode supersedes operator-configured Deck branding</h3><p><code>cmd/deck/static/style.css:1152-1161; cmd/deck/template/base.html:53-56</code></p><pre>&lt;body id="{{.PageName}}"{{if branding.BackgroundColor}} style="background-color: {{branding.BackgroundColor}};"{{end}}&gt;
+localStorage.setItem(&#x27;prow-theme&#x27;, nextTheme);</code></pre>
+</li></ul>
+<h3><span class="tag c-red">blocking</span>Dark mode supersedes operator-configured Deck branding</h3>
+<ul>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/d37116e6bc583ddfadff0288b649db55fe91b2af/cmd/deck/static/style.css#L1152-L1161">cmd/deck/static/style.css:1152-1161</a></code>; <code><a href="https://github.com/kubernetes-sigs/prow/blob/d37116e6bc583ddfadff0288b649db55fe91b2af/cmd/deck/template/base.html#L53-L56">cmd/deck/template/base.html:53-56</a></code>
+</li>
+<li>concern: Deck renders configured background and header colors inline, but the new dark-mode rules force different colors with <code>!important</code>. This silently changes an operator's branding for dark-preferring visitors and can leave a retained custom logo with inadequate contrast. Preserve explicitly configured colors in dark mode, or add and document an intentional configurable dark-branding policy.
+</li>
+<li>excerpt:<pre><code>&lt;body id=&quot;{{.PageName}}&quot;{{if branding.BackgroundColor}} style=&quot;background-color: {{branding.BackgroundColor}};&quot;{{end}}&gt;
+&lt;header class=&quot;mdl-layout__header&quot;{{if branding.HeaderColor}} style=&quot;background-color: {{branding.HeaderColor}};&quot;{{end}}&gt;
 ...
 background: #121212 !important;
-background-color: #212121 !important;</pre><p>Configured colors are rendered inline but overridden by the new declarations. This can change branding and leave a custom logo with inadequate contrast. Preserve explicit colors or introduce a documented dark-branding policy.</p></article>
-<article class="finding"><p class="severity">Should fix</p><h3>Icon-only theme control has no accessible name</h3><p><code>cmd/deck/template/base.html:63-65</code></p><pre>&lt;button id="theme-toggle" class="mdl-button mdl-js-button mdl-button--icon" title="Toggle dark mode"&gt;
-  &lt;i id="theme-toggle-icon" class="material-icons"&gt;brightness_2&lt;/i&gt;
-&lt;/button&gt;</pre><p>Add an <code>aria-label</code> and update it with the title so the control has a stable, actionable accessible name.</p></article>
-<article class="finding"><p class="severity">Should fix</p><h3>Theme state and palette add avoidable maintenance surface</h3><p><code>cmd/deck/static/style.css:1152-1410; cmd/deck/template/base.html:103-185</code></p><pre>html.dark-mode body#index,
+...
+background-color: #212121 !important;</code></pre>
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>Icon-only theme control has no accessible name</h3>
+<ul>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/d37116e6bc583ddfadff0288b649db55fe91b2af/cmd/deck/template/base.html#L63-L65">cmd/deck/template/base.html:63-65</a></code>
+</li>
+<li>concern: The button has a visual <code>title</code>, but no stable accessible name; its icon text changes with state. Add an <code>aria-label</code> and update it alongside the title so screen-reader users are told what action the control will take.
+</li>
+<li>excerpt:<pre><code>&lt;button id=&quot;theme-toggle&quot; class=&quot;mdl-button mdl-js-button mdl-button--icon&quot; title=&quot;Toggle dark mode&quot;&gt;
+  &lt;i id=&quot;theme-toggle-icon&quot; class=&quot;material-icons&quot;&gt;brightness_2&lt;/i&gt;
+&lt;/button&gt;</code></pre>
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>Theme state and palette add avoidable maintenance surface</h3>
+<ul>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/d37116e6bc583ddfadff0288b649db55fe91b2af/cmd/deck/static/style.css#L1152-L1410">cmd/deck/static/style.css:1152-1410</a></code>; <code><a href="https://github.com/kubernetes-sigs/prow/blob/d37116e6bc583ddfadff0288b649db55fe91b2af/cmd/deck/template/base.html#L103-L185">cmd/deck/template/base.html:103-185</a></code>
+</li>
+<li>concern: Every new dark selector is duplicated for <code>html.dark-mode body#index</code> and <code>body#index.dark-mode</code>, and repeated literal palette values are spread through the stylesheet. The controller is also inline in the shared base template despite being index-specific. Use one root class, semantic CSS variables for repeated colors, and move post-DOM behavior into the existing index frontend bundle; keep only the minimal FOUC bootstrap inline.
+</li>
+<li>excerpt:<pre><code>html.dark-mode body#index,
 body#index.dark-mode {
   background: #121212 !important;
-}</pre><p>Selectors are duplicated for two roots, repeated color literals are scattered, and the controller sits in the shared base template. Use one root class, semantic CSS variables, and the existing index frontend bundle for post-DOM behavior.</p></article>
-</section>
-<section><h2>Things I checked and was fine with</h2><ul><li>The change is limited to the index page; other Deck pages retain their current behavior.</li><li>The head bootstrap prevents most light-theme flash.</li><li>A stored preference overrides the system setting, and custom logos are retained.</li><li>No API, config schema, RBAC, dependency, or server-availability behavior changes.</li><li><code>deckVersion</code> cache busting remains in use, so no special upgrade sequencing is needed.</li></ul></section>
-<section><h2>Open questions for the author</h2><ul><li>Should configured background/header colors always win, or should Deck grow explicit dark-branding configuration?</li><li>Should storage-unavailable browsers support non-persistent switching as a documented fallback?</li></ul></section>
+}</code></pre>
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>The change is limited to <code>PageName == &quot;index&quot;</code>; other Deck pages retain their existing behavior.
+</li>
+<li>The head bootstrap applies the root class before body rendering, minimizing a light-theme flash.
+</li>
+<li>An explicit stored choice takes precedence over the system preference, and system changes are followed only without one.
+</li>
+<li>Custom logo URLs are retained rather than replaced by the default dark/light assets.
+</li>
+<li>No Prow API, config schema, RBAC, dependency, or server-side availability behavior changes.
+</li>
+<li>Existing <code>deckVersion</code> URLs continue to cache-bust changed static resources; no special upgrade sequencing is needed.
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>Should a configured <code>branding.background_color</code> or <code>branding.header_color</code> always win, or should Deck grow explicit dark-branding configuration?
+</li>
+<li>Is the project prepared to support browsers/environments where <code>localStorage</code> is unavailable, with non-persistent theme switching as the fallback?
+</li></ul>
+<h2>Followups</h2>
+<p>Post-merge opportunities identified 2026-11-13 against PR #942 (merged as <code>e62c14122b7de539fb60236fb8085c0fd1f5dc83</code>). Five accepted, one skipped (docs subsection on <code>site/content/en/docs/components/core/deck/_index.md</code>). Each prompt is self-contained and targets current <code>main</code>.</p>
+<h3>deferred-review: Harden theme preference storage when <code>localStorage</code> is unavailable</h3>
+<ul>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/d37116e6bc583ddfadff0288b649db55fe91b2af/cmd/deck/template/base.html#L40">cmd/deck/template/base.html:40</a>,144,159,167</code>
+</li>
+<li>necessity: must
+</li>
+<li>mode: deliver
+</li>
+<li>why: Unfixed blocking finding "Theme initialization assumes browser storage is always available"; a throw aborts <code>initTheme</code> before the toggle listener is attached.
+<pre><code>In kubernetes-sigs/prow, following PR #942 — &quot;feat(deck): add dark mode support for main prow status dashboard&quot; (merged as e62c14122b7de539fb60236fb8085c0fd1f5dc83) — harden Deck&#x27;s client-side theme persistence in cmd/deck/template/base.html.
+
+The index-page bootstrap (lines ~38-47) and the initTheme script (lines ~103-176) call localStorage.getItem/setItem directly at lines 40, 144, 159, and 167. Browsers that block storage throw, which aborts initTheme before the click handler is attached and leaves the toggle dead; a failed setItem also skips updateThemeUI.
+
+Task: introduce safeStorageGet(key) / safeStorageSet(key, value) helpers that wrap localStorage access in try/catch and fall back to an in-memory variable for the page lifetime. Route every localStorage access in this template through them. Ensure the toggle click listener is registered even when storage is unavailable, and that a failed write still calls updateThemeUI so the theme changes for the current page. Keep all other behavior identical.
+
+Acceptance criteria: with localStorage throwing on both get and set (stub globalThis.localStorage to throw), the page still resolves a theme from prefers-color-scheme, the toggle flips theme/icon/title/logo for the current page, and the console shows no uncaught exception. With storage available, persisted-preference behavior is unchanged.
+
+Scope guard: do not refactor the duplicated CSS selectors, move the controller into prow.ts, touch branding rules, add aria-label, or change Go code.</code></pre>
+</li></ul>
+<h3>deferred-review: Preserve operator-configured branding in dark mode</h3>
+<ul>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/d37116e6bc583ddfadff0288b649db55fe91b2af/cmd/deck/static/style.css#L1155-L1165">cmd/deck/static/style.css:1155-1165</a></code>; <code><a href="https://github.com/kubernetes-sigs/prow/blob/d37116e6bc583ddfadff0288b649db55fe91b2af/cmd/deck/template/base.html#L52-L54">cmd/deck/template/base.html:52-54</a></code>
+</li>
+<li>necessity: should
+</li>
+<li>mode: deliver
+</li>
+<li>why: Unfixed blocking finding "Dark mode supersedes operator-configured Deck branding"; <code>!important</code> dark rules discard configured background/header colors. Priority policy remains an open question, so this should resolve toward branding winning.
+<pre><code>In kubernetes-sigs/prow, following PR #942 — &quot;feat(deck): add dark mode support for main prow status dashboard&quot; (merged as e62c14122b7de539fb60236fb8085c0fd1f5dc83) — preserve operator-configured Deck branding under dark mode.
+
+cmd/deck/template/base.html lines 52-54 render branding.BackgroundColor and branding.HeaderColor as inline styles on &lt;body&gt; and &lt;header&gt;. cmd/deck/static/style.css lines 1155-1165 force background #121212 and header background #212121 with !important under html.dark-mode body#index, silently overriding them.
+
+Task: make explicitly configured branding win over dark-mode defaults. Emit data attributes (for example data-branded-background=&quot;true&quot; and data-branded-header=&quot;true&quot;) in base.html when the corresponding branding value is set, and scope the dark-mode body/header background rules so they do not apply to those attributes (or use another equivalent mechanism that lets the inline branding color win). Leave the rest of the dark palette unchanged.
+
+Acceptance criteria: with deck.branding.background_color and header_color configured, dark mode shows exactly those colors on body and header while the rest of the index page stays dark; with no branding configured, dark mode is visually identical to today. No !important dark rule overrides an inline branding color.
+
+Scope guard: do not add new config fields or a dark-branding policy, change logo selection, add accessibility labels, or modify unrelated CSS. If you conclude branding should not win in dark mode, stop and report instead of inventing policy.</code></pre>
+</li></ul>
+<h3>deferred-review: Give the theme toggle an accessible name</h3>
+<ul>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/d37116e6bc583ddfadff0288b649db55fe91b2af/cmd/deck/template/base.html#L63-L65">cmd/deck/template/base.html:63-65</a></code>; title updates near <code><a href="https://github.com/kubernetes-sigs/prow/blob/d37116e6bc583ddfadff0288b649db55fe91b2af/base.html#L133-L140">base.html:133-140</a></code>
+</li>
+<li>necessity: should
+</li>
+<li>mode: deliver
+</li>
+<li>why: Unfixed should-fix finding "Icon-only theme control has no accessible name"; the button has only a <code>title</code> and a changing icon glyph.
+<pre><code>In kubernetes-sigs/prow, following PR #942 — &quot;feat(deck): add dark mode support for main prow status dashboard&quot; (merged as e62c14122b7de539fb60236fb8085c0fd1f5dc83) — give the index-page theme toggle a stable accessible name.
+
+The button at cmd/deck/template/base.html:63-65 has only title=&quot;Toggle dark mode&quot; and an icon whose glyph changes; the controller updates toggleBtn.title around lines 135 and 161, but no aria-label exists.
+
+Task: add aria-label to the button, initialized to &quot;Switch to dark mode&quot; to match the initial action, and update it in updateThemeUI alongside toggleBtn.title so it always describes what clicking will do. Keep the existing icon and title behavior.
+
+Acceptance criteria: the rendered button exposes a stable accessible name in both themes, changing between &quot;Switch to dark mode&quot; and &quot;Switch to light mode&quot; in sync with the title. No visual change.
+
+Scope guard: only cmd/deck/template/base.html; do not restructure the controller or touch CSS.</code></pre>
+</li></ul>
+<h3>tech-debt: Deduplicate dark selectors and move the theme controller into <code>prow.ts</code></h3>
+<ul>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/d37116e6bc583ddfadff0288b649db55fe91b2af/cmd/deck/static/style.css#L1152-L1413">cmd/deck/static/style.css:1152-1413</a></code>; <code><a href="https://github.com/kubernetes-sigs/prow/blob/d37116e6bc583ddfadff0288b649db55fe91b2af/cmd/deck/template/base.html#L103-L176">cmd/deck/template/base.html:103-176</a></code>; <code><a href="https://github.com/kubernetes-sigs/prow/blob/d37116e6bc583ddfadff0288b649db55fe91b2af/cmd/deck/template/index.html#L4">cmd/deck/template/index.html:4</a></code>
+</li>
+<li>necessity: should
+</li>
+<li>mode: deliver
+</li>
+<li>why: Unfixed should-fix finding "Theme state and palette add avoidable maintenance surface"; every dark selector is duplicated and index-only JS lives in the shared base template.
+<pre><code>In kubernetes-sigs/prow, following PR #942 — &quot;feat(deck): add dark mode support for main prow status dashboard&quot; (merged as e62c14122b7de539fb60236fb8085c0fd1f5dc83) — reduce duplication in the new dark-mode implementation.
+
+cmd/deck/static/style.css lines 1152-1413 duplicate every selector for html.dark-mode body#index and body#index.dark-mode and repeat literal palette values. cmd/deck/template/base.html lines 103-176 hold roughly 70 lines of index-only controller inline in the shared template, while the index page already loads cmd/deck/static/prow/prow.ts as prow_bundle.min.js (cmd/deck/template/index.html:4).
+
+Task: standardize on a single root state class (prefer html.dark-mode, applied by the existing pre-body bootstrap), rewrite the dark rules once against that class plus body#index, and extract the repeated colors (#121212, #212121, #1e1e1e, #2d2d2d, #e0e0e0, #ffffff) into semantic CSS custom properties on the dark root. Move the post-DOM controller (toggle wiring, matchMedia listener, logo swap) from base.html into cmd/deck/static/prow/prow.ts, keeping only the minimal FOUC bootstrap inline in the template. Make sure the prow_bundle.min.js build path and Bazel/rollup configuration still work.
+
+Acceptance criteria: no duplicated dark selector pairs remain; the dark palette is defined once in variables; toggle, persistence, OS-preference following, and logo swap behave exactly as before on index; other Deck pages are unaffected; the Go build and the existing frontend build target succeed.
+
+Scope guard: index page only. Do not change the visual design, branding behavior, accessibility labels, or the static .DarkMode setting, and do not add features. Coordinate with issue #944 but do not implement its cross-page or logo-architecture work here.</code></pre>
+</li></ul>
+<h3>tech-debt: Retire the static <code>.DarkMode</code> setting and finish theming consolidation (issue #944)</h3>
+<ul>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/d37116e6bc583ddfadff0288b649db55fe91b2af/cmd/deck/templates.go#L32">cmd/deck/templates.go:32</a>,37-38,71-72</code>; <code><a href="https://github.com/kubernetes-sigs/prow/blob/d37116e6bc583ddfadff0288b649db55fe91b2af/cmd/deck/template/base.html#L47-L50">cmd/deck/template/base.html:47-50</a></code>; <code><a href="https://github.com/kubernetes-sigs/prow/blob/d37116e6bc583ddfadff0288b649db55fe91b2af/cmd/deck/template/spyglass.html#L53">cmd/deck/template/spyglass.html:53</a></code>
+</li>
+<li>necessity: could
+</li>
+<li>mode: deliver
+</li>
+<li>why: Deck now has two theming mechanisms; issue #944 documents the dual-track problem and a consolidation plan, and the merge makes it worth executing.
+<pre><code>In kubernetes-sigs/prow, following PR #942 — &quot;feat(deck): add dark mode support for main prow status dashboard&quot; (merged as e62c14122b7de539fb60236fb8085c0fd1f5dc83) — implement issue #944 (deck: consolidate static .DarkMode template setting with dynamic client-side dark mode).
+
+Deck passes baseTemplateSettings.DarkMode (cmd/deck/templates.go:32, constructor at 37-38, helpers darkMode/lightMode at 71-72) solely to choose the default logo in cmd/deck/template/base.html:47-50. spyglass.html:53 passes darkMode while every other page passes lightMode, and the new client-side .dark-mode theme overlaps with it.
+
+Task: follow the issue&#x27;s plan incrementally on current main. (1) Remove DarkMode from baseTemplateSettings and delete the darkMode/lightMode helpers, updating every template call site. (2) Switch the default logo light/dark choice to a CSS/picture-based mechanism that works for both statically dark pages (spyglass) and dynamic theming, while still honoring custom branding logos. (3) Decide and document whether Spyglass stays forced-dark and whether other Deck pages adopt dynamic theming; implement the low-risk part now and record any larger rollout on #944. Split into small commits or PRs if needed.
+
+Acceptance criteria: no baseTemplateSettings.DarkMode or darkMode/lightMode helpers remain; every Deck page renders the correct logo for its intended theme; index dynamic theming still works; go build ./cmd/deck/... and template rendering tests pass; any deferral is documented on #944.
+
+Scope guard: do not redesign Deck styling, change the dark palette, or alter branding color semantics; do not duplicate the selector-dedup followup. Link the work to #944.</code></pre>
+</li></ul>
 </main></body></html>

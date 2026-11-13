@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Review: kubernetes-sigs/prow#947</title>
+  <style>
+    body { max-width: 900px; margin: 2rem auto; padding: 0 1rem; color: #1f2937; font: 16px/1.55 system-ui, sans-serif; }
+    h1, h2 { color: #111827; } code { background: #f3f4f6; border-radius: 3px; padding: .1rem .25rem; font-family: ui-monospace, monospace; }
+    .meta { color: #4b5563; } .approve { color: #166534; font-weight: 700; } a { color: #1d4ed8; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Review: <a href="https://github.com/kubernetes-sigs/prow/pull/947">kubernetes-sigs/prow#947</a></h1>
+    <p class="meta">chore(deps): bump the aws group across 1 directory with 4 updates<br>
+      Head <code>af6f8ef35dec69384eaaa474045f8f88571ca284</code> · base <code>main</code> · reviewed 2026-09-22T21:15:58Z</p>
+  </header>
+
+  <h2>Verdict</h2>
+  <p><span class="approve">APPROVE</span> — Dep-only AWS SDK update. All four direct modules are tagged releases with 7–12 days of soak; Prow's AWS use is limited to the S3 blob provider, and no upstream behavior change conflicts with that use.</p>
+
+  <h2>What this PR does</h2>
+  <ul>
+    <li>Updates <code>github.com/aws/aws-sdk-go-v2</code> from <code>v1.46.0</code> to <code>v1.47.0</code>.</li>
+    <li>Updates the direct <code>config</code>, <code>credentials</code>, and <code>service/s3</code> modules.</li>
+    <li>Resolves the associated indirect AWS module versions in the main and <code>hack/tools</code> module graphs.</li>
+    <li>Does not alter Prow source, configuration, or tests.</li>
+  </ul>
+
+  <h2>Findings</h2>
+  <p>No blocking findings, should-fix findings, nits, or questions.</p>
+
+  <h2>Things I checked and were fine with</h2>
+  <ul>
+    <li>Only <code>go.mod</code>, <code>go.sum</code>, <code>hack/tools/go.mod</code>, and <code>hack/tools/go.sum</code> changed.</li>
+    <li>All four target versions are tagged releases, not pseudo-versions: 2026-09-09 for <code>v1.47.0</code>, 2026-09-14 for <code>config/v1.33.5</code> and <code>credentials/v1.20.5</code>, and 2026-09-11 for <code>service/s3/v1.113.1</code>.</li>
+    <li>The production import surface is limited to <code>pkg/io/providers/aws.go</code>, which creates the S3 client using default config, optional static credentials, optional endpoint, and TLS transport settings; <code>pkg/io/providers/aws_test.go</code> is the only other use.</li>
+    <li>The upstream range is predominantly generated model/endpoint updates. Its S3 HTTP-200 error handling and transfer-manager deadlock fix do not conflict with Prow's use; Prow does not import transfer-manager.</li>
+    <li><code>go test ./pkg/io/providers</code> passed at the PR head.</li>
+  </ul>
+
+  <h2>Open questions for the author</h2>
+  <p>None.</p>
+</body>
+</html>

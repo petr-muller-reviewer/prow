@@ -31,19 +31,23 @@ ul, ol { padding-left:1.5rem; }
 details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
 </style></head><body><main>
 <h1>peribolos: support members and commit signoff org settings</h1>
-<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1052">kubernetes-sigs/prow#1052</a> · base <code>main</code> · head_sha <code>9eb63ba114c7</code> · reviewed_at <code>2026-11-04T13:13:20Z</code></div>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1052">kubernetes-sigs/prow#1052</a> · base <code>main</code> · head_sha <code>9eb63ba114c7</code> · reviewed_at <code>2026-11-13T17:17:08Z</code></div>
 <div class="badges"><span class="badge c-green">verdict: approve</span></div>
 <details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#1052
 title: &quot;peribolos: support members and commit signoff org settings&quot;
 head_sha: 9eb63ba114c7b5dfe71f3d8c1d0242213f673244
 base: main
-reviewed_at: 2026-11-04T13:13:20Z
+reviewed_at: 2026-11-13T17:17:08Z
 verdict: approve
 refresh_log:
   - at: 2026-11-04T13:13:20Z
     from_sha: 9d87cb7376064c590601de2a52aab7ca0c4eb701
     to_sha: 9eb63ba114c7b5dfe71f3d8c1d0242213f673244
-    summary: &quot;Rebased+squashed onto 43ed23400; all prior findings and cblecker&#x27;s five inline comments addressed (gofmt, clearing the internal field on non-enterprise orgs, skip warning, nil-branch tests).&quot;</code></pre></details>
+    summary: &quot;Rebased+squashed onto 43ed23400; all prior findings and cblecker&#x27;s five inline comments addressed (gofmt, clearing the internal field on non-enterprise orgs, skip warning, nil-branch tests).&quot;
+  - at: 2026-11-13T17:17:08Z
+    from_sha: 9eb63ba114c7b5dfe71f3d8c1d0242213f673244
+    to_sha: 9eb63ba114c7b5dfe71f3d8c1d0242213f673244
+    summary: &quot;No code changes; rh-hemartin pinged cblecker for another look. Findings and verdict unchanged.&quot;</code></pre></details>
 <h2>Verdict</h2>
 <p>All prior blocking findings are fixed and covered by tests; nothing left that should hold up a merge.</p>
 <p>The delta since the last review is small and targeted: the non-enterprise path now clears <code>MembersCanCreateInternalRepositories</code> before <code>EditOrg</code>, the silent skip became a warning, the two missing nil-branch tests were added, and <code>gofmt</code> is clean. The only remarks left are cosmetic (commit message wording) and a documentation question about the plan-based gate.</p>
@@ -66,6 +70,8 @@ refresh_log:
 <li><code>configureOrgMeta</code> now nils <code>MembersCanCreateInternalRepositories</code> on non-enterprise plans and logs a warning when a configured value is skipped, with a regression test for the clear-on-other-change case.
 </li>
 <li>Two <code>TestConfigureOrgMeta</code> cases were added for the enterprise nil-<code>have</code> branch (set it, and both-nil means no change); <code>gofmt</code> was applied to both type files.
+</li>
+<li>Second refresh (2026-11-13): no code changes, the head is still <code>9eb63ba11</code>; <code>rh-hemartin</code> pinged <code>cblecker</code> for another look. No findings changed.
 </li></ul>
 <h2>Findings</h2>
 <h3><span class="tag c-gray">nit</span>squashed commit message omits <code>members_can_fork_private_repositories</code></h3>
@@ -76,7 +82,7 @@ refresh_log:
 </li></ul>
 <h3><span class="tag c-blue">question</span><code>plan.name == &quot;enterprise&quot;</code> is still the capability probe</h3>
 <ul>
-<li>where: <code>cmd/peribolos/main.go:248</code>, <code>cmd/peribolos/main.go:1124-1139</code>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/9eb63ba114c7b5dfe71f3d8c1d0242213f673244/cmd/peribolos/main.go#L248">cmd/peribolos/main.go:248</a></code>, <code><a href="https://github.com/kubernetes-sigs/prow/blob/9eb63ba114c7b5dfe71f3d8c1d0242213f673244/cmd/peribolos/main.go#L1124-L1139">cmd/peribolos/main.go:1124-1139</a></code>
 </li>
 <li>concern: the gate is unchanged, so an org whose <code>plan</code> is unpopulated (cblecker's point about apps without the Organization plan permission) is never managed here. The new warning at least makes that visible, with the org and the observed plan name, which is a reasonable outcome - but it means an enterprise org can be silently dumped <em>without</em> the field too. Fine to keep, provided the behaviour is documented.
 </li>

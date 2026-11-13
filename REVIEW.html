@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#1052</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>peribolos: support members and commit signoff org settings</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1052">kubernetes-sigs/prow#1052</a> · base <code>main</code> · head_sha <code>9eb63ba114c7</code> · reviewed_at <code>2026-11-04T13:13:20Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span></div>
+<details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#1052
+title: &quot;peribolos: support members and commit signoff org settings&quot;
+head_sha: 9eb63ba114c7b5dfe71f3d8c1d0242213f673244
+base: main
+reviewed_at: 2026-11-04T13:13:20Z
+verdict: approve
+refresh_log:
+  - at: 2026-11-04T13:13:20Z
+    from_sha: 9d87cb7376064c590601de2a52aab7ca0c4eb701
+    to_sha: 9eb63ba114c7b5dfe71f3d8c1d0242213f673244
+    summary: &quot;Rebased+squashed onto 43ed23400; all prior findings and cblecker&#x27;s five inline comments addressed (gofmt, clearing the internal field on non-enterprise orgs, skip warning, nil-branch tests).&quot;</code></pre></details>
+<h2>Verdict</h2>
+<p>All prior blocking findings are fixed and covered by tests; nothing left that should hold up a merge.</p>
+<p>The delta since the last review is small and targeted: the non-enterprise path now clears <code>MembersCanCreateInternalRepositories</code> before <code>EditOrg</code>, the silent skip became a warning, the two missing nil-branch tests were added, and <code>gofmt</code> is clean. The only remarks left are cosmetic (commit message wording) and a documentation question about the plan-based gate.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Adds <code>members_can_create_public_repositories</code>, <code>members_can_create_private_repositories</code>, <code>members_can_fork_private_repositories</code> and <code>web_commit_signoff_required</code> to peribolos: config schema, <code>--dump</code>, and <code>--fix-org</code> reconciliation.
+</li>
+<li>Adds <code>members_can_create_internal_repositories</code>, gated on <code>plan.name == &quot;enterprise&quot;</code> for both dump and apply, because the orgs/update API rejects the key (true <em>or</em> false) for other orgs with 422.
+</li>
+<li>Extends the <code>github.Organization</code> response/PATCH model with those fields; the enterprise-only one is <code>*bool</code> + <code>omitempty</code>, so it can be left out of the PATCH.
+</li>
+<li>Documents the new keys in the peribolos site page.
+</li>
+<li>Most of the <code>main_test.go</code> delta is mechanical re-alignment of expected struct literals after the longest field name changed; the substantive additions are one case per new field, plus enterprise / non-enterprise / API-omits-it cases for the internal setting in the dump test.
+</li></ul>
+<p>Since previous review:</p>
+<ul>
+<li>The PR was rebased onto <code>43ed23400</code> and squashed into a single commit, <code>9eb63ba11</code> (carries the <code>Signed-off-by</code> the second of the two old commits was missing).
+</li>
+<li><code>configureOrgMeta</code> now nils <code>MembersCanCreateInternalRepositories</code> on non-enterprise plans and logs a warning when a configured value is skipped, with a regression test for the clear-on-other-change case.
+</li>
+<li>Two <code>TestConfigureOrgMeta</code> cases were added for the enterprise nil-<code>have</code> branch (set it, and both-nil means no change); <code>gofmt</code> was applied to both type files.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-gray">nit</span>squashed commit message omits <code>members_can_fork_private_repositories</code></h3>
+<ul>
+<li>where: commit <code>9eb63ba11</code>
+</li>
+<li>concern: the message lists <code>members_can_create_public_repositories</code>, <code>members_can_create_private_repositories</code>, <code>members_can_create_internal_repositories</code> and <code>web_commit_signoff_required</code>, but the change also adds <code>members_can_fork_private_repositories</code> (schema, dump, apply, docs, tests). The PR description does list it, so this is cosmetic only.
+</li></ul>
+<h3><span class="tag c-blue">question</span><code>plan.name == &quot;enterprise&quot;</code> is still the capability probe</h3>
+<ul>
+<li>where: <code>cmd/peribolos/main.go:248</code>, <code>cmd/peribolos/main.go:1124-1139</code>
+</li>
+<li>concern: the gate is unchanged, so an org whose <code>plan</code> is unpopulated (cblecker's point about apps without the Organization plan permission) is never managed here. The new warning at least makes that visible, with the org and the observed plan name, which is a reasonable outcome - but it means an enterprise org can be silently dumped <em>without</em> the field too. Fine to keep, provided the behaviour is documented.
+</li>
+<li>excerpt:<pre><code>	} else {
+		if want.MembersCanCreateInternalRepositories != nil {
+			logrus.Warnf(&quot;ignoring members_can_create_internal_repositories for org %s: plan %q is not %q&quot;, orgName, cur.Plan.Name, github.EnterprisePlan)
+		}
+		cur.MembersCanCreateInternalRepositories = nil
+	}</code></pre>
+</li></ul>
+<h2>Resolved</h2>
+<ul>
+<li><strong>gofmt not applied</strong> - fixed in <code>9eb63ba11</code>; <code>gofmt -s -l cmd/peribolos pkg/config/org pkg/github</code> is clean.
+</li>
+<li><strong>Non-enterprise orgs echoed the internal-repository key in every org PATCH</strong> - fixed exactly as suggested: the new <code>else</code> branch sets <code>cur.MembersCanCreateInternalRepositories = nil</code>, and the case "members can create internal cleared on non-enterprise org when other fields change" asserts the struct handed to <code>EditOrg</code> no longer carries it.
+</li>
+<li><strong>Silently ignoring the internal setting on a non-enterprise org</strong> - now warns with org and plan; matches what cblecker asked for.
+</li>
+<li><strong>The nil branch was awkward and untested</strong> - kept, but now covered: "set on enterprise org with nil have" (<code>change: true</code>) and "nil want and have on enterprise org means no change" (<code>change: false</code>).
+</li>
+<li><strong>Second commit missing <code>Signed-off-by</code></strong> - moot: the history is now one squashed commit that carries it.
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li><code>go build</code> and <code>go test ./cmd/peribolos/ ./pkg/config/org/</code> pass at <code>9eb63ba11</code>.
+</li>
+<li><code>gofmt -s -l</code> clean across <code>cmd/peribolos</code>, <code>pkg/config/org</code>, <code>pkg/github</code>.
+</li>
+<li><code>nil</code> means "leave alone" and <code>true</code>/<code>false</code> means "enforce" for all four new settings, matching the existing <code>members_can_create_repositories</code> handling; no existing field changed semantics.
+</li>
+<li><code>--dump</code> output for the four unconditional fields, plus the enterprise / non-enterprise / API-omits-it cases for the internal one, are asserted in <code>TestDumpOrgConfig</code>.
+</li>
+<li>The non-enterprise clearing path, the enterprise set path, and the both-nil no-op path all have direct test cases now.
+</li>
+<li>cblecker's review (<code>2026-11-04T02:33Z</code>, five inline comments) raised the same PATCH-echo, gofmt and nil-branch points, plus the plan-permission angle and the <code>members_can_create_repositories</code> interaction; each has an author reply and a code or documentation change except the last, which was answered with an experiment (the legacy flag is an aggregate alias that sets the public/private values).
+</li>
+<li>Adding fields to <code>github.Organization</code> also changes webhook payload structs (<code>GenericEvent.Org</code>, etc.)
+<ul>
+<li>harmless, purely additive decode targets.
+</li></ul>
+</li>
+<li>No golden/config fixtures elsewhere in the repo carry <code>members_can_create_repositories</code>, so replacing the test expectations is the only fixture churn needed.
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>Worth one sentence in the docs next to `members_can_create_internal_repositories: false # enterprise only`: that the setting is skipped (with a warning) when the token cannot see the org plan, and that GitHub treats <code>members_can_create_repositories: false</code> as setting the public/private sub-settings to <code>false</code> too - the example now shows all four keys side by side with nothing stopping a contradictory combination.
+</li></ul>
+</main></body></html>

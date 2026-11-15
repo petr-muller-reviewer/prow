@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#1068</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>cherrypicker: allow repo collaborators to request cherry-picks via --allow-collaborators</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1068">kubernetes-sigs/prow#1068</a> · base <code>main</code> · head_sha <code>c4a5a0dbb093</code> · reviewed_at <code>2026-11-13T17:32:11Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span></div>
+<h2>Verdict</h2>
+<p>Approve with suggestions: the change is correct, default-off, and well-tested, with no blocking issues from code quality, maintainability, or deployment risk.</p>
+<p>Authorization is centralized in a documented <code>isAuthorized</code> helper and applied consistently to the open-PR comment, merged-PR comment, label-added, and PR-closed reprocessing paths. With the flag off, behavior and API calls are unchanged; with it on, non-member collaborators are accepted and the rejection text adapts. The remaining work is non-blocking: document the flag's scope, avoid silently dropping a queued request on a transient lookup error, and keep the two authorization implementations from drifting. The design questions the author raises (read-only signal, instance-wide scope) are recorded below as questions rather than merge blockers.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Adds an opt-in <code>--allow-collaborators</code> flag (default <code>false</code>) that authorizes repo collaborators in addition to org members; <code>--allow-all</code> still short-circuits first.
+</li>
+<li>Adds <code>IsCollaborator</code> to the plugin-local <code>githubClient</code> interface and centralizes the member-or-collaborator decision in <code>isAuthorized</code>, applied to every inbound authorization site.
+</li>
+<li>In the PR-closed batch path, keeps the bulk <code>ListOrgMembers</code> fetch and adds a memoized per-user <code>IsCollaborator</code> fallback that fails closed without aborting the batch.
+</li>
+<li>Adapts the rejection comment to say "org members or repo collaborators" when the flag is enabled, and updates the plugin help text.
+</li>
+<li>Adds table-driven tests covering authorization, API-call short-circuiting, error injection, batch semantics, and label-requester fallback.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-amber">should-fix</span>Authorization policy is implemented twice</h3>
+<ul>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/c4a5a0dbb09394c98bc1bc8e0de7b546880a9f43/cmd/external-plugins/cherrypicker/server.go#L474-L516">cmd/external-plugins/cherrypicker/server.go:474-516</a></code>, <code><a href="https://github.com/kubernetes-sigs/prow/blob/c4a5a0dbb09394c98bc1bc8e0de7b546880a9f43/cmd/external-plugins/cherrypicker/server.go#L600-L619">cmd/external-plugins/cherrypicker/server.go:600-619</a></code>
+</li>
+<li>concern: <code>handlePullRequestClosed</code> reimplements the org-member-then-collaborator rule inline instead of reusing <code>isAuthorized</code>. A future policy change (e.g. <code>HasPermission</code>, write-level gating, caching) must be made in both places or the paths silently diverge. Extract a per-event authorizer that supports a bulk member preload plus memoized lookups, or add a cross-reference comment. Flagged by Code Quality and Maintainability.
+</li>
+<li>excerpt:<pre><code>authorized = func(user string) bool {
+    if user == &quot;&quot; {
+        return false
+    }
+    if memberLogins.Has(user) {
+        return true
+    }
+    if !s.allowCollaborators {
+        return false
+    }</code></pre>
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>A transient collaborator lookup silently drops a queued cherry-pick</h3>
+<ul>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/c4a5a0dbb09394c98bc1bc8e0de7b546880a9f43/cmd/external-plugins/cherrypicker/server.go#L503-L513">cmd/external-plugins/cherrypicker/server.go:503-513</a></code>
+</li>
+<li>concern: A failed <code>IsCollaborator</code> call is cached as <code>false</code> and the requester is deleted from the batch with only a <code>Warn</code> log and no user-visible feedback. A transient GitHub error at merge time therefore loses a valid request. Distinguish an error from "not a collaborator" (do not memoize the failure), and either retry/post a "could not verify authorization" comment or add a metric. Flagged by all three reviewers.
+</li>
+<li>excerpt:<pre><code>ok, err := s.ghc.IsCollaborator(org, repo, user)
+if err != nil {
+    log.WithError(err).WithField(&quot;user&quot;, user).Warn(&quot;Failed to check collaborator status, treating as unauthorized.&quot;)
+    ok = false
+}
+collaborators[user] = ok</code></pre>
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>Document the flag's scope and semantics</h3>
+<ul>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/c4a5a0dbb09394c98bc1bc8e0de7b546880a9f43/cmd/external-plugins/cherrypicker/main.go#L75">cmd/external-plugins/cherrypicker/main.go:75</a></code>
+</li>
+<li>concern: The flag is instance-wide, explicitly includes read-only collaborators, and is ignored with <code>--allow-all</code>. Enabling it for one repo broadens every repo the instance serves, and a read-only collaborator can make the bot push a branch and open a PR. Add this to <code>site/content/en/docs/components/external-plugins/cherrypicker.md</code> alongside the token-scope notes; a misconfigured token surfaces a 404 as "not a collaborator" rather than an error. Flagged by Deployment Risk.
+</li>
+<li>excerpt:<pre><code>fs.BoolVar(&amp;o.allowCollaborators, &quot;allow-collaborators&quot;, false, &quot;Allow repo collaborators (any access level, including read-only) in addition to org members to use automated cherrypicks. Ignored when --allow-all is set.&quot;)</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">nit</span>Label-added path authorizes the PR author even when the labeler is the requester</h3>
+<ul>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/c4a5a0dbb09394c98bc1bc8e0de7b546880a9f43/cmd/external-plugins/cherrypicker/server.go#L350-L361">cmd/external-plugins/cherrypicker/server.go:350-361</a></code>
+</li>
+<li>concern: The loop eagerly calls <code>isAuthorized</code> for both <code>prAuthor</code> and <code>labeler.Login</code>, but <code>labelRequester</code> never consults the author when the labeler is an authorized non-bot. With <code>--allow-collaborators</code> this adds a lookup, and a transient error for the irrelevant author aborts the whole event. A lazy, memoizing predicate (as in the closed-PR path) would avoid both.
+</li>
+<li>excerpt:<pre><code>for _, user := range []string{prAuthor, labeler.Login} {
+    if _, done := authorized[user]; done || user == &quot;&quot; {
+        continue
+    }
+    ok, err := s.isAuthorized(org, repo, user)
+    if err != nil {
+        return log, err
+    }
+    authorized[user] = ok
+}</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">nit</span>Minor readability issues in the rejection/template plumbing</h3>
+<ul>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/c4a5a0dbb09394c98bc1bc8e0de7b546880a9f43/cmd/external-plugins/cherrypicker/server.go#L48">cmd/external-plugins/cherrypicker/server.go:48</a></code>, <code><a href="https://github.com/kubernetes-sigs/prow/blob/c4a5a0dbb09394c98bc1bc8e0de7b546880a9f43/cmd/external-plugins/cherrypicker/server.go#L582">cmd/external-plugins/cherrypicker/server.go:582</a></code>
+</li>
+<li>concern: <code>notAuthorizedMessageTemplate</code> now has five positional verbs with <code>org</code> repeated three times, guarded only by an "in order" comment; indexed verbs (<code>%[1]s</code>) would make edits safer. In <code>labelRequester</code>, the <code>isAuthorized</code> parameter shadows the <code>(*Server).isAuthorized</code> method and invites misreads.
+</li>
+<li>excerpt:<pre><code>var notAuthorizedMessageTemplate = &quot;only [%s](https://github.com/orgs/%s/people) %s may request cherry picks. ...&quot;
+...
+func (s *Server) labelRequester(prAuthor string, labeler github.User, isAuthorized func(string) bool) (string, bool) {</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">nit</span>Call-count assertions pin the lookup strategy</h3>
+<ul>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/c4a5a0dbb09394c98bc1bc8e0de7b546880a9f43/cmd/external-plugins/cherrypicker/server_test.go#L1487">cmd/external-plugins/cherrypicker/server_test.go:1487</a></code>
+</li>
+<li>concern: Exact <code>IsMember</code>/<code>IsCollaborator</code> call counts assert the current implementation rather than behavior and will break on a benign batching or <code>ListCollaborators</code> refactor. An upper bound (at most one lookup per user) preserves the intent; keep zero-call assertions only where they encode a real constraint such as <code>--allow-all</code> needing no GitHub access.
+</li>
+<li>excerpt:<pre><code>if ghc.memberCalls[tc.user] != tc.wantMemberCalls {
+    t.Errorf(&quot;IsMember(%q) called %d times, want %d&quot;, tc.user, ghc.memberCalls[tc.user], tc.wantMemberCalls)
+}</code></pre>
+</li></ul>
+<h3><span class="tag c-blue">question</span>Signal strength: should read-only collaborators qualify?</h3>
+<ul>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/c4a5a0dbb09394c98bc1bc8e0de7b546880a9f43/cmd/external-plugins/cherrypicker/server.go#L600-L618">cmd/external-plugins/cherrypicker/server.go:600-618</a></code>, <code><a href="https://github.com/kubernetes-sigs/prow/blob/c4a5a0dbb09394c98bc1bc8e0de7b546880a9f43/cmd/external-plugins/cherrypicker/main.go#L75">cmd/external-plugins/cherrypicker/main.go:75</a></code>
+</li>
+<li>concern: Bare <code>IsCollaborator</code> includes read-only outside collaborators. That is fine for backports of already-merged PRs and matches lgtm, but if the intent is "trusted contributors" rather than "any reader", <code>HasPermission</code> (push/admin) is the stricter signal. This is the author's open question 3 and remains a maintainer policy call.
+</li>
+<li>excerpt:<pre><code>collaborator, err := s.ghc.IsCollaborator(org, repo, user)
+if err != nil {
+    return false, fmt.Errorf(&quot;failed to check collaborator status for %q: %w&quot;, user, err)
+}
+return collaborator, nil</code></pre>
+</li></ul>
+<h3><span class="tag c-blue">question</span>Instance-wide flag vs per-repo configuration</h3>
+<ul>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/c4a5a0dbb09394c98bc1bc8e0de7b546880a9f43/cmd/external-plugins/cherrypicker/main.go#L75">cmd/external-plugins/cherrypicker/main.go:75</a></code>
+</li>
+<li>concern: The rationale is repo-scoped, but the flag applies to every repo the instance serves. Is the server-wide flag the intended long-term shape, or is a follow-up for per-repo config (like lgtm's <code>Owners.SkipCollaborators</code>, which requires wiring <code>plugins.Configuration</code>) expected? This is the author's open question 2.
+</li>
+<li>excerpt:<pre><code>fs.BoolVar(&amp;o.allowCollaborators, &quot;allow-collaborators&quot;, false, &quot;Allow repo collaborators ... to use automated cherrypicks. Ignored when --allow-all is set.&quot;)</code></pre>
+</li></ul>
+<h3><span class="tag c-blue">question</span>Should a membership-check error fall through to the collaborator check?</h3>
+<ul>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/c4a5a0dbb09394c98bc1bc8e0de7b546880a9f43/cmd/external-plugins/cherrypicker/server.go#L604-L613">cmd/external-plugins/cherrypicker/server.go:604-613</a></code>
+</li>
+<li>concern: <code>isAuthorized</code> only consults <code>IsCollaborator</code> when <code>IsMember</code> returns <code>false</code>, not when it errors (the real client returns an error on a 302, e.g. private org membership). If that path fires, enabling the flag does not rescue those users. PLAUSIBLE: depends on how often the 302 path occurs in practice; worth confirming the intent.
+</li>
+<li>excerpt:<pre><code>member, err := s.ghc.IsMember(org, user)
+if err != nil {
+    return false, fmt.Errorf(&quot;failed to check org membership for %q: %w&quot;, user, err)
+}
+if member {
+    return true, nil
+}</code></pre>
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>Flag defaults to <code>false</code>: <code>IsCollaborator</code> is never reached and behavior/API calls match the previous code (tested).
+</li>
+<li><code>--allow-all</code> still short-circuits before any GitHub call (tested by the <code>allow-all</code> cases).
+</li>
+<li>All inbound authorization sites are covered: open-PR comment, merged-PR comment, label-added, and PR-closed reprocessing. <code>handlePullRequest</code> only dispatches <code>labeled</code> and <code>closed</code>, so there are no other entry points.
+</li>
+<li>The closed-PR path keeps the bulk <code>ListOrgMembers</code> fetch, memoizes collaborator lookups per event, and a failed lookup does not abort the rest of the batch (tested).
+</li>
+<li><code>githubClient.IsCollaborator(org, repo, user)</code> matches <code>pkg/github.Client</code> and lgtm's usage; the interface is plugin-local, so no external implementors break.
+</li>
+<li>No config-schema, manifest, API, or serialization changes; no breaking changes, and rollback is removing the flag.
+</li>
+<li><code>gofmt -l</code>, <code>go vet</code>, <code>go build</code>, and <code>go test ./cmd/external-plugins/cherrypicker/...</code> are clean at the PR head; the Code Quality reviewer also ran <code>-race</code>.
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>Should the policy be bare <code>IsCollaborator</code> (read-only included), or gate on write/admin via <code>HasPermission</code>?
+</li>
+<li>Is the instance-wide flag the intended long-term shape, or should per-repo config follow?
+</li>
+<li>Is the <code>IsMember</code>-error short-circuit (no collaborator fallback) acceptable, given private org membership can return 302?
+</li></ul>
+</main></body></html>

@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#1071</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>chore(deps): bump cloud.google.com/go/secretmanager from 1.23.0 to 1.24.0</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1071">kubernetes-sigs/prow#1071</a> · base <code>main</code> · head_sha <code>6ceb2e6e7508</code> · reviewed_at <code>2026-11-16T23:14:02Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span></div>
+<h2>Verdict</h2>
+<p>Safe to merge now: dep-only bump, no advisories either side, and every changed API surface is in code Prow never calls.</p>
+<p><code>go.mod</code>/<code>go.sum</code> are the only changed files and <code>go mod tidy -diff</code> is clean. secretmanager 1.24.0 was published 2026-11-05 (11 days old) — past the too-fresh threshold, short of the two-week mark. OSV reports no advisories for the module at 1.23.0 or 1.24.0, and <code>govulncheck</code> finds the same 42 pre-existing findings at base and head. The 1.24.0 regeneration renames the managed-rotation request field and nested message type (source-incompatible) and adds 60s default timeouts there; Prow calls only CreateSecret/GetSecret/ListSecrets/UpdateSecret/AddSecretVersion/AccessSecretVersion, so nothing we compile against moves. <code>cmd/webhook-server</code> builds and all PR checks pass.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Bumps the direct dependency <code>cloud.google.com/go/secretmanager</code> from v1.23.0 to v1.24.0 (dependabot).
+</li>
+<li>Pulls the matching MVS fallout from secretmanager's own <code>go.mod</code>: <code>cloud.google.com/go/iam</code> 1.13.0 → 1.14.0, <code>longrunning</code> 1.2.0 → 1.3.0, <code>googleapis/gax-go/v2</code> 2.26.2 → 2.27.0.
+</li>
+<li>Moves <code>go.opentelemetry.io/otel</code> (and metric/trace/sdk/sdk-metric) 1.46.0 → 1.47.0 and adds <code>go.opentelemetry.io/otel/log</code> v1.47.0 as a new indirect.
+</li>
+<li>Moves the direct <code>google.golang.org/genproto</code> and <code>genproto/googleapis/api</code> pseudo-versions from <code>20260904194346-d0f1323225a4</code> to <code>20261012220534-4341edf3f941</code>.
+</li>
+<li>No source, config, documentation, or test changes.
+</li></ul>
+<h2>Findings</h2>
+<p>None.</p>
+<h2>Checked</h2>
+<ul>
+<li>Classification: dep-only — <code>git diff --stat</code> shows only <code>go.mod</code> and <code>go.sum</code>.
+</li>
+<li>Freshness: <code>secretmanager v1.24.0</code> published 2026-11-05T19:01Z (11 days). Indirects: gax v2.27.0 2026-10-21, iam v1.14.0 and longrunning v1.3.0 2026-09-24, otel v1.47.0 2026-10-02.
+</li>
+<li>OSV: no advisories for <code>cloud.google.com/go/secretmanager</code> at 1.23.0 or 1.24.0.
+</li>
+<li><code>govulncheck</code> module scans at merge-base and head: same two module-level findings, <code>GO-2023-1901</code> and <code>GO-2026-5932</code>.
+</li>
+<li><code>govulncheck</code> symbol scans (<code>./cmd/... ./pkg/...</code>) at base and head: 42 identical findings, none in secretmanager or in any module bumped here. <code>GO-2023-1901</code> (tektoncd/pipeline, called via <code>pkg/apis/prowjobs/v1</code> deep-copies) and <code>GO-2026-5932</code> (x/crypto/openpgp, module-level only, not imported) both pre-date this PR.
+</li>
+<li>Usage surface: two imports, both in <code><a href="https://github.com/kubernetes-sigs/prow/blob/6ceb2e6e750898d7399907e2200d59fdb30dc6fc/cmd/webhook-server/secretmanager/secretmanager.go#L23-L24">cmd/webhook-server/secretmanager/secretmanager.go:23-24</a></code>; wired up at <code><a href="https://github.com/kubernetes-sigs/prow/blob/6ceb2e6e750898d7399907e2200d59fdb30dc6fc/cmd/webhook-server/main.go#L151">cmd/webhook-server/main.go:151</a></code> and <code><a href="https://github.com/kubernetes-sigs/prow/blob/6ceb2e6e750898d7399907e2200d59fdb30dc6fc/cmd/webhook-server/clients.go#L32">cmd/webhook-server/clients.go:32</a></code>. No other package imports it.
+</li>
+<li>Changelog 1.23.1 → 1.24.0: 1.23.1 is "additional validation for REST RPC requests" (gax.ValidatePathExpressions on <code>parent</code>/<code>name</code> in the generated REST transport); 1.24.0 is "update API sources and regenerate".
+</li>
+<li>Byte-level diff of the module zips: only <code>secret_manager_client.go</code>, <code>resources.pb.go</code>, <code>service.pb.go</code> (plus version/CHANGES/go.mod) change; the RPCs Prow calls keep their signatures.
+</li>
+<li>Managed-rotation API is unused: no references to <code>EnableManagedRotation</code>, <code>RotateSecret</code>, or <code>CloudSqlSingleUserCredentials</code> outside vendor, so the <code>Credentials</code> → <code>Credential</code> rename cannot break this repo.
+</li>
+<li><code>go build ./cmd/webhook-server/...</code> passes at head.
+</li>
+<li><code>go mod tidy -diff</code> produces no output, so the manifests are tidy.
+</li>
+<li><code>go.sum</code> additions are all <code>cloud.google.com/go</code>, <code>go.opentelemetry.io</code>, <code>google.golang.org</code>, <code>github.com/googleapis</code> — no unexpected hosts. The <code>cloud.google.com/go/logging</code> hashes enter only through genproto's module graph and are not built.
+</li>
+<li>CI at head: <code>pull-prow-unit-test</code>, <code>pull-prow-integration</code>, <code>pull-prow-verify-lint</code>, <code>pull-prow-image-build-test</code>, race-detector job all pass; tide waits only on lgtm/approved.
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>secretmanager 1.24.0 is 11 days old; is that enough soak for this repo's taste, or hold a few more days?
+</li>
+<li>1.24.0 renames <code>EnableManagedRotationRequest.Credentials</code>/<code>..._CloudSQLSingleUserCredentials</code> and adds default 60s timeouts on managed-rotation RPCs — a source-incompatible change in a minor release. Harmless for us, but worth knowing if Prow ever exposes managed rotation.
+</li>
+<li><code>google.golang.org/genproto</code> stays a direct requirement only because <code><a href="https://github.com/kubernetes-sigs/prow/blob/6ceb2e6e750898d7399907e2200d59fdb30dc6fc/cmd/webhook-server/secretmanager/secretmanager.go#L26">cmd/webhook-server/secretmanager/secretmanager.go:26</a></code> imports the legacy <code>google.golang.org/genproto/protobuf/field_mask</code>; switching to <code>google.golang.org/protobuf/types/known/fieldmaskpb</code> would drop that to indirect. Out of scope here.
+</li></ul>
+<h2>Dependency followups</h2>
+<p>No opportunities identified (run on PR #1071 head <code>6ceb2e6</code>, PR still open).</p>
+<ul>
+<li><code>cloud.google.com/go/secretmanager</code> v1.23.0 → v1.24.0 (direct; imported at <code><a href="https://github.com/kubernetes-sigs/prow/blob/6ceb2e6e750898d7399907e2200d59fdb30dc6fc/cmd/webhook-server/secretmanager/secretmanager.go#L23-L24">cmd/webhook-server/secretmanager/secretmanager.go:23-24</a></code>): the only API-surface change is managed rotation — <code>EnableManagedRotationRequest.Credentials</code> → <code>Credential</code>, the nested <code>…_CloudSQLSingleUserCredentials</code> type promoted to top-level <code>CloudSqlSingleUserCredentials</code>, and new 60s default timeouts on <code>EnableManagedRotation</code>/<code>RotateSecret</code>. Prow calls none of those RPCs, and no deprecation we call was added (the three <code>Deprecated:</code> markers in the generated client — <code>Connection()</code> on the client/gRPC/REST transports — already existed in 1.23.0 and we never call them). v1.23.1's REST path validation does not apply to our gRPC client.
+</li>
+<li><code>google.golang.org/genproto</code> / <code>genproto/googleapis/api</code> <code>20260904194346-d0f1323225a4</code> → <code>20261012220534-4341edf3f941</code> (direct, via the legacy <code>protobuf/field_mask</code> import at <code><a href="https://github.com/kubernetes-sigs/prow/blob/6ceb2e6e750898d7399907e2200d59fdb30dc6fc/secretmanager.go#L26">secretmanager.go:26</a></code>): the eight intervening commits are "update all" dependency housekeeping, and <code>protobuf/field_mask</code> is byte-identical between the two revisions (still an alias to <code>fieldmaskpb</code>, not newly deprecated). Migrating that import is a pre-existing tidy-up, not something this bump unlocks.
+</li>
+<li><code>googleapis/gax-go/v2</code> 2.26.2 → 2.27.0 (indirect) — adds the path-expression helper used by regenerated clients; Prow does not import gax.
+</li>
+<li><code>cloud.google.com/go/iam</code> 1.13.0 → 1.14.0, <code>longrunning</code> 1.2.0 → 1.3.0 (indirect) — not imported by Prow.
+</li>
+<li><code>go.opentelemetry.io/otel</code> 1.46.0 → 1.47.0 plus new <code>otel/log</code> v1.47.0 (indirect) — the release's additions (log API stability, attribute depth limits, metric <code>WithMaxExportBatchSize</code>, sampler/metric extension interfaces) would need direct otel usage; Prow imports none of it.
+</li></ul>
+</main></body></html>

@@ -50,7 +50,7 @@ details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-si
 <h2>Findings</h2>
 <h3><span class="tag c-blue">question</span>Let the release soak a little longer</h3>
 <ul>
-<li>where: <code>go.mod:7</code>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/692f1816cba167656b740485118c57b7be52b992/go.mod#L7">go.mod:7</a></code>
 </li>
 <li>concern: The Go module proxy dates v1.34.0 to 2026-09-24, 11 days before this review. The upstream release notes report Go-version support updates and no security fix, so I recommend waiting until it has at least two weeks of soak.
 </li>
@@ -74,20 +74,31 @@ details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-si
 </li></ul>
 <h2>Dependency followups</h2>
 <p>Accepted: 1; skipped: 0.</p>
+<p>Modules examined: <code>cloud.google.com/go/cloudbuild</code> v1.33.0 → v1.34.0 (direct; the only version change in <code>go.mod</code>/<code>go.sum</code>). The v1.34.0 release adds no deprecations, new client RPCs, or behavior/default changes; its sole release-notes line is "Update supported go versions", and the generated source diff moves the <code>All()</code> helpers from the <code>go1.23</code>-tagged <code>auxiliary_go123.go</code> into unconditional <code>auxiliary.go</code>.</p>
 <h3>Simplify Cloud Build listing with <code>BuildIterator.All()</code></h3>
 <ul>
-<li>category: simplification
+<li>category: <code>simplification</code>
 </li>
 <li>dependency: <code>cloud.google.com/go/cloudbuild</code> v1.33.0 → v1.34.0
 </li>
-<li>where: <code>pkg/googlecloudbuild/client/client.go:132-151</code>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/692f1816cba167656b740485118c57b7be52b992/pkg/googlecloudbuild/client/client.go#L132-L151">pkg/googlecloudbuild/client/client.go:132-151</a></code>
 </li>
-<li>necessity: could — this is a local reduction in pagination boilerplate; the current code is not deprecated.
+<li>necessity: could — removes pagination boilerplate; nothing is deprecated and the current <code>iterator.NewPager</code>/<code>NextPage</code> loop is correct.
 </li>
-<li>changelog: v1.34.0's release notes say “Update supported go versions”; its <code>apiv1/v2</code> source adds <code>BuildIterator.All()</code>, returning an <code>iter.Seq2</code> over builds and errors.
+<li>changelog: v1.34.0's release notes say only "Update supported go versions". The source diff adds no new API: <code>BuildIterator.All()</code> existed at v1.33.0 behind <code>//go:build go1.23</code>, and v1.34.0 makes it unconditional in <code>auxiliary.go</code>. So the bump makes <code>All()</code> unambiguously available rather than newly introducing it — the simplification is worth taking, but is not strictly unlocked by this PR.
 </li>
 <li>accepted
 </li>
-<li>handoff prompt:<pre><code>In `kubernetes-sigs/prow`, on the merged default branch at or after merge commit `2832178b8146c3b26d75c4f780260ba00e2b2598`, follow up on PR #992, “chore(deps): bump cloud.google.com/go/cloudbuild from 1.33.0 to 1.34.0”. In `pkg/googlecloudbuild/client/client.go`, simplify `Client.ListBuildsByTag` by ranging over the Cloud Build v1.34.0 `BuildIterator.All()` API (`iter.Seq2[*cloudbuildpb.Build, error]`) instead of using `iterator.NewPager` and `NextPage`. Preserve the request page size of 50, build ordering, collection of all pages, and error propagation. Update or add focused tests if needed to verify those behaviors. Keep the change limited to this adapter&#x27;s listing loop; do not change filter semantics or other Cloud Build operations.</code></pre>
+<li>handoff prompt:<pre><code>In `kubernetes-sigs/prow`, on the default branch at or after merge commit `2832178b8146c3b26d75c4f780260ba00e2b2598`, follow up on PR #992, &quot;chore(deps): bump cloud.google.com/go/cloudbuild from 1.33.0 to 1.34.0&quot;, which bumped `cloud.google.com/go/cloudbuild` from v1.33.0 to v1.34.0.
+
+In `pkg/googlecloudbuild/client/client.go`, simplify `Client.ListBuildsByTag` to range over the Cloud Build `BuildIterator.All()` API (`iter.Seq2[*cloudbuildpb.Build, error]`) instead of constructing `iterator.NewPager(iter, pageSize, &quot;&quot;)` and looping on `NextPage`. `All()` has existed since v1.33.0 behind the `go1.23` build tag (Prow builds with Go 1.26) and is unconditional as of v1.34.0; this is a local code simplification, not a behavior change.
+
+Acceptance criteria:
+- `ListBuilds` is still called with `PageSize: 50` and the same `Filter` built from `tags=&lt;tag&gt;` joined with ` AND `; build ordering and the collection of all pages are preserved.
+- Errors from the iterator are returned with the same `return nil, err` semantics as the current `NextPage` error path.
+- Remove the `google.golang.org/api/iterator` import from `client.go` only if nothing else in the file uses it; run `gofmt`.
+- `go build ./pkg/googlecloudbuild/...` and `go test ./pkg/googlecloudbuild/client/...` pass; extend `client_test.go` if it does not already exercise multi-page listing and error propagation through `ListBuildsByTag`.
+
+Scope guard: do not change filter semantics, the `Operator` interface, or any other Cloud Build operation (get/create/cancel); do not bump dependencies or touch `go.mod`/`go.sum`.</code></pre>
 </li></ul>
 </main></body></html>

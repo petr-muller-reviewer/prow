@@ -54,7 +54,7 @@ refresh_log:
 <p>The reviewed head is the merged PR head, with no code changes after review. The only local risk item is the unvalidated live-GitHub behavior of updating a completed check run to <code>cancelled</code>; it is documented by the author, covered by the fake client, and failure is reported without silently claiming success. It is a rollout follow-up rather than a merge blocker. The only human feedback after review asked about overriding the <code>tide</code> status, and the author clarified that Tide does not use its own status when calculating mergeability; it raises no remaining code concern.</p>
 <p>Gating list:</p>
 <ul>
-<li><code>REVIEW.md</code> question at <code>pkg/plugins/override/override.go:843-851</code>: acceptable to merge; validate the completed-run cancellation transition against representative GitHub/GHES environments during rollout.
+<li><code>REVIEW.md</code> question at <code><a href="https://github.com/kubernetes-sigs/prow/blob/a8f462ce48984f843a7f4d4c5709fcae09ffb615/pkg/plugins/override/override.go#L843-L851">pkg/plugins/override/override.go:843-851</a></code>: acceptable to merge; validate the completed-run cancellation transition against representative GitHub/GHES environments during rollout.
 </li></ul>
 <p>Independent merge risk:</p>
 <ul>
@@ -86,7 +86,7 @@ refresh_log:
 <h2>Findings</h2>
 <h3><span class="tag c-blue">question</span>Validate cancellation against the live Checks API</h3>
 <ul>
-<li>where: <code>pkg/plugins/override/override.go:843-851</code>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/a8f462ce48984f843a7f4d4c5709fcae09ffb615/pkg/plugins/override/override.go#L843-L851">pkg/plugins/override/override.go:843-851</a></code>
 </li>
 <li>excerpt:<pre><code>cancelledCR := github.CheckRun{
     Status:     &quot;completed&quot;,
@@ -133,4 +133,49 @@ Acceptance criteria:
 - Tests cover the new detection and compatibility behavior.
 
 Out of scope: changing GitHub branch-protection configuration, adding a general ruleset-management feature, or attempting to bypass an App-pinned requirement.</code></pre>
+<h3>Put override provenance on check runs</h3>
+<ul>
+<li>category: tech-debt
+</li>
+<li>necessity: should
+</li>
+<li>mode: deliver
+</li>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/a8f462ce48984f843a7f4d4c5709fcae09ffb615/pkg/plugins/override/override.go#L693-L701">pkg/plugins/override/override.go:693-701</a></code>, <code>pkg/plugins/override/override_test.go</code>
+<pre><code>In kubernetes-sigs/prow, following merged PR #967 (&quot;override: allow overriding pending check runs, and cancel check run overrides&quot;, merge commit 1bf709c1c93479bfb662fa070f5d967cfc13942b), make check-run overrides carry the same audit trail as status overrides.
+
+Background: `/override` on a failed or pending status writes a status description of the form `Overridden by &lt;user&gt;` (see `descFn`/`description()` in pkg/plugins/override/override.go), so the GitHub UI records who forced the context green. The check-run override created at pkg/plugins/override/override.go:693-701 sends only `Name`, `HeadSHA`, `Status: completed`, `Conclusion: success` and an output title and summary, with no `DetailsURL` and no mention of the requesting user, so the actor is invisible on the PR&#x27;s Checks tab.
+
+Change the created `github.CheckRun` to set `DetailsURL: e.HTMLURL` (the comment that issued the command) and `ExternalID: e.GUID`, and make the output summary name the requesting user (for example `Prow override of &lt;context&gt; requested by &lt;user&gt;.`). Keep the output title exactly `checkRunOverrideTitlePrefix + checkrun.Context`: `/override-cancel` matches that prefix and must keep working, and the cancellation path already records the cancelling user in its summary.
+
+Acceptance criteria:
+- Override check runs are created with a non-empty `DetailsURL` pointing at the `/override` comment and a non-empty `ExternalID`.
+- The output summary identifies the user who issued the override.
+- The title prefix is unchanged and `/override-cancel` still finds and cancels these runs (the existing lifecycle test covers this).
+- `go test ./pkg/plugins/override/...` passes, with test expectations updated for the new fields.
+
+Out of scope: changing status-override descriptions, changing cancellation behavior, or altering Tide&#x27;s check-run handling.</code></pre>
+</li></ul>
+<h3>Avoid zero-value Context entries in check-run conversion</h3>
+<ul>
+<li>category: cleanup
+</li>
+<li>necessity: could
+</li>
+<li>mode: deliver
+</li>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/a8f462ce48984f843a7f4d4c5709fcae09ffb615/pkg/plugins/override/override.go#L510-L520">pkg/plugins/override/override.go:510-520</a></code>
+<pre><code>In kubernetes-sigs/prow, following merged PR #967 (&quot;override: allow overriding pending check runs, and cancel check run overrides&quot;, merge commit 1bf709c1c93479bfb662fa070f5d967cfc13942b), fix a latent slice-allocation bug in the override plugin&#x27;s check-run conversion.
+
+At pkg/plugins/override/override.go:510 the code does `checkrunContexts = make([]Context, len(checkruns.CheckRuns))` and then appends one `Context` per check run, so the slice starts with `len(checkruns.CheckRuns)` zero-value entries followed by the real ones. Every current consumer guards on `Context != &quot;&quot;` or set membership, so behavior is correct today, but PR #967 added `sort.Slice(checkrunContexts, ...)` right after `deduplicateContexts`, which now sorts those empty entries deterministically to the front and makes the malformed slice look intentional.
+
+Change the allocation to `make([]Context, 0, len(checkruns.CheckRuns))` and leave the rest of the conversion untouched. Check whether any test asserts slice length or ordering that depended on the phantom entries, and adjust expectations only if the fix changes observable behavior.
+
+Acceptance criteria:
+- `checkrunContexts` contains exactly one entry per listed check run, with no zero-value elements.
+- `go test ./pkg/plugins/override/...` passes.
+- No change to `/override` or `/override-cancel` behavior.
+
+Out of scope: other refactors of the override plugin (issue #789 collects those), changes to `deduplicateContexts` or `isStateBetter`, and the new check-run override logic itself.</code></pre>
+</li></ul>
 </main></body></html>

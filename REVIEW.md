@@ -1,15 +1,20 @@
 ---
 pr: kubernetes-sigs/prow#1028
 title: "secretutil: censor the values inside JSON and INI secrets"
-head_sha: 365526a1b1483fb958bbcb2e74d9541c084ca79c
+head_sha: 83a46404ed6ae541d7825d8b4f9191400c475ff3
 base: main
-reviewed_at: 2026-10-28T01:09:48Z
+reviewed_at: 2026-11-16T23:38:54Z
 verdict: request-changes
 gate:
   decision: do-not-merge
   gated_at: 2026-10-28T01:15:07Z
   gated_head_sha: 365526a1b1483fb958bbcb2e74d9541c084ca79c
   reviewed_head_sha: 365526a1b1483fb958bbcb2e74d9541c084ca79c
+refresh_log:
+  - at: 2026-11-16T23:38:54Z
+    old_sha: 365526a1b1483fb958bbcb2e74d9541c084ca79c
+    new_sha: 83a46404ed6ae541d7825d8b4f9191400c475ff3
+    summary: Content-identical re-commit (same parent and tree; only "Fixes #939" dropped from the message). No code change, no review activity; all findings stand.
 ---
 
 # Review
@@ -18,7 +23,7 @@ gate:
 
 Do not merge: both previously confirmed blocking defects remain unchanged.
 
-PR #1028 is open at `365526a1b1483fb958bbcb2e74d9541c084ca79c`, the same head covered by the saved review; there are no intervening commits or code changes. Re-reading the current head confirms that extracted prefixes can suppress full-secret matches and opaque double-padded base64 credentials can register `=` for global censorship. Paginated GitHub review, inline-comment, and issue-comment reads found no substantive reviewer feedback or discussion changing those conclusions. Fix both blockers and add regression coverage before reconsidering merge; retain the original review verdict and treat the remaining suggestions as nonblocking.
+PR #1028 is open at `83a46404ed6ae541d7825d8b4f9191400c475ff3`, reached by a force-push on 2026-10-29 that re-committed the identical tree: same parent `6c4d88e3b73e434d7acc03395ec337fa2b3f1fad`, byte-identical content (`git diff` empty), author date unchanged, and only the commit trailer changed (`Fixes #939` removed, which cleared the bot's `do-not-merge/invalid-commit-message` label). The gate below ran at `365526a1b1483fb958bbcb2e74d9541c084ca79c`; the identical tree means both blockers and all recommendations apply verbatim at the new head. Re-reading the current head confirms that extracted prefixes can suppress full-secret matches and opaque double-padded base64 credentials can register `=` for global censorship. Paginated GitHub review, inline-comment, issue-comment, and timeline reads found no substantive reviewer feedback or discussion changing those conclusions. Fix both blockers and add regression coverage before reconsidering merge; retain the original review verdict and treat the remaining suggestions as nonblocking.
 
 ### Findings disposition
 
@@ -53,6 +58,11 @@ The shared implementation is a sensible place to fix field-level censorship, but
 - Registers extracted values alongside complete secrets in the shared reloading censor, covering sidecar and in-process callers.
 - Applies existing trimming, base64 encoding, minimum-length, and boolean handling to extracted values.
 - Adds public-behavior tests for JSON and INI field censorship and whole-blob fallback.
+
+Since previous review:
+- `365526a1b1` → `83a46404ed` (force-push 2026-10-29T17:41:33Z): same tree, same parent, no code changes at all.
+- Commit message edited to drop `Fixes #939`; `kubernetes-prow[bot]` removed `do-not-merge/invalid-commit-message` seconds later.
+- No new issue comments, inline review comments, or reviews since `2026-10-28T01:09:48Z`; all comments in the thread predate the review.
 
 ## Findings
 

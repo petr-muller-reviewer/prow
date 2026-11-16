@@ -31,33 +31,38 @@ ul, ol { padding-left:1.5rem; }
 details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
 </style></head><body><main>
 <h1>secretutil: censor the values inside JSON and INI secrets</h1>
-<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1028">kubernetes-sigs/prow#1028</a> · base <code>main</code> · head_sha <code>365526a1b148</code> · reviewed_at <code>2026-10-28T01:09:48Z</code></div>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1028">kubernetes-sigs/prow#1028</a> · base <code>main</code> · head_sha <code>83a46404ed6a</code> · reviewed_at <code>2026-11-16T23:38:54Z</code></div>
 <div class="badges"><span class="badge c-red">verdict: request-changes</span><span class="badge c-red">gate: do-not-merge</span></div>
 <details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#1028
 title: &quot;secretutil: censor the values inside JSON and INI secrets&quot;
-head_sha: 365526a1b1483fb958bbcb2e74d9541c084ca79c
+head_sha: 83a46404ed6ae541d7825d8b4f9191400c475ff3
 base: main
-reviewed_at: 2026-10-28T01:09:48Z
+reviewed_at: 2026-11-16T23:38:54Z
 verdict: request-changes
 gate:
   decision: do-not-merge
   gated_at: 2026-10-28T01:15:07Z
   gated_head_sha: 365526a1b1483fb958bbcb2e74d9541c084ca79c
-  reviewed_head_sha: 365526a1b1483fb958bbcb2e74d9541c084ca79c</code></pre></details>
+  reviewed_head_sha: 365526a1b1483fb958bbcb2e74d9541c084ca79c
+refresh_log:
+  - at: 2026-11-16T23:38:54Z
+    old_sha: 365526a1b1483fb958bbcb2e74d9541c084ca79c
+    new_sha: 83a46404ed6ae541d7825d8b4f9191400c475ff3
+    summary: Content-identical re-commit (same parent and tree; only &quot;Fixes #939&quot; dropped from the message). No code change, no review activity; all findings stand.</code></pre></details>
 <h2>Gate</h2>
 <p>Do not merge: both previously confirmed blocking defects remain unchanged.</p>
-<p>PR #1028 is open at <code>365526a1b1483fb958bbcb2e74d9541c084ca79c</code>, the same head covered by the saved review; there are no intervening commits or code changes. Re-reading the current head confirms that extracted prefixes can suppress full-secret matches and opaque double-padded base64 credentials can register <code>=</code> for global censorship. Paginated GitHub review, inline-comment, and issue-comment reads found no substantive reviewer feedback or discussion changing those conclusions. Fix both blockers and add regression coverage before reconsidering merge; retain the original review verdict and treat the remaining suggestions as nonblocking.</p>
+<p>PR #1028 is open at <code>83a46404ed6ae541d7825d8b4f9191400c475ff3</code>, reached by a force-push on 2026-10-29 that re-committed the identical tree: same parent <code>6c4d88e3b73e434d7acc03395ec337fa2b3f1fad</code>, byte-identical content (<code>git diff</code> empty), author date unchanged, and only the commit trailer changed (<code>Fixes #939</code> removed, which cleared the bot's <code>do-not-merge/invalid-commit-message</code> label). The gate below ran at <code>365526a1b1483fb958bbcb2e74d9541c084ca79c</code>; the identical tree means both blockers and all recommendations apply verbatim at the new head. Re-reading the current head confirms that extracted prefixes can suppress full-secret matches and opaque double-padded base64 credentials can register <code>=</code> for global censorship. Paginated GitHub review, inline-comment, issue-comment, and timeline reads found no substantive reviewer feedback or discussion changing those conclusions. Fix both blockers and add regression coverage before reconsidering merge; retain the original review verdict and treat the remaining suggestions as nonblocking.</p>
 <h3>Findings disposition</h3>
 <ul>
-<li><strong>Not addressed; blocks merge — REVIEW.md, preserve longer matches</strong> (<code>pkg/secretutil/censor.go:145-149</code>, <code>177-179</code>): extracted values still precede subsequent original secrets, JSON map traversal still supplies arbitrary registration order, and the unchanged replacer uses ordered non-overlapping matches. The demonstrated <code>abcdefghi</code> to <code>XXXdefghi</code> credential leak remains possible.
+<li><strong>Not addressed; blocks merge — REVIEW.md, preserve longer matches</strong> (<code><a href="https://github.com/kubernetes-sigs/prow/blob/83a46404ed6ae541d7825d8b4f9191400c475ff3/pkg/secretutil/censor.go#L145-L149">pkg/secretutil/censor.go:145-149</a></code>, <code>177-179</code>): extracted values still precede subsequent original secrets, JSON map traversal still supplies arbitrary registration order, and the unchanged replacer uses ordered non-overlapping matches. The demonstrated <code>abcdefghi</code> to <code>XXXdefghi</code> credential leak remains possible.
 </li>
-<li><strong>Not addressed; blocks merge — REVIEW.md, padded-token detection</strong> (<code>pkg/secretutil/censor.go:196</code>, <code>201-208</code>): any line containing <code>=</code> still passes INI detection. A token such as <code>YWJjZA==</code> still yields the extracted value <code>=</code>, which is registered under the unchanged zero minimum, altering unrelated log and artifact content.
+<li><strong>Not addressed; blocks merge — REVIEW.md, padded-token detection</strong> (<code><a href="https://github.com/kubernetes-sigs/prow/blob/83a46404ed6ae541d7825d8b4f9191400c475ff3/pkg/secretutil/censor.go#L196">pkg/secretutil/censor.go:196</a></code>, <code>201-208</code>): any line containing <code>=</code> still passes INI detection. A token such as <code>YWJjZA==</code> still yields the extracted value <code>=</code>, which is registered under the unchanged zero minimum, altering unrelated log and artifact content.
 </li>
-<li><strong>Not addressed; nonblocking recommendation — REVIEW.md, complete JSON validation</strong> (<code>pkg/secretutil/censor.go:162-165</code>): Decoder.More() remains the trailing-input check. Replace it with complete-document validation and cover extra closing delimiters; this does not independently drive the gate verdict.
+<li><strong>Not addressed; nonblocking recommendation — REVIEW.md, complete JSON validation</strong> (<code><a href="https://github.com/kubernetes-sigs/prow/blob/83a46404ed6ae541d7825d8b4f9191400c475ff3/pkg/secretutil/censor.go#L162-L165">pkg/secretutil/censor.go:162-165</a></code>): Decoder.More() remains the trailing-input check. Replace it with complete-document validation and cover extra closing delimiters; this does not independently drive the gate verdict.
 </li>
-<li><strong>Not addressed; nonblocking recommendation — REVIEW.md, successful JSON without strings</strong> (<code>pkg/secretutil/censor.go:146-149</code>, <code>167</code>): a successful parse with no strings still returns nil and falls through to INI. Distinguish recognition from extraction results; this does not independently drive the gate verdict.
+<li><strong>Not addressed; nonblocking recommendation — REVIEW.md, successful JSON without strings</strong> (<code><a href="https://github.com/kubernetes-sigs/prow/blob/83a46404ed6ae541d7825d8b4f9191400c475ff3/pkg/secretutil/censor.go#L146-L149">pkg/secretutil/censor.go:146-149</a></code>, <code>167</code>): a successful parse with no strings still returns nil and falls through to INI. Distinguish recognition from extraction results; this does not independently drive the gate verdict.
 </li>
-<li><strong>Not addressed; nonblocking recommendation — REVIEW.md, extraction documentation</strong> (<code>pkg/secretutil/censor.go:94-104</code>): Refresh's public comment still only describes refreshing secrets, and the PR still changes only implementation and tests. Document automatic extraction, its relationship to IniFilenames, and the minimum-length tradeoff.
+<li><strong>Not addressed; nonblocking recommendation — REVIEW.md, extraction documentation</strong> (<code><a href="https://github.com/kubernetes-sigs/prow/blob/83a46404ed6ae541d7825d8b4f9191400c475ff3/pkg/secretutil/censor.go#L94-L104">pkg/secretutil/censor.go:94-104</a></code>): Refresh's public comment still only describes refreshing secrets, and the PR still changes only implementation and tests. Document automatic extraction, its relationship to IniFilenames, and the minimum-length tradeoff.
 </li></ul>
 <h3>Independent merge risk</h3>
 <ul>
@@ -69,9 +74,9 @@ gate:
 </li></ul>
 <h3>Gating list</h3>
 <ol>
-<li>Fix precedence so extracted prefixes cannot expose longer secrets — <code>pkg/secretutil/censor.go:145-149</code>; source: REVIEW.md blocking finding, confirmed by Code Quality and local probes.
+<li>Fix precedence so extracted prefixes cannot expose longer secrets — <code><a href="https://github.com/kubernetes-sigs/prow/blob/83a46404ed6ae541d7825d8b4f9191400c475ff3/pkg/secretutil/censor.go#L145-L149">pkg/secretutil/censor.go:145-149</a></code>; source: REVIEW.md blocking finding, confirmed by Code Quality and local probes.
 </li>
-<li>Preserve opaque padded credentials instead of registering padding as INI values — <code>pkg/secretutil/censor.go:196</code>; source: REVIEW.md blocking finding, independently confirmed by Code Quality and Deployment Risk.
+<li>Preserve opaque padded credentials instead of registering padding as INI values — <code><a href="https://github.com/kubernetes-sigs/prow/blob/83a46404ed6ae541d7825d8b4f9191400c475ff3/pkg/secretutil/censor.go#L196">pkg/secretutil/censor.go:196</a></code>; source: REVIEW.md blocking finding, independently confirmed by Code Quality and Deployment Risk.
 </li></ol>
 <h2>Verdict</h2>
 <p>Request changes: prevent partial credential exposure and unintended redaction before merging.</p>
@@ -88,10 +93,18 @@ gate:
 </li>
 <li>Adds public-behavior tests for JSON and INI field censorship and whole-blob fallback.
 </li></ul>
+<p>Since previous review:</p>
+<ul>
+<li><code>365526a1b1</code> → <code>83a46404ed</code> (force-push 2026-10-29T17:41:33Z): same tree, same parent, no code changes at all.
+</li>
+<li>Commit message edited to drop <code>Fixes #939</code>; <code>kubernetes-prow[bot]</code> removed <code>do-not-merge/invalid-commit-message</code> seconds later.
+</li>
+<li>No new issue comments, inline review comments, or reviews since <code>2026-10-28T01:09:48Z</code>; all comments in the thread predate the review.
+</li></ul>
 <h2>Findings</h2>
 <h3><span class="tag c-red">blocking</span>Preserve longer secret matches when adding extracted values</h3>
 <ul>
-<li>where: <code>pkg/secretutil/censor.go:145-149</code>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/83a46404ed6ae541d7825d8b4f9191400c475ff3/pkg/secretutil/censor.go#L145-L149">pkg/secretutil/censor.go:145-149</a></code>
 </li>
 <li>concern: CONFIRMED by code inspection and temporary probes: extracted values precede subsequent original secrets, and the replacer prioritizes registration order; Refresh with <code>{&quot;password&quot;:&quot;abc&quot;}</code> followed by <code>abcdefghi</code> produces <code>XXXdefghi</code>, exposing a previously protected suffix (P1). Overlapping values within a single JSON object are also registered in map iteration order: <code>secret-extra</code> can become <code>XXXXXX-extra</code>. Ensure shorter patterns cannot suppress complete matches, including original, extracted, and encoded patterns, and add regression coverage; Code Quality identified this blocker.
 </li>
@@ -103,7 +116,7 @@ if values := jsonStringValues(secret); values != nil {
 </li></ul>
 <h3><span class="tag c-red">blocking</span>Avoid interpreting base64 padding as an INI value</h3>
 <ul>
-<li>where: <code>pkg/secretutil/censor.go:194-196</code>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/83a46404ed6ae541d7825d8b4f9191400c475ff3/pkg/secretutil/censor.go#L194-L196">pkg/secretutil/censor.go:194-196</a></code>
 </li>
 <li>concern: CONFIRMED: Contains("=") classifies an opaque token such as <code>YWJjZA==</code> as INI, whose parsed value is <code>=</code>; the default minimum length of zero then makes unrelated <code>result=ok</code> become <code>resultXok</code> in component logs and sidecar artifacts (P2). Code Quality and Deployment Risk independently reproduced this regression. Tighten detection to preserve opaque padded credentials and add a regression test; raising minimum_secret_length is not a general fix because it also leaves genuinely short credentials unprotected.
 </li>
@@ -113,7 +126,7 @@ case strings.Contains(line, &quot;=&quot;):</code></pre>
 </li></ul>
 <h3><span class="tag c-amber">should-fix</span>Validate the complete JSON document</h3>
 <ul>
-<li>where: <code>pkg/secretutil/censor.go:162-165</code>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/83a46404ed6ae541d7825d8b4f9191400c475ff3/pkg/secretutil/censor.go#L162-L165">pkg/secretutil/censor.go:162-165</a></code>
 </li>
 <li>concern: Nonblocking suggestion shared by Code Quality and Maintainability: Decoder.More() does not establish end-of-input, so malformed <code>{&quot;a&quot;:&quot;secret&quot;}}</code> can still register <code>secret</code>, contrary to the whole-blob fallback contract. Use json.Unmarshal or require a subsequent decode to return io.EOF, and cover trailing closing delimiters in the tests.
 </li>
@@ -125,7 +138,7 @@ if err := decoder.Decode(&amp;parsed); err != nil || decoder.More() {
 </li></ul>
 <h3><span class="tag c-amber">should-fix</span>Distinguish recognized JSON without strings from parsing failure</h3>
 <ul>
-<li>where: <code>pkg/secretutil/censor.go:146-149</code>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/83a46404ed6ae541d7825d8b4f9191400c475ff3/pkg/secretutil/censor.go#L146-L149">pkg/secretutil/censor.go:146-149</a></code>
 </li>
 <li>concern: Maintainability identified a parser-contract ambiguity: valid JSON without string values returns nil and falls through to INI parsing. Its temporary probe showed that <code>{&quot;a=b&quot;:1}</code> registers <code>b&quot;:1}</code> as a secret even though the JSON document contains no string values. As a nonblocking improvement, return a separate recognition flag or a non-nil empty slice for successfully parsed documents, and add a public-behavior regression case.
 </li>
@@ -136,7 +149,7 @@ if err := decoder.Decode(&amp;parsed); err != nil || decoder.More() {
 </li></ul>
 <h3><span class="tag c-amber">should-fix</span>Document automatic extraction and its operational effects</h3>
 <ul>
-<li>where: <code>pkg/secretutil/censor.go:104-105</code>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/83a46404ed6ae541d7825d8b4f9191400c475ff3/pkg/secretutil/censor.go#L104-L105">pkg/secretutil/censor.go:104-105</a></code>
 </li>
 <li>concern: Maintainability and Deployment Risk recommend documenting that every compatible secret is now expanded automatically, including ordinary configuration values and short strings, and explaining the relationship to sidecar's existing IniFilenames selection. Short extracted values can also alter serialized log metadata because censorship runs after formatting; this is an intentional broadening of extraction rather than another parsing regression. Clarify the behavior at Refresh and in operator-facing documentation, including the tradeoff when increasing minimum_secret_length.
 </li>

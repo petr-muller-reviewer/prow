@@ -3,13 +3,17 @@ pr: 691
 title: "Document sinker component"
 head_sha: "8738db108e8cd0bcfc808328fd23ef7078f879f2"
 base: main
-reviewed_at: "2026-06-01T00:31:09Z"
+reviewed_at: "2026-11-16T23:41:35Z"
 verdict: APPROVE_WITH_SUGGESTIONS
 refresh_log:
   - old_sha: ""
     new_sha: "8738db108e8cd0bcfc808328fd23ef7078f879f2"
     refreshed_at: "2026-06-01T00:31:09Z"
     summary: "No code changes; /ok-to-test granted by ameukam on 2026-05-23"
+  - old_sha: "8738db108e8cd0bcfc808328fd23ef7078f879f2"
+    new_sha: "8738db108e8cd0bcfc808328fd23ef7078f879f2"
+    refreshed_at: "2026-11-16T23:41:35Z"
+    summary: "No code changes; petr-muller approved 2026-09-02, prow applied lgtm/approved labels, PR merged at 8738db10"
 gate:
   decision: merge
   gated_at: "2026-09-02T15:58:17Z"
@@ -42,12 +46,22 @@ gate:
 
 - No notable merge risk. Existing deployments are unaffected because the PR changes only a rendered documentation page.
 
-## Since Previous Review (refreshed 2026-06-01)
+## Since Previous Review
 
-- No code changes — single commit `8738db10` remains the PR head.
+### Refreshed 2026-11-16
+
+- No code changes — head `8738db108e8cd0bcfc808328fd23ef7078f879f2` is unchanged since the 2026-06-01 review.
+- 2026-09-02T15:49:24Z: **petr-muller** submitted an `APPROVED` review (empty body, no inline comments).
+- 2026-09-02T15:49:31-34Z: **kubernetes-prow[bot]** applied the `lgtm` and `approved` labels and posted the approval-notifier comment.
+- 2026-09-02T15:56:21Z: PR **merged** into `main` at `8738db10` (merge commit `ffc57790ba3e94ab2081a4a5d498d8baba5db8f1`); PR closed at the same time. No post-merge changes to the reviewed content.
+- 2026-09-04T06:10:56Z: **kubevirt-bot** cross-referenced the PR — informational only, no action.
+
+### Refreshed 2026-06-01
+
+- No code changes — single commit `8738db10` remained the PR head.
 - 2026-05-23: **ameukam** granted `/ok-to-test` — CI tests will now run on this PR.
 - 2026-04-27: **stmcginnis** commented `/close #622` — not a valid prow command (prow only recognizes bare `/close`), no effect.
-- No inline review comments or formal reviews submitted. PR still needs `/lgtm` and approval from **krzyzacy** (as designated approver).
+- No inline review comments or formal reviews submitted at that time. Approval was still outstanding.
 
 ## Summary
 

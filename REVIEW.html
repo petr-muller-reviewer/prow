@@ -31,19 +31,23 @@ ul, ol { padding-left:1.5rem; }
 details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
 </style></head><body><main>
 <h1>Document sinker component</h1>
-<div class="meta">base <code>main</code> · head_sha <code>8738db108e8c</code> · reviewed_at <code>2026-06-01T00:31:09Z</code></div>
+<div class="meta">base <code>main</code> · head_sha <code>8738db108e8c</code> · reviewed_at <code>2026-11-16T23:41:35Z</code></div>
 <div class="badges"><span class="badge c-gray">verdict: APPROVE_WITH_SUGGESTIONS</span><span class="badge c-green">gate: merge</span></div>
 <details><summary>Full metadata</summary><pre><code>pr: 691
 title: &quot;Document sinker component&quot;
 head_sha: &quot;8738db108e8cd0bcfc808328fd23ef7078f879f2&quot;
 base: main
-reviewed_at: &quot;2026-06-01T00:31:09Z&quot;
+reviewed_at: &quot;2026-11-16T23:41:35Z&quot;
 verdict: APPROVE_WITH_SUGGESTIONS
 refresh_log:
   - old_sha: &quot;&quot;
     new_sha: &quot;8738db108e8cd0bcfc808328fd23ef7078f879f2&quot;
     refreshed_at: &quot;2026-06-01T00:31:09Z&quot;
     summary: &quot;No code changes; /ok-to-test granted by ameukam on 2026-05-23&quot;
+  - old_sha: &quot;8738db108e8cd0bcfc808328fd23ef7078f879f2&quot;
+    new_sha: &quot;8738db108e8cd0bcfc808328fd23ef7078f879f2&quot;
+    refreshed_at: &quot;2026-11-16T23:41:35Z&quot;
+    summary: &quot;No code changes; petr-muller approved 2026-09-02, prow applied lgtm/approved labels, PR merged at 8738db10&quot;
 gate:
   decision: merge
   gated_at: &quot;2026-09-02T15:58:17Z&quot;
@@ -64,15 +68,28 @@ gate:
 <ul>
 <li>No notable merge risk. Existing deployments are unaffected because the PR changes only a rendered documentation page.
 </li></ul>
-<h2>Since Previous Review (refreshed 2026-06-01)</h2>
+<h2>Since Previous Review</h2>
+<h3>Refreshed 2026-11-16</h3>
 <ul>
-<li>No code changes — single commit <code>8738db10</code> remains the PR head.
+<li>No code changes — head <code>8738db108e8cd0bcfc808328fd23ef7078f879f2</code> is unchanged since the 2026-06-01 review.
+</li>
+<li>2026-09-02T15:49:24Z: <strong>petr-muller</strong> submitted an <code>APPROVED</code> review (empty body, no inline comments).
+</li>
+<li>2026-09-02T15:49:31-34Z: <strong>kubernetes-prow[bot]</strong> applied the <code>lgtm</code> and <code>approved</code> labels and posted the approval-notifier comment.
+</li>
+<li>2026-09-02T15:56:21Z: PR <strong>merged</strong> into <code>main</code> at <code>8738db10</code> (merge commit <code>ffc57790ba3e94ab2081a4a5d498d8baba5db8f1</code>); PR closed at the same time. No post-merge changes to the reviewed content.
+</li>
+<li>2026-09-04T06:10:56Z: <strong>kubevirt-bot</strong> cross-referenced the PR — informational only, no action.
+</li></ul>
+<h3>Refreshed 2026-06-01</h3>
+<ul>
+<li>No code changes — single commit <code>8738db10</code> remained the PR head.
 </li>
 <li>2026-05-23: <strong>ameukam</strong> granted <code>/ok-to-test</code> — CI tests will now run on this PR.
 </li>
 <li>2026-04-27: <strong>stmcginnis</strong> commented <code>/close #622</code> — not a valid prow command (prow only recognizes bare <code>/close</code>), no effect.
 </li>
-<li>No inline review comments or formal reviews submitted. PR still needs <code>/lgtm</code> and approval from <strong>krzyzacy</strong> (as designated approver).
+<li>No inline review comments or formal reviews submitted at that time. Approval was still outstanding.
 </li></ul>
 <h2>Summary</h2>
 <p>Replaces the empty placeholder page for the Sinker component (<code>site/content/en/docs/components/core/sinker.md</code>) with documentation covering cleanup behavior, configuration, required RBAC, CLI flags, and metrics. Fixes #495. All claims were verified against source code in <code>cmd/sinker/main.go</code> and <code>pkg/config/config.go</code>.</p>

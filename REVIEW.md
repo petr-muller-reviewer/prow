@@ -87,14 +87,52 @@ None.
 
 - category: docs
 - necessity: should
-- where: `pkg/plugins/config.go:610-611`, `pkg/plugins/plugin-config-documented.yaml:706-707`, `site/content/en/docs/jobs.md:240-246`
+- where: `pkg/plugins/config.go:610-611`, `pkg/plugins/plugin-config-documented.yaml:706-707`, `site/content/en/docs/jobs.md:265-282`, `site/content/en/docs/announcements.md:48`
 
 ```text
-In kubernetes-sigs/prow, following merged PR #955, "fix(github): drop invalid event query filter" (merge commit 7626c76a396f367698b87f0650c8c5df14ae6c4e), document the behavior enabled by trigger_github_workflows on the merged default branch.
+In kubernetes-sigs/prow, following merged PR #955, "fix(github): drop invalid event query filter" (merge commit 7626c76a396f367698b87f0650c8c5df14ae6c4e), document the behavior that `trigger_github_workflows` now actually enables on the merged default branch.
 
-Update the TriggerGitHubWorkflows field comment in pkg/plugins/config.go, its matching example in pkg/plugins/plugin-config-documented.yaml, and the user-facing command guidance in site/content/en/docs/jobs.md. Explain that the flag is opt-in; a trusted /ok-to-test commenter starts pending Actions runs (approve for fork PRs, rerun for same-repository PRs); and a trusted /retest or /test all commenter reruns eligible failed Actions runs. Explain that an ok-to-test label on a PR does not grant its untrusted author permission to start Actions runs, even though ProwJobs can still start. State the GitHub Actions read permission needed to list runs and write permission needed to approve or rerun them, linking to GitHub's workflow-run REST API documentation.
+Background: before #955 both workflow-run queries always returned zero runs, so the flag had no visible effect. After #955, installations with the flag enabled approve or rerun GitHub Actions:
+- A trusted commenter's `/ok-to-test` approves the pending runs of the PR head SHA when the PR comes from a fork, and reruns them when the PR head is in the base repository.
+- A trusted commenter's `/retest` or `/test all` reruns completed runs whose conclusion is `failure`, `cancelled`, `timed_out`, or `startup_failure`, for `pull_request` and `pull_request_target` runs only.
+- The `ok-to-test` label staying on a PR does not let an untrusted author start Actions runs; ProwJobs may still start.
 
-Check the status of PR #956 before writing. If it has merged, include its push-approval behavior as implemented; if it has not, document only the behavior present after #955 and avoid promising automatic approval after a push.
+Update the `TriggerGitHubWorkflows` field comment in pkg/plugins/config.go, its matching example in pkg/plugins/plugin-config-documented.yaml, and the comment-triggered-jobs section in site/content/en/docs/jobs.md. State that the flag is opt-in, which commands affect Actions and who may issue them, and that Prow needs GitHub Actions read permission to list runs and write permission to approve or rerun them; link GitHub's workflow-run REST API documentation. Add a dated entry under "New features" in site/content/en/docs/announcements.md describing the production-visible change for installations that already set the flag; the existing 2022 entry ("Trigger plugin can now trigger failed github jobs", line 48) is now incomplete.
 
-Acceptance criteria: the two config descriptions and jobs guide agree with the merged implementation; operators can tell which commands affect Actions, who can issue them, and which permissions are required. Keep this followup documentation-only: do not change trigger logic, API calls, or tests. Do not post to GitHub unless separately asked.
+Check the status of PR #956 ("feat(trigger): approve workflow runs on push") before writing. As of 2026-11-16 it is still OPEN, so document only the post-#955 behavior and do not promise automatic approval after a push.
+
+Acceptance criteria: the two config descriptions, the jobs guide, and the announcement agree with the merged implementation; an operator can tell which commands affect Actions, who can issue them, and which permissions are required. Documentation only: do not change trigger logic, API calls, or tests, and do not post to GitHub unless separately asked.
+```
+
+### Fix misleading logging in the Actions path
+
+- category: cleanup
+- necessity: could
+- where: `pkg/github/client.go:2353`, `pkg/plugins/trigger/generic-comment.go:177`
+
+```text
+In kubernetes-sigs/prow, following merged PR #955, "fix(github): drop invalid event query filter" (merge commit 7626c76a396f367698b87f0650c8c5df14ae6c4e), fix two logging defects in the GitHub Actions path.
+
+- In pkg/github/client.go, `GetFailedActionRunsByHeadBranch` opens its duration logger with the span name "GetJobsByHeadBranch", a name that no longer matches the function. Rename it to "GetFailedActionRunsByHeadBranch" so logs and timing metrics identify the call correctly.
+- In pkg/plugins/trigger/generic-comment.go, the "headSHA unavailable" branch logs the entire `pr` struct with `%v` instead of the error, which hides the actual cause. Log `err`, and include org, repo, and the PR number or pr.Head.Ref; make the message say that GitHub Actions runs for the PR will not be rerun.
+
+Acceptance criteria: `go build ./pkg/github/... ./pkg/plugins/trigger/...` succeeds and `go test ./pkg/github/... ./pkg/plugins/trigger/... -count=1` passes. The emitted messages name the failing call and include the underlying error. No behavior change.
+Scope guard: do not restructure the call flow, change trust logic, or introduce a new logging framework.
+```
+
+### Centralize PR workflow-run listing
+
+- category: tech-debt
+- necessity: could
+- where: `pkg/github/client.go:2352-2470` (`GetFailedActionRunsByHeadBranch`, `listWorkflowRuns`, `GetPendingApprovalActionRuns`)
+
+```text
+In kubernetes-sigs/prow, following merged PR #955, "fix(github): drop invalid event query filter" (merge commit 7626c76a396f367698b87f0650c8c5df14ae6c4e), extract the duplicated PR workflow-run lookup from `GetFailedActionRunsByHeadBranch` and `GetPendingApprovalActionRuns`.
+
+Both getters build the same `url.Values` (`per_page=100`, `head_sha`, `branch`), call `listWorkflowRuns`, and then keep only runs whose Event is `pull_request` or `pull_request_target` (`pullRequestWorkflowRunEvents`). The constraint that GitHub cannot filter multiple events server-side is documented only on `listWorkflowRuns`, so each caller must remember the client-side filter.
+
+Add an unexported helper, for example `listPullRequestWorkflowRuns(org, repo, branchName, headSHA string, extra url.Values) ([]WorkflowRun, error)`, that merges the extra parameters with the shared ones, pages through `listWorkflowRuns`, and returns only PR-event runs. Use it in both getters and keep their own predicates: completed plus a retestable conclusion in `GetFailedActionRunsByHeadBranch`, the `status=action_required` query parameter in `GetPendingApprovalActionRuns`. Keep a doc comment explaining why event filtering is client-side, so a future caller cannot reintroduce the bug #955 fixed.
+
+Acceptance criteria: `go test ./pkg/github/... -count=1` passes without changing test expectations; `TestGetFailedActionRunsByHeadBranch`, `TestGetFailedActionRunsByHeadBranchPagination`, `TestGetPendingApprovalActionRuns`, and `TestGetPendingApprovalActionRunsPagination` still exercise event filtering and pagination.
+Scope guard: no behavior change, no new query parameters, no changes to the trigger plugin.
 ```

@@ -52,7 +52,7 @@ gate:
 <p><strong>Historical gate: hold at <code>40eb181d</code> on 2026-09-29.</strong> The PR has since merged at <code>e7327921</code>. The substantive GitHub review requests were addressed, but the saved review's operator-documentation finding remained open at merge. This gate record describes the earlier recommendation; it was not rerun after the final commits.</p>
 <p><strong>Gating list:</strong></p>
 <ul>
-<li><code>REVIEW.md</code> [should-fix], <code>pkg/plugins/config.go:610-611</code> and <code>pkg/plugins/plugin-config-documented.yaml:706-707</code>: document <code>/ok-to-test</code> approval/rerun, trusted-commenter requirements for Actions commands, and Actions read/write permissions. The current descriptions remain the old one-line text.
+<li><code>REVIEW.md</code> [should-fix], <code><a href="https://github.com/kubernetes-sigs/prow/blob/e7327921f392ccb426739d03e3b353b1105779da/pkg/plugins/config.go#L610-L611">pkg/plugins/config.go:610-611</a></code> and <code><a href="https://github.com/kubernetes-sigs/prow/blob/e7327921f392ccb426739d03e3b353b1105779da/pkg/plugins/plugin-config-documented.yaml#L706-L707">pkg/plugins/plugin-config-documented.yaml:706-707</a></code>: document <code>/ok-to-test</code> approval/rerun, trusted-commenter requirements for Actions commands, and Actions read/write permissions. The current descriptions remain the old one-line text.
 </li></ul>
 <p><strong>Merge risk:</strong> No exported Go interface or configuration schema/default changed. The blast radius is installations with <code>trigger_github_workflows: true</code>: previously empty workflow-run queries now yield approvals and retries, potentially increasing GitHub API calls and comment-handler latency. The feature remains opt-in; rollout should monitor 403s, rate limits, and latency.</p>
 <h2>Verdict</h2>
@@ -71,18 +71,18 @@ gate:
 </li></ul>
 <p>Since previous review:</p>
 <ul>
-<li><code>pkg/plugins/trigger/generic-comment.go:322-325</code> now correctly identifies Prow as the rerun initiator.
+<li><code><a href="https://github.com/kubernetes-sigs/prow/blob/e7327921f392ccb426739d03e3b353b1105779da/pkg/plugins/trigger/generic-comment.go#L322-L325">pkg/plugins/trigger/generic-comment.go:322-325</a></code> now correctly identifies Prow as the rerun initiator.
 </li>
-<li><code>pkg/plugins/trigger/generic-comment_test.go:1994-2067</code> uses <code>sync.Once</code> and cleanup to make the waiting test safe if another run is added or the test fails early.
+<li><code><a href="https://github.com/kubernetes-sigs/prow/blob/e7327921f392ccb426739d03e3b353b1105779da/pkg/plugins/trigger/generic-comment_test.go#L1994-L2067">pkg/plugins/trigger/generic-comment_test.go:1994-2067</a></code> uses <code>sync.Once</code> and cleanup to make the waiting test safe if another run is added or the test fails early.
 </li>
 <li><code>cblecker</code> approved the PR at 2026-09-29T23:02:32Z; the PR was subsequently merged at <code>e7327921</code>.
 </li></ul>
 <h2>Findings</h2>
 <h3><span class="tag c-amber">should-fix</span>Explain the enabled Actions behavior to operators</h3>
 <ul>
-<li>where: <code>pkg/plugins/config.go:610-611</code>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/e7327921f392ccb426739d03e3b353b1105779da/pkg/plugins/config.go#L610-L611">pkg/plugins/config.go:610-611</a></code>
 </li>
-<li>concern: The current description does not tell operators that <code>/ok-to-test</code> approves or reruns pending workflows, while <code>/retest</code> retries failed runs only when the commenter is trusted. Update this description and the matching example in <code>pkg/plugins/plugin-config-documented.yaml:706-707</code>; include the Actions read/write permission requirement in the operator documentation. The maintainability and deployment reviewers independently raised this gap.
+<li>concern: The current description does not tell operators that <code>/ok-to-test</code> approves or reruns pending workflows, while <code>/retest</code> retries failed runs only when the commenter is trusted. Update this description and the matching example in <code><a href="https://github.com/kubernetes-sigs/prow/blob/e7327921f392ccb426739d03e3b353b1105779da/pkg/plugins/plugin-config-documented.yaml#L706-L707">pkg/plugins/plugin-config-documented.yaml:706-707</a></code>; include the Actions read/write permission requirement in the operator documentation. The maintainability and deployment reviewers independently raised this gap.
 </li>
 <li>excerpt:<pre><code>// TriggerGitHubWorkflows enables workflows run by github to be triggered by prow.
 TriggerGitHubWorkflows bool `json:&quot;trigger_github_workflows,omitempty&quot;`</code></pre>
@@ -90,7 +90,7 @@ TriggerGitHubWorkflows bool `json:&quot;trigger_github_workflows,omitempty&quot;
 <h2>Resolved</h2>
 <h3><span class="tag c-gray">nit</span>Identify the rerun initiator correctly</h3>
 <ul>
-<li>where: <code>pkg/plugins/trigger/generic-comment.go:322-325</code>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/e7327921f392ccb426739d03e3b353b1105779da/pkg/plugins/trigger/generic-comment.go#L322-L325">pkg/plugins/trigger/generic-comment.go:322-325</a></code>
 </li>
 <li>concern: Resolved in <code>8f60d1cec</code>. The comment now says the API caller (Prow) initiates the rerun and clears the approval gate.
 </li>
@@ -100,13 +100,13 @@ TriggerGitHubWorkflows bool `json:&quot;trigger_github_workflows,omitempty&quot;
 </li></ul>
 <h2>Checked</h2>
 <ul>
-<li><code>pkg/github/client.go:2196-2303</code>: event and conclusion filters, retained SHA/branch constraints, pending-approval status filter, and pagination.
+<li><code><a href="https://github.com/kubernetes-sigs/prow/blob/e7327921f392ccb426739d03e3b353b1105779da/pkg/github/client.go#L2196-L2303">pkg/github/client.go:2196-2303</a></code>: event and conclusion filters, retained SHA/branch constraints, pending-approval status filter, and pagination.
 </li>
-<li><code>pkg/plugins/trigger/generic-comment.go:73-213</code>: commenter trust checks, command routing, and waiting for Actions calls.
+<li><code><a href="https://github.com/kubernetes-sigs/prow/blob/e7327921f392ccb426739d03e3b353b1105779da/pkg/plugins/trigger/generic-comment.go#L73-L213">pkg/plugins/trigger/generic-comment.go:73-213</a></code>: commenter trust checks, command routing, and waiting for Actions calls.
 </li>
-<li><code>pkg/plugins/trigger/generic-comment.go:312-368</code>: same-repository versus fork approval path and error handling.
+<li><code><a href="https://github.com/kubernetes-sigs/prow/blob/e7327921f392ccb426739d03e3b353b1105779da/pkg/plugins/trigger/generic-comment.go#L312-L368">pkg/plugins/trigger/generic-comment.go:312-368</a></code>: same-repository versus fork approval path and error handling.
 </li>
-<li><code>pkg/github/fakegithub/fakegithub.go:1389-1452</code> and the new trigger tests: failed-run fixtures, call recording, approval cases, and retry cases.
+<li><code><a href="https://github.com/kubernetes-sigs/prow/blob/e7327921f392ccb426739d03e3b353b1105779da/pkg/github/fakegithub/fakegithub.go#L1389-L1452">pkg/github/fakegithub/fakegithub.go:1389-1452</a></code> and the new trigger tests: failed-run fixtures, call recording, approval cases, and retry cases.
 </li>
 <li>Focused trigger tests passed with the race detector: <code>go test ./pkg/plugins/trigger -run &#x27;TestHandleGenericCommentWaitsForActionsCalls|TestApproveWorkflowRunsByRepository|TestTriggerFailedGitHubWorkflows&#x27; -race -count=1</code>.
 </li>
@@ -127,13 +127,49 @@ TriggerGitHubWorkflows bool `json:&quot;trigger_github_workflows,omitempty&quot;
 </li>
 <li>necessity: should
 </li>
-<li>where: <code>pkg/plugins/config.go:610-611</code>, <code>pkg/plugins/plugin-config-documented.yaml:706-707</code>, <code>site/content/en/docs/jobs.md:240-246</code>
-<pre><code>In kubernetes-sigs/prow, following merged PR #955, &quot;fix(github): drop invalid event query filter&quot; (merge commit 7626c76a396f367698b87f0650c8c5df14ae6c4e), document the behavior enabled by trigger_github_workflows on the merged default branch.
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/e7327921f392ccb426739d03e3b353b1105779da/pkg/plugins/config.go#L610-L611">pkg/plugins/config.go:610-611</a></code>, <code><a href="https://github.com/kubernetes-sigs/prow/blob/e7327921f392ccb426739d03e3b353b1105779da/pkg/plugins/plugin-config-documented.yaml#L706-L707">pkg/plugins/plugin-config-documented.yaml:706-707</a></code>, <code><a href="https://github.com/kubernetes-sigs/prow/blob/e7327921f392ccb426739d03e3b353b1105779da/site/content/en/docs/jobs.md#L265-L282">site/content/en/docs/jobs.md:265-282</a></code>, <code><a href="https://github.com/kubernetes-sigs/prow/blob/e7327921f392ccb426739d03e3b353b1105779da/site/content/en/docs/announcements.md#L48">site/content/en/docs/announcements.md:48</a></code>
+<pre><code>In kubernetes-sigs/prow, following merged PR #955, &quot;fix(github): drop invalid event query filter&quot; (merge commit 7626c76a396f367698b87f0650c8c5df14ae6c4e), document the behavior that `trigger_github_workflows` now actually enables on the merged default branch.
 
-Update the TriggerGitHubWorkflows field comment in pkg/plugins/config.go, its matching example in pkg/plugins/plugin-config-documented.yaml, and the user-facing command guidance in site/content/en/docs/jobs.md. Explain that the flag is opt-in; a trusted /ok-to-test commenter starts pending Actions runs (approve for fork PRs, rerun for same-repository PRs); and a trusted /retest or /test all commenter reruns eligible failed Actions runs. Explain that an ok-to-test label on a PR does not grant its untrusted author permission to start Actions runs, even though ProwJobs can still start. State the GitHub Actions read permission needed to list runs and write permission needed to approve or rerun them, linking to GitHub&#x27;s workflow-run REST API documentation.
+Background: before #955 both workflow-run queries always returned zero runs, so the flag had no visible effect. After #955, installations with the flag enabled approve or rerun GitHub Actions:
+- A trusted commenter&#x27;s `/ok-to-test` approves the pending runs of the PR head SHA when the PR comes from a fork, and reruns them when the PR head is in the base repository.
+- A trusted commenter&#x27;s `/retest` or `/test all` reruns completed runs whose conclusion is `failure`, `cancelled`, `timed_out`, or `startup_failure`, for `pull_request` and `pull_request_target` runs only.
+- The `ok-to-test` label staying on a PR does not let an untrusted author start Actions runs; ProwJobs may still start.
 
-Check the status of PR #956 before writing. If it has merged, include its push-approval behavior as implemented; if it has not, document only the behavior present after #955 and avoid promising automatic approval after a push.
+Update the `TriggerGitHubWorkflows` field comment in pkg/plugins/config.go, its matching example in pkg/plugins/plugin-config-documented.yaml, and the comment-triggered-jobs section in site/content/en/docs/jobs.md. State that the flag is opt-in, which commands affect Actions and who may issue them, and that Prow needs GitHub Actions read permission to list runs and write permission to approve or rerun them; link GitHub&#x27;s workflow-run REST API documentation. Add a dated entry under &quot;New features&quot; in site/content/en/docs/announcements.md describing the production-visible change for installations that already set the flag; the existing 2022 entry (&quot;Trigger plugin can now trigger failed github jobs&quot;, line 48) is now incomplete.
 
-Acceptance criteria: the two config descriptions and jobs guide agree with the merged implementation; operators can tell which commands affect Actions, who can issue them, and which permissions are required. Keep this followup documentation-only: do not change trigger logic, API calls, or tests. Do not post to GitHub unless separately asked.</code></pre>
+Check the status of PR #956 (&quot;feat(trigger): approve workflow runs on push&quot;) before writing. As of 2026-11-16 it is still OPEN, so document only the post-#955 behavior and do not promise automatic approval after a push.
+
+Acceptance criteria: the two config descriptions, the jobs guide, and the announcement agree with the merged implementation; an operator can tell which commands affect Actions, who can issue them, and which permissions are required. Documentation only: do not change trigger logic, API calls, or tests, and do not post to GitHub unless separately asked.</code></pre>
+</li></ul>
+<h3>Fix misleading logging in the Actions path</h3>
+<ul>
+<li>category: cleanup
+</li>
+<li>necessity: could
+</li>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/e7327921f392ccb426739d03e3b353b1105779da/pkg/github/client.go#L2353">pkg/github/client.go:2353</a></code>, <code><a href="https://github.com/kubernetes-sigs/prow/blob/e7327921f392ccb426739d03e3b353b1105779da/pkg/plugins/trigger/generic-comment.go#L177">pkg/plugins/trigger/generic-comment.go:177</a></code>
+<pre><code>In kubernetes-sigs/prow, following merged PR #955, &quot;fix(github): drop invalid event query filter&quot; (merge commit 7626c76a396f367698b87f0650c8c5df14ae6c4e), fix two logging defects in the GitHub Actions path.
+
+- In pkg/github/client.go, `GetFailedActionRunsByHeadBranch` opens its duration logger with the span name &quot;GetJobsByHeadBranch&quot;, a name that no longer matches the function. Rename it to &quot;GetFailedActionRunsByHeadBranch&quot; so logs and timing metrics identify the call correctly.
+- In pkg/plugins/trigger/generic-comment.go, the &quot;headSHA unavailable&quot; branch logs the entire `pr` struct with `%v` instead of the error, which hides the actual cause. Log `err`, and include org, repo, and the PR number or pr.Head.Ref; make the message say that GitHub Actions runs for the PR will not be rerun.
+
+Acceptance criteria: `go build ./pkg/github/... ./pkg/plugins/trigger/...` succeeds and `go test ./pkg/github/... ./pkg/plugins/trigger/... -count=1` passes. The emitted messages name the failing call and include the underlying error. No behavior change.
+Scope guard: do not restructure the call flow, change trust logic, or introduce a new logging framework.</code></pre>
+</li></ul>
+<h3>Centralize PR workflow-run listing</h3>
+<ul>
+<li>category: tech-debt
+</li>
+<li>necessity: could
+</li>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/e7327921f392ccb426739d03e3b353b1105779da/pkg/github/client.go#L2352-L2470">pkg/github/client.go:2352-2470</a></code> (<code>GetFailedActionRunsByHeadBranch</code>, <code>listWorkflowRuns</code>, <code>GetPendingApprovalActionRuns</code>)
+<pre><code>In kubernetes-sigs/prow, following merged PR #955, &quot;fix(github): drop invalid event query filter&quot; (merge commit 7626c76a396f367698b87f0650c8c5df14ae6c4e), extract the duplicated PR workflow-run lookup from `GetFailedActionRunsByHeadBranch` and `GetPendingApprovalActionRuns`.
+
+Both getters build the same `url.Values` (`per_page=100`, `head_sha`, `branch`), call `listWorkflowRuns`, and then keep only runs whose Event is `pull_request` or `pull_request_target` (`pullRequestWorkflowRunEvents`). The constraint that GitHub cannot filter multiple events server-side is documented only on `listWorkflowRuns`, so each caller must remember the client-side filter.
+
+Add an unexported helper, for example `listPullRequestWorkflowRuns(org, repo, branchName, headSHA string, extra url.Values) ([]WorkflowRun, error)`, that merges the extra parameters with the shared ones, pages through `listWorkflowRuns`, and returns only PR-event runs. Use it in both getters and keep their own predicates: completed plus a retestable conclusion in `GetFailedActionRunsByHeadBranch`, the `status=action_required` query parameter in `GetPendingApprovalActionRuns`. Keep a doc comment explaining why event filtering is client-side, so a future caller cannot reintroduce the bug #955 fixed.
+
+Acceptance criteria: `go test ./pkg/github/... -count=1` passes without changing test expectations; `TestGetFailedActionRunsByHeadBranch`, `TestGetFailedActionRunsByHeadBranchPagination`, `TestGetPendingApprovalActionRuns`, and `TestGetPendingApprovalActionRunsPagination` still exercise event filtering and pagination.
+Scope guard: no behavior change, no new query parameters, no changes to the trigger plugin.</code></pre>
 </li></ul>
 </main></body></html>

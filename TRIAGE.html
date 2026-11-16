@@ -41,30 +41,45 @@ main_sha: cced76d904946c1412da1ddc2d6441167d3d8e46
 triaged_at: 2026-08-17T22:57:32Z
 verdict: needs-discussion
 advice:
-  advised_at: 2026-10-05T23:37:41Z
+  advised_at: 2026-11-16T23:31:00Z
   based_on_triaged_at: 2026-08-17T22:57:32Z</code></pre></details>
+<h2>Verdict</h2>
+<p><code>needs-discussion</code> — confirmed intentional behavior, but the missing pattern-based protection-removal mechanism needs a maintainer design call.</p>
+<p>The reporter's scenario reproduces and the cause is clear: <code>exclude</code> is an enumeration-time skip equivalent to a pattern-scoped <code>unmanaged: true</code>, and the maintainer confirmed it will not become a scoped <code>protect: false</code>, ruling out PR #478 as-is. The gap — no regex-based way to remove protection from automation-created branches — is real and was acknowledged, but whether to add a new additive field or redirect the use case to rulesets (#846) is a maintainer decision that triage cannot settle.</p>
+<h2>What the issue reports</h2>
+<ul>
+<li>Branches matching <code>exclude</code> that are already protected on GitHub keep that protection; branchprotector only logs <code>excluded</code> and takes no action.
+</li>
+<li>Removing protection requires an exact branch name with <code>protect: false</code>; there is no regex/pattern variant of that.
+</li>
+<li>The affected branches are created by automation (e.g. Copilot-assigned branch names), so they cannot all be enumerated in the config ahead of time.
+</li>
+<li>Pushes to those branches keep failing with <code>GH006: Protected branch update failed</code> even after the branch is excluded.
+</li>
+<li>PR #478 proposed reusing <code>exclude</code> to remove protection, which maintainers rejected as a semantics change.
+</li></ul>
 <h2>Findings</h2>
 <h3><span class="tag c-blue">reproducibility</span>Confirmed, root-caused by reporter and independently verified</h3>
 <ul>
 <li>detail: Add a branch to <code>exclude</code>, then run branchprotector against a branch that was already <code>Protected=true</code> on GitHub. Protection is never removed; branchprotector logs <code>excluded</code> and takes no further action. Subsequent pushes fail with <code>GH006: Protected branch update failed</code>.
 </li>
-<li>evidence: issue body (kaovilai, 2025-06-16); <code>cmd/branchprotector/protect.go:341-343</code>
+<li>evidence: issue body (kaovilai, 2025-06-16); <code><a href="https://github.com/kubernetes-sigs/prow/blob/cced76d904946c1412da1ddc2d6441167d3d8e46/cmd/branchprotector/protect.go#L341-L343">cmd/branchprotector/protect.go:341-343</a></code>
 </li></ul>
 <h3><span class="tag c-amber">cause</span><code>exclude</code> is a pure enumeration-time skip — confirmed intentional by maintainer</h3>
 <ul>
 <li>detail: In <code>UpdateRepo</code>, excluded branches hit <code>continue</code> at line 341-343 and are never added to the <code>branches</code> map, so they never reach <code>UpdateBranch</code> and no removal is ever queued, regardless of current protection state. Maintainer (petr-muller) confirmed 2026-08-13T12:12:31Z this is intended: <code>exclude</code> is meant as a pattern variant of <code>unmanaged: true</code>, not of <code>protect: false</code>, and its semantics will not be changed.
 </li>
-<li>evidence: <code>cmd/branchprotector/protect.go:341-343</code>; issue comment 2026-08-13T12:12:31Z
+<li>evidence: <code><a href="https://github.com/kubernetes-sigs/prow/blob/cced76d904946c1412da1ddc2d6441167d3d8e46/cmd/branchprotector/protect.go#L341-L343">cmd/branchprotector/protect.go:341-343</a></code>; issue comment 2026-08-13T12:12:31Z
 </li></ul>
 <h3><span class="tag c-amber">cause</span>No pattern-based mechanism exists to retroactively remove protection — the real gap</h3>
 <ul>
-<li>detail: <code>Unmanaged</code> (<code>pkg/config/branch_protection.go:32-34</code>) is a per-branch-name boolean, not a regex list; <code>Exclude</code>/<code>Include</code> are the only regex mechanisms and both are pure "don't touch" filters. For branches whose names aren't knowable in advance (bot/automation-created, e.g. Copilot-assigned branches), there is no pattern-based way to pre-empt protection, and once branchprotector's default policy protects them, no pattern-based way to remove that protection afterward — only a manual, exact-name <code>protect: false</code> or manual GitHub UI/API action. Surfaced via a live exchange between kaovilai and petr-muller and is what shifted the maintainer from a firm won't-fix toward "softening" on a new additive field.
+<li>detail: <code>Unmanaged</code> (<code><a href="https://github.com/kubernetes-sigs/prow/blob/cced76d904946c1412da1ddc2d6441167d3d8e46/pkg/config/branch_protection.go#L32-L34">pkg/config/branch_protection.go:32-34</a></code>) is a per-branch-name boolean, not a regex list; <code>Exclude</code>/<code>Include</code> are the only regex mechanisms and both are pure "don't touch" filters. For branches whose names aren't knowable in advance (bot/automation-created, e.g. Copilot-assigned branches), there is no pattern-based way to pre-empt protection, and once branchprotector's default policy protects them, no pattern-based way to remove that protection afterward — only a manual, exact-name <code>protect: false</code> or manual GitHub UI/API action. Surfaced via a live exchange between kaovilai and petr-muller and is what shifted the maintainer from a firm won't-fix toward "softening" on a new additive field.
 </li>
-<li>evidence: <code>pkg/config/branch_protection.go:30-60</code>; issue comments 2026-08-13T12:45:09Z, 12:52:16Z, 12:53:28Z, 12:54:55Z, 12:56:28Z, 13:18:08Z
+<li>evidence: <code><a href="https://github.com/kubernetes-sigs/prow/blob/cced76d904946c1412da1ddc2d6441167d3d8e46/pkg/config/branch_protection.go#L30-L60">pkg/config/branch_protection.go:30-60</a></code>; issue comments 2026-08-13T12:45:09Z, 12:52:16Z, 12:53:28Z, 12:54:55Z, 12:56:28Z, 13:18:08Z
 </li></ul>
 <h3><span class="tag c-blue">related-code</span>Branch enumeration and filtering</h3>
 <ul>
-<li>where: <code>cmd/branchprotector/protect.go:328-347</code>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/cced76d904946c1412da1ddc2d6441167d3d8e46/cmd/branchprotector/protect.go#L328-L347">cmd/branchprotector/protect.go:328-347</a></code>
 </li>
 <li>excerpt:<pre><code>} else if !ok &amp;&amp; branchExclusions != nil &amp;&amp; branchExclusions.MatchString(b.Name) {
     logrus.Infof(&quot;%s/%s=%s: excluded&quot;, orgName, repoName, b.Name)
@@ -73,7 +88,7 @@ advice:
 </li></ul>
 <h3><span class="tag c-blue">related-code</span>configureBranches — removal dispatch</h3>
 <ul>
-<li>where: <code>cmd/branchprotector/protect.go:182-196</code>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/cced76d904946c1412da1ddc2d6441167d3d8e46/cmd/branchprotector/protect.go#L182-L196">cmd/branchprotector/protect.go:182-196</a></code>
 </li>
 <li>excerpt:<pre><code>if u.Request == nil {
     if err := p.client.RemoveBranchProtection(u.Org, u.Repo, u.Branch); err != nil {
@@ -84,7 +99,7 @@ advice:
 </li></ul>
 <h3><span class="tag c-blue">related-code</span>UpdateBranch — where protect:false triggers removal</h3>
 <ul>
-<li>where: <code>cmd/branchprotector/protect.go:454-517</code>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/cced76d904946c1412da1ddc2d6441167d3d8e46/cmd/branchprotector/protect.go#L454-L517">cmd/branchprotector/protect.go:454-517</a></code>
 </li>
 <li>excerpt:<pre><code>var req *github.BranchProtectionRequest
 if *bp.Protect {
@@ -95,14 +110,14 @@ if *bp.Protect {
 </li></ul>
 <h3><span class="tag c-blue">related-code</span>Policy struct — Unmanaged is boolean, not pattern-based</h3>
 <ul>
-<li>where: <code>pkg/config/branch_protection.go:32-34</code>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/cced76d904946c1412da1ddc2d6441167d3d8e46/pkg/config/branch_protection.go#L32-L34">pkg/config/branch_protection.go:32-34</a></code>
 </li>
 <li>excerpt:<pre><code>// Unmanaged makes us not manage the branchprotection.
 Unmanaged *bool `json:&quot;unmanaged,omitempty&quot;`</code></pre>
 </li></ul>
 <h3><span class="tag c-blue">related-code</span>Exclude field definition — docstring still unclarified</h3>
 <ul>
-<li>where: <code>pkg/config/branch_protection.go:54-56</code>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/cced76d904946c1412da1ddc2d6441167d3d8e46/pkg/config/branch_protection.go#L54-L56">pkg/config/branch_protection.go:54-56</a></code>
 </li>
 <li>excerpt:<pre><code>// Exclude specifies a set of regular expressions which identify branches
 // that should be excluded from the protection policy, mutually exclusive with Include
@@ -110,7 +125,7 @@ Exclude []string `json:&quot;exclude,omitempty&quot;`</code></pre>
 </li></ul>
 <h3><span class="tag c-blue">related-code</span>Existing exclusion tests — gap: no excluded+protected case</h3>
 <ul>
-<li>where: <code>cmd/branchprotector/protect_test.go:1098-1167</code>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/cced76d904946c1412da1ddc2d6441167d3d8e46/cmd/branchprotector/protect_test.go#L1098-L1167">cmd/branchprotector/protect_test.go:1098-1167</a></code>
 </li>
 <li>excerpt: Tests verify excluded branches are not protected. No test checks behavior when an excluded branch is already protected on GitHub.
 </li></ul>
@@ -152,20 +167,28 @@ Exclude []string `json:&quot;exclude,omitempty&quot;`</code></pre>
 </li>
 <li>Decide: commit to a new additive, pattern-based <code>protect: false</code> field (backwards compatible, solves the bot-branch scenario, reuses #478's removal machinery through a dedup-aware path) versus holding the status quo (close, redirect effort to rulesets #846)
 </li>
-<li>Regardless of that decision: land a docstring clarification on <code>Exclude</code> (<code>pkg/config/branch_protection.go:54-56</code>) stating it behaves as a pattern-scoped <code>unmanaged: true</code>, not a pattern-scoped <code>protect: false</code> — low-cost, unblocked either way
+<li>Regardless of that decision: land a docstring clarification on <code>Exclude</code> (<code><a href="https://github.com/kubernetes-sigs/prow/blob/cced76d904946c1412da1ddc2d6441167d3d8e46/pkg/config/branch_protection.go#L54-L56">pkg/config/branch_protection.go:54-56</a></code>) stating it behaves as a pattern-scoped <code>unmanaged: true</code>, not a pattern-scoped <code>protect: false</code> — low-cost, unblocked either way
 </li>
 <li>Decide PR #478's fate explicitly once the above is resolved (close outright vs. leave open pending rework)
 </li>
 <li>Labels applied by maintainer so far: <code>area/branchprotector</code> (added), <code>lifecycle/rotten</code> (removed)
 </li></ul>
 <h2>Advice</h2>
-<p>No issue activity has changed the triage since 2026-08-17. The blocking design decision remains open, and PR #478 is still open (last updated 2026-08-13). Ask the active maintainer who confirmed the current <code>exclude</code> semantics to settle the direction and the PR's intended fate; <code>petr-muller</code> is also a repository approver in <code>OWNERS</code>.</p>
+<p>The only change since the last advice: <code>k8s-triage-robot</code> applied <code>lifecycle/stale</code> to both issue #477 and PR #478 on 2026-11-11 after 90 days without human activity. Under the bot's schedule, <code>lifecycle/rotten</code> follows around 2026-12-11 and closure around 2027-01-10 unless a human comments. No issue or PR content has changed since 2026-08-13, and the blocking design decision remains open. Ask the active maintainer who confirmed the current <code>exclude</code> semantics to settle the direction and the PR's intended fate; <code>petr-muller</code> is also a repository approver in <code>OWNERS</code>.</p>
 <h3>Ask for the maintainer decision</h3>
-<p>The issue is still <code>needs-discussion</code>; a focused follow-up can resolve whether to add a new pattern-based removal field or leave the behavior unsupported and redirect effort toward rulesets #846.</p>
+<p>The issue is still <code>needs-discussion</code> and now carries <code>lifecycle/stale</code>. A focused follow-up resolves whether to add a new pattern-based removal field or leave the behavior unsupported and redirect effort toward rulesets #846, and also keeps the decision from being buried by the stale bot.</p>
 <pre><code>gh issue comment 477 --repo kubernetes-sigs/prow --body &quot;$(cat &lt;&lt;&#x27;EOF&#x27;
 &gt; *This was generated by AI during triage.*
 
-@petr-muller — the saved triage still identifies one unresolved choice for #477: add a separate pattern-based way to remove protection (`protect: false` semantics), or keep `exclude` as an unmanaged filter and redirect this use case toward rulesets (#846). PR #478 is still open and changes `exclude` semantics. Could you record which direction Prow maintainers want, and whether #478 should be reworked around a new field or closed? If proceeding with a new field, please settle its name and semantics and account for protection deduplication.
+@petr-muller — #477 has gone `lifecycle/stale` (and so has PR #478), but the one unresolved choice is unchanged: add a separate pattern-based way to remove protection (`protect: false` semantics), or keep `exclude` as an unmanaged filter and redirect this use case toward rulesets (#846). PR #478 is still open and changes `exclude` semantics. Could you record which direction Prow maintainers want, and whether #478 should be reworked around a new field or closed? If proceeding with a new field, please settle its name and semantics and account for protection deduplication.
+EOF
+)&quot;</code></pre>
+<h3>Keep PR #478 from rotting while the decision is pending</h3>
+<p>PR #478 is held (<code>do-not-merge/hold</code>), <code>lgtm</code>-ed, and now <code>lifecycle/stale</code>; it will be marked rotten around 2026-12-11 and closed around 2027-01-10 if nobody comments. A short status note keeps it alive while the #477 decision is pending.</p>
+<pre><code>gh pr comment 478 --repo kubernetes-sigs/prow --body &quot;$(cat &lt;&lt;&#x27;EOF&#x27;
+&gt; *This was generated by AI during triage.*
+
+Still intentionally on hold pending the design decision in #477 (whether to add a new pattern-based removal field or redirect this use case to rulesets in #846). Leaving it open so it can be reworked or closed once that decision is recorded; flagging here so the stale bot does not bury it in the meantime.
 EOF
 )&quot;</code></pre>
 <h2>Open questions</h2>

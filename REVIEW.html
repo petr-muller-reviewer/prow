@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#1070</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>chore(deps): bump the golang-x group across 1 directory with 3 updates</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1070">kubernetes-sigs/prow#1070</a> · base <code>main</code> · head_sha <code>aa78a5d3d1bf</code> · reviewed_at <code>2026-11-16T23:15:26Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span></div>
+<h2>Verdict</h2>
+<p>Approve. Dep-only bump of three directly used <code>golang.org/x</code> modules, with no advisory open or fixed in the vulnerability databases, and no changed code on a path Prow actually exercises. The one change worth caring about is a CVE fix in <code>golang.org/x/text</code>, and taking it is the right call.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Bumps <code>golang.org/x/oauth2</code> v0.37.0 → v0.38.0, <code>golang.org/x/sync</code> v0.24.0 → v0.25.0, and <code>golang.org/x/text</code> v0.43.0 → v0.44.0 in the root module (<code><a href="https://github.com/kubernetes-sigs/prow/blob/aa78a5d3d1bf149fb2a69022fcc685b83cceab12/go.mod#L66">go.mod:66</a></code>), with matching <code>go.sum</code> hashes.
+</li>
+<li>Dragging <code>golang.org/x/tools</code> v0.51.0 → v0.52.0 along indirectly, because x/text v0.44.0's own <code>go.mod</code> requires it.
+</li>
+<li>Mirrors all four pins in <code>hack/tools/go.mod</code>, where they are indirect-only.
+</li>
+<li>No project source, config, or test changes; nothing to line-review.
+</li></ul>
+<h2>Findings</h2>
+<p>None.</p>
+<h2>Resolved</h2>
+<p>None.</p>
+<h2>Checked</h2>
+<ul>
+<li>Classification: dep-only. Only <code>go.mod</code>, <code>go.sum</code>, <code>hack/tools/go.mod</code>, and <code>hack/tools/go.sum</code> change.
+</li>
+<li><code>golang.org/x/oauth2</code> v0.38.0: released 2026-11-06 (10 days old), tagged release. Sole commit fixes a <code>time.NewTicker</code> panic in <code>DeviceAccessToken</code> when the authorization server returns a negative or overflow-inducing <code>interval</code> (golang/go#82658). Prow never calls <code>DeviceAuth</code>/<code>DeviceAccessToken</code> — it uses the <code>oauth2/google</code> credentials helpers and token sources — so the changed code is unreachable here.
+</li>
+<li><code>golang.org/x/sync</code> v0.25.0: released 2026-10-15 (32 days old). Sole commit renames <code>syncmap.DeepCopyMap</code> to <code>CopyMap</code>; Prow does not import <code>syncmap</code>. The <code>errgroup</code> and <code>semaphore</code> APIs used across <code>pkg/tide</code>, <code>pkg/ghcache</code>, <code>pkg/pod-utils/gcs</code>, <code>pkg/sidecar</code>, <code>pkg/pubsub/subscriber</code>, and <code>pkg/bugzilla</code> are untouched.
+</li>
+<li><code>golang.org/x/text</code> v0.44.0: released 2026-11-09 (7 days old). Fixes CVE-2026-97044 (unbounded quadratic Punycode encoding, golang/go#82374) and an <code>Accept-Language</code> O(N²) guard bypass where <code>_</code> skipped the <code>-</code> separator count (golang/go#79684). Prow imports only <code>golang.org/x/text/cases</code> and <code>golang.org/x/text/language</code> in <code><a href="https://github.com/kubernetes-sigs/prow/blob/aa78a5d3d1bf149fb2a69022fcc685b83cceab12/pkg/plugins/golint/suggestion/golint_suggestion.go#L26">pkg/plugins/golint/suggestion/golint_suggestion.go:26</a></code> and <code><a href="https://github.com/kubernetes-sigs/prow/blob/aa78a5d3d1bf149fb2a69022fcc685b83cceab12/pkg/spyglass/lenses/links/links.go#L31">pkg/spyglass/lenses/links/links.go:31</a></code>, calling <code>cases.Title(language.English)</code>; it imports neither <code>idna</code> nor calls <code>ParseAcceptLanguage</code>, so the fixed paths are protected only transitively.
+</li>
+<li><code>golang.org/x/tools</code> v0.52.0: released 2026-10-10 (37 days old), indirect; reaches only <code>pkg/plugins/golint</code> through <code>golang.org/x/lint</code> → <code>astutil</code>.
+</li>
+<li>OSV: no advisories for any of the six old/new versions. <code>CVE-2026-97044</code> is not yet indexed by OSV, so the database understates the x/text bump; the fixing commit documents it.
+</li>
+<li><code>govulncheck -scan module</code> at base <code>86b2c49</code> and at head: identical, pre-existing findings <code>GO-2023-1901</code> (tektoncd/pipeline) and <code>GO-2026-5932</code> (x/crypto/openpgp), both in modules this PR does not touch. No advisory in any bumped module, so nothing fixed and nothing left open at the DB level. Symbol-level scan skipped deliberately: the only module-level hits are outside the bump, so a trace would not inform this review. Module scans were run from <code>cmd/admission</code> because the repo root has no Go package.
+</li>
+<li>Build and manifest consistency: <code>go build ./...</code> passes at the PR head; <code>go mod tidy -diff</code> is clean in both the root module and <code>hack/tools</code>.
+</li></ul>
+<h2>Open questions</h2>
+<p>None.</p>
+<h2>Dependency followups</h2>
+<p>No improvement opportunities identified.</p>
+<ul>
+<li>Modules and ranges examined: <code>golang.org/x/oauth2</code> v0.37.0 → v0.38.0, <code>golang.org/x/sync</code> v0.24.0 → v0.25.0, <code>golang.org/x/text</code> v0.43.0 → v0.44.0, and the transitive <code>golang.org/x/tools</code> v0.51.0 → v0.52.0.
+</li>
+<li>Reason: every changelog delta touches APIs Prow does not call. oauth2's fix is in <code>DeviceAccessToken</code> (we never use the device flow); x/sync's only commit renames <code>syncmap.DeepCopyMap</code> (we import only <code>errgroup</code> and <code>semaphore</code>); x/text's fixes are in <code>idna</code> and <code>language.ParseAcceptLanguage</code> (we import only <code>cases</code> and <code>language.English</code>); x/tools' 36 commits are gopls/analysis internals (we reach only <code>astutil</code> through <code>golang.org/x/lint</code>). No deprecations, replacement APIs, or behavior changes at our call sites.
+</li></ul>
+</main></body></html>

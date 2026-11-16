@@ -31,13 +31,13 @@ ul, ol { padding-left:1.5rem; }
 details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
 </style></head><body><main>
 <h1>branchprotector: remove protection from excluded branches</h1>
-<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/478">kubernetes-sigs/prow#478</a> · base <code>main</code> · head_sha <code>f1b83a2b61ff</code> · reviewed_at <code>2026-10-05T21:46:29Z</code></div>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/478">kubernetes-sigs/prow#478</a> · base <code>main</code> · head_sha <code>f1b83a2b61ff</code> · reviewed_at <code>2026-11-16T23:30:59Z</code></div>
 <div class="badges"><span class="badge c-red">verdict: request-changes</span><span class="badge c-red">gate: do-not-merge</span></div>
 <details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#478
 title: &quot;branchprotector: remove protection from excluded branches&quot;
 head_sha: f1b83a2b61ff3db5fc7eaaa77b6d728c0bea001d
 base: main
-reviewed_at: 2026-10-05T21:46:29Z
+reviewed_at: 2026-11-16T23:30:59Z
 verdict: request-changes
 gate:
   decision: do-not-merge
@@ -50,16 +50,19 @@ refresh_log:
     summary: &quot;No code changes. Created REVIEW.md from existing REVIEW.html. Incorporated PR discussion: smg247 independently raised the same semantic-change concern (2025-07-11), Prucek gave /lgtm (2025-06-18).&quot;
   - previous_sha: f1b83a2b61ff3db5fc7eaaa77b6d728c0bea001d
     new_sha: f1b83a2b61ff3db5fc7eaaa77b6d728c0bea001d
-    summary: &quot;No code changes. Added the maintainer&#x27;s Aug 13 position against changing exclude semantics or expanding branchprotector, and noted the do-not-merge/hold label.&quot;</code></pre></details>
+    summary: &quot;No code changes. Added the maintainer&#x27;s Aug 13 position against changing exclude semantics or expanding branchprotector, and noted the do-not-merge/hold label.&quot;
+  - previous_sha: f1b83a2b61ff3db5fc7eaaa77b6d728c0bea001d
+    new_sha: f1b83a2b61ff3db5fc7eaaa77b6d728c0bea001d
+    summary: &quot;No code changes and no human activity. On 2026-11-11 k8s-triage-robot applied lifecycle/stale after 90d of inactivity.&quot;</code></pre></details>
 <h2>Gate</h2>
 <p><strong>Decision: do-not-merge.</strong> The PR head is unchanged from the reviewed SHA. Its 41-line change adds an active removal path for branches matched by existing <code>exclude</code> configuration, and the maintainer discussion explicitly rejects changing those semantics. This is a backward-incompatible change with no opt-in or migration path.</p>
 <h3>Findings disposition</h3>
 <ul>
-<li><strong>Not addressed — changing <code>exclude</code> semantics</strong> (<code>REVIEW.md</code>; <code>@smg247</code>, 2025-07-11; <code>@petr-muller</code>, 2026-08-13): <code>UpdateRepo()</code> still queues a nil request for each protected, excluded branch not explicitly configured (<code>cmd/branchprotector/protect.go:351-365</code>), and <code>configureBranches()</code> passes it to <code>RemoveBranchProtection()</code> (<code>protect.go:182-188</code>). This can remove manually maintained protection. The maintainers' latest stated position opposes that behavior. <strong>Disposition:</strong> do not merge this implementation; remove the deletion behavior or agree on an explicitly opt-in design first.
+<li><strong>Not addressed — changing <code>exclude</code> semantics</strong> (<code>REVIEW.md</code>; <code>@smg247</code>, 2025-07-11; <code>@petr-muller</code>, 2026-08-13): <code>UpdateRepo()</code> still queues a nil request for each protected, excluded branch not explicitly configured (<code><a href="https://github.com/kubernetes-sigs/prow/blob/f1b83a2b61ff3db5fc7eaaa77b6d728c0bea001d/cmd/branchprotector/protect.go#L351-L365">cmd/branchprotector/protect.go:351-365</a></code>), and <code>configureBranches()</code> passes it to <code>RemoveBranchProtection()</code> (<code><a href="https://github.com/kubernetes-sigs/prow/blob/f1b83a2b61ff3db5fc7eaaa77b6d728c0bea001d/protect.go#L182-L188">protect.go:182-188</a></code>). This can remove manually maintained protection. The maintainers' latest stated position opposes that behavior. <strong>Disposition:</strong> do not merge this implementation; remove the deletion behavior or agree on an explicitly opt-in design first.
 </li>
-<li><strong>Not addressed — no excluded/unprotected test</strong> (<code>REVIEW.md</code>): current tests exercise excluded branches that trigger removal, but do not cover an excluded branch whose <code>Protected</code> field is false (<code>cmd/branchprotector/protect_test.go:1098-1178</code>). <strong>Disposition:</strong> add coverage if removal behavior is retained; this does not resolve the compatibility blocker.
+<li><strong>Not addressed — no excluded/unprotected test</strong> (<code>REVIEW.md</code>): current tests exercise excluded branches that trigger removal, but do not cover an excluded branch whose <code>Protected</code> field is false (<code><a href="https://github.com/kubernetes-sigs/prow/blob/f1b83a2b61ff3db5fc7eaaa77b6d728c0bea001d/cmd/branchprotector/protect_test.go#L1098-L1178">cmd/branchprotector/protect_test.go:1098-1178</a></code>). <strong>Disposition:</strong> add coverage if removal behavior is retained; this does not resolve the compatibility blocker.
 </li>
-<li><strong>Not addressed — removal logged at INFO</strong> (<code>REVIEW.md</code>): the destructive operation is logged with <code>logrus.Infof</code> (<code>cmd/branchprotector/protect.go:359</code>). <strong>Disposition:</strong> use prominent warning-level output if removal behavior is retained; this does not resolve the compatibility blocker.
+<li><strong>Not addressed — removal logged at INFO</strong> (<code>REVIEW.md</code>): the destructive operation is logged with <code>logrus.Infof</code> (<code><a href="https://github.com/kubernetes-sigs/prow/blob/f1b83a2b61ff3db5fc7eaaa77b6d728c0bea001d/cmd/branchprotector/protect.go#L359">cmd/branchprotector/protect.go:359</a></code>). <strong>Disposition:</strong> use prominent warning-level output if removal behavior is retained; this does not resolve the compatibility blocker.
 </li></ul>
 <h3>Independent merge risk</h3>
 <ul>
@@ -67,9 +70,9 @@ refresh_log:
 </li></ul>
 <h3>Gating list</h3>
 <ul>
-<li><code>cmd/branchprotector/protect.go:351-365</code> — active protection removal changes the established meaning of <code>exclude</code>, risks existing deployments, and conflicts with maintainer feedback. Do not merge unless the behavior is removed or an explicitly opt-in alternative is agreed.
+<li><code><a href="https://github.com/kubernetes-sigs/prow/blob/f1b83a2b61ff3db5fc7eaaa77b6d728c0bea001d/cmd/branchprotector/protect.go#L351-L365">cmd/branchprotector/protect.go:351-365</a></code> — active protection removal changes the established meaning of <code>exclude</code>, risks existing deployments, and conflicts with maintainer feedback. Do not merge unless the behavior is removed or an explicitly opt-in alternative is agreed.
 </li>
-<li><code>cmd/branchprotector/protect_test.go:1098-1178</code> and <code>cmd/branchprotector/protect.go:359</code> — unprotected-excluded test coverage and warning-level logging remain outstanding if the removal behavior is retained.
+<li><code><a href="https://github.com/kubernetes-sigs/prow/blob/f1b83a2b61ff3db5fc7eaaa77b6d728c0bea001d/cmd/branchprotector/protect_test.go#L1098-L1178">cmd/branchprotector/protect_test.go:1098-1178</a></code> and <code><a href="https://github.com/kubernetes-sigs/prow/blob/f1b83a2b61ff3db5fc7eaaa77b6d728c0bea001d/cmd/branchprotector/protect.go#L359">cmd/branchprotector/protect.go:359</a></code> — unprotected-excluded test coverage and warning-level logging remain outstanding if the removal behavior is retained.
 </li></ul>
 <p><strong>State:</strong> OPEN | <strong>Author:</strong> kaovilai | <strong>Diff:</strong> +41/-0 <strong>Link:</strong> <a href="https://github.com/kubernetes-sigs/prow/pull/478">https://github.com/kubernetes-sigs/prow/pull/478</a></p>
 <h2>Verdict: Request Changes -- semantic change to <code>exclude</code> needs an opt-in mechanism</h2>
@@ -78,7 +81,7 @@ refresh_log:
 <p><strong>Call flow:</strong> <code>UpdateRepo()</code> -&gt; <code>Request: nil</code> -&gt; <code>p.updates chan</code> -&gt; <code>configureBranches()</code> -&gt; <code>RemoveBranchProtection()</code></p>
 <h3>Changed files</h3>
 <p>| File | Change | |------|--------| | <code>cmd/branchprotector/protect.go</code> | Collects <code>allBranches</code>; after main loop, iterates excluded+protected branches and sends removal requests | | <code>cmd/branchprotector/protect_test.go</code> | Adds expected <code>Request: nil</code> entries to two existing test cases |</p>
-<p>Since previous review: no code changes; the PR remains open at the same head. On 2026-05-14, Prucek removed the rotten lifecycle label. On 2026-08-13, petr-muller said in issue #477 that they oppose changing <code>exclude</code> semantics or adding more branchprotector features, are moving toward closing both #477 and #478, and would leave the PR open briefly for counterarguments; <code>/hold</code> was added to this PR. No new inline comments or submitted reviews were added.</p>
+<p>Since previous review: no code changes; the PR remains open at the same head. On 2026-05-14, Prucek removed the rotten lifecycle label. On 2026-08-13, petr-muller said in issue #477 that they oppose changing <code>exclude</code> semantics or adding more branchprotector features, are moving toward closing both #477 and #478, and would leave the PR open briefly for counterarguments; <code>/hold</code> was added to this PR. No new inline comments or submitted reviews were added. Since the last refresh, the only activity is automated: on 2026-11-11 k8s-triage-robot applied <code>lifecycle/stale</code> after 90 days of inactivity, with no new comments, reviews, or commits.</p>
 <h3>Since initial review</h3>
 <p>No code changes (head SHA unchanged). PR discussion confirmed the review's primary concern:</p>
 <ul>
@@ -109,7 +112,7 @@ refresh_log:
 <h3>Missing test: excluded + unprotected branch (CQ + MT)</h3>
 <p>No test exercises an excluded branch that is not currently protected. All test branches default to <code>Protected: true</code>. A test with <code>startUnprotected: true</code> would verify the code doesn't emit spurious removal requests.</p>
 <h3>Pre-existing <code>fakeClient.GetBranches</code> bug is now load-bearing (CQ + MT + DR)</h3>
-<p><code>protect_test.go:115-133</code> -- The mock iterates range copies, so neither <code>onlyProtected</code> filtering nor <code>Protected = false</code> clearing actually takes effect. Tests pass by accident. The new feature's correctness depends on the <code>Protected</code> field, so the mock gap is now load-bearing.</p>
+<p><code><a href="https://github.com/kubernetes-sigs/prow/blob/f1b83a2b61ff3db5fc7eaaa77b6d728c0bea001d/protect_test.go#L115-L133">protect_test.go:115-133</a></code> -- The mock iterates range copies, so neither <code>onlyProtected</code> filtering nor <code>Protected = false</code> clearing actually takes effect. Tests pass by accident. The new feature's correctness depends on the <code>Protected</code> field, so the mock gap is now load-bearing.</p>
 <h2>Correctness Analysis</h2>
 <h3>Two-call API pattern &amp; the <code>Protected</code> field</h3>
 <p><code>UpdateRepo</code> calls <code>GetBranches</code> twice: first with <code>onlyProtected=false</code> (returns all branches, <code>Protected</code> may be unreliable), then with <code>onlyProtected=true</code> (returns only protected branches, <code>Protected=true</code>). The new code appends both results into <code>allBranches</code> and deduplicates with a <code>seen</code> map.</p>
@@ -160,11 +163,11 @@ refresh_log:
 </li></ol>
 <h2>Detailed Findings</h2>
 <h3>#1 -- Pre-existing mock bug (not introduced by this PR) (CQ + MT + DR)</h3>
-<p><code>protect_test.go:115-133</code> -- The mock <code>GetBranches</code> iterates range copies, so neither the <code>onlyProtected</code> filtering nor the <code>Protected = false</code> clearing actually takes effect. Both calls return the same unmodified slice. Tests pass because <code>startUnprotected</code> defaults to <code>false</code>, making all branches <code>Protected: true</code>. Since the new feature depends on <code>Protected</code>, consider fixing the mock.</p>
+<p><code><a href="https://github.com/kubernetes-sigs/prow/blob/f1b83a2b61ff3db5fc7eaaa77b6d728c0bea001d/protect_test.go#L115-L133">protect_test.go:115-133</a></code> -- The mock <code>GetBranches</code> iterates range copies, so neither the <code>onlyProtected</code> filtering nor the <code>Protected = false</code> clearing actually takes effect. Both calls return the same unmodified slice. Tests pass because <code>startUnprotected</code> defaults to <code>false</code>, making all branches <code>Protected: true</code>. Since the new feature depends on <code>Protected</code>, consider fixing the mock.</p>
 <h3>#2 -- <code>allBranches</code> collects more than needed (CQ + MT)</h3>
-<p><code>protect.go:329,335</code> -- <code>allBranches</code> appends branches from both API calls, duplicating every branch. Since removal only applies to branches that are currently protected, you only need the result of the <code>onlyProtected=true</code> call. This eliminates the <code>seen</code> map entirely.</p>
+<p><code><a href="https://github.com/kubernetes-sigs/prow/blob/f1b83a2b61ff3db5fc7eaaa77b6d728c0bea001d/protect.go#L329">protect.go:329</a>,335</code> -- <code>allBranches</code> appends branches from both API calls, duplicating every branch. Since removal only applies to branches that are currently protected, you only need the result of the <code>onlyProtected=true</code> call. This eliminates the <code>seen</code> map entirely.</p>
 <h3>#3 -- Verbose call-flow comment (CQ)</h3>
-<p><code>protect.go:365</code> -- The comment <code>// Flow: updates channel -&gt; configureBranches() -&gt; client.RemoveBranchProtection()</code> traces a call path that is apparent from reading the code. The <code>// nil Request triggers RemoveBranchProtection</code> comment on the line above is more useful. Consider removing only the flow comment.</p>
+<p><code><a href="https://github.com/kubernetes-sigs/prow/blob/f1b83a2b61ff3db5fc7eaaa77b6d728c0bea001d/protect.go#L365">protect.go:365</a></code> -- The comment <code>// Flow: updates channel -&gt; configureBranches() -&gt; client.RemoveBranchProtection()</code> traces a call path that is apparent from reading the code. The <code>// nil Request triggers RemoveBranchProtection</code> comment on the line above is more useful. Consider removing only the flow comment.</p>
 <h3>#4 -- Missing test: include + exclude interaction (CQ)</h3>
 <p>When both <code>Include</code> and <code>Exclude</code> are configured, exclusions are never checked (inclusions handle everything). No test verifies what happens to the removal logic in this case.</p>
 <h2>Required Changes</h2>

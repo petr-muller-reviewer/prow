@@ -3,7 +3,7 @@ pr: kubernetes-sigs/prow#478
 title: "branchprotector: remove protection from excluded branches"
 head_sha: f1b83a2b61ff3db5fc7eaaa77b6d728c0bea001d
 base: main
-reviewed_at: 2026-10-05T21:46:29Z
+reviewed_at: 2026-11-16T23:30:59Z
 verdict: request-changes
 gate:
   decision: do-not-merge
@@ -17,6 +17,9 @@ refresh_log:
   - previous_sha: f1b83a2b61ff3db5fc7eaaa77b6d728c0bea001d
     new_sha: f1b83a2b61ff3db5fc7eaaa77b6d728c0bea001d
     summary: "No code changes. Added the maintainer's Aug 13 position against changing exclude semantics or expanding branchprotector, and noted the do-not-merge/hold label."
+  - previous_sha: f1b83a2b61ff3db5fc7eaaa77b6d728c0bea001d
+    new_sha: f1b83a2b61ff3db5fc7eaaa77b6d728c0bea001d
+    summary: "No code changes and no human activity. On 2026-11-11 k8s-triage-robot applied lifecycle/stale after 90d of inactivity."
 ---
 
 # PR #478 -- branchprotector: remove protection from excluded branches
@@ -58,7 +61,7 @@ When branches are added to the `exclude` list, branchprotector correctly skips a
 | `cmd/branchprotector/protect.go` | Collects `allBranches`; after main loop, iterates excluded+protected branches and sends removal requests |
 | `cmd/branchprotector/protect_test.go` | Adds expected `Request: nil` entries to two existing test cases |
 
-Since previous review: no code changes; the PR remains open at the same head. On 2026-05-14, Prucek removed the rotten lifecycle label. On 2026-08-13, petr-muller said in issue #477 that they oppose changing `exclude` semantics or adding more branchprotector features, are moving toward closing both #477 and #478, and would leave the PR open briefly for counterarguments; `/hold` was added to this PR. No new inline comments or submitted reviews were added.
+Since previous review: no code changes; the PR remains open at the same head. On 2026-05-14, Prucek removed the rotten lifecycle label. On 2026-08-13, petr-muller said in issue #477 that they oppose changing `exclude` semantics or adding more branchprotector features, are moving toward closing both #477 and #478, and would leave the PR open briefly for counterarguments; `/hold` was added to this PR. No new inline comments or submitted reviews were added. Since the last refresh, the only activity is automated: on 2026-11-11 k8s-triage-robot applied `lifecycle/stale` after 90 days of inactivity, with no new comments, reviews, or commits.
 
 ### Since initial review
 

@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#1072</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>chore(deps): bump github.com/GoogleCloudPlatform/testgrid from 0.0.176 to 0.0.178</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1072">kubernetes-sigs/prow#1072</a> · base <code>main</code> · head_sha <code>566c9be2364f</code> · reviewed_at <code>2026-11-16T23:07:18Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span></div>
+<h2>Verdict</h2>
+<p>Approve: dep-only patch bump of a direct dependency, 18 days soaked, no advisories fixed or introduced, and none of the changed TestGrid code is on a sensitive path Prow exercises.</p>
+<p><code>testgrid v0.0.176 -&gt; v0.0.178</code> changes no package Prow actually parses against: <code>metadata</code>, <code>metadata/junit</code> and <code>config</code> are byte-identical, <code>pb/config</code> only gains regenerated descriptors and <code>reserved</code> ranges (no exported field changes), and the one behavioral fix (<code>pkg/pubsub</code>) is in a package Prow does not import. OSV has no advisories for either version, and <code>govulncheck</code> reports the same two pre-existing module findings at base and head. The only thing that deserves a conscious nod is that the bump lifts <code>go.mod</code>'s <code>go</code> directive from 1.26.4 to 1.26.9, because testgrid v0.0.178 declares that minimum — harmless for CI (<code>.go-version</code> is 1.27.3), but it does raise the local build floor.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Bumps the direct dependency <code>github.com/GoogleCloudPlatform/testgrid</code> from <code>v0.0.176</code> to <code>v0.0.178</code> in <code>go.mod</code>, with the matching <code>go.sum</code> hashes; no transitive requirements change.
+</li>
+<li>Also raises the module's <code>go</code> directive from <code>1.26.4</code> to <code>1.26.9</code>, which dependabot did implicitly because testgrid v0.0.178's own <code>go.mod</code> declares <code>go 1.26.9</code>.
+</li>
+<li>Touches nothing in Prow's own source, config, docs or tests.
+</li>
+<li><code>go mod tidy -diff</code> is clean and every package importing testgrid builds.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-gray">nit</span>Go toolchain floor raised in a PR titled as a dependency bump</h3>
+<ul>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/566c9be2364fbd5fac75887d9ff3ebcdffea7669/go.mod#L3-L11">go.mod:3-11</a></code>
+</li>
+<li>concern: The <code>go</code> directive moves <code>1.26.4 -&gt; 1.26.9</code> in the same commit, and neither the title nor the commit body mentions it. It is a real constraint change for anyone building with <code>GOTOOLCHAIN=local</code> and a pre-1.26.9 toolchain, even though CI is unaffected because <code>.go-version</code> pins <code>1.27.3</code>.
+</li>
+<li>excerpt:<pre><code>go 1.26.9
+...
+	github.com/GoogleCloudPlatform/testgrid v0.0.178</code></pre>
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>Freshness: <code>v0.0.178</code> is a real immutable tag cut <code>2026-10-29T08:56Z</code> (18 days before review); <code>v0.0.177</code> was <code>2026-10-21</code>. Not a pseudo-version, no soak concern.
+</li>
+<li>OSV: no advisories for <code>github.com/GoogleCloudPlatform/testgrid</code> at <code>v0.0.176</code> or <code>v0.0.178</code>.
+</li>
+<li><code>govulncheck</code>: module and symbol scans at merge-base and PR head find the identical set — <code>GO-2023-1901</code> (tektoncd/pipeline, reachable via <code>DeepCopyInto</code>/<code>Validate</code>) and <code>GO-2026-5932</code> (golang.org/x/crypto, imported-only). Both pre-exist the bump; nothing added or fixed.
+</li>
+<li>Changelog <code>v0.0.176...v0.0.178</code>: OWNERS/canary/prod autobump churn, three Go-toolchain bumps, "Port minor changes to upstream", "Ack unprocessable PubSub messages".
+</li>
+<li>Package diff: <code>metadata</code>, <code>metadata/junit</code> and <code>config</code> unchanged; <code>pb/config</code>/<code>pb/state</code> regenerated with comment/<code>reserved</code> edits and zero exported struct-field changes; <code>util/gcs</code> swaps <code>== storage.ErrObjectNotExist</code> for <code>errors.Is</code> and adds <code>Path.Get()</code> (additive).
+</li>
+<li>Exposure: Prow uses only <code>gcs.Path</code>/<code>PathForSpec</code> from <code>util/gcs</code> (<code><a href="https://github.com/kubernetes-sigs/prow/blob/566c9be2364fbd5fac75887d9ff3ebcdffea7669/pkg/gcsupload/options.go#L26">pkg/gcsupload/options.go:26</a></code>, <code><a href="https://github.com/kubernetes-sigs/prow/blob/566c9be2364fbd5fac75887d9ff3ebcdffea7669/pkg/io/opener.go#L42">pkg/io/opener.go:42</a></code>), none of the changed helpers; the pubsub fix is unimported.
+</li>
+<li>Build: <code>go build ./cmd/deck ./pkg/crier/reporters/gcs/... ./pkg/gcsupload ./pkg/initupload ./pkg/io ./pkg/pod-utils/downwardapi ./pkg/resultstore ./pkg/sidecar ./pkg/spyglass/...</code> passes; <code>go mod tidy -diff</code> empty.
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>Could the PR description note that this also raises the module's minimum Go version to 1.26.9, so the toolchain change is visible in the merge commit?
+</li></ul>
+<h2>Dependency followups</h2>
+<p>No improvement opportunities identified. Examined <code>github.com/GoogleCloudPlatform/testgrid v0.0.176 -&gt; v0.0.178</code> (the only module whose version changed; the <code>go</code> directive move <code>1.26.4 -&gt; 1.26.9</code> follows from it), reading both <code>v0.0.177</code> and <code>v0.0.178</code> release notes plus the full commit list and the source diff of the packages Prow imports (<code>metadata</code>, <code>metadata/junit</code>, <code>util/gcs</code>, <code>config</code>, <code>pb/config</code>).</p>
+<ul>
+<li>No new or changed deprecations: <code>metadata</code>/<code>metadata/junit</code>/<code>config</code> are byte-identical between the two versions, and the existing <code>Deprecated*</code> fields predate <code>v0.0.176</code>.
+</li>
+<li>Nothing to adopt from the code changes: the only behavioral fix ("Ack unprocessable PubSub messages", <code>pkg/pubsub</code>, <code>Nack</code> -&gt; <code>Ack</code> on unparseable attributes) is in a package Prow never imports; the <code>util/gcs</code> changes are internal (<code>errors.Is</code> in TestGrid's own <code>Stat</code>/<code>sort</code> paths — Prow's equivalent at <code><a href="https://github.com/kubernetes-sigs/prow/blob/566c9be2364fbd5fac75887d9ff3ebcdffea7669/pkg/io/opener.go#L177">pkg/io/opener.go:177</a></code> already uses <code>errors.Is</code>) and an additive <code>Path.Get()</code> accessor Prow has no call site for (<code><a href="https://github.com/kubernetes-sigs/prow/blob/566c9be2364fbd5fac75887d9ff3ebcdffea7669/pkg/gcsupload/options.go#L63">pkg/gcsupload/options.go:63</a></code> uses the type only via <code>String()</code>/<code>Bucket()</code>/<code>Object()</code>).
+</li>
+<li><code>pb/config</code>/<code>pb/state</code> contain only regenerated descriptors, comment edits and new <code>reserved</code> ranges; no exported field additions or removals to migrate to.
+</li>
+<li>The remaining commits are OWNERS changes and canary/prod autobumps, plus TestGrid's own Go-toolchain bumps, which unlock nothing on our side.
+</li></ul>
+</main></body></html>

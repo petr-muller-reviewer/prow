@@ -31,34 +31,44 @@ ul, ol { padding-left:1.5rem; }
 details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
 </style></head><body><main>
 <h1>feat: add squash-commits mode to cherrypicker</h1>
-<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1013">kubernetes-sigs/prow#1013</a> · base <code>main</code> · head_sha <code>90697ba698cf</code> · reviewed_at <code>2026-10-28T00:51:53Z</code></div>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1013">kubernetes-sigs/prow#1013</a> · base <code>main</code> · head_sha <code>90697ba698cf</code> · reviewed_at <code>2026-11-16T23:20:20Z</code></div>
 <div class="badges"><span class="badge c-red">verdict: request-changes</span><span class="badge c-red">gate: do-not-merge</span></div>
 <details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#1013
 title: &quot;feat: add squash-commits mode to cherrypicker&quot;
 head_sha: 90697ba698cf1d87b59e524183ebfc321c5eecc0
 base: main
-reviewed_at: 2026-10-28T00:51:53Z
+reviewed_at: 2026-11-16T23:20:20Z
 verdict: request-changes
 checkout_sha: 340ff7c5d792b15f5a2757ce1574704d8fbd5491
 gate:
   decision: do-not-merge
   gated_at: 2026-10-28T00:52:10Z
   gated_head_sha: 90697ba698cf1d87b59e524183ebfc321c5eecc0
-  reviewed_head_sha: 90697ba698cf1d87b59e524183ebfc321c5eecc0</code></pre></details>
+  reviewed_head_sha: 90697ba698cf1d87b59e524183ebfc321c5eecc0
+refresh_log:
+  - at: 2026-11-16T23:20:20Z
+    old_sha: 90697ba698cf1d87b59e524183ebfc321c5eecc0
+    new_sha: 90697ba698cf1d87b59e524183ebfc321c5eecc0
+    summary: &quot;No code changes; incorporated @thc1006&#x27;s 2026-11-12 review, which reproduced the temporary-file race and raised the base-branch fetch, attribution assertions, and submodule pointer.&quot;</code></pre></details>
 <h2>Gate</h2>
 <p>Decision: <strong>do-not-merge</strong> at <code>90697ba698cf1d87b59e524183ebfc321c5eecc0</code> (2026-10-28T00:52:10Z).</p>
 <p>The PR head is unchanged since the saved review, and the blocking temporary diff-file race remains. Requests for the same PR onto different target branches can execute concurrently but still write and remove the same filename, causing otherwise valid backports to fail. Prior GitHub review concerns about metadata failures, co-author trailers, message argument limits, binary contents, intermediate-commit conflicts, merge-commit PRs, and reverting base-only changes are addressed; the remaining suggestions do not independently block merging.</p>
+<p>Reassessed 2026-11-16 after @thc1006's 2026-11-12 review: no code changed at <code>90697ba</code>. That reviewer independently reproduced the temporary-file race by holding one pick at <code>Apply</code> until another returned, which corroborates the blocking finding. Three further items were raised: fetching the deleted base branch, missing author/sign-off assertions, and submodule pointer omission. All are still present at this head.</p>
 <h3>Findings disposition</h3>
 <ul>
-<li><strong>Not addressed; blocks merge — REVIEW.md, <code>cmd/external-plugins/cherrypicker/server.go:913-917</code>:</strong> the filename contains only org, repo, and PR number, while request locks also include the target branch. Use a unique temporary file per invocation, close it before applying, and cover simultaneous requests for different targets.
+<li><strong>Not addressed; blocks merge — REVIEW.md, <code><a href="https://github.com/kubernetes-sigs/prow/blob/90697ba698cf1d87b59e524183ebfc321c5eecc0/cmd/external-plugins/cherrypicker/server.go#L913-L917">cmd/external-plugins/cherrypicker/server.go:913-917</a></code>:</strong> the filename contains only org, repo, and PR number, while request locks also include the target branch. Use a unique temporary file per invocation, close it before applying, and cover simultaneous requests for different targets.
 </li>
-<li><strong>Not addressed; non-blocking — REVIEW.md, <code>cmd/external-plugins/cherrypicker/server.go:701-711</code>:</strong> preparation and commit failures still enter the apply-failure response and can create a manual-conflict issue. Improve classification and replace the unconditional <code>git am</code> error text.
+<li><strong>Not addressed; non-blocking — REVIEW.md, <code><a href="https://github.com/kubernetes-sigs/prow/blob/90697ba698cf1d87b59e524183ebfc321c5eecc0/cmd/external-plugins/cherrypicker/server.go#L701-L711">cmd/external-plugins/cherrypicker/server.go:701-711</a></code>:</strong> preparation and commit failures still enter the apply-failure response and can create a manual-conflict issue. Improve classification and replace the unconditional <code>git am</code> error text.
 </li>
-<li><strong>Not addressed; non-blocking — REVIEW.md, <code>cmd/external-plugins/cherrypicker/server_test.go:1946-1949</code>, <code>1979-1982</code>, <code>2024-2037</code>:</strong> one real PR commit is paired with two synthetic metadata entries, and final author/trailer/sign-off assertions remain absent.
+<li><strong>Not addressed; non-blocking — REVIEW.md, <code><a href="https://github.com/kubernetes-sigs/prow/blob/90697ba698cf1d87b59e524183ebfc321c5eecc0/cmd/external-plugins/cherrypicker/server_test.go#L1946-L1949">cmd/external-plugins/cherrypicker/server_test.go:1946-1949</a></code>, <code>1979-1982</code>, <code>2024-2037</code>:</strong> one real PR commit is paired with two synthetic metadata entries, and final author/trailer/sign-off assertions remain absent.
 </li>
-<li><strong>Borderline; accepted follow-up — @thc1006, <code>cmd/external-plugins/cherrypicker/server.go:921</code>:</strong> target-side renames remain unsupported by the net-diff apply path. The reviewer explicitly accepted a follow-up in the 2026-10-20T17:46:38Z review, and the PR description documents the limitation; this does not block merge.
+<li><strong>Not addressed; non-blocking (new) — REVIEW.md, <code><a href="https://github.com/kubernetes-sigs/prow/blob/90697ba698cf1d87b59e524183ebfc321c5eecc0/cmd/external-plugins/cherrypicker/server.go#L895-L897">cmd/external-plugins/cherrypicker/server.go:895-897</a></code>:</strong> a pick fails with <code>couldn&#x27;t find remote ref</code> when the PR's base branch was deleted after merge. Fetch <code>pr.Base.SHA</code> instead; GitHub serves a commit by SHA without a containing branch.
 </li>
-<li><strong>Can't tell; compatibility decision — REVIEW.md, <code>pkg/git/v2/interactor.go:63-84</code>:</strong> four new interface methods require updates in external implementations of <code>Interactor</code> or <code>RepoClient</code>. No affected downstream implementation or explicit maintainer acceptance was established; confirm the intended source-compatibility policy rather than treating this as a demonstrated deployment outage.
+<li><strong>Not addressed; non-blocking (new) — REVIEW.md, <code><a href="https://github.com/kubernetes-sigs/prow/blob/90697ba698cf1d87b59e524183ebfc321c5eecc0/pkg/git/v2/interactor.go#L666-L668">pkg/git/v2/interactor.go:666-668</a></code>:</strong> <code>git diff --binary</code> honors <code>diff.submodule=log</code> and <code>.gitmodules</code> <code>ignore = all</code>, silently dropping submodule pointer changes. Add <code>--ignore-submodules=none --submodule=short</code>.
+</li>
+<li><strong>Borderline; accepted follow-up — @thc1006, <code><a href="https://github.com/kubernetes-sigs/prow/blob/90697ba698cf1d87b59e524183ebfc321c5eecc0/cmd/external-plugins/cherrypicker/server.go#L921">cmd/external-plugins/cherrypicker/server.go:921</a></code>:</strong> target-side renames remain unsupported by the net-diff apply path. The reviewer explicitly accepted a follow-up in the 2026-10-20T17:46:38Z review, and the PR description documents the limitation; this does not block merge.
+</li>
+<li><strong>Can't tell; compatibility decision — REVIEW.md, <code><a href="https://github.com/kubernetes-sigs/prow/blob/90697ba698cf1d87b59e524183ebfc321c5eecc0/pkg/git/v2/interactor.go#L63-L84">pkg/git/v2/interactor.go:63-84</a></code>:</strong> four new interface methods require updates in external implementations of <code>Interactor</code> or <code>RepoClient</code>. No affected downstream implementation or explicit maintainer acceptance was established; confirm the intended source-compatibility policy rather than treating this as a demonstrated deployment outage.
 </li></ul>
 <h3>Independent merge risk</h3>
 <ul>
@@ -72,11 +82,11 @@ gate:
 </li></ul>
 <h3>Gating list</h3>
 <ol>
-<li><strong>REVIEW.md blocking finding — <code>cmd/external-plugins/cherrypicker/server.go:913-917</code>:</strong> isolate each invocation's diff file and verify concurrent requests cannot overwrite or delete one another's input. The current code is unchanged; this is the item driving <strong>do-not-merge</strong>.
+<li><strong>REVIEW.md blocking finding — <code><a href="https://github.com/kubernetes-sigs/prow/blob/90697ba698cf1d87b59e524183ebfc321c5eecc0/cmd/external-plugins/cherrypicker/server.go#L913-L917">cmd/external-plugins/cherrypicker/server.go:913-917</a></code>:</strong> isolate each invocation's diff file and verify concurrent requests cannot overwrite or delete one another's input. The current code is unchanged; this is the item driving <strong>do-not-merge</strong>.
 </li></ol>
 <h2>Verdict</h2>
 <p>Request changes: fix the shared temporary diff-file race before merging.</p>
-<p>Code Quality and Deployment Risk independently identified the race, and verification confirmed that requests for different target branches can overwrite or delete each other's diff. The design otherwise looks reasonable, defaults remain unchanged, and both affected package test suites pass. Diagnostics and integration-test improvements are non-blocking; downstream interface compatibility needs an explicit maintainer decision, with no affected implementation established.</p>
+<p>Code Quality and Deployment Risk independently identified the race, and verification confirmed that requests for different target branches can overwrite or delete each other's diff. The design otherwise looks reasonable, defaults remain unchanged, and both affected package test suites pass. Three further findings were added from the 2026-11-12 review: base-branch fetch by name, missing attribution assertions, and submodule pointer omission. Diagnostics and integration-test improvements are non-blocking; downstream interface compatibility needs an explicit maintainer decision, with no affected implementation established.</p>
 <h2>What this PR does</h2>
 <ul>
 <li>Adds a default-off <code>--squash-commits</code> flag to cherrypicker.
@@ -89,12 +99,20 @@ gate:
 </li>
 <li>Keeps the existing per-commit <code>git am</code> path when squash mode is disabled.
 </li></ul>
+<p>Since previous review:</p>
+<ul>
+<li>No code changes; the head remains <code>90697ba</code>.
+</li>
+<li>@thc1006 approved on 2026-10-21, then returned on 2026-11-12 with four items: repeat-pick cleanup, deleted base branch, missing attribution assertions, and submodule pointers.
+</li>
+<li>That reviewer independently reproduced the temporary-file race, which remains the only gate-driving finding.
+</li></ul>
 <h2>Findings</h2>
 <h3><span class="tag c-red">blocking</span>Use a unique temporary diff file per request</h3>
 <ul>
-<li>where: <code>cmd/external-plugins/cherrypicker/server.go:913-917</code>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/90697ba698cf1d87b59e524183ebfc321c5eecc0/cmd/external-plugins/cherrypicker/server.go#L913-L917">cmd/external-plugins/cherrypicker/server.go:913-917</a></code>
 </li>
-<li>concern: CONFIRMED; Code Quality and Deployment Risk independently identified this race. Webhook handlers run concurrently and locks include the target branch, so requests for the same PR onto different branches can truncate or delete each other's diff and fail otherwise valid backports. Use <code>os.CreateTemp</code>, close the completed file before applying it, remove only that invocation's file, and add a regression test for concurrent squash requests to different targets.
+<li>concern: CONFIRMED; Code Quality and Deployment Risk independently identified this race, and @thc1006 reproduced it on 2026-11-12 by holding one pick at <code>Apply</code> until another returned (the second failed with <code>can&#x27;t open patch ...: No such file or directory</code>). Webhook handlers run concurrently and locks include the target branch, so requests for the same PR onto different branches can truncate or delete each other's diff and fail otherwise valid backports. Use <code>os.CreateTemp</code>, close the completed file before applying it, remove only that invocation's file, and add a regression test for concurrent squash requests to different targets.
 </li>
 <li>excerpt:<pre><code>diffPath := fmt.Sprintf(&quot;/tmp/%s_%s_%d.squash.diff&quot;, org, repo, num)
 if err := os.WriteFile(diffPath, diff, 0644); err != nil {
@@ -104,7 +122,7 @@ defer os.Remove(diffPath)</code></pre>
 </li></ul>
 <h3><span class="tag c-amber">should-fix</span>Distinguish preparation, apply, and commit failures</h3>
 <ul>
-<li>where: <code>cmd/external-plugins/cherrypicker/server.go:701-704</code>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/90697ba698cf1d87b59e524183ebfc321c5eecc0/cmd/external-plugins/cherrypicker/server.go#L701-L704">cmd/external-plugins/cherrypicker/server.go:701-704</a></code>
 </li>
 <li>concern: Non-blocking suggestion shared by Code Quality and Maintainability. New fetch, diff-generation, and commit failures enter this same apply-failure branch, which reports a failed <code>git am</code> and can create a manual-conflict issue when <code>issueOnConflict</code> is enabled. Use accurate operation descriptions and distinguish preparation and commit errors from an actual apply conflict.
 </li>
@@ -115,18 +133,36 @@ defer os.Remove(diffPath)</code></pre>
 </li></ul>
 <h3><span class="tag c-amber">should-fix</span>Exercise real multi-commit history and final attribution</h3>
 <ul>
-<li>where: <code>cmd/external-plugins/cherrypicker/server_test.go:1979-1982</code>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/90697ba698cf1d87b59e524183ebfc321c5eecc0/cmd/external-plugins/cherrypicker/server_test.go#L1979-L1982">cmd/external-plugins/cherrypicker/server_test.go:1979-1982</a></code>, <code>250-283</code>, <code>2024-2037</code>
 </li>
-<li>concern: Non-blocking test improvement shared by Code Quality and Maintainability. The integration fixture creates only one actual PR commit but supplies two synthetic metadata entries, and its final assertions inspect commit count and file contents rather than author, co-author trailers, or sign-off. Create a genuine multi-commit history that rewrites the same lines, align metadata with it, and inspect the resulting commit's attribution.
+<li>concern: Non-blocking test improvement shared by Code Quality and Maintainability, and repeated by @thc1006 on 2026-11-12. The integration fixture creates only one actual PR commit but supplies two synthetic metadata entries, and its final assertions inspect commit count and file contents rather than author, co-author trailers, or sign-off; removing <code>--author</code> or <code>--signoff</code> from <code>CommitWithAuthor</code> keeps the suites green. Create a genuine multi-commit history that rewrites the same lines, align metadata with it, and have <code>capturePusher</code> record <code>git log -1 --format=%an &lt;%ae&gt;%n%B</code> so author and trailers can be asserted.
 </li>
 <li>excerpt:<pre><code>commits: []github.RepositoryCommit{
     commit(&quot;alice&quot;, &quot;Alice&quot;, &quot;alice@x.com&quot;, &quot;bump magic number&quot;),
     commit(&quot;bob&quot;, &quot;Bob&quot;, &quot;bob@x.com&quot;, &quot;add comment&quot;),
 },</code></pre>
 </li></ul>
+<h3><span class="tag c-amber">should-fix</span>Fetch the recorded base SHA when the base branch is gone</h3>
+<ul>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/90697ba698cf1d87b59e524183ebfc321c5eecc0/cmd/external-plugins/cherrypicker/server.go#L891-L897">cmd/external-plugins/cherrypicker/server.go:891-897</a></code>
+</li>
+<li>concern: <code>r.FetchRef(baseBranch)</code> fails with <code>couldn&#x27;t find remote ref</code> when the PR's base branch has been deleted, for example a feature branch removed after merge, so an otherwise applicable pick is reported as a failed apply. The merge base only needs <code>pr.Base.SHA</code>, which GitHub serves by commit SHA even when no branch contains it. Fetch <code>pr.Base.SHA</code> instead and keep the three-dot merge-base diff.
+</li>
+<li>excerpt:<pre><code>if err := r.FetchRef(baseBranch); err != nil {
+    return fmt.Errorf(&quot;failed to fetch base branch %q: %w&quot;, baseBranch, err)
+}</code></pre>
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>Keep submodule pointer changes in the squashed diff</h3>
+<ul>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/90697ba698cf1d87b59e524183ebfc321c5eecc0/pkg/git/v2/interactor.go#L662-L668">pkg/git/v2/interactor.go:662-668</a></code>
+</li>
+<li>concern: The diff inherits <code>diff.submodule=log</code> and <code>.gitmodules</code> <code>ignore = all</code>, so a submodule pointer change is omitted; apply and commit then succeed while silently keeping the old pointer. Add <code>--ignore-submodules=none --submodule=short</code> and assert the submodule entry in the pushed commit.
+</li>
+<li>excerpt:<pre><code>out, err := i.executor.Run(&quot;diff&quot;, &quot;--binary&quot;, &quot;--no-color&quot;, &quot;--no-ext-diff&quot;, &quot;--no-textconv&quot;, &quot;-U3&quot;, &quot;--src-prefix=a/&quot;, &quot;--dst-prefix=b/&quot;, from, to)</code></pre>
+</li></ul>
 <h3><span class="tag c-blue">question</span>Confirm the exported interface compatibility decision</h3>
 <ul>
-<li>where: <code>pkg/git/v2/interactor.go:63-67</code>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/90697ba698cf1d87b59e524183ebfc321c5eecc0/pkg/git/v2/interactor.go#L63-L67">pkg/git/v2/interactor.go:63-67</a></code>
 </li>
 <li>concern: Is adding four methods to exported <code>Interactor</code>, also embedded by <code>RepoClient</code>, acceptable for downstream implementations, or should the new operations use an optional capability interface? The added methods are confirmed, but no affected downstream implementation was identified; this is a conditional source-compatibility question rather than a demonstrated deployment break or required change.
 </li>
@@ -139,7 +175,7 @@ CommitWithAuthor(message, author string, signoff bool) error</code></pre>
 <h2>Resolved</h2>
 <h3><span class="tag c-amber">should-fix</span>Abort when commit metadata cannot be loaded</h3>
 <ul>
-<li>where: cmd/external-plugins/cherrypicker/server.go:813-827
+<li>where: <a href="https://github.com/kubernetes-sigs/prow/blob/90697ba698cf1d87b59e524183ebfc321c5eecc0/cmd/external-plugins/cherrypicker/server.go#L813-L827">cmd/external-plugins/cherrypicker/server.go:813-827</a>
 </li>
 <li>concern: If listing the pull request's commits fails, the code logs a warning and continues with an empty commit list and author. It can then create a title-only commit attributed to the bot, losing the original authorship.
 </li>
@@ -152,11 +188,11 @@ author := primaryAuthor(commits, prAuthorLogin)
 message := squashCommitMessage(title, commits, author)
 return r.CommitWithAuthor(message, author, true)</code></pre>
 </li>
-<li>resolution: The current code aborts when either ListPullRequestCommits or GetPullRequest fails, before applying the diff, and returns a metadata-specific response (server.go:697, 882-894).
+<li>resolution: The current code aborts when either ListPullRequestCommits or GetPullRequest fails, before applying the diff, and returns a metadata-specific response (<a href="https://github.com/kubernetes-sigs/prow/blob/90697ba698cf1d87b59e524183ebfc321c5eecc0/server.go#L697">server.go:697</a>, 882-894).
 </li></ul>
 <h3><span class="tag c-amber">should-fix</span>Check existing co-author trailers in the trailer block</h3>
 <ul>
-<li>where: cmd/external-plugins/cherrypicker/server.go:920-925
+<li>where: <a href="https://github.com/kubernetes-sigs/prow/blob/90697ba698cf1d87b59e524183ebfc321c5eecc0/cmd/external-plugins/cherrypicker/server.go#L920-L925">cmd/external-plugins/cherrypicker/server.go:920-925</a>
 </li>
 <li>concern: For a multi-commit PR, commit bodies are copied into the base message. If one body mentions a co-author trailer, the substring check treats it as present and omits the actual trailer, so GitHub does not credit that co-author.
 </li>
@@ -166,11 +202,11 @@ if !strings.Contains(lower, strings.ToLower(t)) {
     add = append(add, t)
 }</code></pre>
 </li>
-<li>resolution: Deduplication now scans only the final trailer block, and a regression test covers a co-author trailer inside a bullet body (server.go:1009-1050; server_test.go:1841-1855).
+<li>resolution: Deduplication now scans only the final trailer block, and a regression test covers a co-author trailer inside a bullet body (<a href="https://github.com/kubernetes-sigs/prow/blob/90697ba698cf1d87b59e524183ebfc321c5eecc0/server.go#L1009-L1050">server.go:1009-1050</a>; <a href="https://github.com/kubernetes-sigs/prow/blob/90697ba698cf1d87b59e524183ebfc321c5eecc0/server_test.go#L1841-L1855">server_test.go:1841-1855</a>).
 </li></ul>
 <h3><span class="tag c-amber">should-fix</span>Pass long commit messages without an argv limit</h3>
 <ul>
-<li>where: pkg/git/v2/interactor.go:439-449
+<li>where: <a href="https://github.com/kubernetes-sigs/prow/blob/90697ba698cf1d87b59e524183ebfc321c5eecc0/pkg/git/v2/interactor.go#L439-L449">pkg/git/v2/interactor.go:439-449</a>
 </li>
 <li>concern: The complete squashed message was passed as one --message argument. A sufficiently long pull request history could exceed Linux's per-argument limit and fail before Git ran.
 </li>
@@ -180,7 +216,7 @@ if out, err := i.executor.Run(args...); err != nil {
     return fmt.Errorf(&quot;error committing: %w. output: %s&quot;, err, string(out))
 }</code></pre>
 </li>
-<li>resolution: CommitWithAuthor now writes the message to a temporary file and invokes git commit with --file (interactor.go:472-489).
+<li>resolution: CommitWithAuthor now writes the message to a temporary file and invokes git commit with --file (<a href="https://github.com/kubernetes-sigs/prow/blob/90697ba698cf1d87b59e524183ebfc321c5eecc0/interactor.go#L472-L489">interactor.go:472-489</a>).
 </li></ul>
 <h2>Checked</h2>
 <ul>
@@ -191,6 +227,8 @@ if out, err := i.executor.Run(args...); err != nil {
 <li><code>go test ./cmd/external-plugins/cherrypicker ./pkg/git/v2</code> passed. The Deployment Risk reviewer also reported 20 passing repetitions of the squash integration tests; these do not exercise the concurrent-request race.
 </li>
 <li>The default-off flag preserves the existing <code>git am</code> path. No configuration migration or new Kubernetes RBAC/GitHub permission requirement was identified.
+</li>
+<li>Rechecked the 2026-11-12 review items against <code>90697ba</code>: the shared filename at <code><a href="https://github.com/kubernetes-sigs/prow/blob/90697ba698cf1d87b59e524183ebfc321c5eecc0/server.go#L913">server.go:913</a></code>, the branch-name fetch at <code><a href="https://github.com/kubernetes-sigs/prow/blob/90697ba698cf1d87b59e524183ebfc321c5eecc0/server.go#L895">server.go:895</a></code>, the missing attribution assertions in <code>capturePusher</code> (<code><a href="https://github.com/kubernetes-sigs/prow/blob/90697ba698cf1d87b59e524183ebfc321c5eecc0/server_test.go#L257-L283">server_test.go:257-283</a></code>), and the bare <code>git diff --binary</code> flags at <code><a href="https://github.com/kubernetes-sigs/prow/blob/90697ba698cf1d87b59e524183ebfc321c5eecc0/interactor.go#L668">interactor.go:668</a></code> are all present. No commits were added after 2026-10-21; the PR is <code>MERGEABLE</code>/<code>UNSTABLE</code> only because Tide still requires approval and lgtm labels, while the unit, integration, lint, and image-build jobs pass.
 </li>
 <li>Metadata retrieval and truncation validation precede applying changes. Squash mode refuses incomplete commit metadata, including histories exceeding the 250-commit API cap.
 </li>

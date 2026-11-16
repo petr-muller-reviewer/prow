@@ -3,7 +3,7 @@ pr: kubernetes-sigs/prow#1013
 title: "feat: add squash-commits mode to cherrypicker"
 head_sha: 90697ba698cf1d87b59e524183ebfc321c5eecc0
 base: main
-reviewed_at: 2026-10-28T00:51:53Z
+reviewed_at: 2026-11-16T23:20:20Z
 verdict: request-changes
 checkout_sha: 340ff7c5d792b15f5a2757ce1574704d8fbd5491
 gate:
@@ -11,6 +11,11 @@ gate:
   gated_at: 2026-10-28T00:52:10Z
   gated_head_sha: 90697ba698cf1d87b59e524183ebfc321c5eecc0
   reviewed_head_sha: 90697ba698cf1d87b59e524183ebfc321c5eecc0
+refresh_log:
+  - at: 2026-11-16T23:20:20Z
+    old_sha: 90697ba698cf1d87b59e524183ebfc321c5eecc0
+    new_sha: 90697ba698cf1d87b59e524183ebfc321c5eecc0
+    summary: "No code changes; incorporated @thc1006's 2026-11-12 review, which reproduced the temporary-file race and raised the base-branch fetch, attribution assertions, and submodule pointer."
 ---
 
 # Review
@@ -21,11 +26,15 @@ Decision: **do-not-merge** at `90697ba698cf1d87b59e524183ebfc321c5eecc0` (2026-1
 
 The PR head is unchanged since the saved review, and the blocking temporary diff-file race remains. Requests for the same PR onto different target branches can execute concurrently but still write and remove the same filename, causing otherwise valid backports to fail. Prior GitHub review concerns about metadata failures, co-author trailers, message argument limits, binary contents, intermediate-commit conflicts, merge-commit PRs, and reverting base-only changes are addressed; the remaining suggestions do not independently block merging.
 
+Reassessed 2026-11-16 after @thc1006's 2026-11-12 review: no code changed at `90697ba`. That reviewer independently reproduced the temporary-file race by holding one pick at `Apply` until another returned, which corroborates the blocking finding. Three further items were raised: fetching the deleted base branch, missing author/sign-off assertions, and submodule pointer omission. All are still present at this head.
+
 ### Findings disposition
 
 - **Not addressed; blocks merge — REVIEW.md, `cmd/external-plugins/cherrypicker/server.go:913-917`:** the filename contains only org, repo, and PR number, while request locks also include the target branch. Use a unique temporary file per invocation, close it before applying, and cover simultaneous requests for different targets.
 - **Not addressed; non-blocking — REVIEW.md, `cmd/external-plugins/cherrypicker/server.go:701-711`:** preparation and commit failures still enter the apply-failure response and can create a manual-conflict issue. Improve classification and replace the unconditional `git am` error text.
 - **Not addressed; non-blocking — REVIEW.md, `cmd/external-plugins/cherrypicker/server_test.go:1946-1949`, `1979-1982`, `2024-2037`:** one real PR commit is paired with two synthetic metadata entries, and final author/trailer/sign-off assertions remain absent.
+- **Not addressed; non-blocking (new) — REVIEW.md, `cmd/external-plugins/cherrypicker/server.go:895-897`:** a pick fails with `couldn't find remote ref` when the PR's base branch was deleted after merge. Fetch `pr.Base.SHA` instead; GitHub serves a commit by SHA without a containing branch.
+- **Not addressed; non-blocking (new) — REVIEW.md, `pkg/git/v2/interactor.go:666-668`:** `git diff --binary` honors `diff.submodule=log` and `.gitmodules` `ignore = all`, silently dropping submodule pointer changes. Add `--ignore-submodules=none --submodule=short`.
 - **Borderline; accepted follow-up — @thc1006, `cmd/external-plugins/cherrypicker/server.go:921`:** target-side renames remain unsupported by the net-diff apply path. The reviewer explicitly accepted a follow-up in the 2026-10-20T17:46:38Z review, and the PR description documents the limitation; this does not block merge.
 - **Can't tell; compatibility decision — REVIEW.md, `pkg/git/v2/interactor.go:63-84`:** four new interface methods require updates in external implementations of `Interactor` or `RepoClient`. No affected downstream implementation or explicit maintainer acceptance was established; confirm the intended source-compatibility policy rather than treating this as a demonstrated deployment outage.
 
@@ -44,7 +53,7 @@ The PR head is unchanged since the saved review, and the blocking temporary diff
 
 Request changes: fix the shared temporary diff-file race before merging.
 
-Code Quality and Deployment Risk independently identified the race, and verification confirmed that requests for different target branches can overwrite or delete each other's diff. The design otherwise looks reasonable, defaults remain unchanged, and both affected package test suites pass. Diagnostics and integration-test improvements are non-blocking; downstream interface compatibility needs an explicit maintainer decision, with no affected implementation established.
+Code Quality and Deployment Risk independently identified the race, and verification confirmed that requests for different target branches can overwrite or delete each other's diff. The design otherwise looks reasonable, defaults remain unchanged, and both affected package test suites pass. Three further findings were added from the 2026-11-12 review: base-branch fetch by name, missing attribution assertions, and submodule pointer omission. Diagnostics and integration-test improvements are non-blocking; downstream interface compatibility needs an explicit maintainer decision, with no affected implementation established.
 
 ## What this PR does
 
@@ -54,12 +63,18 @@ Code Quality and Deployment Risk independently identified the race, and verifica
 - Preserves primary authorship and collects co-author trailers, aborting when commit metadata is incomplete.
 - Keeps the existing per-commit `git am` path when squash mode is disabled.
 
+Since previous review:
+
+- No code changes; the head remains `90697ba`.
+- @thc1006 approved on 2026-10-21, then returned on 2026-11-12 with four items: repeat-pick cleanup, deleted base branch, missing attribution assertions, and submodule pointers.
+- That reviewer independently reproduced the temporary-file race, which remains the only gate-driving finding.
+
 ## Findings
 
 ### [blocking] Use a unique temporary diff file per request
 
 - where: `cmd/external-plugins/cherrypicker/server.go:913-917`
-- concern: CONFIRMED; Code Quality and Deployment Risk independently identified this race. Webhook handlers run concurrently and locks include the target branch, so requests for the same PR onto different branches can truncate or delete each other's diff and fail otherwise valid backports. Use `os.CreateTemp`, close the completed file before applying it, remove only that invocation's file, and add a regression test for concurrent squash requests to different targets.
+- concern: CONFIRMED; Code Quality and Deployment Risk independently identified this race, and @thc1006 reproduced it on 2026-11-12 by holding one pick at `Apply` until another returned (the second failed with `can't open patch ...: No such file or directory`). Webhook handlers run concurrently and locks include the target branch, so requests for the same PR onto different branches can truncate or delete each other's diff and fail otherwise valid backports. Use `os.CreateTemp`, close the completed file before applying it, remove only that invocation's file, and add a regression test for concurrent squash requests to different targets.
 - excerpt: |
     diffPath := fmt.Sprintf("/tmp/%s_%s_%d.squash.diff", org, repo, num)
     if err := os.WriteFile(diffPath, diff, 0644); err != nil {
@@ -79,13 +94,29 @@ Code Quality and Deployment Risk independently identified the race, and verifica
 
 ### [should-fix] Exercise real multi-commit history and final attribution
 
-- where: `cmd/external-plugins/cherrypicker/server_test.go:1979-1982`
-- concern: Non-blocking test improvement shared by Code Quality and Maintainability. The integration fixture creates only one actual PR commit but supplies two synthetic metadata entries, and its final assertions inspect commit count and file contents rather than author, co-author trailers, or sign-off. Create a genuine multi-commit history that rewrites the same lines, align metadata with it, and inspect the resulting commit's attribution.
+- where: `cmd/external-plugins/cherrypicker/server_test.go:1979-1982`, `250-283`, `2024-2037`
+- concern: Non-blocking test improvement shared by Code Quality and Maintainability, and repeated by @thc1006 on 2026-11-12. The integration fixture creates only one actual PR commit but supplies two synthetic metadata entries, and its final assertions inspect commit count and file contents rather than author, co-author trailers, or sign-off; removing `--author` or `--signoff` from `CommitWithAuthor` keeps the suites green. Create a genuine multi-commit history that rewrites the same lines, align metadata with it, and have `capturePusher` record `git log -1 --format=%an <%ae>%n%B` so author and trailers can be asserted.
 - excerpt: |
     commits: []github.RepositoryCommit{
         commit("alice", "Alice", "alice@x.com", "bump magic number"),
         commit("bob", "Bob", "bob@x.com", "add comment"),
     },
+
+### [should-fix] Fetch the recorded base SHA when the base branch is gone
+
+- where: `cmd/external-plugins/cherrypicker/server.go:891-897`
+- concern: `r.FetchRef(baseBranch)` fails with `couldn't find remote ref` when the PR's base branch has been deleted, for example a feature branch removed after merge, so an otherwise applicable pick is reported as a failed apply. The merge base only needs `pr.Base.SHA`, which GitHub serves by commit SHA even when no branch contains it. Fetch `pr.Base.SHA` instead and keep the three-dot merge-base diff.
+- excerpt: |
+    if err := r.FetchRef(baseBranch); err != nil {
+        return fmt.Errorf("failed to fetch base branch %q: %w", baseBranch, err)
+    }
+
+### [should-fix] Keep submodule pointer changes in the squashed diff
+
+- where: `pkg/git/v2/interactor.go:662-668`
+- concern: The diff inherits `diff.submodule=log` and `.gitmodules` `ignore = all`, so a submodule pointer change is omitted; apply and commit then succeed while silently keeping the old pointer. Add `--ignore-submodules=none --submodule=short` and assert the submodule entry in the pushed commit.
+- excerpt: |
+    out, err := i.executor.Run("diff", "--binary", "--no-color", "--no-ext-diff", "--no-textconv", "-U3", "--src-prefix=a/", "--dst-prefix=b/", from, to)
 
 ### [question] Confirm the exported interface compatibility decision
 
@@ -142,6 +173,7 @@ Code Quality and Deployment Risk independently identified the race, and verifica
 - All five changed files were reviewed from Code Quality, Maintainability, and Deployment Risk perspectives. The required change was checked against webhook goroutines, target-specific locks, and temporary-file creation/removal.
 - `go test ./cmd/external-plugins/cherrypicker ./pkg/git/v2` passed. The Deployment Risk reviewer also reported 20 passing repetitions of the squash integration tests; these do not exercise the concurrent-request race.
 - The default-off flag preserves the existing `git am` path. No configuration migration or new Kubernetes RBAC/GitHub permission requirement was identified.
+- Rechecked the 2026-11-12 review items against `90697ba`: the shared filename at `server.go:913`, the branch-name fetch at `server.go:895`, the missing attribution assertions in `capturePusher` (`server_test.go:257-283`), and the bare `git diff --binary` flags at `interactor.go:668` are all present. No commits were added after 2026-10-21; the PR is `MERGEABLE`/`UNSTABLE` only because Tide still requires approval and lgtm labels, while the unit, integration, lint, and image-build jobs pass.
 - Metadata retrieval and truncation validation precede applying changes. Squash mode refuses incomplete commit metadata, including histories exceeding the 250-commit API cap.
 - Integration coverage exercises an advancing base, a merge-commit PR, and a client without a GitUser getter. Commit messages use a file to avoid argument-size limits, and trailer deduplication checks the final trailer block.
 - Git operations remain in `pkg/git/v2`, while GitHub-specific authorship and message policy remain in cherrypicker. Maintenance burden is MEDIUM; no independent design blocker was identified.

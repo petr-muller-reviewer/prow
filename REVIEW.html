@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#1069</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>chore(deps): bump the aws group across 1 directory with 4 updates</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1069">kubernetes-sigs/prow#1069</a> · base <code>main</code> · head_sha <code>8d4e2fe716ec</code> · reviewed_at <code>2026-11-16T23:22:00Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span></div>
+<h2>Verdict</h2>
+<p>Safe to bump now.</p>
+<p>Dep-only PR: all four changed files are <code>go.mod</code>/<code>go.sum</code> for the root module and for <code>hack/tools</code>. The four direct bumps are ordinary AWS SDK patch releases (10, 10, 7 and 7 days old at review time), the indirect churn is the usual in-SDK module graph (<code>smithy-go</code>, <code>internal/v4a</code>, <code>service/sts</code>, <code>sso</code>, <code>ssooidc</code>, <code>signin</code>, <code>s3shared</code>, <code>checksum</code>, <code>presigned-url</code>, <code>accept-encoding</code>, <code>configsources</code>, <code>endpoints/v2</code>), and every added/removed <code>go.sum</code> line is an AWS module — no unrelated drift. OSV reports no advisories for any bumped module at either the old or the new version, <code>govulncheck</code> symbol scan over the only AWS-importing package is clean at base and head, the bump type-checks, and all Prow CI jobs pass. The one behavioural change in the range on a path we exercise (SigV4 canonical query parameters sorted after URI-encoding) is a spec-compliance fix that is a no-op for S3's plain-ASCII query keys.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Bumps <code>github.com/aws/aws-sdk-go-v2</code> v1.47.5 -&gt; v1.47.8 and <code>github.com/aws/aws-sdk-go-v2/service/s3</code> v1.114.6 -&gt; v1.114.9 (both from the 2026-11-06 SDK release train).
+</li>
+<li>Bumps <code>github.com/aws/aws-sdk-go-v2/config</code> v1.33.13 -&gt; v1.33.17 and <code>github.com/aws/aws-sdk-go-v2/credentials</code> v1.20.13 -&gt; v1.20.17 (2026-11-09 train).
+</li>
+<li>Pulls the matching indirect modules: <code>aws/smithy-go</code> v1.28.7 -&gt; v1.28.8 plus <code>internal/v4a</code> v1.5.8 -&gt; v1.5.11, <code>internal/configsources</code> v1.5.8 -&gt; v1.5.11, <code>internal/endpoints/v2</code> v2.8.8 -&gt; v2.8.11, <code>service/sts</code> v1.51.6 -&gt; v1.51.9, <code>sso</code> v1.39.1 -&gt; v1.39.4, <code>ssooidc</code> v1.44.1 -&gt; v1.44.4, <code>signin</code> v1.12.1 -&gt; v1.13.0, <code>s3shared</code> v1.20.8 -&gt; v1.20.11, <code>checksum</code> v1.11.9 -&gt; v1.11.12, <code>presigned-url</code> v1.14.8 -&gt; v1.14.11, <code>accept-encoding</code> v1.13.23 -&gt; v1.13.24, <code>eventstream</code> v1.7.25 -&gt; v1.7.26, <code>feature/ec2/imds</code> v1.20.5 -&gt; v1.20.8.
+</li>
+<li>Mirrors the same graph into <code>hack/tools/go.mod</code>, where all AWS modules are indirect (tooling chain: <code>awslabs/amazon-ecr-credential-helper</code>, ECR clients).
+</li></ul>
+<h2>Findings</h2>
+<p>None.</p>
+<p>No blocking, should-fix or nit-level findings. The question below is about test coverage against non-AWS S3 endpoints, not a defect in this diff.</p>
+<h2>Checked</h2>
+<ul>
+<li>Classification: <code>git diff --stat</code> shows only <code>go.mod</code>, <code>go.sum</code>, <code>hack/tools/go.mod</code>, <code>hack/tools/go.sum</code> changed — dep-only, no project code, so no code review pass.
+</li>
+<li>Freshness (proxy.golang.org <code>.info</code>, <code>Origin.Ref</code> confirms real tags, not pseudo-versions): core v1.47.8 2026-11-06 (10 days), s3 v1.114.9 2026-11-06 (10 days), config/credentials v1.33.17/v1.20.17 2026-11-09 (7 days), smithy-go v1.28.8 2026-11-03 (13 days). Nothing inside the &lt;5-day "too fresh" band; config/credentials at 7 days noted but the range is dependency-update-only for those two modules.
+</li>
+<li>Newer releases already exist as of 2026-11-16 (core v1.48.0, config v1.33.19, credentials v1.21.1, s3 v1.114.10, smithy-go v1.28.9) — this PR is a slightly stale dependabot snapshot, which is normal; the next run will supersede it.
+</li>
+<li>Vulnerabilities: OSV <code>v1</code> POSTs for <code>Go</code> ecosystem per module/version (core, config, credentials, service/s3, smithy-go x old+new) all returned <code>[]</code>. No advisory is fixed by the bump and none remains open.
+</li>
+<li>Reachability: <code>govulncheck</code> module scan is broken in this environment (v1.9.0, DB 2026-11-11: <code>-scan module</code> without patterns errors "no Go files in /workspace", with patterns errors "patterns are not accepted for module only scanning"). I substituted <code>govulncheck -format json ./pkg/io/...</code> (the only AWS-importing package) on both sides: zero findings at merge-base <code>86b2c49</code> and at head, and it type-checked successfully on both, which also confirms the bump builds. Given OSV is empty module-wide there is nothing a module-level scan could surface.
+</li>
+<li>CI: <code>pull-prow-unit-test</code>, <code>pull-prow-integration</code>, <code>pull-prow-image-build-test</code>, <code>pull-prow-verify-lint</code>, <code>pull-prow-unit-test-race-detector-nonblocking</code> all pass; <code>tide</code> is pending only on <code>approved</code>/<code>lgtm</code> labels.
+</li>
+<li>Usage: only <code>pkg/io/providers/aws.go</code> and <code>pkg/io/providers/aws_test.go</code> import AWS SDK v2 outside vendor. <code>go mod why -m</code> for <code>service/s3</code> and <code>config</code> both resolve through <code>sigs.k8s.io/prow/pkg/io/providers</code>. Direct deps: <code>aws-sdk-go-v2</code>, <code>config</code>, <code>credentials</code>, <code>service/s3</code>; <code>smithy-go</code> and the rest are <code>// indirect</code>.
+</li>
+<li>Changelog review, core v1.47.6..v1.47.8 / s3 v1.114.7..v1.114.9 / config v1.33.14..v1.33.17 / credentials v1.20.14..v1.20.17: rolled-up "dependency update" releases plus two real fixes — (a) clock skew now computed from the server <code>Date</code> header minus response-receive time instead of the request/response midpoint (core v1.47.7; exercised on every S3 call, an improvement for long uploads/downloads), (b) SigV4 canonical query parameters sorted after URI-encoding (<code>aws/signer/v4</code> -&gt; <code>v4Internal.EncodeQuery</code>, via <code>internal/v4a</code> v1.5.11 / <code>aws-http-auth</code> v1.2.2; the v1.47.5-&gt;v1.47.8 diff of <code>aws/signer/v4/v4.go</code> confirms the change is in this bump). No credential-chain or auth logic changes in <code>config</code>/<code>credentials</code> in this range — v1.20.12's AssumeRole-missing-credentials panic fix is already in our old version.
+</li>
+<li>smithy-go v1.28.8 (<code>Fix malformed JSON when serializing nil lists or maps...</code>, event-stream fixes, JSON number precision): S3 uses REST-XML, not JSON/awsQuery schema serde, so not on our path.
+</li>
+<li>Future-bump watch item (not this PR): <code>credentials</code> v1.21.0 (2026-11-10) makes Retry Behavior 2.1 the default — new backoff base (50ms, 1s for throttling), <code>x-amz-retry-after</code> honouring, and 429s from IMDS/endpoint credentials retried as throttling. That will change retry behaviour for our S3 calls and deserves a closer look when dependabot picks it up; s3 v1.114.10 is an S3 Express credentials fix we don't use.
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>Prow supports non-AWS S3 by setting <code>BaseEndpoint</code>/<code>S3ForcePathStyle</code> (<code><a href="https://github.com/kubernetes-sigs/prow/blob/8d4e2fe716ec5238674183802c80ca4d4f0310f9/pkg/io/providers/aws.go#L100-L112">pkg/io/providers/aws.go:100-112</a></code>), e.g. MinIO or Ceph RGW. This bump changes SigV4 canonical query ordering (sort after URI-encoding, per spec). For S3's plain-ASCII query keys (<code>list-type</code>, <code>prefix</code>, <code>continuation-token</code>, <code>max-keys</code>) the ordering is unchanged, and the integration test jobs only exercise fakes — was this bump smoke-tested against a non-AWS S3 endpoint, or do we rely on those implementations being spec-compliant here? No action expected; asking for the record.
+<pre><code>pkg/io/providers/aws.go:100
+	if creds.Endpoint != &quot;&quot; {
+		s3Opts = append(s3Opts, func(o *s3.Options) {
+			o.BaseEndpoint = &amp;creds.Endpoint
+		})
+	}</code></pre>
+</li></ul>
+<h2>Dependency followups</h2>
+<p>No opportunities identified. Walked all modules bumped by PR #1069 (open, head <code>8d4e2fe</code>), old -&gt; new, including intermediates:</p>
+<ul>
+<li>Direct: <code>aws-sdk-go-v2</code> v1.47.5 -&gt; v1.47.8, <code>aws-sdk-go-v2/config</code> v1.33.13 -&gt; v1.33.17, <code>aws-sdk-go-v2/credentials</code> v1.20.13 -&gt; v1.20.17, <code>aws-sdk-go-v2/service/s3</code> v1.114.6 -&gt; v1.114.9.
+</li>
+<li>Transitive: <code>aws/smithy-go</code> v1.28.7 -&gt; v1.28.8, <code>aws/protocol/eventstream</code> v1.7.25 -&gt; v1.7.26, <code>feature/ec2/imds</code> v1.20.5 -&gt; v1.20.8, <code>internal/configsources</code> v1.5.8 -&gt; v1.5.11, <code>internal/endpoints/v2</code> v2.8.8 -&gt; v2.8.11, <code>internal/v4a</code> v1.5.8 -&gt; v1.5.11, <code>service/internal/accept-encoding</code> v1.13.23 -&gt; v1.13.24, <code>service/internal/checksum</code> v1.11.9 -&gt; v1.11.12, <code>service/internal/presigned-url</code> v1.14.8 -&gt; v1.14.11, <code>service/internal/s3shared</code> v1.20.8 -&gt; v1.20.11, <code>service/signin</code> v1.12.1 -&gt; v1.13.0, <code>service/sso</code> v1.39.1 -&gt; v1.39.4, <code>service/ssooidc</code> v1.44.1 -&gt; v1.44.4, <code>service/sts</code> v1.51.6 -&gt; v1.51.9.
+</li></ul>
+<p>Reason: every changelog entry in these ranges is a "dependency update" roll-up, plus internal bug fixes we do not call (clock-skew-from-receive-time, SigV4 canonical query ordering, smithy schema-serde JSON/nil-collection fixes) and one new API in a module we never import (<code>signin</code> v1.13.0 <code>CreateBearerToken</code>). No deprecations in range touch <code>pkg/io/providers/aws.go</code>, which is the only AWS-importing package — it uses <code>config.LoadDefaultConfig</code>/<code>WithCredentialsProvider</code>/<code>WithRegion</code>, <code>credentials.NewStaticCredentialsProvider</code>, <code>s3.NewFromConfig</code>/<code>s3.Options</code>, <code>awshttp.NewBuildableClient().WithTransportOptions</code> and <code>aws.RequestChecksumCalculation*</code>, none of which changed or were deprecated.</p>
+</main></body></html>

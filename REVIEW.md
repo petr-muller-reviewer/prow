@@ -5,9 +5,33 @@ head_sha: c4a5a0dbb09394c98bc1bc8e0de7b546880a9f43
 base: main
 reviewed_at: 2026-11-13T17:32:11Z
 verdict: approve
+gate:
+  decision: hold
+  gated_at: 2026-11-15T19:01:57Z
+  gated_head_sha: c4a5a0dbb09394c98bc1bc8e0de7b546880a9f43
+  reviewed_head_sha: c4a5a0dbb09394c98bc1bc8e0de7b546880a9f43
 ---
 
 # Review
+
+## Gate
+
+**Decision: hold** — the head still implements an opt-in `--allow-collaborators` flag, but the maintainer and author agreed in-thread to drop the flag and authorize collaborators by default (keeping `IsMember || IsCollaborator`), and no commit since has reflected that.
+
+The reviewed risk profile is unchanged and low: the flag defaults to `false`, and the diff adds no exported Go API, CRD, or config-schema surface. Mergeability is blocked by unaddressed design feedback, not by backward compatibility. The prior `should-fix` findings are also untouched at `c4a5a0db`.
+
+### Gating list
+- **Agreed redesign not implemented** — `@petr-muller` (2026-11-13T12:27:08Z): "I'm leaning towards just switching to using collaborators by default ... I'd probably not even add the flag." `@hoxhaeris` (2026-11-13T12:47:09Z): "I'm all for dropping --allow-collaborators," while keeping `IsMember` alongside `IsCollaborator` because orgs with default repo permission "none" do not make every member a repo collaborator. Current head still adds the flag (`cmd/external-plugins/cherrypicker/main.go:75`) and gates the collaborator lookup on it (`cmd/external-plugins/cherrypicker/server.go:497-499`, `:611-614`). Not addressed.
+- **Silent drop on a transient collaborator lookup** — `REVIEW.md` should-fix, `cmd/external-plugins/cherrypicker/server.go:503-513`: a failed `IsCollaborator` is memoized as unauthorized and the queued request is deleted with no user-visible feedback. Unchanged.
+- **Authorization policy implemented twice** — `REVIEW.md` should-fix, `cmd/external-plugins/cherrypicker/server.go:474-516` vs `:600-619`: the discussed simplification is the natural place to remove the duplicate; unchanged.
+- **Flag documentation missing** — `REVIEW.md` should-fix: `site/content/en/docs/components/external-plugins/cherrypicker.md` documents neither authorization nor the new flag. Dropping the flag per the thread would moot this, but the default-on redesign will still need a behavioral-change note.
+
+### Merge risk
+No exported Go API, CRD, or config-schema changes; the new flag defaults to `false`, so existing deployments are unaffected as written. The only cross-cutting change is the `WhoCanUse` help text (`cmd/external-plugins/cherrypicker/server.go:82`). The agreed default-on redesign would change authorization for every existing cherrypicker deployment and needs a release note; the maintainer accepted that tradeoff in the thread.
+
+### Unblocks
+Implement the agreed direction: authorize repo collaborators by default and remove `--allow-collaborators`, keeping `IsMember || IsCollaborator` (member check first). Then re-review and re-save. If the flag is kept instead, explicitly resolve the thread and address the silent-drop and documentation items above.
+
 
 ## Verdict
 Approve with suggestions: the change is correct, default-off, and well-tested, with no blocking issues from code quality, maintainability, or deployment risk.

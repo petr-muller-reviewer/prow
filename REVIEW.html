@@ -31,13 +31,13 @@ ul, ol { padding-left:1.5rem; }
 details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
 </style></head><body><main>
 <h1>slackevents: alert on merged PRs with cncf-cla: no label</h1>
-<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/816">kubernetes-sigs/prow#816</a> · base <code>main</code> · head_sha <code>8491820a2ce9</code> · reviewed_at <code>2026-10-15T22:26:38Z</code></div>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/816">kubernetes-sigs/prow#816</a> · base <code>main</code> · head_sha <code>8491820a2ce9</code> · reviewed_at <code>2026-11-16T23:32:47Z</code></div>
 <div class="badges"><span class="badge c-red">verdict: request-changes</span><span class="badge c-amber">gate: hold</span></div>
 <details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#816
 title: &quot;slackevents: alert on merged PRs with cncf-cla: no label&quot;
 head_sha: 8491820a2ce9bf06e5e9c3dad7e12498ef702dab
 base: main
-reviewed_at: 2026-10-15T22:26:38Z
+reviewed_at: 2026-11-16T23:32:47Z
 verdict: request-changes
 gate:
   decision: hold
@@ -50,24 +50,27 @@ refresh_log:
     summary: &quot;No code changes; incorporated local Slack test report, WIP removal, and new PR comments and labels.&quot;
   - old_sha: 8491820a2ce9bf06e5e9c3dad7e12498ef702dab
     new_sha: 8491820a2ce9bf06e5e9c3dad7e12498ef702dab
-    summary: &quot;No code changes; recorded the author&#x27;s October 15 review reminder.&quot;</code></pre></details>
+    summary: &quot;No code changes; recorded the author&#x27;s October 15 review reminder.&quot;
+  - old_sha: 8491820a2ce9bf06e5e9c3dad7e12498ef702dab
+    new_sha: 8491820a2ce9bf06e5e9c3dad7e12498ef702dab
+    summary: &quot;No code changes; recorded the author&#x27;s November 10 review reminder.&quot;</code></pre></details>
 <h2>Gate</h2>
 <p><strong>hold</strong> — fix incomplete channel delivery and misleading merge attribution before merging.</p>
 <p>The current PR head is unchanged from the reviewed head, <code>8491820a2ce9bf06e5e9c3dad7e12498ef702dab</code>. Both should-fix findings from <code>REVIEW.md</code> remain present in the current code. There are no submitted GitHub reviews or inline comments adding further gating concerns. The author's local Slack delivery report demonstrates the successful single-channel path, but does not resolve either finding. The full PR diff introduces optional configuration and an opt-in notification path without an identified breaking change for existing deployments.</p>
 <p>Gating list and findings disposition:</p>
 <ul>
-<li><strong>not-addressed — Channel fanout short-circuits on first error</strong> (source: <code>REVIEW.md</code>): <code>pkg/plugins/slackevents/slackevents.go:275-278</code> returns as soon as one <code>WriteMessage</code> call fails, skipping every later configured channel. This gates merge for deployments enabling CLA alerts with multiple channels. Attempt every channel and aggregate errors; add a test where an earlier channel fails and a later channel still receives its message (<code>pkg/plugins/slackevents/slackevents_test.go:374</code>).
+<li><strong>not-addressed — Channel fanout short-circuits on first error</strong> (source: <code>REVIEW.md</code>): <code><a href="https://github.com/kubernetes-sigs/prow/blob/8491820a2ce9bf06e5e9c3dad7e12498ef702dab/pkg/plugins/slackevents/slackevents.go#L275-L278">pkg/plugins/slackevents/slackevents.go:275-278</a></code> returns as soon as one <code>WriteMessage</code> call fails, skipping every later configured channel. This gates merge for deployments enabling CLA alerts with multiple channels. Attempt every channel and aggregate errors; add a test where an earlier channel fails and a later channel still receives its message (<code><a href="https://github.com/kubernetes-sigs/prow/blob/8491820a2ce9bf06e5e9c3dad7e12498ef702dab/pkg/plugins/slackevents/slackevents_test.go#L374">pkg/plugins/slackevents/slackevents_test.go:374</a></code>).
 </li>
-<li><strong>not-addressed — Alert message misattributes the merge to the PR author</strong> (source: <code>REVIEW.md</code>): <code>pkg/plugins/slackevents/slackevents.go:268-273</code> formats "merged ... by" with <code>PullRequest.User.Login</code>, the author. This gates merge because every enabled alert can name the wrong merger. Reword the message to identify the author explicitly (for example, "opened by") and update the expected message in the test. The current <code>github.PullRequest</code> type does not expose <code>MergedBy</code>, so the earlier suggestion cannot be applied directly without extending that type.
+<li><strong>not-addressed — Alert message misattributes the merge to the PR author</strong> (source: <code>REVIEW.md</code>): <code><a href="https://github.com/kubernetes-sigs/prow/blob/8491820a2ce9bf06e5e9c3dad7e12498ef702dab/pkg/plugins/slackevents/slackevents.go#L268-L273">pkg/plugins/slackevents/slackevents.go:268-273</a></code> formats "merged ... by" with <code>PullRequest.User.Login</code>, the author. This gates merge because every enabled alert can name the wrong merger. Reword the message to identify the author explicitly (for example, "opened by") and update the expected message in the test. The current <code>github.PullRequest</code> type does not expose <code>MergedBy</code>, so the earlier suggestion cannot be applied directly without extending that type.
 </li></ul>
-<p>Evidence correction: the earlier fanout finding incorrectly claimed that <code>notifyOnSlackIfManualMerge</code> already aggregates errors. Its current loop at <code>pkg/plugins/slackevents/slackevents.go:173-176</code> also returns on the first error. The CLA delivery defect stands independently of that inaccurate precedent.</p>
+<p>Evidence correction: the earlier fanout finding incorrectly claimed that <code>notifyOnSlackIfManualMerge</code> already aggregates errors. Its current loop at <code><a href="https://github.com/kubernetes-sigs/prow/blob/8491820a2ce9bf06e5e9c3dad7e12498ef702dab/pkg/plugins/slackevents/slackevents.go#L173-L176">pkg/plugins/slackevents/slackevents.go:173-176</a></code> also returns on the first error. The CLA delivery defect stands independently of that inaccurate precedent.</p>
 <p>Independent merge risk:</p>
 <ul>
-<li><strong>API/config:</strong> <code>pkg/plugins/config.go:629-635</code> adds optional <code>Slack.CLAAlerts</code> (<code>claalerts,omitempty</code>), and <code>pkg/plugins/config.go:855-862</code> adds <code>CLAAlert</code>. No existing exported fields, signatures, configuration keys, or defaults are removed or changed. Existing deployments without matching CLA alert configuration return before making a Slack call (<code>pkg/plugins/slackevents/slackevents.go:255-260</code>); no coordinated rollout or migration is indicated.
+<li><strong>API/config:</strong> <code><a href="https://github.com/kubernetes-sigs/prow/blob/8491820a2ce9bf06e5e9c3dad7e12498ef702dab/pkg/plugins/config.go#L629-L635">pkg/plugins/config.go:629-635</a></code> adds optional <code>Slack.CLAAlerts</code> (<code>claalerts,omitempty</code>), and <code><a href="https://github.com/kubernetes-sigs/prow/blob/8491820a2ce9bf06e5e9c3dad7e12498ef702dab/pkg/plugins/config.go#L855-L862">pkg/plugins/config.go:855-862</a></code> adds <code>CLAAlert</code>. No existing exported fields, signatures, configuration keys, or defaults are removed or changed. Existing deployments without matching CLA alert configuration return before making a Slack call (<code><a href="https://github.com/kubernetes-sigs/prow/blob/8491820a2ce9bf06e5e9c3dad7e12498ef702dab/pkg/plugins/slackevents/slackevents.go#L255-L260">pkg/plugins/slackevents/slackevents.go:255-260</a></code>); no coordinated rollout or migration is indicated.
 </li>
-<li><strong>Behavior:</strong> <code>pkg/plugins/slackevents/slackevents.go:58</code> registers a new pull-request handler. Slack output requires a closed, merged PR, matching explicit repo/org configuration, and the <code>cncf-cla: no</code> label. The delivery and attribution risks above affect those opted-in repositories and channels. Existing push and comment behavior is unchanged by the diff.
+<li><strong>Behavior:</strong> <code><a href="https://github.com/kubernetes-sigs/prow/blob/8491820a2ce9bf06e5e9c3dad7e12498ef702dab/pkg/plugins/slackevents/slackevents.go#L58">pkg/plugins/slackevents/slackevents.go:58</a></code> registers a new pull-request handler. Slack output requires a closed, merged PR, matching explicit repo/org configuration, and the <code>cncf-cla: no</code> label. The delivery and attribution risks above affect those opted-in repositories and channels. Existing push and comment behavior is unchanged by the diff.
 </li>
-<li><strong>Configuration pitfalls, non-gating:</strong> matching is case-sensitive (<code>pkg/plugins/slackevents/slackevents.go:287-298</code>), and empty channel lists silently send nothing (<code>pkg/plugins/config.go:861</code>). These affect newly configured CLA alerts; they do not change behavior for existing configurations. No relevant compatibility-specific repository skill was available; this assessment used the full PR diff and current source.
+<li><strong>Configuration pitfalls, non-gating:</strong> matching is case-sensitive (<code><a href="https://github.com/kubernetes-sigs/prow/blob/8491820a2ce9bf06e5e9c3dad7e12498ef702dab/pkg/plugins/slackevents/slackevents.go#L287-L298">pkg/plugins/slackevents/slackevents.go:287-298</a></code>), and empty channel lists silently send nothing (<code><a href="https://github.com/kubernetes-sigs/prow/blob/8491820a2ce9bf06e5e9c3dad7e12498ef702dab/pkg/plugins/config.go#L861">pkg/plugins/config.go:861</a></code>). These affect newly configured CLA alerts; they do not change behavior for existing configurations. No relevant compatibility-specific repository skill was available; this assessment used the full PR diff and current source.
 </li></ul>
 <h2>What this PR does</h2>
 <p>Adds <code>plugins.CLAAlert</code> config (repo/org-scoped Slack channel list) and a new <code>PullRequestEvent</code> handler in <code>slackevents</code>. On merge, if the PR carries <code>cncf-cla: no</code> and repo/org has a configured <code>CLAAlert</code>, posts a Slack message to each configured channel. Includes help-provider/doc updates and 9 unit test cases.</p>
@@ -84,10 +87,14 @@ refresh_log:
 <ul>
 <li>No code or PR state changes. On 2026-10-15 at 08:20 UTC, AaruniAggarwal <a href="https://github.com/kubernetes-sigs/prow/pull/816#issuecomment-6187720889">reminded petr-muller to review</a>. No new inline comments, submitted reviews, or label changes followed.
 </li></ul>
+<p>Since previous review (2026-10-15):</p>
+<ul>
+<li>No code or PR state changes. On 2026-11-10 at 10:18 UTC, AaruniAggarwal <a href="https://github.com/kubernetes-sigs/prow/pull/816#issuecomment-6764801433">reminded petr-muller to review</a>. No new inline comments, submitted reviews, or label changes followed. The gate decision therefore still stands at the same head.
+</li></ul>
 <h2>Findings</h2>
 <h3><span class="tag c-amber">should-fix</span>Channel fanout short-circuits on first error</h3>
 <ul>
-<li>where: <code>pkg/plugins/slackevents/slackevents.go:270-278</code> (in <code>notifyOnCLAIfMerged</code>)
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/8491820a2ce9bf06e5e9c3dad7e12498ef702dab/pkg/plugins/slackevents/slackevents.go#L270-L278">pkg/plugins/slackevents/slackevents.go:270-278</a></code> (in <code>notifyOnCLAIfMerged</code>)
 </li>
 <li>concern: The loop over <code>ca.Channels</code> returns immediately when <code>WriteMessage</code> errors on one channel, so later channels never get notified. Flagged independently by all three maintainer-review perspectives (code quality, maintainability, deployment risk) plus the direct review — highest-confidence finding in this PR. <code>notifyOnSlackIfManualMerge</code> elsewhere in the same file uses <code>utilerrors.NewAggregate</code> to attempt every channel and collect errors; this new code should follow that pattern, especially since CLA-compliance alerts benefit from best-effort delivery to all configured channels.
 </li>
@@ -99,7 +106,7 @@ refresh_log:
 </li></ul>
 <h3><span class="tag c-amber">should-fix</span>Alert message misattributes the merge to the PR author</h3>
 <ul>
-<li>where: <code>pkg/plugins/slackevents/slackevents.go:262-269</code> (in <code>notifyOnCLAIfMerged</code>)
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/8491820a2ce9bf06e5e9c3dad7e12498ef702dab/pkg/plugins/slackevents/slackevents.go#L262-L269">pkg/plugins/slackevents/slackevents.go:262-269</a></code> (in <code>notifyOnCLAIfMerged</code>)
 </li>
 <li>concern: The message reads <code>&quot;*Alert:* PR #%d merged with %q label by %s — %s&quot;</code> using <code>pre.PullRequest.User.Login</code>, which is the PR <strong>author</strong>, not who merged it. This misleads readers into thinking <code>%s</code> performed the merge. Use <code>PullRequest.MergedBy.Login</code> if available, or reword to make clear it's the author (e.g. "opened by").
 </li>
@@ -113,37 +120,37 @@ refresh_log:
 </li></ul>
 <h3><span class="tag c-gray">nit</span>getCLAAlert duplicates getMergeWarning's matching logic</h3>
 <ul>
-<li>where: <code>pkg/plugins/slackevents/slackevents.go:281-291</code> (<code>getCLAAlert</code>)
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/8491820a2ce9bf06e5e9c3dad7e12498ef702dab/pkg/plugins/slackevents/slackevents.go#L281-L291">pkg/plugins/slackevents/slackevents.go:281-291</a></code> (<code>getCLAAlert</code>)
 </li>
 <li>concern: Byte-for-byte structural duplicate of the existing <code>getMergeWarning</code> two-pass (exact org/repo match, then org-level fallback) logic, using <code>sets.NewString(...).Has(...)</code> rebuilt per call. Two copies now have to be kept in sync if matching semantics change; consider a shared helper.
 </li></ul>
 <h3><span class="tag c-gray">nit</span>No observability for sent/suppressed CLA alerts</h3>
 <ul>
-<li>where: <code>pkg/plugins/slackevents/slackevents.go:246-279</code> (<code>notifyOnCLAIfMerged</code>)
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/8491820a2ce9bf06e5e9c3dad7e12498ef702dab/pkg/plugins/slackevents/slackevents.go#L246-L279">pkg/plugins/slackevents/slackevents.go:246-279</a></code> (<code>notifyOnCLAIfMerged</code>)
 </li>
 <li>concern: No log line marks "CLA alert sent" or "suppressed (no matching config)". For a compliance-sensitive alert, this makes production debugging of "why didn't we get notified" harder than necessary.
 </li></ul>
 <h3><span class="tag c-gray">nit</span>Per-repo help text doesn't mention CLA alert config</h3>
 <ul>
-<li>where: <code>pkg/plugins/slackevents/slackevents.go:63-77</code> (<code>helpProvider</code>)
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/8491820a2ce9bf06e5e9c3dad7e12498ef702dab/pkg/plugins/slackevents/slackevents.go#L63-L77">pkg/plugins/slackevents/slackevents.go:63-77</a></code> (<code>helpProvider</code>)
 </li>
 <li>concern: <code>configInfo[repo.String()]</code> documents merge-warning status per repo but says nothing about whether a repo has <code>CLAAlerts</code> configured, unlike the parallel <code>MergeWarning</code> handling. Doc parity gap, not functional.
 </li></ul>
 <h3><span class="tag c-blue">question</span>Missing test for WriteMessage error path</h3>
 <ul>
-<li>where: <code>pkg/plugins/slackevents/slackevents_test.go:376-560</code> (<code>TestNotifyOnCLAIfMerged</code>)
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/8491820a2ce9bf06e5e9c3dad7e12498ef702dab/pkg/plugins/slackevents/slackevents_test.go#L376-L560">pkg/plugins/slackevents/slackevents_test.go:376-560</a></code> (<code>TestNotifyOnCLAIfMerged</code>)
 </li>
 <li>concern: 9 cases cover matching/non-matching/precedence logic well, but none exercise a failing <code>WriteMessage</code> call — exactly the path with the short-circuit bug above. Add once fanout error handling is fixed.
 </li></ul>
 <h3><span class="tag c-blue">question</span>Case-sensitive org/repo matching in getCLAAlert</h3>
 <ul>
-<li>where: <code>pkg/plugins/slackevents/slackevents.go:281-291</code> (<code>getCLAAlert</code>)
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/8491820a2ce9bf06e5e9c3dad7e12498ef702dab/pkg/plugins/slackevents/slackevents.go#L281-L291">pkg/plugins/slackevents/slackevents.go:281-291</a></code> (<code>getCLAAlert</code>)
 </li>
 <li>concern: <code>sets.NewString(a.Repos...).Has(repo.String())</code> is case-sensitive; a misconfigured <code>Repos</code> entry (wrong case) silently never matches and never alerts. Matches existing repo-matching conventions elsewhere in Prow, but easy to get wrong and fails silently.
 </li></ul>
 <h3><span class="tag c-blue">question</span>No validation that CLAAlert.Channels is non-empty</h3>
 <ul>
-<li>where: <code>pkg/plugins/config.go:855-862</code> (<code>CLAAlert</code> struct)
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/8491820a2ce9bf06e5e9c3dad7e12498ef702dab/pkg/plugins/config.go#L855-L862">pkg/plugins/config.go:855-862</a></code> (<code>CLAAlert</code> struct)
 </li>
 <li>concern: A <code>CLAAlert</code> entry with <code>Repos</code> set but empty <code>Channels</code> would silently match and no-op (loop over zero channels). Consider config-load-time validation for parity with other Slack config, if such validation exists for <code>MergeWarnings</code>.
 </li></ul>

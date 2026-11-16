@@ -3,7 +3,7 @@ pr: kubernetes-sigs/prow#816
 title: "slackevents: alert on merged PRs with cncf-cla: no label"
 head_sha: 8491820a2ce9bf06e5e9c3dad7e12498ef702dab
 base: main
-reviewed_at: 2026-10-15T22:26:38Z
+reviewed_at: 2026-11-16T23:32:47Z
 verdict: request-changes
 gate:
   decision: hold
@@ -17,6 +17,9 @@ refresh_log:
   - old_sha: 8491820a2ce9bf06e5e9c3dad7e12498ef702dab
     new_sha: 8491820a2ce9bf06e5e9c3dad7e12498ef702dab
     summary: "No code changes; recorded the author's October 15 review reminder."
+  - old_sha: 8491820a2ce9bf06e5e9c3dad7e12498ef702dab
+    new_sha: 8491820a2ce9bf06e5e9c3dad7e12498ef702dab
+    summary: "No code changes; recorded the author's November 10 review reminder."
 ---
 
 ## Gate
@@ -50,6 +53,9 @@ Since previous review:
 
 Since previous review (2026-09-30):
 - No code or PR state changes. On 2026-10-15 at 08:20 UTC, AaruniAggarwal [reminded petr-muller to review](https://github.com/kubernetes-sigs/prow/pull/816#issuecomment-6187720889). No new inline comments, submitted reviews, or label changes followed.
+
+Since previous review (2026-10-15):
+- No code or PR state changes. On 2026-11-10 at 10:18 UTC, AaruniAggarwal [reminded petr-muller to review](https://github.com/kubernetes-sigs/prow/pull/816#issuecomment-6764801433). No new inline comments, submitted reviews, or label changes followed. The gate decision therefore still stands at the same head.
 
 ## Findings
 

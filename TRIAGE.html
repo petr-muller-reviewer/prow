@@ -31,19 +31,22 @@ ul, ol { padding-left:1.5rem; }
 details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
 </style></head><body><main>
 <h1>assign: add configuration per repo so that only org users can assign issues</h1>
-<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/issues/391">kubernetes-sigs/prow#391</a> · main_sha <code>e601a1ffafd7</code> · state <code>open</code> · labels <code>kind/feature, area/plugins, lifecycle/rotten</code> · triaged_at <code>2026-10-28T00:38:36Z</code></div>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/issues/391">kubernetes-sigs/prow#391</a> · main_sha <code>e601a1ffafd7</code> · state <code>closed</code> · labels <code>kind/feature, area/plugins, lifecycle/rotten</code> · triaged_at <code>2026-11-16T22:36:21Z</code></div>
 <div class="badges"><span class="badge c-green">verdict: accepted</span></div>
 <details><summary>Full metadata</summary><pre><code>issue: kubernetes-sigs/prow#391
 title: &quot;assign: add configuration per repo so that only org users can assign issues&quot;
-state: open
+state: closed
 labels: kind/feature, area/plugins, lifecycle/rotten
 main_sha: e601a1ffafd7d8d3a781238a4c5f4233d6248f68
-triaged_at: 2026-10-28T00:38:36Z
+triaged_at: 2026-11-16T22:36:21Z
 verdict: accepted
 refresh_log:
   - at: 2026-10-28T00:38:36Z
     since: 2026-07-27T00:31:54Z
-    summary: &quot;Recorded the Oct 17 lifecycle rotation and reviewed open PR #755&#x27;s proposed implementation.&quot;</code></pre></details>
+    summary: &quot;Recorded the Oct 17 lifecycle rotation and reviewed open PR #755&#x27;s proposed implementation.&quot;
+  - at: 2026-11-16T22:36:21Z
+    since: 2026-10-28T00:38:36Z
+    summary: &quot;Issue auto-closed as NOT_PLANNED by k8s-triage-robot on 2026-11-16 after lifecycle/rotten aged out; PR #755 still open and merged nowhere. No human comments, no new cross-references.&quot;</code></pre></details>
 <h2>What the issue reports</h2>
 <p>The issue asks for a repository-level setting that limits <code>/assign</code> on issues to members of the owning organization.</p>
 <p>Since previous triage:</p>
@@ -52,16 +55,24 @@ refresh_log:
 </li>
 <li>PR #755 remains open (created 2026-06-14 and updated 2026-09-30). Its description claims <code>Fixes: #391</code>; the proposal adds per-org/repo <code>block</code> or <code>warn</code> behavior with optional exempt labels, checks the commenter's org membership for issue assignments including self-assignment, and leaves pull requests and <code>/unassign</code> unrestricted. No new cross-reference event appeared on the issue timeline since the prior triage.
 </li></ul>
+<p>Since the 2026-10-28 triage:</p>
+<ul>
+<li>On 2026-11-16 at 17:21:59Z, k8s-triage-robot posted the terminal lifecycle notice and ran <code>/close not-planned</code>; kubernetes-prow[bot] closed the issue at 17:22:08Z with <code>stateReason: NOT_PLANNED</code>. This is the 30-day expiry after <code>lifecycle/rotten</code>, not a maintainer decision, and no human commented in between.
+</li>
+<li><code>closedByPullRequestsReferences</code> lists PR #755, but that PR is still <strong>open</strong> (unmerged, unchanged since 2026-09-30), so it did not cause the close.
+</li>
+<li>Labels are unchanged (<code>kind/feature</code>, <code>area/plugins</code>, <code>lifecycle/rotten</code>); upstream <code>main</code> has advanced 421 commits since <code>main_sha</code>, so the code references below are unverified against current <code>main</code>.
+</li></ul>
 <h2>Findings</h2>
 <h3><span class="tag c-amber">cause</span>Plugin was never built with a config surface</h3>
 <ul>
 <li>detail: <code>helpProvider</code> explicitly states the plugin is unconfigurable, and <code>handle()</code> gates on nothing but GitHub's own assignee-eligibility rules (which restrict who can be <em>assigned</em>, not who can <em>do the assigning</em>).
 </li>
-<li>evidence: <code>pkg/plugins/assign/assign.go:41</code> — comment "The Config field is omitted because this plugin is not configurable."; <code>pkg/plugins/assign/assign.go:113-152</code> (<code>handle</code>) calls <code>h.add</code>/<code>h.remove</code> unconditionally for any commenter.
+<li>evidence: <code><a href="https://github.com/kubernetes-sigs/prow/blob/e601a1ffafd7d8d3a781238a4c5f4233d6248f68/pkg/plugins/assign/assign.go#L41">pkg/plugins/assign/assign.go:41</a></code> — comment "The Config field is omitted because this plugin is not configurable."; <code><a href="https://github.com/kubernetes-sigs/prow/blob/e601a1ffafd7d8d3a781238a4c5f4233d6248f68/pkg/plugins/assign/assign.go#L113-L152">pkg/plugins/assign/assign.go:113-152</a></code> (<code>handle</code>) calls <code>h.add</code>/<code>h.remove</code> unconditionally for any commenter.
 </li></ul>
 <h3><span class="tag c-blue">related-code</span>Config struct + per-org/repo getter pattern to follow</h3>
 <ul>
-<li>where: <code>pkg/plugins/config.go:360-380</code> (<code>Approve</code> struct), <code>pkg/plugins/config.go:1029</code> (<code>ApproveFor</code>)
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/e601a1ffafd7d8d3a781238a4c5f4233d6248f68/pkg/plugins/config.go#L360-L380">pkg/plugins/config.go:360-380</a></code> (<code>Approve</code> struct), <code><a href="https://github.com/kubernetes-sigs/prow/blob/e601a1ffafd7d8d3a781238a4c5f4233d6248f68/pkg/plugins/config.go#L1029">pkg/plugins/config.go:1029</a></code> (<code>ApproveFor</code>)
 </li>
 <li>excerpt:<pre><code>func (c *Configuration) ApproveFor(org, repo string) *Approve {
 	fullName := fmt.Sprintf(&quot;%s/%s&quot;, org, repo)
@@ -83,7 +94,7 @@ refresh_log:
 </li></ul>
 <h3><span class="tag c-blue">related-code</span>Existing per-repo OnlyOrgMembers analogue</h3>
 <ul>
-<li>where: <code>pkg/plugins/config.go:554-582</code> (<code>Trigger</code> struct)
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/e601a1ffafd7d8d3a781238a4c5f4233d6248f68/pkg/plugins/config.go#L554-L582">pkg/plugins/config.go:554-582</a></code> (<code>Trigger</code> struct)
 </li>
 <li>excerpt:<pre><code>// OnlyOrgMembers requires PRs and/or /ok-to-test comments to come from org members.
 // By default, trigger also include repo collaborators.
@@ -91,7 +102,7 @@ OnlyOrgMembers bool `json:&quot;only_org_members,omitempty&quot;`</code></pre>
 </li></ul>
 <h3><span class="tag c-blue">related-code</span>Reusable org-membership/trust check</h3>
 <ul>
-<li>where: <code>pkg/plugins/trigger/trigger.go:245</code>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/e601a1ffafd7d8d3a781238a4c5f4233d6248f68/pkg/plugins/trigger/trigger.go#L245">pkg/plugins/trigger/trigger.go:245</a></code>
 </li>
 <li>excerpt:<pre><code>func TrustedUser(ghc trustedUserClient, onlyOrgMembers bool, trustedApps []string, trustedOrg, user, org, repo string) (TrustedUserResponse, error) {</code></pre>
 </li>
@@ -99,7 +110,7 @@ OnlyOrgMembers bool `json:&quot;only_org_members,omitempty&quot;`</code></pre>
 </li></ul>
 <h3><span class="tag c-blue">related-code</span>githubClient interface needs IsMember</h3>
 <ul>
-<li>where: <code>pkg/plugins/assign/assign.go:63-70</code> (<code>githubClient</code> interface)
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/e601a1ffafd7d8d3a781238a4c5f4233d6248f68/pkg/plugins/assign/assign.go#L63-L70">pkg/plugins/assign/assign.go:63-70</a></code> (<code>githubClient</code> interface)
 </li>
 <li>excerpt:<pre><code>type githubClient interface {
 	AssignIssue(owner, repo string, number int, logins []string) error
@@ -113,9 +124,9 @@ OnlyOrgMembers bool `json:&quot;only_org_members,omitempty&quot;`</code></pre>
 </li></ul>
 <h3><span class="tag c-blue">related-code</span>GenericCommentEvent lacks issue labels (scopes the follow-on idea out)</h3>
 <ul>
-<li>where: <code>pkg/github/types.go:1323-1341</code>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/e601a1ffafd7d8d3a781238a4c5f4233d6248f68/pkg/github/types.go#L1323-L1341">pkg/github/types.go:1323-1341</a></code>
 </li>
-<li>relevance: the 2026-04-14 follow-up comment's idea (warn non-org-members self-assigning issues that lack a <code>good-first-issue</code> label) needs the issue's labels, which aren't on <code>GenericCommentEvent</code> — would require an extra GitHub API call. Confirms that idea is materially larger than the base ask and should not be bundled into it. Label constant already exists: <code>labels.GoodFirstIssue</code> (<code>pkg/labels/labels.go:34</code>).
+<li>relevance: the 2026-04-14 follow-up comment's idea (warn non-org-members self-assigning issues that lack a <code>good-first-issue</code> label) needs the issue's labels, which aren't on <code>GenericCommentEvent</code> — would require an extra GitHub API call. Confirms that idea is materially larger than the base ask and should not be bundled into it. Label constant already exists: <code>labels.GoodFirstIssue</code> (<code><a href="https://github.com/kubernetes-sigs/prow/blob/e601a1ffafd7d8d3a781238a4c5f4233d6248f68/pkg/labels/labels.go#L34">pkg/labels/labels.go:34</a></code>).
 </li></ul>
 <h3><span class="tag c-blue">related-pr</span>Open implementation for issue #391</h3>
 <ul>
@@ -131,11 +142,15 @@ OnlyOrgMembers bool `json:&quot;only_org_members,omitempty&quot;`</code></pre>
 </li></ul>
 <h2>Checked</h2>
 <ul>
-<li>No existing <code>Assign</code>-named field in <code>plugins.Configuration</code> (<code>pkg/plugins/config.go:52-100</code>) — confirms the feature doesn't already exist under another name.
+<li>No existing <code>Assign</code>-named field in <code>plugins.Configuration</code> (<code><a href="https://github.com/kubernetes-sigs/prow/blob/e601a1ffafd7d8d3a781238a4c5f4233d6248f68/pkg/plugins/config.go#L52-L100">pkg/plugins/config.go:52-100</a></code>) — confirms the feature doesn't already exist under another name.
 </li>
 <li><code>pkg/plugins/assign/assign_test.go</code>'s <code>fakeClient</code> (line 28) has no <code>IsMember</code> mock yet — trust-check testing would need new scaffolding, mirrored on <code>trigger_test.go</code>'s approach.
 </li>
 <li>PR #755 is open and its description claims to fix #391; it was created before the prior triage and last updated 2026-09-30. The issue timeline contains no new cross-reference events since the prior triage.
+</li>
+<li>On 2026-11-16 the issue was closed <code>NOT_PLANNED</code> by the lifecycle bot; only bot comments and <code>closed</code>/<code>mentioned</code>/<code>subscribed</code> timeline events appeared after the prior triage, no human activity and no new cross-references.
+</li>
+<li>PR #755 is still open (not draft, no merge) as of 2026-11-16, so the close was not a resolution by that PR.
 </li>
 <li>The default-on vs. opt-in question raised by <code>petr-muller</code> in a 2025-03-13 comment was never resolved in-thread.
 </li>
@@ -143,15 +158,15 @@ OnlyOrgMembers bool `json:&quot;only_org_members,omitempty&quot;`</code></pre>
 </li></ul>
 <h2>Next steps</h2>
 <ul>
-<li>Apply <code>help-wanted</code> label (not <code>good-first-issue</code> — the trust-check design and remaining scope decisions make this more than a pure first issue).
+<li>Decide whether to keep this request alive: the issue is now closed <code>NOT_PLANNED</code> by lifecycle rot with no maintainer decision. If it should stay open, reopen it (<code>/reopen</code> or <code>/remove-lifecycle rotten</code>) before the next stale cycle; otherwise say so explicitly and close out PR #755 accordingly.
 </li>
-<li>Review/track PR #755. Its per-repo config and org-membership gate match the core request; settle whether self-assignment, <code>warn</code> versus <code>block</code>, and exempt-label behavior belong in this issue before merging.
+<li>Review/track PR #755, which is still open and unmerged. Its per-repo config and org-membership gate match the core request; settle whether self-assignment, <code>warn</code> versus <code>block</code>, and exempt-label behavior belong in this issue before merging.
 </li>
 <li>Confirm the opt-in policy and whether direct <code>IsMember</code> is sufficient or the broader <code>trigger.TrustedUser</code> behavior is required.
 </li>
 <li>Compare PR #755's warning and exempt-label behavior with the 2026-04-14 good-first-issue-warning idea; decide whether that scope stays here or should be split.
 </li>
-<li>Remove <code>lifecycle/rotten</code> while maintainers are actively considering the open PR.
+<li>Re-verify the <code>pkg/plugins/config.go</code> / <code>assign.go</code> line references against current <code>main</code> (421 commits ahead of <code>main_sha</code>) before acting on the open questions.
 </li></ul>
 <h2>Open questions</h2>
 <ul>

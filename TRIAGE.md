@@ -1,15 +1,18 @@
 ---
 issue: kubernetes-sigs/prow#391
 title: "assign: add configuration per repo so that only org users can assign issues"
-state: open
+state: closed
 labels: kind/feature, area/plugins, lifecycle/rotten
 main_sha: e601a1ffafd7d8d3a781238a4c5f4233d6248f68
-triaged_at: 2026-10-28T00:38:36Z
+triaged_at: 2026-11-16T22:36:21Z
 verdict: accepted
 refresh_log:
   - at: 2026-10-28T00:38:36Z
     since: 2026-07-27T00:31:54Z
     summary: "Recorded the Oct 17 lifecycle rotation and reviewed open PR #755's proposed implementation."
+  - at: 2026-11-16T22:36:21Z
+    since: 2026-10-28T00:38:36Z
+    summary: "Issue auto-closed as NOT_PLANNED by k8s-triage-robot on 2026-11-16 after lifecycle/rotten aged out; PR #755 still open and merged nowhere. No human comments, no new cross-references."
 ---
 
 ## What the issue reports
@@ -19,6 +22,11 @@ The issue asks for a repository-level setting that limits `/assign` on issues to
 Since previous triage:
 - On 2026-10-17, k8s-triage-robot posted the lifecycle stale-cycle notice; `lifecycle/stale` was removed and `lifecycle/rotten` added. The issue remains open.
 - PR #755 remains open (created 2026-06-14 and updated 2026-09-30). Its description claims `Fixes: #391`; the proposal adds per-org/repo `block` or `warn` behavior with optional exempt labels, checks the commenter's org membership for issue assignments including self-assignment, and leaves pull requests and `/unassign` unrestricted. No new cross-reference event appeared on the issue timeline since the prior triage.
+
+Since the 2026-10-28 triage:
+- On 2026-11-16 at 17:21:59Z, k8s-triage-robot posted the terminal lifecycle notice and ran `/close not-planned`; kubernetes-prow[bot] closed the issue at 17:22:08Z with `stateReason: NOT_PLANNED`. This is the 30-day expiry after `lifecycle/rotten`, not a maintainer decision, and no human commented in between.
+- `closedByPullRequestsReferences` lists PR #755, but that PR is still **open** (unmerged, unchanged since 2026-09-30), so it did not cause the close.
+- Labels are unchanged (`kind/feature`, `area/plugins`, `lifecycle/rotten`); upstream `main` has advanced 421 commits since `main_sha`, so the code references below are unverified against current `main`.
 
 ## Findings
 
@@ -89,16 +97,18 @@ Since previous triage:
 - No existing `Assign`-named field in `plugins.Configuration` (`pkg/plugins/config.go:52-100`) — confirms the feature doesn't already exist under another name.
 - `pkg/plugins/assign/assign_test.go`'s `fakeClient` (line 28) has no `IsMember` mock yet — trust-check testing would need new scaffolding, mirrored on `trigger_test.go`'s approach.
 - PR #755 is open and its description claims to fix #391; it was created before the prior triage and last updated 2026-09-30. The issue timeline contains no new cross-reference events since the prior triage.
+- On 2026-11-16 the issue was closed `NOT_PLANNED` by the lifecycle bot; only bot comments and `closed`/`mentioned`/`subscribed` timeline events appeared after the prior triage, no human activity and no new cross-references.
+- PR #755 is still open (not draft, no merge) as of 2026-11-16, so the close was not a resolution by that PR.
 - The default-on vs. opt-in question raised by `petr-muller` in a 2025-03-13 comment was never resolved in-thread.
 - Issue has cycled through `lifecycle/stale`/`rotten`/close/reopen multiple times (2025-06-18 through 2026-07-13), each time kept alive by `dhiller` or `petr-muller` manually — still legitimate and actionable, not abandoned.
 
 ## Next steps
 
-- Apply `help-wanted` label (not `good-first-issue` — the trust-check design and remaining scope decisions make this more than a pure first issue).
-- Review/track PR #755. Its per-repo config and org-membership gate match the core request; settle whether self-assignment, `warn` versus `block`, and exempt-label behavior belong in this issue before merging.
+- Decide whether to keep this request alive: the issue is now closed `NOT_PLANNED` by lifecycle rot with no maintainer decision. If it should stay open, reopen it (`/reopen` or `/remove-lifecycle rotten`) before the next stale cycle; otherwise say so explicitly and close out PR #755 accordingly.
+- Review/track PR #755, which is still open and unmerged. Its per-repo config and org-membership gate match the core request; settle whether self-assignment, `warn` versus `block`, and exempt-label behavior belong in this issue before merging.
 - Confirm the opt-in policy and whether direct `IsMember` is sufficient or the broader `trigger.TrustedUser` behavior is required.
 - Compare PR #755's warning and exempt-label behavior with the 2026-04-14 good-first-issue-warning idea; decide whether that scope stays here or should be split.
-- Remove `lifecycle/rotten` while maintainers are actively considering the open PR.
+- Re-verify the `pkg/plugins/config.go` / `assign.go` line references against current `main` (421 commits ahead of `main_sha`) before acting on the open questions.
 
 ## Open questions
 

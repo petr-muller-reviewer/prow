@@ -31,18 +31,20 @@ ul, ol { padding-left:1.5rem; }
 details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
 </style></head><body><main>
 <h1>Cannot run prow at a subpath</h1>
-<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/issues/376">kubernetes-sigs/prow#376</a> · main_sha <code>e601a1ffafd7</code> · state <code>open</code> · labels <code>kind/bug, lifecycle/rotten, area/deck</code> · triaged_at <code>2026-10-28T00:44:38Z</code></div>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/issues/376">kubernetes-sigs/prow#376</a> · main_sha <code>e601a1ffafd7</code> · state <code>closed</code> · labels <code>kind/bug, lifecycle/rotten, area/deck</code> · triaged_at <code>2026-11-16T22:40:23Z</code></div>
 <div class="badges"><span class="badge c-green">verdict: accepted</span></div>
 <details><summary>Full metadata</summary><pre><code>issue: kubernetes-sigs/prow#376
 title: &quot;Cannot run prow at a subpath&quot;
-state: open
+state: closed
 labels: kind/bug, lifecycle/rotten, area/deck
 main_sha: e601a1ffafd7d8d3a781238a4c5f4233d6248f68
-triaged_at: 2026-10-28T00:44:38Z
+triaged_at: 2026-11-16T22:40:23Z
 verdict: accepted
 refresh_log:
   - since: 2026-07-27T00:38:17Z
-    summary: &quot;Issue became rotten and related PR #576 was closed by stale automation without merging.&quot;</code></pre></details>
+    summary: &quot;Issue became rotten and related PR #576 was closed by stale automation without merging.&quot;
+  - since: 2026-10-28T00:44:38Z
+    summary: &quot;Rot lifecycle closed the issue as NOT_PLANNED (bot-only, no fix); no human comments, cross-references, or label changes, and upstream/main still has no base-path support.&quot;</code></pre></details>
 <h2>What the issue reports</h2>
 <p>The reporter cannot run Deck beneath a URL subpath; the existing findings trace this to root-relative routes and URL construction.</p>
 <p>Since previous triage:</p>
@@ -52,6 +54,14 @@ refresh_log:
 <li>Related PR #576 was marked rotten on 2026-08-07 and closed by automation on 2026-10-17 without merging. The bot says it needs a rebase; it remains an unmerged candidate for the identified base-path work.
 </li>
 <li>No new cross-references were added to issue #376.
+</li></ul>
+<p>Since the 2026-10-28 triage:</p>
+<ul>
+<li>On 2026-11-16 at 00:19:58Z, <code>k8s-triage-robot</code> commented the standard rot notice ending in <code>/close not-planned</code> (issuecomment-6903848855); <code>kubernetes-prow[bot]</code> then closed the issue at 2026-11-16T00:20:04Z with <code>stateReason: NOT_PLANNED</code>.
+</li>
+<li>No human comments, no new cross-references, and no label changes since <code>triaged_at</code>: labels are still <code>kind/bug</code>, <code>lifecycle/rotten</code>, <code>area/deck</code>, and <code>closedByPullRequestsReferences</code> is empty.
+</li>
+<li>The close is lifecycle automation only — no maintainer decision and no fix. The code-level analysis below is unchanged and still holds on current <code>upstream/main</code>.
 </li></ul>
 <h2>Findings</h2>
 <h3><span class="tag c-blue">reproducibility</span>Confirmed by code inspection, no repro steps needed</h3>
@@ -64,11 +74,11 @@ refresh_log:
 <ul>
 <li>detail: <code>cmd/deck/main.go</code> registers every route on a single <code>http.NewServeMux()</code> with literal root-relative paths. <code>cmd/deck/template/base.html</code> emits absolute asset/nav URLs (<code>/static/...</code>, <code>/pr</code>, <code>/tide</code>), while the inline data-fetch <code>&lt;script src&gt;</code> tags in <code>index.html</code>, <code>pr.html</code>, <code>tide.html</code>, <code>command-help.html</code>, <code>plugins.html</code> happen to use relative paths (no leading slash). Under a subpath, the absolute URLs break; only the accidentally-relative ones survive. No central frontend URL-builder exists either — call sites in <code>static/pr/pr.ts</code>, <code>static/common/rerun.ts</code>, <code>static/common/abort.ts</code>, <code>static/spyglass/spyglass.ts</code>, <code>static/prow/prow.ts</code> each construct URLs independently, several via <code>window.location.origin</code> + hardcoded absolute paths.
 </li>
-<li>evidence: <code>cmd/deck/main.go:314-704</code>, <code>cmd/deck/template/base.html:30-65</code>, <code>cmd/deck/template/index.html:5</code>, <code>cmd/deck/static/pr/pr.ts:113</code>, <code>cmd/deck/static/prow/prow.ts:525,663,760</code>
+<li>evidence: <code><a href="https://github.com/kubernetes-sigs/prow/blob/e601a1ffafd7d8d3a781238a4c5f4233d6248f68/cmd/deck/main.go#L314-L704">cmd/deck/main.go:314-704</a></code>, <code><a href="https://github.com/kubernetes-sigs/prow/blob/e601a1ffafd7d8d3a781238a4c5f4233d6248f68/cmd/deck/template/base.html#L30-L65">cmd/deck/template/base.html:30-65</a></code>, <code><a href="https://github.com/kubernetes-sigs/prow/blob/e601a1ffafd7d8d3a781238a4c5f4233d6248f68/cmd/deck/template/index.html#L5">cmd/deck/template/index.html:5</a></code>, <code><a href="https://github.com/kubernetes-sigs/prow/blob/e601a1ffafd7d8d3a781238a4c5f4233d6248f68/cmd/deck/static/pr/pr.ts#L113">cmd/deck/static/pr/pr.ts:113</a></code>, <code><a href="https://github.com/kubernetes-sigs/prow/blob/e601a1ffafd7d8d3a781238a4c5f4233d6248f68/cmd/deck/static/prow/prow.ts#L525">cmd/deck/static/prow/prow.ts:525</a>,663,760</code>
 </li></ul>
 <h3><span class="tag c-blue">related-code</span>Deck mux route registration</h3>
 <ul>
-<li>where: <code>cmd/deck/main.go:314-704</code>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/e601a1ffafd7d8d3a781238a4c5f4233d6248f68/cmd/deck/main.go#L314-L704">cmd/deck/main.go:314-704</a></code>
 </li>
 <li>excerpt:<pre><code>mux.Handle(&quot;/static/&quot;, http.StripPrefix(&quot;/static&quot;, staticHandlerFromDir(o.staticFilesLocation))) // main.go:316
 mux.HandleFunc(&quot;/&quot;, ...)                                                                          // main.go:435
@@ -76,7 +86,7 @@ mux.Handle(&quot;/prowjobs.js&quot;, ...)                                       
 </li></ul>
 <h3><span class="tag c-blue">related-code</span>Absolute asset/nav paths in base template</h3>
 <ul>
-<li>where: <code>cmd/deck/template/base.html:30-65</code>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/e601a1ffafd7d8d3a781238a4c5f4233d6248f68/cmd/deck/template/base.html#L30-L65">cmd/deck/template/base.html:30-65</a></code>
 </li>
 <li>excerpt:<pre><code>href=&quot;/static/style.css&quot; ... href=&quot;/pr&quot; ... href=&quot;/tide&quot;</code></pre>
 </li></ul>
@@ -95,19 +105,23 @@ mux.Handle(&quot;/prowjobs.js&quot;, ...)                                       
 <li>Reviewed PR #576's full review/comment history and <code>statusCheckRollup</code> (all failing checks dated 2026-04-08, matching the last commit).
 </li>
 <li>Confirmed canonical repo is <code>kubernetes-sigs/prow</code> (<code>upstream</code>), current worktree <code>origin</code> is <code>petr-muller/prow</code>.
+</li>
+<li>Re-checked <code>upstream/main</code> on 2026-11-16 for <code>base-path</code>/<code>basapath</code> under <code>cmd/deck/</code> and <code>pkg/deck/</code> — still no hits, 421 commits after <code>main_sha</code> (latest <code>86b2c4908</code>).
+</li>
+<li>Confirmed the only post-<code>triaged_at</code> activity on #376 is the rot close: two bot comments, one <code>closed</code> timeline event, zero cross-references, zero label events.
 </li></ul>
 <h2>Next steps</h2>
 <ul>
-<li>Check whether @tsj-30 intends to rebase and reopen PR #576; otherwise identify a new owner for the base-path fix.
+<li>Issue #376 is now closed as <code>NOT_PLANNED</code> by the rot bot, not by a maintainer. Decide whether to reopen it (<code>/reopen</code>) because the bug is real, or leave it closed and track the base-path work elsewhere — reopening only makes sense with an active owner, since it will go rotten again in ~150 days without activity.
 </li>
-<li>If the PR resumes, review its rebased diff and rerun the relevant CI, including coverage for <code>normalizeBasePath</code> and <code>stripBasePath</code>.
+<li>Base-path support is still unowned: PR #576 is closed unmerged, no newer PR references #376, and <code>upstream/main</code> has no base-path code. If someone picks it up, reuse PR #576's approach (flag + mux middleware + <code>deckPath</code> template helper + frontend URL helper) and add the <code>normalizeBasePath</code>/<code>stripBasePath</code> tests that review asked for.
 </li>
-<li>Issue #376 remains open but is now labeled <code>lifecycle/rotten</code>; keep its disposition tied to whether the base-path work resumes or is taken over.
+<li>If the issue stays closed, no further triage cycles are needed; the analysis above applies unchanged whenever a maintainer revives the work.
 </li></ul>
 <h2>Open questions</h2>
 <ul>
-<li>Will @tsj-30 reopen and rebase PR #576, or should someone else take over?
+<li>Is sig-testing/prow interested in a subpath deployment enough to fund an owner, given the issue was auto-closed for inactivity rather than resolved?
 </li>
-<li>After rebasing, are the previously failing CI checks and requested base-path tests addressed?
+<li>Would a reopened #376 need a fresh design proposal (e.g. whether base path belongs in Deck config or is derived from <code>X-Forwarded-Prefix</code>), or is a rebased PR #576 sufficient?
 </li></ul>
 </main></body></html>

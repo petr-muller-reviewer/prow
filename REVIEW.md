@@ -3,8 +3,13 @@ pr: kubernetes-sigs/prow#847
 title: "deck: drop stale Prow-managed contexts with no matching ProwJob"
 head_sha: 41980fbc0d3985c7f9ecc7045c73ea5e6b9b162d
 base: main
-reviewed_at: 2026-08-13T11:40:24Z
+reviewed_at: 2026-11-16T23:30:53Z
 verdict: request-changes
+refresh_log:
+  - at: 2026-11-16T23:30:53Z
+    old_sha: 41980fbc0d3985c7f9ecc7045c73ea5e6b9b162d
+    new_sha: 41980fbc0d3985c7f9ecc7045c73ea5e6b9b162d
+    summary: No code changes; only a k8s-triage-robot stale-lifecycle comment and the lifecycle/stale label added 2026-11-11. Findings unchanged.
 ---
 
 ## What this PR does
@@ -13,6 +18,11 @@ verdict: request-changes
 - Intent: retract stale contexts left behind by renamed/removed Prow jobs, since GitHub never retracts a status context on its own.
 - Explicitly scoped to name-pattern matching rather than a real config diff; author acknowledges this won't catch non-conventionally-named renamed jobs.
 - Fixes #824.
+
+Since previous review (2026-11-16):
+- No code changes — PR head is still `41980fb`; no new commits, reviews, or inline comments since 2026-08-13.
+- Only new activity: `k8s-triage-robot` posted the 90-day-inactivity notice and applied `lifecycle/stale` on 2026-11-11 (rotten in 30d, then closed after another 30d without activity).
+- The PR stays open, mergeable, and still carries `do-not-merge/hold`; the verdict below is unchanged.
 
 ## Findings
 

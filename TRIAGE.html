@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#477</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>branchprotector: excluded branches retain existing protection instead of being removed</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/issues/477">kubernetes-sigs/prow#477</a> · main_sha <code>cced76d90494</code> · state <code>open</code> · labels <code>area/branchprotector</code> · triaged_at <code>2026-08-17T22:57:32Z</code></div>
+<div class="badges"><span class="badge c-amber">verdict: needs-discussion</span></div>
+<details><summary>Full metadata</summary><pre><code>issue: kubernetes-sigs/prow#477
+title: &quot;branchprotector: excluded branches retain existing protection instead of being removed&quot;
+state: open
+labels: area/branchprotector
+main_sha: cced76d904946c1412da1ddc2d6441167d3d8e46
+triaged_at: 2026-08-17T22:57:32Z
+verdict: needs-discussion
+advice:
+  advised_at: 2026-10-05T23:37:41Z
+  based_on_triaged_at: 2026-08-17T22:57:32Z</code></pre></details>
+<h2>Findings</h2>
+<h3><span class="tag c-blue">reproducibility</span>Confirmed, root-caused by reporter and independently verified</h3>
+<ul>
+<li>detail: Add a branch to <code>exclude</code>, then run branchprotector against a branch that was already <code>Protected=true</code> on GitHub. Protection is never removed; branchprotector logs <code>excluded</code> and takes no further action. Subsequent pushes fail with <code>GH006: Protected branch update failed</code>.
+</li>
+<li>evidence: issue body (kaovilai, 2025-06-16); <code>cmd/branchprotector/protect.go:341-343</code>
+</li></ul>
+<h3><span class="tag c-amber">cause</span><code>exclude</code> is a pure enumeration-time skip — confirmed intentional by maintainer</h3>
+<ul>
+<li>detail: In <code>UpdateRepo</code>, excluded branches hit <code>continue</code> at line 341-343 and are never added to the <code>branches</code> map, so they never reach <code>UpdateBranch</code> and no removal is ever queued, regardless of current protection state. Maintainer (petr-muller) confirmed 2026-08-13T12:12:31Z this is intended: <code>exclude</code> is meant as a pattern variant of <code>unmanaged: true</code>, not of <code>protect: false</code>, and its semantics will not be changed.
+</li>
+<li>evidence: <code>cmd/branchprotector/protect.go:341-343</code>; issue comment 2026-08-13T12:12:31Z
+</li></ul>
+<h3><span class="tag c-amber">cause</span>No pattern-based mechanism exists to retroactively remove protection — the real gap</h3>
+<ul>
+<li>detail: <code>Unmanaged</code> (<code>pkg/config/branch_protection.go:32-34</code>) is a per-branch-name boolean, not a regex list; <code>Exclude</code>/<code>Include</code> are the only regex mechanisms and both are pure "don't touch" filters. For branches whose names aren't knowable in advance (bot/automation-created, e.g. Copilot-assigned branches), there is no pattern-based way to pre-empt protection, and once branchprotector's default policy protects them, no pattern-based way to remove that protection afterward — only a manual, exact-name <code>protect: false</code> or manual GitHub UI/API action. Surfaced via a live exchange between kaovilai and petr-muller and is what shifted the maintainer from a firm won't-fix toward "softening" on a new additive field.
+</li>
+<li>evidence: <code>pkg/config/branch_protection.go:30-60</code>; issue comments 2026-08-13T12:45:09Z, 12:52:16Z, 12:53:28Z, 12:54:55Z, 12:56:28Z, 13:18:08Z
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>Branch enumeration and filtering</h3>
+<ul>
+<li>where: <code>cmd/branchprotector/protect.go:328-347</code>
+</li>
+<li>excerpt:<pre><code>} else if !ok &amp;&amp; branchExclusions != nil &amp;&amp; branchExclusions.MatchString(b.Name) {
+    logrus.Infof(&quot;%s/%s=%s: excluded&quot;, orgName, repoName, b.Name)
+    continue
+}</code></pre>
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>configureBranches — removal dispatch</h3>
+<ul>
+<li>where: <code>cmd/branchprotector/protect.go:182-196</code>
+</li>
+<li>excerpt:<pre><code>if u.Request == nil {
+    if err := p.client.RemoveBranchProtection(u.Org, u.Repo, u.Branch); err != nil {
+        p.errors.add(fmt.Errorf(&quot;remove %s/%s=%s protection failed: %w&quot;, u.Org, u.Repo, u.Branch, err))
+    }
+    continue
+}</code></pre>
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>UpdateBranch — where protect:false triggers removal</h3>
+<ul>
+<li>where: <code>cmd/branchprotector/protect.go:454-517</code>
+</li>
+<li>excerpt:<pre><code>var req *github.BranchProtectionRequest
+if *bp.Protect {
+    r := makeRequest(*bp, p.enableAppsRestrictions)
+    req = &amp;r
+}
+// If protect is false, req stays nil -&gt; triggers RemoveBranchProtection</code></pre>
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>Policy struct — Unmanaged is boolean, not pattern-based</h3>
+<ul>
+<li>where: <code>pkg/config/branch_protection.go:32-34</code>
+</li>
+<li>excerpt:<pre><code>// Unmanaged makes us not manage the branchprotection.
+Unmanaged *bool `json:&quot;unmanaged,omitempty&quot;`</code></pre>
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>Exclude field definition — docstring still unclarified</h3>
+<ul>
+<li>where: <code>pkg/config/branch_protection.go:54-56</code>
+</li>
+<li>excerpt:<pre><code>// Exclude specifies a set of regular expressions which identify branches
+// that should be excluded from the protection policy, mutually exclusive with Include
+Exclude []string `json:&quot;exclude,omitempty&quot;`</code></pre>
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>Existing exclusion tests — gap: no excluded+protected case</h3>
+<ul>
+<li>where: <code>cmd/branchprotector/protect_test.go:1098-1167</code>
+</li>
+<li>excerpt: Tests verify excluded branches are not protected. No test checks behavior when an excluded branch is already protected on GitHub.
+</li></ul>
+<h3><span class="tag c-blue">related-pr</span>PR #478 — proposed fix, ruled out as-is, motivated a softer alternative</h3>
+<ul>
+<li>ref: kubernetes-sigs/prow#478
+</li>
+<li>relevance: By the same author (kaovilai). Repurposes <code>exclude</code> to actively remove protection. Has <code>lgtm</code>, all CI green. Maintainer initially moved to close it 2026-08-13T12:12:31Z (semantics change + no more branchprotector investment desired), but the subsequent exchange left him "softening" toward a separate additive field instead of merging #478 as-is. Also bypasses <code>equalBranchProtections</code> dedup — flagged as a concern independent of which approach proceeds.
+</li></ul>
+<h3><span class="tag c-blue">related-issue</span>#846 — move away from branch protection towards rulesets</h3>
+<ul>
+<li>ref: kubernetes-sigs/prow#846
+</li>
+<li>relevance: Cited by the maintainer as the reason not to invest further in branchprotector's feature set, and as the intended home for the config-surface lessons learned in this thread. No committed timeline as of this triage.
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li><code>Exclude</code> field documented as "branches that should be excluded from the protection policy" — ambiguous, docstring not yet updated
+</li>
+<li><code>Unmanaged</code> confirmed to be a per-branch-name boolean, not a regex list — no existing pattern-based "don't manage" mechanism beyond <code>exclude</code> itself
+</li>
+<li><code>Include</code> filtering has the same structural gap as <code>Exclude</code> (branches that stop matching keep existing protection) — not raised in the issue, not addressed by any proposed approach
+</li>
+<li>Existing tests only verify excluded branches don't receive protection, not that existing protection is removed
+</li>
+<li>Fake test client's <code>GetBranches</code> correctly simulates <code>Protected=true</code> for <code>onlyProtected=true</code> call
+</li>
+<li>Current <code>exclude</code> behavior has been stable for years and is, per the maintainer, intentional
+</li>
+<li>Line numbers for all cited code reconfirmed against current <code>main_sha</code> (<code>cced76d90</code>) — unchanged since original triage
+</li>
+<li>Full issue comment history re-read end to end; no linked/cross-referenced PRs beyond #478 and #846
+</li>
+<li>Maintainer's position evolved materially during the thread: from firm close (2026-08-13T12:12:31Z) to "softening" toward a new additive field (2026-08-13T13:18:08Z) after the bot-branch bootstrapping scenario was explained
+</li></ul>
+<h2>Next steps</h2>
+<ul>
+<li>Do not merge PR #478 as-is — maintainer has ruled out changing <code>exclude</code>'s semantics
+</li>
+<li>Decide: commit to a new additive, pattern-based <code>protect: false</code> field (backwards compatible, solves the bot-branch scenario, reuses #478's removal machinery through a dedup-aware path) versus holding the status quo (close, redirect effort to rulesets #846)
+</li>
+<li>Regardless of that decision: land a docstring clarification on <code>Exclude</code> (<code>pkg/config/branch_protection.go:54-56</code>) stating it behaves as a pattern-scoped <code>unmanaged: true</code>, not a pattern-scoped <code>protect: false</code> — low-cost, unblocked either way
+</li>
+<li>Decide PR #478's fate explicitly once the above is resolved (close outright vs. leave open pending rework)
+</li>
+<li>Labels applied by maintainer so far: <code>area/branchprotector</code> (added), <code>lifecycle/rotten</code> (removed)
+</li></ul>
+<h2>Advice</h2>
+<p>No issue activity has changed the triage since 2026-08-17. The blocking design decision remains open, and PR #478 is still open (last updated 2026-08-13). Ask the active maintainer who confirmed the current <code>exclude</code> semantics to settle the direction and the PR's intended fate; <code>petr-muller</code> is also a repository approver in <code>OWNERS</code>.</p>
+<h3>Ask for the maintainer decision</h3>
+<p>The issue is still <code>needs-discussion</code>; a focused follow-up can resolve whether to add a new pattern-based removal field or leave the behavior unsupported and redirect effort toward rulesets #846.</p>
+<pre><code>gh issue comment 477 --repo kubernetes-sigs/prow --body &quot;$(cat &lt;&lt;&#x27;EOF&#x27;
+&gt; *This was generated by AI during triage.*
+
+@petr-muller — the saved triage still identifies one unresolved choice for #477: add a separate pattern-based way to remove protection (`protect: false` semantics), or keep `exclude` as an unmanaged filter and redirect this use case toward rulesets (#846). PR #478 is still open and changes `exclude` semantics. Could you record which direction Prow maintainers want, and whether #478 should be reworked around a new field or closed? If proceeding with a new field, please settle its name and semantics and account for protection deduplication.
+EOF
+)&quot;</code></pre>
+<h2>Open questions</h2>
+<ul>
+<li>Will the maintainer commit to the new additive field, or hold the close/redirect-to-rulesets position? This is the single blocking decision.
+</li>
+<li>If the additive field proceeds: what name avoids repeating the <code>exclude</code>/<code>unmanaged</code> confusion?
+</li>
+<li>Should <code>Include</code> receive the same retroactive-removal treatment for consistency, or is that explicitly out of scope?
+</li>
+<li>Is there a target timeline for the rulesets migration (#846) that would change the urgency calculus here?
+</li>
+<li>Should PR #478 be closed outright now that repurposing <code>exclude</code> is ruled out, or left open pending a possible rework?
+</li></ul>
+</main></body></html>

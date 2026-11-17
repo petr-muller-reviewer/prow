@@ -31,11 +31,23 @@ ul, ol { padding-left:1.5rem; }
 details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
 </style></head><body><main>
 <h1>chore(deps): bump the aws group across 1 directory with 4 updates</h1>
-<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/990">kubernetes-sigs/prow#990</a> · base <code>main</code> · head_sha <code>a4ddb27e6c42</code> · reviewed_at <code>2026-10-05T23:17:05Z</code></div>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/990">kubernetes-sigs/prow#990</a> · base <code>main</code> · head_sha <code>642635dccfd6</code> · reviewed_at <code>2026-11-17T00:00:45Z</code></div>
 <div class="badges"><span class="badge c-green">verdict: approve</span></div>
+<details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#990
+title: &quot;chore(deps): bump the aws group across 1 directory with 4 updates&quot;
+head_sha: 642635dccfd6535c265f65789379cdf8880ee05e
+base: main
+reviewed_at: 2026-11-17T00:00:45Z
+verdict: approve
+refresh_log:
+  - at: 2026-11-17T00:00:45Z
+    old_sha: a4ddb27e6c423f9925489ee45ef889215496677e
+    new_sha: 642635dccfd6535c265f65789379cdf8880ee05e
+    summary: &quot;PR rebased onto newer main and merged 2026-10-10; S3 bump advanced v1.113.4 -&gt; v1.114.0, an additive API field; no new findings.&quot;</code></pre></details>
 <h2>Verdict</h2>
 <p>Approve; no AWS-specific vulnerability or compatibility blocker surfaced.</p>
 <p>All four direct AWS SDK modules were released on Sep 24, 2026, 11 days before this review. The update includes a checksum-response fix in the active S3 dependency path. The age is the only reason to defer: if the usual two-week soak is required, wait until Oct 8; otherwise the bump looks reasonable to take now.</p>
+<p>Refreshed on 2026-11-17: the PR was rebased onto a newer <code>main</code> and merged on 2026-10-10, after the two-week soak window had passed. The only substantive change since the previous review is the S3 module moving from <code>v1.113.4</code> to <code>v1.114.0</code>. No findings were added or resolved; the approval stands.</p>
 <h2>What this PR does</h2>
 <ul>
 <li>Updates the AWS SDK core, config, credentials, and S3 modules in the main Go manifest.
@@ -44,36 +56,56 @@ details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-si
 </li>
 <li>Changes dependency metadata only; it does not modify Prow source code.
 </li></ul>
+<p>Since previous review:</p>
+<ul>
+<li>Rebased from base <code>6844e439</code> onto <code>e012f288</code>, which brought unrelated <code>main</code> dependency bumps into the diff against the old base; the PR's own change is still the AWS group only.
+</li>
+<li>S3 advanced <code>v1.113.4 → v1.114.0</code> (release 2026-09-30) instead of <code>v1.113.4</code>; it adds an optional S3 Inventory field, <code>IntelligentTieringReferenceDate</code>, with no change to Prow's call path.
+</li>
+<li>Merged 2026-10-10 as <code>7f345e2f</code>, approved by <code>petr-muller</code>.
+</li></ul>
 <h2>Findings</h2>
 <p>No findings.</p>
 <h2>Checked</h2>
 <ul>
 <li>Classification: dep-only. Changed files are <code>go.mod</code>, <code>go.sum</code>, <code>hack/tools/go.mod</code>, and <code>hack/tools/go.sum</code>.
 </li>
-<li>Direct versions: <code>github.com/aws/aws-sdk-go-v2</code> <code>v1.47.0 → v1.47.1</code>; <code>/config</code> <code>v1.33.5 → v1.33.6</code>; <code>/credentials</code> <code>v1.20.5 → v1.20.6</code>; <code>/service/s3</code> <code>v1.113.2 → v1.113.4</code>. All new versions are tagged releases dated Sep 24, 2026 (11 days old on review date).
+<li>Direct versions: <code>github.com/aws/aws-sdk-go-v2</code> <code>v1.47.0 → v1.47.1</code>; <code>/config</code> <code>v1.33.5 → v1.33.6</code>; <code>/credentials</code> <code>v1.20.5 → v1.20.6</code>; <code>/service/s3</code> <code>v1.113.2 → v1.114.0</code>. Core, config, and credentials are tagged Sep 24, 2026; S3 <code>v1.114.0</code> is tagged Sep 30, 2026 (17 days before the merge).
 </li>
-<li>Usage: each module is directly required and <code>go mod why</code> traces each through <code>pkg/io/providers</code>. The import surface is one production package across <code>pkg/io/providers/aws.go</code> and its test. The code loads the default credential chain or static credentials, creates an S3 client, and opens a Go Cloud S3 bucket. This is a light footprint with sensitive credential, TLS, and network handling (<code>pkg/io/providers/aws.go:26-92</code>).
+<li>Usage: each module is directly required and <code>go mod why</code> traces each through <code>pkg/io/providers</code>. The import surface is one production package across <code>pkg/io/providers/aws.go</code> and its test. The code loads the default credential chain or static credentials, creates an S3 client, and opens a Go Cloud S3 bucket. This is a light footprint with sensitive credential, TLS, and network handling (<code><a href="https://github.com/kubernetes-sigs/prow/blob/642635dccfd6535c265f65789379cdf8880ee05e/pkg/io/providers/aws.go#L26-L92">pkg/io/providers/aws.go:26-92</a></code>).
 </li>
-<li>Changelog: config and credentials releases are dependency refreshes. The core SDK adds an internal AWS-chunked response decoder; Prow does not call it directly, and the SDK change adds the package and tests without a caller. S3 <code>v1.113.3</code> and <code>v1.113.4</code> changelogs say dependency update; the HTTP-200 embedded-error fix was already in base version <code>v1.113.2</code>.
+<li>Changelog: config and credentials releases are dependency refreshes. The core SDK adds an internal AWS-chunked response decoder; Prow does not call it directly, and the SDK change adds the package and tests without a caller. S3 <code>v1.113.3</code> and <code>v1.113.4</code> changelogs say dependency update; the HTTP-200 embedded-error fix was already in base version <code>v1.113.2</code>. S3 <code>v1.114.0</code> adds only the optional <code>IntelligentTieringReferenceDate</code> inventory field.
 </li>
 <li>Relevant transitive change: <code>service/internal/checksum</code> moves <code>v1.11.3 → v1.11.5</code>. Its non-200 response checksum fix can affect supported checksummed S3 responses, including partial responses, in the S3 client path Prow uses. The remaining AWS indirect changes are patch-level refreshes; the tools manifest carries a subset as indirect dependencies.
 </li>
-<li>OSV returned no advisories for old or new versions of the four direct modules or the updated checksum module.
+<li>OSV returned no advisories for old or new versions of the four direct modules or the updated checksum module. Re-checked <code>service/s3@v1.114.0</code> and <code>aws-sdk-go-v2@v1.47.1</code> on 2026-11-17: no advisories.
 </li>
 <li><code>govulncheck -format json ./pkg/io/providers</code> succeeded at base and head. Both runs reported the same unrelated Tekton advisory <code>GO-2023-1901</code>; neither reported findings for the bumped AWS modules. The full-repository base scan was killed for resource use (exit 137). The full head scan also reported <code>GO-2026-5932</code> in <code>golang.org/x/crypto</code> and <code>GO-2023-1901</code>; because the full base scan did not complete, their repository-wide status cannot be compared here. Neither advisory is in the AWS modules changed by this PR.
 </li>
 <li>No project-code changes were present, so there was no separate source-code review.
 </li></ul>
 <h2>Open questions</h2>
-<p>None for the author. The remaining decision is whether to apply the usual two-week soak and defer until Oct 8.</p>
+<p>None; the PR has merged. The soak question is moot (merge landed 2026-10-10, after Oct 8).</p>
 <h2>Dependency followups</h2>
-<p>No actionable follow-up opportunities identified. Examined these version ranges:</p>
+<p>No actionable follow-up opportunities identified. Re-checked twice on 2026-11-17 (the second pass also confirmed no <code>Deprecated:</code> marker on any symbol we call in <code>service/s3@v1.114.0</code> or <code>aws/transport/http@v1.47.1</code>) against the merged PR (merge commit <code>7f345e2fd755a7ae95325154d900ea6ef81e5ea2</code>), reading the changelog for every release in each bumped range, not just the endpoints. Examined these version ranges:</p>
 <ul>
-<li>Direct: <code>github.com/aws/aws-sdk-go-v2</code> <code>v1.47.0 → v1.47.1</code>; <code>/config</code> <code>v1.33.5 → v1.33.6</code>; <code>/credentials</code> <code>v1.20.5 → v1.20.6</code>; <code>/service/s3</code> <code>v1.113.2 → v1.113.4</code>.
+<li>Direct: <code>github.com/aws/aws-sdk-go-v2</code> <code>v1.47.0 → v1.47.1</code>; <code>/config</code> <code>v1.33.5 → v1.33.6</code>; <code>/credentials</code> <code>v1.20.5 → v1.20.6</code>; <code>/service/s3</code> <code>v1.113.2 → v1.114.0</code>.
 </li>
 <li>Indirect in <code>go.mod</code>: <code>/feature/ec2/imds</code> <code>v1.20.0 → v1.20.1</code>; <code>/internal/configsources</code> <code>v1.5.3 → v1.5.4</code>; <code>/internal/endpoints/v2</code> <code>v2.8.3 → v2.8.4</code>; <code>/internal/v4a</code> <code>v1.5.3 → v1.5.4</code>; <code>/service/internal/checksum</code> <code>v1.11.3 → v1.11.5</code>; <code>/service/internal/presigned-url</code> <code>v1.14.3 → v1.14.4</code>; <code>/service/internal/s3shared</code> <code>v1.20.3 → v1.20.4</code>; <code>/service/signin</code> <code>v1.10.0 → v1.10.1</code>; <code>/service/sso</code> <code>v1.38.0 → v1.38.1</code>; <code>/service/ssooidc</code> <code>v1.43.0 → v1.43.1</code>; <code>/service/sts</code> <code>v1.51.0 → v1.51.1</code>.
 </li>
 <li><code>hack/tools/go.mod</code> repeats a subset of these as indirect dependencies; it introduces no additional AWS version ranges.
 </li></ul>
-<p>The config and credentials changelogs describe dependency refreshes only. The new AWS-chunked decoder is an internal package with no Prow call site. The checksum behavior change is automatic inside the S3 response path and requires no call-site migration; the S3 HTTP-200 error fix was already present at the base version. The remaining indirect updates contain no identified deprecation, replacement API, or feature tied to Prow code.</p>
+<p>Changelog items in range that could have acted on our code:</p>
+<ul>
+<li><code>service/s3</code> <code>v1.114.0</code>: new optional S3 Inventory field <code>IntelligentTieringReferenceDate</code>. Prow's only S3 use is the gocloud <code>s3blob</code> bucket opened from <code>pkg/io/providers/aws.go</code>; it never calls the bucket-inventory APIs or reads inventory records, so there is no call site to adopt the field.
+</li>
+<li><code>service/internal/checksum</code> <code>v1.11.4</code>: "Bug Fix: Checksum non-200 http responses" — automatic inside the S3 response path; no exported API or call-site change.
+</li>
+<li><code>service/sts</code> <code>v1.51.0</code>: <code>PackedPolicySize</code> deprecated, <code>MinimumSessionTokenSize</code> and token-size fields added. Prow does not import <code>service/sts</code> or call <code>AssumeRole</code>.
+</li>
+<li><code>config</code>, <code>credentials</code>, <code>internal/endpoints/v2</code>, <code>internal/configsources</code>, <code>internal/v4a</code>, <code>service/internal/presigned-url</code>, <code>service/internal/s3shared</code>, <code>service/signin</code>, <code>service/sso</code>, <code>service/ssooidc</code>, <code>feature/ec2/imds</code>: releases in range are dependency refreshes, or <code>Amz-Sdk-Request</code>/tracing/credential-source middleware-registration refactors confined to generated clients, with no exported API we call.
+</li>
+<li>Endpoint-resolution deprecation (<code>EndpointResolver</code> → <code>BaseEndpoint</code>/<code>EndpointResolverV2</code>) is already handled: <code><a href="https://github.com/kubernetes-sigs/prow/blob/642635dccfd6535c265f65789379cdf8880ee05e/pkg/io/providers/aws.go#L88">pkg/io/providers/aws.go:88</a></code> sets <code>o.BaseEndpoint</code>, the recommended replacement.
+</li></ul>
+<p>Our AWS import surface is five symbols in <code>pkg/io/providers</code>: <code>config.LoadDefaultConfig</code>, <code>credentials.NewStaticCredentialsProvider</code>, <code>s3.NewFromConfig</code>, fields <code>UsePathStyle</code>/<code>HTTPClient</code>/<code>BaseEndpoint</code> on <code>s3.Options</code>, and <code>awshttp.NewBuildableClient</code> (<code><a href="https://github.com/kubernetes-sigs/prow/blob/642635dccfd6535c265f65789379cdf8880ee05e/pkg/io/providers/aws.go#L26-L92">pkg/io/providers/aws.go:26-92</a></code>). None is deprecated, superseded, or given a cheaper replacement in these ranges, and no new feature has a matching call site. No candidates, so no handoff prompts.</p>
 </main></body></html>

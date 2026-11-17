@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#1040</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>Peribolos: Managing repository/org permissions for a GitHub Enterprise teams without managing members</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/issues/1040">kubernetes-sigs/prow#1040</a> · main_sha <code>c78b4fb59529</code> · state <code>open</code> · labels <code>none</code> · triaged_at <code>2026-10-27T23:48:35Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: accepted</span></div>
+<details><summary>Full metadata</summary><pre><code>issue: kubernetes-sigs/prow#1040
+title: &quot;Peribolos: Managing repository/org permissions for a GitHub Enterprise teams without managing members&quot;
+state: open
+labels: none
+main_sha: c78b4fb59529c0abc6e1c75eb8ed3675f58ce99e
+triaged_at: 2026-10-27T23:48:35Z
+verdict: accepted
+advice:
+  advised_at: 2026-10-28T00:46:06Z
+  based_on_triaged_at: 2026-10-27T23:48:35Z</code></pre></details>
+<h2>Verdict</h2>
+<p><strong>Accepted — feature request.</strong> Peribolos has code for identifying enterprise teams, but its current all-or-nothing ignore behavior cannot preserve those teams as permission targets while leaving their membership under enterprise management. Effort estimate: Level 2 (Moderate); the change needs explicit rules across team lifecycle, membership, and permission reconciliation.</p>
+<h2>What the issue reports</h2>
+<ul>
+<li>The reporter uses Peribolos to manage permissions across organizations in an on-prem GitHub Enterprise Server environment.
+</li>
+<li>Enterprise teams are managed centrally, while Peribolos should manage their repository and organization access within each org.
+</li>
+<li><code>--fix-team-members</code> also processes enterprise teams whose configured member lists are empty, which can make Peribolos try to remove enterprise-managed members.
+</li>
+<li><code>--ignore-enterprise-teams</code> avoids reconciling those teams but also prevents their configured permissions from being managed.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-amber">cause</span>Enterprise-team filtering and membership reconciliation are coupled</h3>
+<ul>
+<li>detail: With <code>--ignore-enterprise-teams</code>, <code>configureTeams</code> filters enterprise teams out of the resolved team map, so later team permission configuration cannot use them. Without that flag, configured teams enter <code>configureTeamAndMembers</code>; when <code>--fix-team-members</code> is enabled, <code>configureTeamMembers</code> reconciles configured members and maintainers, including empty lists. This matches the reported gap; the exact GHES API error was not independently reproduced.
+</li>
+<li>evidence: <code>cmd/peribolos/main.go:928-960, 1241-1260, 1623-1659, 2057-2127</code>
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>Enterprise filtering, membership updates, and permission reconciliation</h3>
+<ul>
+<li>where: <code>cmd/peribolos/main.go:948-952, 1241-1259, 1643-1647</code>
+</li>
+<li>excerpt:<pre><code>if ignoreEnterpriseTeams &amp;&amp; t.Type == github.TeamTypeEnterprise {
+    logrus.Infof(&quot;Skipping enterprise team %s(%s) — managed at the enterprise level&quot;, t.Slug, t.Name)
+    ignoredTeamSlugs.Insert(t.Slug)
+    continue
+}
+
+if !opt.fixTeamMembers {
+    logrus.Infof(&quot;Skipping %s member configuration&quot;, name)
+} else if err = configureTeamMembers(client, orgName, gt, team, opt.ignoreInvitees); err != nil {
+    if opt.confirm {
+        return fmt.Errorf(&quot;failed to update %s members: %w&quot;, name, err)
+    }</code></pre>
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>Enterprise teams are identified by their API type</h3>
+<ul>
+<li>where: <code>pkg/github/types.go:1171-1187</code>
+</li>
+<li>excerpt:<pre><code>// TeamTypeEnterprise identifies teams managed at the enterprise level.
+TeamTypeEnterprise = &quot;enterprise&quot;</code></pre>
+</li></ul>
+<h3><span class="tag c-blue">related-pr</span>Existing all-or-nothing enterprise-team ignore behavior</h3>
+<ul>
+<li>ref: kubernetes-sigs/prow#710
+</li>
+<li>relevance: Merged PR #710 added <code>--ignore-enterprise-teams</code> to avoid team and member mutations; that option filters enterprise teams out of all team reconciliation, including permission targets.
+</li></ul>
+<h3><span class="tag c-blue">related-pr</span>Enterprise membership handling in dumps</h3>
+<ul>
+<li>ref: kubernetes-sigs/prow#977
+</li>
+<li>relevance: Merged PR #977 improved <code>--dump --ignore-enterprise-teams</code> handling for members whose org membership comes only from enterprise teams; it does not provide permission-only reconciliation.
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>Checked issue #1040's current metadata: it remains open with no labels. The last recorded update was 2026-10-27.
+</li>
+<li>Queried the issue timeline for cross-references; none were returned.
+</li>
+<li>Searched issues for <code>peribolos enterprise teams</code>, <code>peribolos members permissions</code>, <code>enterprise team members</code>, and <code>enterprise teams</code>. No duplicate was confirmed; issue #737 concerns a separate <code>--ignore-repos</code> feature.
+</li>
+<li>Searched PRs for <code>enterprise team peribolos</code>; no active PR for this behavior was found. Read merged PRs #710 and #977.
+</li>
+<li>Read the relevant team configuration, enterprise-team filtering, membership reconciliation, repository/org-role permission paths, tests, and Peribolos documentation.
+</li>
+<li>Existing tests cover all-or-nothing enterprise-team filtering and ordinary member/maintainer diffs, but not keeping an enterprise team as a permission target while skipping its membership updates (<code>cmd/peribolos/main_test.go:1279-1315, 1597-1710</code>).
+</li></ul>
+<h2>Next steps</h2>
+<ul>
+<li>Confirm the GHES version and whether its API supports the desired repository and organization-role assignments for enterprise teams.
+</li>
+<li>Agree whether team metadata should also remain outside Peribolos management.
+</li>
+<li>If confirmed, implement an opt-in permissions-only mode that protects enterprise teams from lifecycle and membership mutations while keeping configured teams available as permission targets; add tests and docs.
+</li>
+<li>Suggested labels: <code>kind/feature</code>, <code>area/peribolos</code>, <code>help wanted</code>.
+</li></ul>
+<h2>Advice</h2>
+<p>The issue is still open and unlabeled; there are no new comments or linked PRs since triage. The existing next steps still cover the GHES/API and metadata questions, so there is no new disposition action to take.</p>
+<ol>
+<li>Apply the suggested discovery labels. All three labels exist in the repository and none is currently applied.
+<pre><code>gh issue edit 1040 --repo kubernetes-sigs/prow \
+  --add-label &quot;kind/feature&quot; \
+  --add-label &quot;area/peribolos&quot; \
+  --add-label &quot;help wanted&quot;</code></pre>
+</li></ol>
+<p>No milestone, assignee, or implementation PR is indicated by the current issue state.</p>
+<h2>Open questions</h2>
+<ul>
+<li>Which GHES version is in use, and what API response occurs when Peribolos attempts enterprise-team membership changes?
+</li>
+<li>Should the requested mode also skip team metadata edits, or only member and maintainer reconciliation?
+</li>
+<li>Should the behavior be enabled by a CLI option or a per-team config field?
+</li></ul>
+</main></body></html>

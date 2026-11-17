@@ -31,15 +31,19 @@ ul, ol { padding-left:1.5rem; }
 details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
 </style></head><body><main>
 <h1>Peribolos: Managing repository/org permissions for a GitHub Enterprise teams without managing members</h1>
-<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/issues/1040">kubernetes-sigs/prow#1040</a> · main_sha <code>c78b4fb59529</code> · state <code>open</code> · labels <code>none</code> · triaged_at <code>2026-10-27T23:48:35Z</code></div>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/issues/1040">kubernetes-sigs/prow#1040</a> · main_sha <code>c78b4fb59529</code> · state <code>open</code> · labels <code>kind/feature, area/peribolos</code> · triaged_at <code>2026-11-17T19:17:24Z</code></div>
 <div class="badges"><span class="badge c-green">verdict: accepted</span></div>
 <details><summary>Full metadata</summary><pre><code>issue: kubernetes-sigs/prow#1040
 title: &quot;Peribolos: Managing repository/org permissions for a GitHub Enterprise teams without managing members&quot;
 state: open
-labels: none
+labels: kind/feature, area/peribolos
 main_sha: c78b4fb59529c0abc6e1c75eb8ed3675f58ce99e
-triaged_at: 2026-10-27T23:48:35Z
+triaged_at: 2026-11-17T19:17:24Z
 verdict: accepted
+refresh_log:
+  - at: 2026-11-17T19:17:24Z
+    since: 2026-10-27T23:48:35Z
+    summary: &quot;Maintainer endorsement of a dedicated flag, kind/feature + area/peribolos applied, and reporter hmhngx implementing --ignore-enterprise-team-members; no PR or code change yet.&quot;
 advice:
   advised_at: 2026-10-28T00:46:06Z
   based_on_triaged_at: 2026-10-27T23:48:35Z</code></pre></details>
@@ -55,16 +59,24 @@ advice:
 </li>
 <li><code>--ignore-enterprise-teams</code> avoids reconciling those teams but also prevents their configured permissions from being managed.
 </li></ul>
+<p>Since previous triage:</p>
+<ul>
+<li>petr-muller (2026-10-28T00:59:59Z) endorsed the idea of a dedicated flag and applied <code>/kind feature</code> <code>/area peribolos</code>.
+</li>
+<li>hmhngx (2026-11-17T06:06:53Z) reports implementing <code>--ignore-enterprise-team-members</code> so Peribolos can manage enterprise-team repository permissions without reconciling membership — the strategy the triage recommended.
+</li>
+<li>No PR or code change was linked by 2026-11-17.
+</li></ul>
 <h2>Findings</h2>
 <h3><span class="tag c-amber">cause</span>Enterprise-team filtering and membership reconciliation are coupled</h3>
 <ul>
 <li>detail: With <code>--ignore-enterprise-teams</code>, <code>configureTeams</code> filters enterprise teams out of the resolved team map, so later team permission configuration cannot use them. Without that flag, configured teams enter <code>configureTeamAndMembers</code>; when <code>--fix-team-members</code> is enabled, <code>configureTeamMembers</code> reconciles configured members and maintainers, including empty lists. This matches the reported gap; the exact GHES API error was not independently reproduced.
 </li>
-<li>evidence: <code>cmd/peribolos/main.go:928-960, 1241-1260, 1623-1659, 2057-2127</code>
+<li>evidence: <code><a href="https://github.com/kubernetes-sigs/prow/blob/c78b4fb59529c0abc6e1c75eb8ed3675f58ce99e/cmd/peribolos/main.go#L928-L960">cmd/peribolos/main.go:928-960</a>, 1241-1260, 1623-1659, 2057-2127</code>
 </li></ul>
 <h3><span class="tag c-blue">related-code</span>Enterprise filtering, membership updates, and permission reconciliation</h3>
 <ul>
-<li>where: <code>cmd/peribolos/main.go:948-952, 1241-1259, 1643-1647</code>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/c78b4fb59529c0abc6e1c75eb8ed3675f58ce99e/cmd/peribolos/main.go#L948-L952">cmd/peribolos/main.go:948-952</a>, 1241-1259, 1643-1647</code>
 </li>
 <li>excerpt:<pre><code>if ignoreEnterpriseTeams &amp;&amp; t.Type == github.TeamTypeEnterprise {
     logrus.Infof(&quot;Skipping enterprise team %s(%s) — managed at the enterprise level&quot;, t.Slug, t.Name)
@@ -81,7 +93,7 @@ if !opt.fixTeamMembers {
 </li></ul>
 <h3><span class="tag c-blue">related-code</span>Enterprise teams are identified by their API type</h3>
 <ul>
-<li>where: <code>pkg/github/types.go:1171-1187</code>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/c78b4fb59529c0abc6e1c75eb8ed3675f58ce99e/pkg/github/types.go#L1171-L1187">pkg/github/types.go:1171-1187</a></code>
 </li>
 <li>excerpt:<pre><code>// TeamTypeEnterprise identifies teams managed at the enterprise level.
 TeamTypeEnterprise = &quot;enterprise&quot;</code></pre>
@@ -100,9 +112,13 @@ TeamTypeEnterprise = &quot;enterprise&quot;</code></pre>
 </li></ul>
 <h2>Checked</h2>
 <ul>
-<li>Checked issue #1040's current metadata: it remains open with no labels. The last recorded update was 2026-10-27.
+<li>Checked issue #1040's metadata on 2026-11-17: still open, labels now <code>kind/feature</code> and <code>area/peribolos</code> (applied 2026-10-28T01:00:02Z by kubernetes-prow[bot] after petr-muller's <code>/kind feature</code> <code>/area peribolos</code> comment).
 </li>
-<li>Queried the issue timeline for cross-references; none were returned.
+<li>Queried the issue timeline for cross-references through 2026-11-17; none were returned.
+</li>
+<li>Searched PRs by hmhngx, for <code>ignore-enterprise-team-members</code>, and for open PRs with <code>enterprise</code> in the title; no implementation PR existed yet as of 2026-11-17.
+</li>
+<li>Fetched <code>upstream/main</code> on 2026-11-17: 49 commits ahead of <code>main_sha</code> but none touching <code>cmd/peribolos</code> or <code>pkg/github/types.go</code>, so the anchored analysis still holds.
 </li>
 <li>Searched issues for <code>peribolos enterprise teams</code>, <code>peribolos members permissions</code>, <code>enterprise team members</code>, and <code>enterprise teams</code>. No duplicate was confirmed; issue #737 concerns a separate <code>--ignore-repos</code> feature.
 </li>
@@ -110,7 +126,7 @@ TeamTypeEnterprise = &quot;enterprise&quot;</code></pre>
 </li>
 <li>Read the relevant team configuration, enterprise-team filtering, membership reconciliation, repository/org-role permission paths, tests, and Peribolos documentation.
 </li>
-<li>Existing tests cover all-or-nothing enterprise-team filtering and ordinary member/maintainer diffs, but not keeping an enterprise team as a permission target while skipping its membership updates (<code>cmd/peribolos/main_test.go:1279-1315, 1597-1710</code>).
+<li>Existing tests cover all-or-nothing enterprise-team filtering and ordinary member/maintainer diffs, but not keeping an enterprise team as a permission target while skipping its membership updates (<code><a href="https://github.com/kubernetes-sigs/prow/blob/c78b4fb59529c0abc6e1c75eb8ed3675f58ce99e/cmd/peribolos/main_test.go#L1279-L1315">cmd/peribolos/main_test.go:1279-1315</a>, 1597-1710</code>).
 </li></ul>
 <h2>Next steps</h2>
 <ul>
@@ -120,9 +136,12 @@ TeamTypeEnterprise = &quot;enterprise&quot;</code></pre>
 </li>
 <li>If confirmed, implement an opt-in permissions-only mode that protects enterprise teams from lifecycle and membership mutations while keeping configured teams available as permission targets; add tests and docs.
 </li>
-<li>Suggested labels: <code>kind/feature</code>, <code>area/peribolos</code>, <code>help wanted</code>.
+<li>Suggested labels: <code>kind/feature</code>, <code>area/peribolos</code>, <code>help wanted</code>. The first two were applied on 2026-10-28 by kubernetes-prow[bot]; <code>help wanted</code> is still unapplied.
+</li>
+<li>Track hmhngx's <code>--ignore-enterprise-team-members</code> implementation once a PR opens: it should keep enterprise teams as permission targets while skipping <code>configureTeamMembers</code> (and any team-metadata mutation), and should ship tests plus docs.
 </li></ul>
 <h2>Advice</h2>
+<p>Note (2026-11-17 refresh): partially superseded. <code>kind/feature</code> and <code>area/peribolos</code> are now applied; <code>help wanted</code> is still not, and the reporter reports an implementation in progress (comment of 2026-11-17).</p>
 <p>The issue is still open and unlabeled; there are no new comments or linked PRs since triage. The existing next steps still cover the GHES/API and metadata questions, so there is no new disposition action to take.</p>
 <ol>
 <li>Apply the suggested discovery labels. All three labels exist in the repository and none is currently applied.

@@ -2,10 +2,14 @@
 issue: kubernetes-sigs/prow#1040
 title: "Peribolos: Managing repository/org permissions for a GitHub Enterprise teams without managing members"
 state: open
-labels: none
+labels: kind/feature, area/peribolos
 main_sha: c78b4fb59529c0abc6e1c75eb8ed3675f58ce99e
-triaged_at: 2026-10-27T23:48:35Z
+triaged_at: 2026-11-17T19:17:24Z
 verdict: accepted
+refresh_log:
+  - at: 2026-11-17T19:17:24Z
+    since: 2026-10-27T23:48:35Z
+    summary: "Maintainer endorsement of a dedicated flag, kind/feature + area/peribolos applied, and reporter hmhngx implementing --ignore-enterprise-team-members; no PR or code change yet."
 advice:
   advised_at: 2026-10-28T00:46:06Z
   based_on_triaged_at: 2026-10-27T23:48:35Z
@@ -23,6 +27,12 @@ advice:
 - Enterprise teams are managed centrally, while Peribolos should manage their repository and organization access within each org.
 - `--fix-team-members` also processes enterprise teams whose configured member lists are empty, which can make Peribolos try to remove enterprise-managed members.
 - `--ignore-enterprise-teams` avoids reconciling those teams but also prevents their configured permissions from being managed.
+
+Since previous triage:
+
+- petr-muller (2026-10-28T00:59:59Z) endorsed the idea of a dedicated flag and applied `/kind feature` `/area peribolos`.
+- hmhngx (2026-11-17T06:06:53Z) reports implementing `--ignore-enterprise-team-members` so Peribolos can manage enterprise-team repository permissions without reconciling membership — the strategy the triage recommended.
+- No PR or code change was linked by 2026-11-17.
 
 ## Findings
 
@@ -67,8 +77,10 @@ advice:
 
 ## Checked
 
-- Checked issue #1040's current metadata: it remains open with no labels. The last recorded update was 2026-10-27.
-- Queried the issue timeline for cross-references; none were returned.
+- Checked issue #1040's metadata on 2026-11-17: still open, labels now `kind/feature` and `area/peribolos` (applied 2026-10-28T01:00:02Z by kubernetes-prow[bot] after petr-muller's `/kind feature` `/area peribolos` comment).
+- Queried the issue timeline for cross-references through 2026-11-17; none were returned.
+- Searched PRs by hmhngx, for `ignore-enterprise-team-members`, and for open PRs with `enterprise` in the title; no implementation PR existed yet as of 2026-11-17.
+- Fetched `upstream/main` on 2026-11-17: 49 commits ahead of `main_sha` but none touching `cmd/peribolos` or `pkg/github/types.go`, so the anchored analysis still holds.
 - Searched issues for `peribolos enterprise teams`, `peribolos members permissions`, `enterprise team members`, and `enterprise teams`. No duplicate was confirmed; issue #737 concerns a separate `--ignore-repos` feature.
 - Searched PRs for `enterprise team peribolos`; no active PR for this behavior was found. Read merged PRs #710 and #977.
 - Read the relevant team configuration, enterprise-team filtering, membership reconciliation, repository/org-role permission paths, tests, and Peribolos documentation.
@@ -79,9 +91,12 @@ advice:
 - Confirm the GHES version and whether its API supports the desired repository and organization-role assignments for enterprise teams.
 - Agree whether team metadata should also remain outside Peribolos management.
 - If confirmed, implement an opt-in permissions-only mode that protects enterprise teams from lifecycle and membership mutations while keeping configured teams available as permission targets; add tests and docs.
-- Suggested labels: `kind/feature`, `area/peribolos`, `help wanted`.
+- Suggested labels: `kind/feature`, `area/peribolos`, `help wanted`. The first two were applied on 2026-10-28 by kubernetes-prow[bot]; `help wanted` is still unapplied.
+- Track hmhngx's `--ignore-enterprise-team-members` implementation once a PR opens: it should keep enterprise teams as permission targets while skipping `configureTeamMembers` (and any team-metadata mutation), and should ship tests plus docs.
 
 ## Advice
+
+Note (2026-11-17 refresh): partially superseded. `kind/feature` and `area/peribolos` are now applied; `help wanted` is still not, and the reporter reports an implementation in progress (comment of 2026-11-17).
 
 The issue is still open and unlabeled; there are no new comments or linked PRs since triage. The existing next steps still cover the GHES/API and metadata questions, so there is no new disposition action to take.
 

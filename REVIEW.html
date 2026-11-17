@@ -31,18 +31,21 @@ ul, ol { padding-left:1.5rem; }
 details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
 </style></head><body><main>
 <h1>.*: add <code>delete-spam-issue</code> prow plugin</h1>
-<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/752">kubernetes-sigs/prow#752</a> · base <code>main</code> · head_sha <code>adac22030a7c</code> · reviewed_at <code>2026-10-28T00:36:43Z</code></div>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/752">kubernetes-sigs/prow#752</a> · base <code>main</code> · head_sha <code>adac22030a7c</code> · reviewed_at <code>2026-11-17T12:06:26Z</code></div>
 <div class="badges"><span class="badge c-green">verdict: approve</span></div>
 <details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#752
 title: &quot;.*: add `delete-spam-issue` prow plugin&quot;
 head_sha: adac22030a7c19f4bab2b2f6806c5f353d7f436e
 base: main
-reviewed_at: 2026-10-28T00:36:43Z
+reviewed_at: 2026-11-17T12:06:26Z
 verdict: approve
 refresh_log:
   - old_sha: adac22030a7c19f4bab2b2f6806c5f353d7f436e
     new_sha: adac22030a7c19f4bab2b2f6806c5f353d7f436e
-    summary: &quot;No code changes; recorded the design comment and stale bot notice.&quot;</code></pre></details>
+    summary: &quot;No code changes; recorded the design comment and stale bot notice.&quot;
+  - old_sha: adac22030a7c19f4bab2b2f6806c5f353d7f436e
+    new_sha: adac22030a7c19f4bab2b2f6806c5f353d7f436e
+    summary: &quot;No code changes; recorded the 2026-11-17 lifecycle/stale → lifecycle/rotten transition.&quot;</code></pre></details>
 <h2>What this PR does</h2>
 <ul>
 <li>New prow plugin: <code>/delete-spam-issue</code> command deletes GitHub issues via GraphQL <code>deleteIssue</code> mutation.
@@ -55,18 +58,18 @@ refresh_log:
 </li>
 <li>Second commit adds the <code>allow_top_level_approvers</code> config knob (default true).
 </li></ul>
-<p>Since previous review:</p>
+<p>Since previous review (refresh at 2026-11-17T12:06:26Z):</p>
 <ul>
-<li>No code changes: PR head remains <code>adac22030a7c19f4bab2b2f6806c5f353d7f436e</code>.
+<li>No code changes: PR head remains <code>adac22030a7c19f4bab2b2f6806c5f353d7f436e</code>; all findings below still apply unchanged.
 </li>
-<li>On 2026-06-12, petr-muller commented that the command might belong in <code>issue-management</code>; this reinforces the existing open design question, with no decision recorded.
+<li>On 2026-11-17T09:15:57Z, k8s-triage-robot posted the <code>/lifecycle rotten</code> notice. At 09:16:00-09:16:01Z, kubernetes-prow[bot] removed <code>lifecycle/stale</code> and applied <code>lifecycle/rotten</code>. The PR is still open and mergeable, but the bot will close it after another 30 days of inactivity.
 </li>
-<li>On 2026-10-18, k8s-triage-robot posted the stale PR notice; the PR remains open.
+<li>Earlier (already recorded): on 2026-06-12, petr-muller commented that the command might belong in <code>issue-management</code>; on 2026-10-18, k8s-triage-robot posted the stale PR notice.
 </li></ul>
 <h2>Findings</h2>
 <h3><span class="tag c-amber">should-fix</span>No log entry on successful deletion</h3>
 <ul>
-<li>where: <code>pkg/plugins/delete-spam-issue/delete-spam-issue.go:114-119</code>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/adac22030a7c19f4bab2b2f6806c5f353d7f436e/pkg/plugins/delete-spam-issue/delete-spam-issue.go#L114-L119">pkg/plugins/delete-spam-issue/delete-spam-issue.go:114-119</a></code>
 </li>
 <li>concern: When deletion succeeds, the handler returns nil with no log output. The pre-deletion comment is destroyed along with the issue, so the only durable audit trail is email notifications (if they fired in time). A structured log line recording who deleted which issue would be the only reliable record. Flagged independently by Code Quality, Maintainability, and Deployment Risk reviewers.
 </li>
@@ -78,7 +81,7 @@ return nil</code></pre>
 </li></ul>
 <h3><span class="tag c-amber">should-fix</span>Rejection message misleading when not all auth paths configured</h3>
 <ul>
-<li>where: <code>pkg/plugins/delete-spam-issue/delete-spam-issue.go:149-155</code>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/adac22030a7c19f4bab2b2f6806c5f353d7f436e/pkg/plugins/delete-spam-issue/delete-spam-issue.go#L149-L155">pkg/plugins/delete-spam-issue/delete-spam-issue.go:149-155</a></code>
 </li>
 <li>concern: The rejection message always says "you are not in one of the allowed teams and are not an allowed user" even when no teams are configured (only AllowedUsers or only OWNERS). The message should be built dynamically based on which authorization sources are actually present. Flagged by Code Quality and Maintainability reviewers.
 </li>
@@ -89,13 +92,13 @@ if len(config.AllowedTeams) &gt; 0 {
 </li></ul>
 <h3><span class="tag c-amber">should-fix</span>Documented default for allow_top_level_approvers is misleading</h3>
 <ul>
-<li>where: <code>pkg/plugins/plugin-config-documented.yaml:412</code>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/adac22030a7c19f4bab2b2f6806c5f353d7f436e/pkg/plugins/plugin-config-documented.yaml#L412">pkg/plugins/plugin-config-documented.yaml:412</a></code>
 </li>
 <li>concern: The generated YAML shows <code>allow_top_level_approvers: false</code> (Go zero value) but the runtime default is <code>true</code> via the <code>*bool</code> + <code>TopLevelApproversAllowed()</code> method. For a security-sensitive field controlling who can permanently delete issues, the mismatch between documented value and runtime default could mislead operators into thinking OWNERS approvers are excluded when they are included by default.
 </li></ul>
 <h3><span class="tag c-gray">nit</span>canNotDeleteReason naming</h3>
 <ul>
-<li>where: <code>pkg/plugins/delete-spam-issue/delete-spam-issue.go:122</code>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/adac22030a7c19f4bab2b2f6806c5f353d7f436e/pkg/plugins/delete-spam-issue/delete-spam-issue.go#L122">pkg/plugins/delete-spam-issue/delete-spam-issue.go:122</a></code>
 </li>
 <li>concern: <code>canNotDeleteReason</code> reads awkwardly. <code>denyReason</code> or <code>denialReason</code> is more conventional Go style.
 </li>
@@ -103,7 +106,7 @@ if len(config.AllowedTeams) &gt; 0 {
 </li></ul>
 <h3><span class="tag c-gray">nit</span>Unrelated invalid_commit_msg in documented config</h3>
 <ul>
-<li>where: <code>pkg/plugins/plugin-config-documented.yaml:459-469</code>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/adac22030a7c19f4bab2b2f6806c5f353d7f436e/pkg/plugins/plugin-config-documented.yaml#L459-L469">pkg/plugins/plugin-config-documented.yaml:459-469</a></code>
 </li>
 <li>concern: The regenerated documented config picks up the <code>invalid_commit_msg</code> section from the recently merged PR #738. Not a problem (it is correct), but it is out-of-scope noise in this diff.
 </li></ul>
@@ -115,21 +118,21 @@ if len(config.AllowedTeams) &gt; 0 {
 </li></ul>
 <h3><span class="tag c-blue">question</span>GitHub App permission requirements</h3>
 <ul>
-<li>where: <code>pkg/plugins/delete-spam-issue/delete-spam-issue.go:174-179</code>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/adac22030a7c19f4bab2b2f6806c5f353d7f436e/pkg/plugins/delete-spam-issue/delete-spam-issue.go#L174-L179">pkg/plugins/delete-spam-issue/delete-spam-issue.go:174-179</a></code>
 </li>
 <li>concern: The <code>deleteIssue</code> GraphQL mutation requires admin-level repository access. The PR does not document this requirement. Operators enabling the plugin need to know what GitHub App permissions to grant. Flagged by Deployment Risk reviewer.
 </li></ul>
 <h3><span class="tag c-blue">question</span>Global config vs per-org/repo config</h3>
 <ul>
-<li>where: <code>pkg/plugins/config.go:80</code>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/adac22030a7c19f4bab2b2f6806c5f353d7f436e/pkg/plugins/config.go#L80">pkg/plugins/config.go:80</a></code>
 </li>
 <li>concern: The <code>DeleteSpamIssue</code> config is a single global struct, not a per-org/repo map. All repos that enable this plugin share the same <code>allowed_users</code>, <code>allowed_teams</code>, and <code>allow_top_level_approvers</code> settings. Multi-tenant Prow installations wanting different authorization rules per org/repo cannot achieve that with this design. Not blocking for initial merge but worth flagging as a design choice.
 </li></ul>
 <h2>Checked</h2>
 <ul>
-<li><code>GenericCommentEvent.NodeID</code> is the issue's node ID (not the comment's) for both <code>IssueEvent</code> and <code>IssueCommentEvent</code> paths in <code>pkg/github/helpers.go:126-168</code>. The <code>IsPR</code> guard prevents PR/review event paths from reaching delete logic.
+<li><code>GenericCommentEvent.NodeID</code> is the issue's node ID (not the comment's) for both <code>IssueEvent</code> and <code>IssueCommentEvent</code> paths in <code><a href="https://github.com/kubernetes-sigs/prow/blob/adac22030a7c19f4bab2b2f6806c5f353d7f436e/pkg/github/helpers.go#L126-L168">pkg/github/helpers.go:126-168</a></code>. The <code>IsPR</code> guard prevents PR/review event paths from reaching delete logic.
 </li>
-<li><code>DeleteIssueInput</code> exists in the vendored <code>shurcooL/githubv4@v0.0.0-20210725200734</code> at <code>input.go:832</code>.
+<li><code>DeleteIssueInput</code> exists in the vendored <code>shurcooL/githubv4@v0.0.0-20210725200734</code> at <code><a href="https://github.com/kubernetes-sigs/prow/blob/adac22030a7c19f4bab2b2f6806c5f353d7f436e/input.go#L832">input.go:832</a></code>.
 </li>
 <li><code>MutateWithGitHubAppsSupport</code> signature matches the interface declaration.
 </li>

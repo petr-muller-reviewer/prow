@@ -3,12 +3,15 @@ pr: kubernetes-sigs/prow#752
 title: ".*: add `delete-spam-issue` prow plugin"
 head_sha: adac22030a7c19f4bab2b2f6806c5f353d7f436e
 base: main
-reviewed_at: 2026-10-28T00:36:43Z
+reviewed_at: 2026-11-17T12:06:26Z
 verdict: approve
 refresh_log:
   - old_sha: adac22030a7c19f4bab2b2f6806c5f353d7f436e
     new_sha: adac22030a7c19f4bab2b2f6806c5f353d7f436e
     summary: "No code changes; recorded the design comment and stale bot notice."
+  - old_sha: adac22030a7c19f4bab2b2f6806c5f353d7f436e
+    new_sha: adac22030a7c19f4bab2b2f6806c5f353d7f436e
+    summary: "No code changes; recorded the 2026-11-17 lifecycle/stale → lifecycle/rotten transition."
 ---
 
 ## What this PR does
@@ -19,10 +22,10 @@ refresh_log:
 - Rejects use on PRs. Posts audit comment before deleting. Posts error comment on failure.
 - Second commit adds the `allow_top_level_approvers` config knob (default true).
 
-Since previous review:
-- No code changes: PR head remains `adac22030a7c19f4bab2b2f6806c5f353d7f436e`.
-- On 2026-06-12, petr-muller commented that the command might belong in `issue-management`; this reinforces the existing open design question, with no decision recorded.
-- On 2026-10-18, k8s-triage-robot posted the stale PR notice; the PR remains open.
+Since previous review (refresh at 2026-11-17T12:06:26Z):
+- No code changes: PR head remains `adac22030a7c19f4bab2b2f6806c5f353d7f436e`; all findings below still apply unchanged.
+- On 2026-11-17T09:15:57Z, k8s-triage-robot posted the `/lifecycle rotten` notice. At 09:16:00-09:16:01Z, kubernetes-prow[bot] removed `lifecycle/stale` and applied `lifecycle/rotten`. The PR is still open and mergeable, but the bot will close it after another 30 days of inactivity.
+- Earlier (already recorded): on 2026-06-12, petr-muller commented that the command might belong in `issue-management`; on 2026-10-18, k8s-triage-robot posted the stale PR notice.
 
 ## Findings
 

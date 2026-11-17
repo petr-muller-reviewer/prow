@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#990</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>chore(deps): bump the aws group across 1 directory with 4 updates</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/990">kubernetes-sigs/prow#990</a> · base <code>main</code> · head_sha <code>a4ddb27e6c42</code> · reviewed_at <code>2026-10-05T23:17:05Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span></div>
+<h2>Verdict</h2>
+<p>Approve; no AWS-specific vulnerability or compatibility blocker surfaced.</p>
+<p>All four direct AWS SDK modules were released on Sep 24, 2026, 11 days before this review. The update includes a checksum-response fix in the active S3 dependency path. The age is the only reason to defer: if the usual two-week soak is required, wait until Oct 8; otherwise the bump looks reasonable to take now.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Updates the AWS SDK core, config, credentials, and S3 modules in the main Go manifest.
+</li>
+<li>Refreshes related AWS indirect modules in <code>go.mod</code> and <code>hack/tools/go.mod</code>, with matching sum updates.
+</li>
+<li>Changes dependency metadata only; it does not modify Prow source code.
+</li></ul>
+<h2>Findings</h2>
+<p>No findings.</p>
+<h2>Checked</h2>
+<ul>
+<li>Classification: dep-only. Changed files are <code>go.mod</code>, <code>go.sum</code>, <code>hack/tools/go.mod</code>, and <code>hack/tools/go.sum</code>.
+</li>
+<li>Direct versions: <code>github.com/aws/aws-sdk-go-v2</code> <code>v1.47.0 → v1.47.1</code>; <code>/config</code> <code>v1.33.5 → v1.33.6</code>; <code>/credentials</code> <code>v1.20.5 → v1.20.6</code>; <code>/service/s3</code> <code>v1.113.2 → v1.113.4</code>. All new versions are tagged releases dated Sep 24, 2026 (11 days old on review date).
+</li>
+<li>Usage: each module is directly required and <code>go mod why</code> traces each through <code>pkg/io/providers</code>. The import surface is one production package across <code>pkg/io/providers/aws.go</code> and its test. The code loads the default credential chain or static credentials, creates an S3 client, and opens a Go Cloud S3 bucket. This is a light footprint with sensitive credential, TLS, and network handling (<code>pkg/io/providers/aws.go:26-92</code>).
+</li>
+<li>Changelog: config and credentials releases are dependency refreshes. The core SDK adds an internal AWS-chunked response decoder; Prow does not call it directly, and the SDK change adds the package and tests without a caller. S3 <code>v1.113.3</code> and <code>v1.113.4</code> changelogs say dependency update; the HTTP-200 embedded-error fix was already in base version <code>v1.113.2</code>.
+</li>
+<li>Relevant transitive change: <code>service/internal/checksum</code> moves <code>v1.11.3 → v1.11.5</code>. Its non-200 response checksum fix can affect supported checksummed S3 responses, including partial responses, in the S3 client path Prow uses. The remaining AWS indirect changes are patch-level refreshes; the tools manifest carries a subset as indirect dependencies.
+</li>
+<li>OSV returned no advisories for old or new versions of the four direct modules or the updated checksum module.
+</li>
+<li><code>govulncheck -format json ./pkg/io/providers</code> succeeded at base and head. Both runs reported the same unrelated Tekton advisory <code>GO-2023-1901</code>; neither reported findings for the bumped AWS modules. The full-repository base scan was killed for resource use (exit 137). The full head scan also reported <code>GO-2026-5932</code> in <code>golang.org/x/crypto</code> and <code>GO-2023-1901</code>; because the full base scan did not complete, their repository-wide status cannot be compared here. Neither advisory is in the AWS modules changed by this PR.
+</li>
+<li>No project-code changes were present, so there was no separate source-code review.
+</li></ul>
+<h2>Open questions</h2>
+<p>None for the author. The remaining decision is whether to apply the usual two-week soak and defer until Oct 8.</p>
+<h2>Dependency followups</h2>
+<p>No actionable follow-up opportunities identified. Examined these version ranges:</p>
+<ul>
+<li>Direct: <code>github.com/aws/aws-sdk-go-v2</code> <code>v1.47.0 → v1.47.1</code>; <code>/config</code> <code>v1.33.5 → v1.33.6</code>; <code>/credentials</code> <code>v1.20.5 → v1.20.6</code>; <code>/service/s3</code> <code>v1.113.2 → v1.113.4</code>.
+</li>
+<li>Indirect in <code>go.mod</code>: <code>/feature/ec2/imds</code> <code>v1.20.0 → v1.20.1</code>; <code>/internal/configsources</code> <code>v1.5.3 → v1.5.4</code>; <code>/internal/endpoints/v2</code> <code>v2.8.3 → v2.8.4</code>; <code>/internal/v4a</code> <code>v1.5.3 → v1.5.4</code>; <code>/service/internal/checksum</code> <code>v1.11.3 → v1.11.5</code>; <code>/service/internal/presigned-url</code> <code>v1.14.3 → v1.14.4</code>; <code>/service/internal/s3shared</code> <code>v1.20.3 → v1.20.4</code>; <code>/service/signin</code> <code>v1.10.0 → v1.10.1</code>; <code>/service/sso</code> <code>v1.38.0 → v1.38.1</code>; <code>/service/ssooidc</code> <code>v1.43.0 → v1.43.1</code>; <code>/service/sts</code> <code>v1.51.0 → v1.51.1</code>.
+</li>
+<li><code>hack/tools/go.mod</code> repeats a subset of these as indirect dependencies; it introduces no additional AWS version ranges.
+</li></ul>
+<p>The config and credentials changelogs describe dependency refreshes only. The new AWS-chunked decoder is an internal package with no Prow call site. The checksum behavior change is automatic inside the S3 response path and requires no call-site migration; the S3 HTTP-200 error fix was already present at the base version. The remaining indirect updates contain no identified deprecation, replacement API, or feature tied to Prow code.</p>
+</main></body></html>

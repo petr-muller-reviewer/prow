@@ -3,7 +3,7 @@ pr: 573
 title: "Adding option to enable Back End HTTPS for Prow Ingress"
 head_sha: 814fb94b8d3379b2bef43f54564b0ecd3d97a32b
 base: main
-reviewed_at: "2026-10-28T00:37:08Z"
+reviewed_at: "2026-11-17T18:43:41Z"
 verdict: REQUEST_CHANGES
 refresh_log:
   - previous_sha: 53a81071b1f5a432c33362a42aa7bc9837f7ed14
@@ -12,6 +12,9 @@ refresh_log:
   - previous_sha: 814fb94b8d3379b2bef43f54564b0ecd3d97a32b
     new_sha: 814fb94b8d3379b2bef43f54564b0ecd3d97a32b
     summary: "No code changes; PR remains open. @k8s-triage-robot posted a lifecycle/stale triage comment on 2026-10-18; no inline comments or reviews."
+  - previous_sha: 814fb94b8d3379b2bef43f54564b0ecd3d97a32b
+    new_sha: 814fb94b8d3379b2bef43f54564b0ecd3d97a32b
+    summary: "No code changes; PR remains open. @k8s-triage-robot escalated the lifecycle nudge on 2026-11-17: lifecycle/stale removed, lifecycle/rotten applied. No inline comments or reviews."
 ---
 
 # PR #573 — Adding option to enable Back End HTTPS for Prow Ingress
@@ -30,7 +33,7 @@ Adds optional HTTPS serving for Prow's deck and hook backends so ingress can con
 Since previous review:
 
 - No code changed; the PR head remains `814fb94b8d3379b2bef43f54564b0ecd3d97a32b`.
-- The PR remains open. `@k8s-triage-robot` posted a lifecycle/stale triage comment on 2026-10-18, and the `lifecycle/stale` label is present. No new inline comments or reviews were submitted.
+- The PR remains open but has escalated to `lifecycle/rotten`: `@k8s-triage-robot` posted a rotten warning on 2026-11-17, `lifecycle/stale` was removed and `lifecycle/rotten` applied. Under the bot's rules the PR is closed after 30 further days of inactivity. No new inline comments or reviews were submitted.
 
 ## Reviewer Perspectives
 
@@ -51,6 +54,12 @@ Issues flagged independently by 2+ reviewers carry the highest confidence:
 - `sslEnabledSchema` should be `sslEnabledScheme` [CQ, MT]
 
 ## Activity Since Previous Review
+
+Since previous review (2026-10-28):
+
+- **No code changes**: the PR head is still `814fb94b8d3379b2bef43f54564b0ecd3d97a32b` (2 commits, unchanged since 2026-02-25).
+- **Lifecycle escalation (2026-11-17)**: `@k8s-triage-robot` posted a `/lifecycle rotten` comment at 09:15:56Z; `kubernetes-prow[bot]` removed `lifecycle/stale` and applied `lifecycle/rotten` at 09:16:00–09:16:01Z. The PR will be closed automatically after 30 more days of inactivity unless refreshed with `/remove-lifecycle rotten`.
+- No new reviews, inline comments, or author comments. All findings from the previous review remain unaddressed in code.
 
 Since previous review (2026-06-01):
 

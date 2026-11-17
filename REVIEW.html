@@ -31,13 +31,13 @@ ul, ol { padding-left:1.5rem; }
 details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
 </style></head><body><main>
 <h1>Adding option to enable Back End HTTPS for Prow Ingress</h1>
-<div class="meta">base <code>main</code> · head_sha <code>814fb94b8d33</code> · reviewed_at <code>2026-10-28T00:37:08Z</code></div>
+<div class="meta">base <code>main</code> · head_sha <code>814fb94b8d33</code> · reviewed_at <code>2026-11-17T18:43:41Z</code></div>
 <div class="badges"><span class="badge c-gray">verdict: REQUEST_CHANGES</span></div>
 <details><summary>Full metadata</summary><pre><code>pr: 573
 title: &quot;Adding option to enable Back End HTTPS for Prow Ingress&quot;
 head_sha: 814fb94b8d3379b2bef43f54564b0ecd3d97a32b
 base: main
-reviewed_at: &quot;2026-10-28T00:37:08Z&quot;
+reviewed_at: &quot;2026-11-17T18:43:41Z&quot;
 verdict: REQUEST_CHANGES
 refresh_log:
   - previous_sha: 53a81071b1f5a432c33362a42aa7bc9837f7ed14
@@ -45,7 +45,10 @@ refresh_log:
     summary: &quot;PR rebased onto newer main (force-push); no changes to PR-specific code. One author comment explaining motivation (Fidelity Investments corporate policy requires backend HTTPS on ingresses).&quot;
   - previous_sha: 814fb94b8d3379b2bef43f54564b0ecd3d97a32b
     new_sha: 814fb94b8d3379b2bef43f54564b0ecd3d97a32b
-    summary: &quot;No code changes; PR remains open. @k8s-triage-robot posted a lifecycle/stale triage comment on 2026-10-18; no inline comments or reviews.&quot;</code></pre></details>
+    summary: &quot;No code changes; PR remains open. @k8s-triage-robot posted a lifecycle/stale triage comment on 2026-10-18; no inline comments or reviews.&quot;
+  - previous_sha: 814fb94b8d3379b2bef43f54564b0ecd3d97a32b
+    new_sha: 814fb94b8d3379b2bef43f54564b0ecd3d97a32b
+    summary: &quot;No code changes; PR remains open. @k8s-triage-robot escalated the lifecycle nudge on 2026-11-17: lifecycle/stale removed, lifecycle/rotten applied. No inline comments or reviews.&quot;</code></pre></details>
 <p><strong>Author:</strong> NiJuFirenzia · <strong>+479 / -13</strong> · Addresses <a href="https://github.com/kubernetes-sigs/prow/issues/328">#328</a> <strong>Files:</strong> <code>cmd/deck/</code>, <code>cmd/hook/</code>, <code>pkg/flagutil/ssl.go</code></p>
 <h2>Recommendation: REQUEST_CHANGES</h2>
 <p>All three independent reviewers converge on the same core issues: the <code>--client-cert-file</code> flag is semantically misleading (it's a CA cert, not a client cert for mTLS), and the <code>AppendCertsFromPEM</code> return value is silently ignored, producing cryptic failures in production. While deployment risk is low (purely opt-in), this PR introduces TLS infrastructure that operators will rely on for security-critical paths — naming precision and fail-fast behavior are essential. The required changes are straightforward and should not need significant rework.</p>
@@ -55,7 +58,7 @@ refresh_log:
 <ul>
 <li>No code changed; the PR head remains <code>814fb94b8d3379b2bef43f54564b0ecd3d97a32b</code>.
 </li>
-<li>The PR remains open. <code>@k8s-triage-robot</code> posted a lifecycle/stale triage comment on 2026-10-18, and the <code>lifecycle/stale</code> label is present. No new inline comments or reviews were submitted.
+<li>The PR remains open but has escalated to <code>lifecycle/rotten</code>: <code>@k8s-triage-robot</code> posted a rotten warning on 2026-11-17, <code>lifecycle/stale</code> was removed and <code>lifecycle/rotten</code> applied. Under the bot's rules the PR is closed after 30 further days of inactivity. No new inline comments or reviews were submitted.
 </li></ul>
 <h2>Reviewer Perspectives</h2>
 <p>| Perspective | Verdict | Detail | |---|---|---| | Code Quality | REQUEST_CHANGES | Unchecked <code>AppendCertsFromPEM</code> return, misleading flag naming, incorrect error messages | | Maintainability | REQUEST_CHANGES | MEDIUM burden — naming confusion will cause ongoing support costs; TLS client logic trapped in cmd/deck | | Deployment Risk | LOW RISK | Purely opt-in via new flags. Zero behavioral change for existing deployments. |</p>
@@ -73,6 +76,14 @@ refresh_log:
 <li><code>sslEnabledSchema</code> should be <code>sslEnabledScheme</code> [CQ, MT]
 </li></ul>
 <h2>Activity Since Previous Review</h2>
+<p>Since previous review (2026-10-28):</p>
+<ul>
+<li><strong>No code changes</strong>: the PR head is still <code>814fb94b8d3379b2bef43f54564b0ecd3d97a32b</code> (2 commits, unchanged since 2026-02-25).
+</li>
+<li><strong>Lifecycle escalation (2026-11-17)</strong>: <code>@k8s-triage-robot</code> posted a <code>/lifecycle rotten</code> comment at 09:15:56Z; <code>kubernetes-prow[bot]</code> removed <code>lifecycle/stale</code> and applied <code>lifecycle/rotten</code> at 09:16:00–09:16:01Z. The PR will be closed automatically after 30 more days of inactivity unless refreshed with <code>/remove-lifecycle rotten</code>.
+</li>
+<li>No new reviews, inline comments, or author comments. All findings from the previous review remain unaddressed in code.
+</li></ul>
 <p>Since previous review (2026-06-01):</p>
 <ul>
 <li><strong>Force-push (rebase)</strong>: PR rebased onto newer main (<code>53a81071b</code> → <code>814fb94b8</code>). The PR-specific code in <code>cmd/deck/</code>, <code>cmd/hook/</code>, and <code>pkg/flagutil/ssl.go</code> is unchanged — same 2 commits (<code>2ad6fa101</code> initial implementation, <code>814fb94b8</code> removing <code>--enable-ssl</code> boolean).

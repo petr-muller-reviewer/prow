@@ -3,8 +3,13 @@ pr: kubernetes-sigs/prow#989
 title: "chore(deps): bump github.com/prometheus/common from 0.71.0 to 0.72.0 in the prometheus group across 1 directory"
 head_sha: bccd8fdeca4758fc03b3a35cde4555627638362e
 base: main
-reviewed_at: 2026-10-05T23:28:03Z
+reviewed_at: 2026-11-18T17:46:38Z
 verdict: needs-discussion
+refresh_log:
+  - at: 2026-11-18T17:46:38Z
+    old_sha: bccd8fdeca4758fc03b3a35cde4555627638362e
+    new_sha: bccd8fdeca4758fc03b3a35cde4555627638362e
+    summary: "No code changes. PR approved by petr-muller, labeled lgtm/approved, and merged on 2026-10-06T00:02:37Z; a kubevirt-bot cross-reference followed on 2026-10-09."
 ---
 # Review
 
@@ -18,6 +23,11 @@ Needs discussion: wait for more soak time unless there is a reason to take this 
 - Updates the same module in `hack/tools`, where it is indirect.
 - Refreshes the corresponding checksums in both `go.sum` files.
 - Changes no project source code; this is a dependency-only PR.
+
+Since previous review:
+- No new commits: the head is still `bccd8fdeca4758fc03b3a35cde4555627638362e`.
+- `petr-muller` approved at 2026-10-05T23:36:51Z; Prow applied `lgtm` and `approved`, then merged the PR at 2026-10-06T00:02:37Z.
+- The merge resolves the "soak longer?" question below: the maintainer took `v0.72.0` without further waiting.
 
 ## Findings
 
@@ -33,8 +43,14 @@ No code findings.
 
 ## Open questions
 
-- Is there an immediate need for `v0.72.0`? If not, let it soak longer before merging.
+- Answered: is there an immediate need for `v0.72.0`? The PR was approved and merged on 2026-10-06 without an explicit justification for taking it early, so the soak-time concern did not block it.
 
 ## Dependency followups
 
-No opportunities identified. Examined `github.com/prometheus/common` `v0.71.0`→`v0.72.0` and its release changes. Prow only calls `model.UTF8Validation.IsValidLabelName` and uses `expfmt.NewEncoder` with `TypeProtoDelim` in `pkg/metrics/push.go`; the new OpenMetrics 2.0, JSON v2, and negotiation changes do not apply to those call sites, and no currently used API is deprecated. The release's requirement bumps to `client_model v0.6.3`, `golang.org/x/net v0.59.0`, `golang.org/x/oauth2 v0.37.0`, `golang.org/x/sys v0.48.0`, and `golang.org/x/text v0.42.0` were already selected in both Prow modules, so no transitive module version changed in this PR. No handoff prompts.
+No opportunities identified. Re-run 2026-11-18 against the merged bump (merge commit `b4b2b38994859131ab14b656b584e80b325096c0`).
+
+- Modules examined: `github.com/prometheus/common` `v0.71.0`→`v0.72.0` (direct in the main module, indirect in `hack/tools`). Both `go.sum` files changed only for this module, so no transitive version moved with the bump.
+- Our usage: the only imports are `pkg/metrics/push.go:31-32` (`expfmt`, `model`); the call sites are `model.UTF8Validation.IsValidLabelName` (`pkg/metrics/push.go:52`) and `expfmt.NewFormat(expfmt.TypeProtoDelim)` for the encoder and `Content-Type` (`pkg/metrics/push.go:67,89`).
+- Changelog items reviewed: OpenMetrics 2.0 histogram/gauge-histogram/summary encoding (encode-only, and Prow pushes delimited protobuf to Pushgateway); the `expfmt` parser strictness fixes (no decoding in Prow); JSON v2 unmarshalling changes and the removed `model.SampleStream.UnmarshalJSON` (no `model` decoding in Prow); the new `DefaultAcceptedFormats()`/`NegotiateAccept` negotiation helpers (no server-side negotiation in the push path); and the un-deprecation of the `Fmt*` constants (Prow already uses the still-supported `NewFormat(TypeProtoDelim)`). The only new deprecations are `expfmt.Negotiate`/`NegotiateIncludingOpenMetrics` and `model.NameValidationScheme`/`LabelName.IsValid`/`IsValidMetricName`, none of which Prow calls. The dependency's Go 1.26 requirement is already satisfied (main module Go 1.26.4, tools Go 1.26.3).
+
+No handoff prompts.

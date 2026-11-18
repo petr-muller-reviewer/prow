@@ -31,8 +31,19 @@ ul, ol { padding-left:1.5rem; }
 details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
 </style></head><body><main>
 <h1>chore(deps): bump github.com/prometheus/common from 0.71.0 to 0.72.0 in the prometheus group across 1 directory</h1>
-<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/989">kubernetes-sigs/prow#989</a> · base <code>main</code> · head_sha <code>bccd8fdeca47</code> · reviewed_at <code>2026-10-05T23:28:03Z</code></div>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/989">kubernetes-sigs/prow#989</a> · base <code>main</code> · head_sha <code>bccd8fdeca47</code> · reviewed_at <code>2026-11-18T17:46:38Z</code></div>
 <div class="badges"><span class="badge c-amber">verdict: needs-discussion</span></div>
+<details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#989
+title: &quot;chore(deps): bump github.com/prometheus/common from 0.71.0 to 0.72.0 in the prometheus group across 1 directory&quot;
+head_sha: bccd8fdeca4758fc03b3a35cde4555627638362e
+base: main
+reviewed_at: 2026-11-18T17:46:38Z
+verdict: needs-discussion
+refresh_log:
+  - at: 2026-11-18T17:46:38Z
+    old_sha: bccd8fdeca4758fc03b3a35cde4555627638362e
+    new_sha: bccd8fdeca4758fc03b3a35cde4555627638362e
+    summary: &quot;No code changes. PR approved by petr-muller, labeled lgtm/approved, and merged on 2026-10-06T00:02:37Z; a kubevirt-bot cross-reference followed on 2026-10-09.&quot;</code></pre></details>
 <h2>Verdict</h2>
 <p>Needs discussion: wait for more soak time unless there is a reason to take this release now. The bump is narrow, has no dependency-specific OSV advisories, and Prow's only direct use does not appear to exercise the new behavior. The release is only about one week old, and the bump is not a security fix.</p>
 <h2>What this PR does</h2>
@@ -44,6 +55,14 @@ details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-si
 <li>Refreshes the corresponding checksums in both <code>go.sum</code> files.
 </li>
 <li>Changes no project source code; this is a dependency-only PR.
+</li></ul>
+<p>Since previous review:</p>
+<ul>
+<li>No new commits: the head is still <code>bccd8fdeca4758fc03b3a35cde4555627638362e</code>.
+</li>
+<li><code>petr-muller</code> approved at 2026-10-05T23:36:51Z; Prow applied <code>lgtm</code> and <code>approved</code>, then merged the PR at 2026-10-06T00:02:37Z.
+</li>
+<li>The merge resolves the "soak longer?" question below: the maintainer took <code>v0.72.0</code> without further waiting.
 </li></ul>
 <h2>Findings</h2>
 <p>No code findings.</p>
@@ -61,8 +80,16 @@ details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-si
 </li></ul>
 <h2>Open questions</h2>
 <ul>
-<li>Is there an immediate need for <code>v0.72.0</code>? If not, let it soak longer before merging.
+<li>Answered: is there an immediate need for <code>v0.72.0</code>? The PR was approved and merged on 2026-10-06 without an explicit justification for taking it early, so the soak-time concern did not block it.
 </li></ul>
 <h2>Dependency followups</h2>
-<p>No opportunities identified. Examined <code>github.com/prometheus/common</code> <code>v0.71.0</code>→<code>v0.72.0</code> and its release changes. Prow only calls <code>model.UTF8Validation.IsValidLabelName</code> and uses <code>expfmt.NewEncoder</code> with <code>TypeProtoDelim</code> in <code>pkg/metrics/push.go</code>; the new OpenMetrics 2.0, JSON v2, and negotiation changes do not apply to those call sites, and no currently used API is deprecated. The release's requirement bumps to <code>client_model v0.6.3</code>, <code>golang.org/x/net v0.59.0</code>, <code>golang.org/x/oauth2 v0.37.0</code>, <code>golang.org/x/sys v0.48.0</code>, and <code>golang.org/x/text v0.42.0</code> were already selected in both Prow modules, so no transitive module version changed in this PR. No handoff prompts.</p>
+<p>No opportunities identified. Re-run 2026-11-18 against the merged bump (merge commit <code>b4b2b38994859131ab14b656b584e80b325096c0</code>).</p>
+<ul>
+<li>Modules examined: <code>github.com/prometheus/common</code> <code>v0.71.0</code>→<code>v0.72.0</code> (direct in the main module, indirect in <code>hack/tools</code>). Both <code>go.sum</code> files changed only for this module, so no transitive version moved with the bump.
+</li>
+<li>Our usage: the only imports are <code><a href="https://github.com/kubernetes-sigs/prow/blob/bccd8fdeca4758fc03b3a35cde4555627638362e/pkg/metrics/push.go#L31-L32">pkg/metrics/push.go:31-32</a></code> (<code>expfmt</code>, <code>model</code>); the call sites are <code>model.UTF8Validation.IsValidLabelName</code> (<code><a href="https://github.com/kubernetes-sigs/prow/blob/bccd8fdeca4758fc03b3a35cde4555627638362e/pkg/metrics/push.go#L52">pkg/metrics/push.go:52</a></code>) and <code>expfmt.NewFormat(expfmt.TypeProtoDelim)</code> for the encoder and <code>Content-Type</code> (<code><a href="https://github.com/kubernetes-sigs/prow/blob/bccd8fdeca4758fc03b3a35cde4555627638362e/pkg/metrics/push.go#L67">pkg/metrics/push.go:67</a>,89</code>).
+</li>
+<li>Changelog items reviewed: OpenMetrics 2.0 histogram/gauge-histogram/summary encoding (encode-only, and Prow pushes delimited protobuf to Pushgateway); the <code>expfmt</code> parser strictness fixes (no decoding in Prow); JSON v2 unmarshalling changes and the removed <code>model.SampleStream.UnmarshalJSON</code> (no <code>model</code> decoding in Prow); the new <code>DefaultAcceptedFormats()</code>/<code>NegotiateAccept</code> negotiation helpers (no server-side negotiation in the push path); and the un-deprecation of the <code>Fmt*</code> constants (Prow already uses the still-supported <code>NewFormat(TypeProtoDelim)</code>). The only new deprecations are <code>expfmt.Negotiate</code>/<code>NegotiateIncludingOpenMetrics</code> and <code>model.NameValidationScheme</code>/<code>LabelName.IsValid</code>/<code>IsValidMetricName</code>, none of which Prow calls. The dependency's Go 1.26 requirement is already satisfied (main module Go 1.26.4, tools Go 1.26.3).
+</li></ul>
+<p>No handoff prompts.</p>
 </main></body></html>

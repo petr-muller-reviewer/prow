@@ -3,12 +3,15 @@ pr: kubernetes-sigs/prow#1022
 title: "integration: move gangway's NodePort into the static band"
 head_sha: 08363f55b0395c6a04f19069b7ad638947915a9a
 base: main
-reviewed_at: 2026-10-21T23:15:46Z
+reviewed_at: 2026-11-18T17:55:01Z
 verdict: approve
 refresh_log:
   - old_sha: 08363f55b0395c6a04f19069b7ad638947915a9a
     new_sha: 08363f55b0395c6a04f19069b7ad638947915a9a
     summary: "No code changes; recorded Prucek's approval and the approval notifier comment."
+  - old_sha: 08363f55b0395c6a04f19069b7ad638947915a9a
+    new_sha: 08363f55b0395c6a04f19069b7ad638947915a9a
+    summary: "No code changes; recorded petr-muller's approval (2026-10-22T00:14:17Z), the approved label, and the PR merge (2026-10-22T00:55:48Z, merge commit 75bbe68a)."
 gate:
   decision: hold
   gated_at: 2026-10-22T00:12:40Z
@@ -23,6 +26,8 @@ gate:
 
 The existing-cluster migration remains a should-fix finding. The PR head has not changed since the review, the PR description gives users the teardown and custom-config steps, but the durable setup guide does not; setup reuses clusters with the stale mapping. Hold until the guide documents the one-time migration, or the maintainer explicitly accepts this documentation gap.
 
+**Post-review update:** the PR was merged on 2026-10-22T00:55:48Z at `08363f55b0395c6a04f19069b7ad638947915a9a` (merge commit `75bbe68a`) without addressing the finding, so this HOLD is superseded by the merge. The documentation gap carries forward as post-merge work; see Followups.
+
 ### Gating list
 
 - REVIEW.md should-fix finding at site/content/en/docs/local-dev-two-machines.md:160-161 remains unaddressed. Add the teardown command and custom Kind mapping update.
@@ -35,6 +40,8 @@ There are no production-facing API or configuration changes. Existing developer/
 
 Approve. The change moves Gangway’s fixed NodePort into the static band and keeps the existing host port used by integration clients. Code Quality found no correctness issues; Maintainability and Deployment Risk independently recommend documenting the one-time migration for existing Kind clusters.
 
+The PR was approved by `petr-muller` and merged on 2026-10-22T00:55:48Z at the reviewed head, with the documentation finding still open.
+
 ## What this PR does
 
 - Assigns Gangway NodePort 30000 while retaining Service and container port 32000.
@@ -44,7 +51,8 @@ Approve. The change moves Gangway’s fixed NodePort into the static band and ke
 
 Since previous review:
 - No code changes; the PR head remains `08363f55b0395c6a04f19069b7ad638947915a9a`.
-- Prucek submitted an `APPROVED` review at 2026-10-19 20:05:18 UTC. `kubernetes-prow[bot]` posted an approval workflow comment at 20:05:25 UTC, noting that approval from `droslean` is still required; the PR remains open and currently has the `lgtm` label.
+- `petr-muller` submitted an `APPROVED` review (“Thanks!”) at 2026-10-22T00:14:17Z; the approval notifier commented at 00:14:24Z and `kubernetes-prow[bot]` added the `approved` label at 00:14:25Z.
+- `kubernetes-prow[bot]` merged the PR at 2026-10-22T00:55:48Z (merge commit `75bbe68a`); the source branch was deleted at 00:56:24Z. The PR now also carries the `area/documentation` label.
 
 ## Findings
 
@@ -54,6 +62,7 @@ Since previous review:
 - excerpt: |
     - containerPort: 30000 # gangway's NodePort
       hostPort: 32000 # flexible based on your machine
+- status: still unaddressed at merge; the guide was not updated, so this remains post-merge documentation work.
 
 ## Checked
 
@@ -70,19 +79,4 @@ None.
 
 ## Followups
 
-### Detect stale Kind port mappings
-
-- category: reliability
-- where: `test/integration/setup-kind-cluster.sh:120`
-- necessity: should — turn a confusing post-migration Gangway failure into actionable setup guidance.
-- mode: deliver
-
-```text
-In kubernetes-sigs/prow, following PR #1022 — “integration: move gangway's NodePort into the static band” at head 08363f55b0395c6a04f19069b7ad638947915a9a, harden the existing-cluster path in test/integration/setup-kind-cluster.sh.
-
-Task: before reusing the integration Kind cluster, verify that its control-plane container maps container port 30000/tcp to host port 32000. If that mapping is absent or still maps 32000/tcp to host port 32000, fail before installing Prow components with a clear remediation message: run ./test/integration/teardown.sh -kind-cluster, update custom Kind configs from containerPort 32000 to 30000 while retaining hostPort 32000, then rerun setup-kind-cluster.sh.
-
-Acceptance criteria: setup proceeds unchanged for a cluster created with the new mapping; setup exits nonzero before component installation for a stale mapping and prints the remediation steps; custom Kind configs are not silently modified or torn down. Run bash syntax checking and the narrowest available shell/static check; run the integration suite only if needed to validate the changed path.
-
-Scope guard: do not change Gangway’s NodePort or host-port values, automatically recreate the cluster, alter unrelated setup behavior, or expand this into broader Kind migration tooling.
-```
+No followups accepted from the 2026-11-18 post-merge pass. The unfixed `should-fix` documentation finding, the stale Kind port-mapping detection, and the static-band comment refresh were all reviewed and skipped, so the previous "Detect stale Kind port mappings" entry is withdrawn.

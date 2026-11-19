@@ -31,8 +31,19 @@ ul, ol { padding-left:1.5rem; }
 details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
 </style></head><body><main>
 <h1>chore(deps): bump the prometheus group across 1 directory with 2 updates</h1>
-<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1014">kubernetes-sigs/prow#1014</a> · base <code>main</code> · head_sha <code>d423aceaf55e</code> · reviewed_at <code>2026-10-22T01:00:26Z</code></div>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1014">kubernetes-sigs/prow#1014</a> · base <code>main</code> · head_sha <code>58cd44195963</code> · reviewed_at <code>2026-11-19T15:37:16Z</code></div>
 <div class="badges"><span class="badge c-green">verdict: approve</span></div>
+<details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#1014
+title: &quot;chore(deps): bump the prometheus group across 1 directory with 2 updates&quot;
+head_sha: 58cd44195963b5a87337a5736fafbf79852ae5dc
+base: main
+reviewed_at: 2026-11-19T15:37:16Z
+verdict: approve
+refresh_log:
+  - at: 2026-11-19T15:37:16Z
+    old_sha: d423aceaf55efda26dd98d1f12089ef8056b841c
+    new_sha: 58cd44195963b5a87337a5736fafbf79852ae5dc
+    summary: &quot;Rebase onto newer main only; dependency bumps unchanged, PR approved and merged as ac45725.&quot;</code></pre></details>
 <h2>Verdict</h2>
 <p>Approve and take now.</p>
 <p>The reachable <code>golang.org/x/net</code> security fixes outweigh the 11–14 day freshness window, the Prometheus changes do not touch Prow’s unused API surface, and the focused packages that import the changed direct dependencies pass.</p>
@@ -46,6 +57,14 @@ details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-si
 </li>
 <li>Changes only dependency manifests and lockfiles, with no project source edits.
 </li></ul>
+<p>Since previous review (2026-11-19):</p>
+<ul>
+<li>Dependabot force-pushed <code>58cd441</code> on 2026-10-22T00:58Z, rebasing the bump onto newer <code>main</code>. The dependency content is identical: <code>client_golang v1.25.0</code>, <code>common v0.72.1</code>, <code>x/net v0.61.0</code>, <code>x/text v0.43.0</code>, <code>procfs v0.22.0</code>, <code>x/crypto v0.58.0</code> are all unchanged from the reviewed commit.
+</li>
+<li>The rebase picked up <code>main</code>'s own moves (<code>counterfeiter v6.14.0</code>, <code>klauspost/compress v1.20.1</code>), which is why <code>hack/tools/go.mod</code> shows a slightly larger diff than before; no Prow source files changed.
+</li>
+<li>The PR was approved at 2026-10-22T01:00:40Z and merged as <code>ac45725</code> at 2026-10-22T01:17:32Z. No new review comments or inline comments were posted.
+</li></ul>
 <h2>Findings</h2>
 <p>None.</p>
 <h2>Checked</h2>
@@ -54,7 +73,7 @@ details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-si
 </li>
 <li><strong><code>github.com/prometheus/client_golang</code>:</strong> Direct in 50 files / 36 packages. <code>v1.25.0</code> raises the minimum Go version to 1.26 and changes <code>api/prometheus/v1</code>, but Prow does not import that package and already targets Go 1.26. The <code>promhttp</code> nil-URL panic fix is relevant; <code>AcceptedFormats</code> is opt-in. OSV is clean at both versions and <code>govulncheck</code> reports no Prometheus findings at base or head.
 </li>
-<li><strong><code>github.com/prometheus/common</code>:</strong> Direct in one file, <code>pkg/metrics/push.go:31</code>, using <code>expfmt</code> and <code>model</code>. The <code>v0.72.1</code> header deep-copy fix is outside Prow’s usage. OSV is clean and exposure is light.
+<li><strong><code>github.com/prometheus/common</code>:</strong> Direct in one file, <code><a href="https://github.com/kubernetes-sigs/prow/blob/58cd44195963b5a87337a5736fafbf79852ae5dc/pkg/metrics/push.go#L31">pkg/metrics/push.go:31</a></code>, using <code>expfmt</code> and <code>model</code>. The <code>v0.72.1</code> header deep-copy fix is outside Prow’s usage. OSV is clean and exposure is light.
 </li>
 <li><strong><code>golang.org/x/net</code>:</strong> Direct imports are only 3 files / 2 packages, but reachability is heavy through HTTP/2 and gRPC. Base <code>govulncheck</code> reports five called advisories—<code>GO-2026-6603</code>, <code>GO-2026-6610</code>, <code>GO-2026-6611</code>, <code>GO-2026-6612</code>, and <code>GO-2026-6617</code>—and head reports none. Entry points include <code>pkg/github.RoundTrip</code>, <code>pkg/jira.RoundTrip</code>, and gRPC serving in <code>cmd/gangway</code>.
 </li>
@@ -70,15 +89,27 @@ details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-si
 <ul>
 <li><strong><code>github.com/prometheus/client_golang</code> <code>v1.24.1 → v1.25.0</code> — use the supported process-collector constructor</strong>
 <ul>
-<li>category: <code>api-upgrade</code>
+<li>category: <code>deprecation</code>
 </li>
 <li>necessity: <code>should</code>
 </li>
-<li>where: <code>pkg/metrics/metrics.go:59</code>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/58cd44195963b5a87337a5736fafbf79852ae5dc/pkg/metrics/metrics.go#L59">pkg/metrics/metrics.go:59</a></code>
 </li>
-<li>unlocked by: <code>github.com/prometheus/client_golang v1.25.0</code>
+<li>unlocked by: <code>github.com/prometheus/client_golang v1.25.0</code> (PR #1014, merged as <code>ac45725</code>)
 </li>
-<li>prompt:<pre><code>In `kubernetes-sigs/prow`, PR #1014 bumps `github.com/prometheus/client_golang` to `v1.25.0`. Replace the deprecated `prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{})` call at `pkg/metrics/metrics.go:59` with `collectors.NewProcessCollector(collectors.ProcessCollectorOpts{})`, and remove the now-unneeded `//nolint:staticcheck` and stale comment explaining the deprecated call. Keep the controller-runtime registry unregistration semantics unchanged. Run the focused metrics tests and confirm no deprecated Prometheus constructor remains at that call site.</code></pre>
+<li>status: still applicable at merge (<code><a href="https://github.com/kubernetes-sigs/prow/blob/58cd44195963b5a87337a5736fafbf79852ae5dc/pkg/metrics/metrics.go#L59">pkg/metrics/metrics.go:59</a></code> on <code>ac45725</code> still calls the deprecated constructor)
+</li>
+<li>prompt:<pre><code>In `kubernetes-sigs/prow`, now that PR #1014 (merged as `ac45725`) bumped `github.com/prometheus/client_golang` from `v1.24.1` to `v1.25.0`, migrate the remaining deprecated collector call in `pkg/metrics/metrics.go:59`.
+
+What and where: `pkg/metrics/metrics.go:59` calls `prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{})` inside `ctrlruntimemetrics.Registry.Unregister(...)`. In `v1.25.0` that constructor is documented as `Deprecated: Use collectors.NewProcessCollector instead.`
+
+Task: replace it with `collectors.NewProcessCollector(collectors.ProcessCollectorOpts{})`, remove the `//nolint:staticcheck` on that statement, and delete the stale sentence in the block comment claiming the call &quot;must match what controller-runtime does so we can not change it&quot;. Controller-runtime `v0.25.2` already uses `collectors.NewProcessCollector(collectors.ProcessCollectorOpts{})` (`pkg/internal/controller/metrics/metrics.go:105`), and `collectors.NewProcessCollector` delegates to the same implementation, so the descriptors and `Unregister` behavior are unchanged — verify this while editing rather than assuming it.
+
+Acceptance criteria: `pkg/metrics/metrics.go` contains no `prometheus.NewProcessCollector` and no `nolint:staticcheck` for it; `go test ./pkg/metrics/...` passes; `rg &#x27;prometheus.NewProcessCollector&#x27; --glob &#x27;*.go&#x27;` returns no non-test hits.
+
+Scope guard: only `pkg/metrics/metrics.go`. Do not change the metrics handler, registry selection, `NewGoCollector` unregistration, or any other collector. Leave the unrelated `//nolint:staticcheck` usage alone.</code></pre>
 </li></ul>
+</li>
+<li><strong>Examined, no actionable opportunity:</strong> <code>prometheus/common v0.72.0→v0.72.1</code> (only the <code>cloneRequest</code> header deep-copy fix); <code>golang.org/x/net v0.59.0→v0.61.0</code> (security/bug fixes only, nothing at our <code>net/html</code> and <code>net/xsrftoken</code> call sites); <code>golang.org/x/text v0.42.0→v0.43.0</code> (<code>bidirule</code>/<code>bidi</code> performance only); <code>prometheus/procfs v0.21.1→v0.22.0</code> (not imported by Prow; new <code>KernelTainted</code>, sr-iov, and <code>resctrlfs</code> APIs have no consumer here); <code>golang.org/x/crypto v0.57.0→v0.58.0</code>, <code>x/sys v0.48.0→v0.49.0</code>, <code>x/term v0.46.0→v0.47.0</code>, <code>x/tools v0.50.0→v0.51.0</code>, and <code>klauspost/compress v1.19.1→v1.20.1</code> in <code>hack/tools</code> (indirect and never imported directly; no deprecations touching our tooling). <code>client_golang</code>'s new <code>testutil.GatherAndFormat</code> and <code>promhttp.HandlerOpts.AcceptedFormats</code> were considered and rejected: no call site where they replace hand-rolled code or deliver a concrete benefit.
 </li></ul>
 </main></body></html>

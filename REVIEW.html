@@ -31,22 +31,28 @@ ul, ol { padding-left:1.5rem; }
 details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
 </style></head><body><main>
 <h1>peribolos: support delete_branch_on_merge repo setting</h1>
-<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1024">kubernetes-sigs/prow#1024</a> · base <code>main</code> · head_sha <code>3ad2362395c5</code> · reviewed_at <code>2026-10-21T23:56:17Z</code></div>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1024">kubernetes-sigs/prow#1024</a> · base <code>main</code> · head_sha <code>3ad2362395c5</code> · reviewed_at <code>2026-11-19T15:40:38Z</code></div>
 <div class="badges"><span class="badge c-green">verdict: approve</span><span class="badge c-green">gate: merge</span></div>
 <details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#1024
 title: &quot;peribolos: support delete_branch_on_merge repo setting&quot;
 head_sha: 3ad2362395c5d629b9880194d4ffe6df7e3428f5
 base: main
-reviewed_at: 2026-10-21T23:56:17Z
+reviewed_at: 2026-11-19T15:40:38Z
 verdict: approve
 gate:
   decision: merge
   gated_at: 2026-10-21T23:56:55Z
   gated_head_sha: 3ad2362395c5d629b9880194d4ffe6df7e3428f5
-  reviewed_head_sha: 3ad2362395c5d629b9880194d4ffe6df7e3428f5</code></pre></details>
+  reviewed_head_sha: 3ad2362395c5d629b9880194d4ffe6df7e3428f5
+refresh_log:
+  - at: 2026-11-19T15:40:38Z
+    old_sha: 3ad2362395c5d629b9880194d4ffe6df7e3428f5
+    new_sha: 3ad2362395c5d629b9880194d4ffe6df7e3428f5
+    summary: &quot;No code changes; recorded petr-muller&#x27;s approval and the merge of PR #1024.&quot;</code></pre></details>
 <h2>Gate</h2>
 <p><strong>Verdict: merge</strong></p>
 <p>The current PR head matches the head covered by the review, and there are no new commits, change requests, substantive inline comments, or blocking findings. The two saved findings are nonblocking test suggestions. The change adds optional behavior and does not alter existing deployments when the setting is unset.</p>
+<p><strong>Status update (2026-11-19):</strong> the PR was approved and merged at the same reviewed head (<code>3ad2362</code>) on 2026-10-22T00:33:39Z; no code changed after this review.</p>
 <p><strong>Gating list</strong></p>
 <ul>
 <li>None.
@@ -72,10 +78,18 @@ gate:
 </li>
 <li>Preserves existing behavior for repositories whose config leaves the field unset.
 </li></ul>
+<p>Since previous review:</p>
+<ul>
+<li>No code changes: <code>head_sha</code> is unchanged (<code>3ad2362</code> → <code>3ad2362</code>).
+</li>
+<li>petr-muller approved at 2026-10-21T23:58:37Z; Prow applied the <code>approved</code> label and the PR merged at 2026-10-22T00:33:39Z.
+</li>
+<li>No new issue comments, inline review comments, or reviews beyond that approval; both saved findings remain open, nonblocking test suggestions.
+</li></ul>
 <h2>Findings</h2>
 <h3><span class="tag c-gray">nit</span>Cover disabling the setting in update delta tests</h3>
 <ul>
-<li>where: <code>cmd/peribolos/main_test.go:4861-4870</code>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/3ad2362395c5d629b9880194d4ffe6df7e3428f5/cmd/peribolos/main_test.go#L4861-L4870">cmd/peribolos/main_test.go:4861-4870</a></code>
 </li>
 <li>concern: Add a case where the current value is <code>true</code> and the configured value is explicitly <code>false</code>. This would verify that Peribolos sends an explicit false update; current cases cover enabling and an unchanged true value.
 </li>
@@ -90,7 +104,7 @@ newState: org.Repo{
 </li></ul>
 <h3><span class="tag c-gray">nit</span>Test GitHub request conversion for the new field</h3>
 <ul>
-<li>where: <code>pkg/github/types.go:438</code>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/3ad2362395c5d629b9880194d4ffe6df7e3428f5/pkg/github/types.go#L438">pkg/github/types.go:438</a></code>
 </li>
 <li>concern: Add <code>pkg/github</code> coverage that checks <code>delete_branch_on_merge</code> in serialized create/update requests and verifies <code>ToRepo</code> preserves the value. Peribolos tests cover delta construction, but not this request-model boundary.
 </li>
@@ -110,13 +124,14 @@ newState: org.Repo{
 <p>None.</p>
 <p>Standards: 0 findings; Spec: 0 findings. Maintainer perspectives: 2 nonblocking test suggestions, 0 blocking concerns.</p>
 <h2>Followups</h2>
+<p>PR #1024 merged as <code>c4e8f2a912a4cb1c3eeab0cb73e653baeee74c6f</code>. The first three entries were recorded before the merge and remain valid post-merge; the last two were identified in the post-merge followup pass.</p>
 <h3>Cover disabling <code>delete_branch_on_merge</code></h3>
 <ul>
 <li>Category: tests
 </li>
 <li>Mode: probe
 </li>
-<li>Where: <code>cmd/peribolos/main_test.go:4861</code>
+<li>Where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/3ad2362395c5d629b9880194d4ffe6df7e3428f5/cmd/peribolos/main_test.go#L4861">cmd/peribolos/main_test.go:4861</a></code>
 <pre><code>In kubernetes-sigs/prow, following PR #1024 — “peribolos: support delete_branch_on_merge repo setting” at head 3ad2362395c5d629b9880194d4ffe6df7e3428f5, add a focused regression test in cmd/peribolos/main_test.go.
 
 Extend TestNewRepoUpdateRequest with a case where current.DeleteBranchOnMerge is true and newState.DeleteBranchOnMerge is false. Assert that newRepoUpdateRequest returns a RepoUpdateRequest whose RepoRequest.DeleteBranchOnMerge points to false.
@@ -129,7 +144,7 @@ Run go test ./cmd/peribolos -run TestNewRepoUpdateRequest. Do not change product
 </li>
 <li>Mode: probe
 </li>
-<li>Where: <code>pkg/github/types.go:438</code>
+<li>Where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/3ad2362395c5d629b9880194d4ffe6df7e3428f5/pkg/github/types.go#L438">pkg/github/types.go:438</a></code>
 <pre><code>In kubernetes-sigs/prow, following PR #1024 — “peribolos: support delete_branch_on_merge repo setting” at head 3ad2362395c5d629b9880194d4ffe6df7e3428f5, add focused pkg/github tests for the new repository request field.
 
 Cover RepoRequest.ToRepo preserving DeleteBranchOnMerge for true and false pointers, RepoRequest.Defined returning true when only DeleteBranchOnMerge is set, and JSON serialization of create/update requests including delete_branch_on_merge while omitting it when nil.
@@ -142,11 +157,41 @@ Run go test ./pkg/github. Do not change production behavior or unrelated tests.<
 </li>
 <li>Mode: deliver
 </li>
-<li>Where: <code>site/content/en/docs/components/cli-tools/peribolos.md:18</code>
+<li>Where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/3ad2362395c5d629b9880194d4ffe6df7e3428f5/site/content/en/docs/components/cli-tools/peribolos.md#L18">site/content/en/docs/components/cli-tools/peribolos.md:18</a></code>
 <pre><code>In kubernetes-sigs/prow, following PR #1024 — “peribolos: support delete_branch_on_merge repo setting” at head 3ad2362395c5d629b9880194d4ffe6df7e3428f5, document the new repository setting in site/content/en/docs/components/cli-tools/peribolos.md.
 
 Add a concise repository-settings example under the org configuration documentation showing a repo with delete_branch_on_merge: true. Explain that omitted repo fields are not managed, while explicitly setting delete_branch_on_merge: false disables automatic head-branch deletion. Match the existing documentation tone and do not attempt to exhaustively document every repository field.
 
 No production code changes are expected.</code></pre>
+</li></ul>
+<h3>Fix <code>RepoRequest.Defined()</code> to include squash merge commit settings</h3>
+<ul>
+<li>Category: bug
+</li>
+<li>Mode: deliver
+</li>
+<li>Where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/3ad2362395c5d629b9880194d4ffe6df7e3428f5/pkg/github/types.go#L491">pkg/github/types.go:491</a></code>
+<pre><code>In kubernetes-sigs/prow, following PR #1024 — “peribolos: support delete_branch_on_merge repo setting” (merged as c4e8f2a912a4cb1c3eeab0cb73e653baeee74c6f), fix github.RepoRequest.Defined() so it reports squash merge commit settings.
+
+RepoRequest.Defined() (pkg/github/types.go:491) ORs a hand-maintained list of pointer fields but omits SquashMergeCommitTitle and SquashMergeCommitMessage. cmd/peribolos/main.go:1453 only calls UpdateRepo when delta.Defined() is true, so a repo whose only desired change is squash_merge_commit_title / squash_merge_commit_message is silently not updated. Add both fields to Defined(). Add pkg/github tests proving Defined() is true when each is the only field set and false for a zero RepoRequest; prefer a table or reflection-based test over every RepoRequest field so future additions cannot be forgotten the same way.
+
+Acceptance criteria: both fields are included in Defined(); `go test ./pkg/github ./cmd/peribolos` passes; the new test fails before the fix and passes after.
+
+Scope guard: do not change dump behavior or PruneRepoDefaults (separate followup), do not alter RepoUpdateRequest field semantics, and do not touch unrelated fields or tests.</code></pre>
+</li></ul>
+<h3>Record squash merge commit settings in <code>--dump</code></h3>
+<ul>
+<li>Category: bug
+</li>
+<li>Mode: deliver
+</li>
+<li>Where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/3ad2362395c5d629b9880194d4ffe6df7e3428f5/cmd/peribolos/main.go#L463">cmd/peribolos/main.go:463</a></code>
+<pre><code>In kubernetes-sigs/prow, following PR #1024 — “peribolos: support delete_branch_on_merge repo setting” (merged as c4e8f2a912a4cb1c3eeab0cb73e653baeee74c6f), make peribolos --dump record squash merge commit settings.
+
+dumpOrgConfig (cmd/peribolos/main.go:463) builds its org.Repo from the FullRepo returned by GetRepo but omits SquashMergeCommitTitle and SquashMergeCommitMessage, even though both FullRepo and org.Repo carry them and newRepoCreateRequest / newRepoUpdateRequest already send them. A dump therefore silently drops those settings. Add both fields to the dumpOrgConfig literal, and add GitHub&#x27;s documented defaults (&quot;PR_TITLE&quot; for squash_merge_commit_title, &quot;COMMIT_MESSAGES&quot; for squash_merge_commit_message) to org.PruneRepoDefaults (pkg/config/org/org.go:287) so default values are omitted from dumps like other defaults.
+
+Acceptance criteria: TestDumpOrgConfig shows non-default squash values round-tripping into the dumped config, TestPruneRepoDefaults shows the defaults are pruned and non-defaults kept, and `go test ./cmd/peribolos ./pkg/config/org` passes.
+
+Scope guard: do not change create/update request logic or RepoRequest.Defined() (separate followup); do not change how other repo fields are dumped; no unrelated refactors.</code></pre>
 </li></ul>
 </main></body></html>

@@ -3,7 +3,7 @@ pr: kubernetes-sigs/prow#719
 title: "mergecommitblocker: allow use of Git subtrees with `excluded_paths` config option"
 head_sha: 941664570326bd59dfcbbdb62cc66f6c874f203f
 base: main
-reviewed_at: 2026-10-20T13:59:23Z
+reviewed_at: 2026-11-19T23:56:34Z
 verdict: request-changes
 refresh_log:
   - from: 941664570326bd59dfcbbdb62cc66f6c874f203f
@@ -14,6 +14,10 @@ refresh_log:
     to: 941664570326bd59dfcbbdb62cc66f6c874f203f
     at: 2026-10-20T13:59:23Z
     summary: No code changes; stale lifecycle and needs-rebase bot comments recorded. Findings unchanged.
+  - from: 941664570326bd59dfcbbdb62cc66f6c874f203f
+    to: 941664570326bd59dfcbbdb62cc66f6c874f203f
+    at: 2026-11-19T23:56:34Z
+    summary: No code changes; triage bot marked the PR lifecycle/rotten. Findings unchanged.
 ---
 
 ## What this PR does
@@ -23,6 +27,7 @@ refresh_log:
 Since previous review:
 - No code changes: PR head remains `941664570326bd59dfcbbdb62cc66f6c874f203f`.
 - `k8s-triage-robot` marked the PR stale at 2026-10-20 07:04 UTC; `kubernetes-prow[bot]` reported that it needs rebase at 2026-10-20 07:05 UTC.
+- `k8s-triage-robot` marked the PR `lifecycle/rotten` at 2026-11-19 07:38 UTC; the next lifecycle step is auto-close after 30 days of inactivity.
 
 ## Findings
 

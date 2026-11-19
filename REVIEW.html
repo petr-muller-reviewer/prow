@@ -31,13 +31,13 @@ ul, ol { padding-left:1.5rem; }
 details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
 </style></head><body><main>
 <h1>mergecommitblocker: allow use of Git subtrees with <code>excluded_paths</code> config option</h1>
-<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/719">kubernetes-sigs/prow#719</a> · base <code>main</code> · head_sha <code>941664570326</code> · reviewed_at <code>2026-10-20T13:59:23Z</code></div>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/719">kubernetes-sigs/prow#719</a> · base <code>main</code> · head_sha <code>941664570326</code> · reviewed_at <code>2026-11-19T23:56:34Z</code></div>
 <div class="badges"><span class="badge c-red">verdict: request-changes</span></div>
 <details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#719
 title: &quot;mergecommitblocker: allow use of Git subtrees with `excluded_paths` config option&quot;
 head_sha: 941664570326bd59dfcbbdb62cc66f6c874f203f
 base: main
-reviewed_at: 2026-10-20T13:59:23Z
+reviewed_at: 2026-11-19T23:56:34Z
 verdict: request-changes
 refresh_log:
   - from: 941664570326bd59dfcbbdb62cc66f6c874f203f
@@ -47,7 +47,11 @@ refresh_log:
   - from: 941664570326bd59dfcbbdb62cc66f6c874f203f
     to: 941664570326bd59dfcbbdb62cc66f6c874f203f
     at: 2026-10-20T13:59:23Z
-    summary: No code changes; stale lifecycle and needs-rebase bot comments recorded. Findings unchanged.</code></pre></details>
+    summary: No code changes; stale lifecycle and needs-rebase bot comments recorded. Findings unchanged.
+  - from: 941664570326bd59dfcbbdb62cc66f6c874f203f
+    to: 941664570326bd59dfcbbdb62cc66f6c874f203f
+    at: 2026-11-19T23:56:34Z
+    summary: No code changes; triage bot marked the PR lifecycle/rotten. Findings unchanged.</code></pre></details>
 <h2>What this PR does</h2>
 <ul>
 <li>Adds an <code>excluded_paths</code> config option to MergeCommitBlocker for repositories using Git subtrees.
@@ -57,17 +61,19 @@ refresh_log:
 <li>No code changes: PR head remains <code>941664570326bd59dfcbbdb62cc66f6c874f203f</code>.
 </li>
 <li><code>k8s-triage-robot</code> marked the PR stale at 2026-10-20 07:04 UTC; <code>kubernetes-prow[bot]</code> reported that it needs rebase at 2026-10-20 07:05 UTC.
+</li>
+<li><code>k8s-triage-robot</code> marked the PR <code>lifecycle/rotten</code> at 2026-11-19 07:38 UTC; the next lifecycle step is auto-close after 30 days of inactivity.
 </li></ul>
 <h2>Findings</h2>
 <h3><span class="tag c-red">blocking</span>MergeCommitBlocker missing from HasConfigFor()</h3>
 <ul>
-<li>where: <code>pkg/plugins/config.go:2371-2460</code>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/941664570326bd59dfcbbdb62cc66f6c874f203f/pkg/plugins/config.go#L2371-L2460">pkg/plugins/config.go:2371-2460</a></code>
 </li>
 <li>concern: <code>HasConfigFor()</code> enumerates every plugin config using the <code>Repos</code> pattern (Approve, Lgtm, Triggers, Welcome). MergeCommitBlocker follows the same shape but is not registered. In multi-shard deployments, sharding logic uses this method to determine which shard owns config for which repos. Without registration, excluded paths config could silently not apply. Also missing from the <code>reflect.DeepEqual</code> check at line 2372. Follow the Lgtm pattern (lines 2422-2430).
 </li></ul>
 <h3><span class="tag c-amber">should-fix</span>diff-tree -m can produce duplicate filenames</h3>
 <ul>
-<li>where: <code>pkg/git/v2/interactor.go:622-634</code>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/941664570326bd59dfcbbdb62cc66f6c874f203f/pkg/git/v2/interactor.go#L622-L634">pkg/git/v2/interactor.go:622-634</a></code>
 </li>
 <li>concern: The <code>-m</code> flag diffs a merge commit against each parent separately, so a file changed relative to both parents appears twice in output. Harmless for the current caller (regex matching is idempotent on duplicates) but undocumented. Add a one-line comment explaining <code>-m</code> behavior.
 </li>
@@ -75,25 +81,25 @@ refresh_log:
 </li></ul>
 <h3><span class="tag c-amber">should-fix</span>Missing error test case for MergeCommitSHAsBetween</h3>
 <ul>
-<li>where: <code>pkg/git/v2/interactor_test.go:2071-2135</code>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/941664570326bd59dfcbbdb62cc66f6c874f203f/pkg/git/v2/interactor_test.go#L2071-L2135">pkg/git/v2/interactor_test.go:2071-2135</a></code>
 </li>
 <li>concern: Test table covers "no merges", "one merge", "multiple merges" but no error case. The sibling CommitChangedFiles test includes an error case. Should be consistent.
 </li></ul>
 <h3><span class="tag c-gray">nit</span>Log rejected file list at Debug level</h3>
 <ul>
-<li>where: <code>pkg/plugins/mergecommitblocker/mergecommitblocker.go:170-172</code>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/941664570326bd59dfcbbdb62cc66f6c874f203f/pkg/plugins/mergecommitblocker/mergecommitblocker.go#L170-L172">pkg/plugins/mergecommitblocker/mergecommitblocker.go:170-172</a></code>
 </li>
 <li>concern: When a merge commit is disallowed, only the SHA is logged. Including the file list at Debug level would aid operator diagnosis.
 </li></ul>
 <h3><span class="tag c-blue">question</span>Interactor interface expansion — release notes?</h3>
 <ul>
-<li>where: <code>pkg/git/v2/interactor.go:77-80</code>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/941664570326bd59dfcbbdb62cc66f6c874f203f/pkg/git/v2/interactor.go#L77-L80">pkg/git/v2/interactor.go:77-80</a></code>
 </li>
 <li>concern: Two new methods on public Interactor interface. External implementors will fail to compile. Should this be documented in release notes?
 </li></ul>
 <h3><span class="tag c-blue">question</span>diff-tree -m vs --first-parent for merge commit file listing</h3>
 <ul>
-<li>where: <code>pkg/git/v2/interactor.go:624</code>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/941664570326bd59dfcbbdb62cc66f6c874f203f/pkg/git/v2/interactor.go#L624">pkg/git/v2/interactor.go:624</a></code>
 </li>
 <li>concern: <code>-m</code> diffs against each parent, so files changed on master between branch point and merge appear as "changed." For subtree merges this is fine, but would <code>--first-parent</code> be more precise?
 </li></ul>

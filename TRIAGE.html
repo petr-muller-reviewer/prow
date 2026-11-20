@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#1082</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>Reusable presets for Tide merge criteria</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/issues/1082">kubernetes-sigs/prow#1082</a> · main_sha <code>9c8eff7c98cc</code> · state <code>open</code> · labels <code>kind/feature, area/tide</code> · triaged_at <code>2026-11-20T00:46:29Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: accepted</span></div>
+<h2>Verdict</h2>
+<p><strong>accepted</strong> — valid, in-scope Prow feature request; already implemented by open PR #1083.</p>
+<p>The issue asks for named, reusable Tide query fragments so a centrally managed baseline of merge criteria does not have to be duplicated across sharded configs. It is written by a Prow maintainer, includes an example, and states the design constraints clearly; no duplicate exists. PR #1083 already implements the recommended design (authored/runtime type split, presets resolved after shard merge and before dedup, authored YAML preserved on save). Effort is Level 3 (Large) because the change adds a config surface on the shared load/validate path and changes the Go-visible <code>TideGitHubConfig.Queries</code> type.</p>
+<h2>What the issue reports</h2>
+<ul>
+<li>Tide config can be sharded per org and per repo, which lets repos tweak merge criteria but makes it hard to centrally enforce common elements such as merge-prohibiting labels and branch treatment.
+</li>
+<li>Proposed feature: define named <code>tide.query_presets</code> (a reusable query fragment) and reference them by name from <code>tide.queries</code>; a query may use multiple presets.
+</li>
+<li>List fields (<code>labels</code>, <code>missingLabels</code>, <code>includedBranches</code>, <code>excludedBranches</code>) would be unioned; scalar fields must not conflict, with checkconfig enforcing it.
+</li>
+<li>Presets would be resolved during configuration loading, before the existing query deduplication; the authored configuration must survive a load/save round-trip without presets resolved.
+</li>
+<li>The config surface needs preset awareness that runtime <code>TideQuery</code> does not, so the shared data structure should be split; the issue accepts an internal and external Go API break because Prow is not a library.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-amber">cause</span>Shared merge criteria have no reuse mechanism</h3>
+<ul>
+<li>detail: <code>TideQuery</code> fuses org/repo selectors with merge criteria, and shard configs are merged by appending queries. There is no named query-fragment concept, so a common baseline must be repeated in every query and shard.
+</li>
+<li>evidence: <code><a href="https://github.com/kubernetes-sigs/prow/blob/9c8eff7c98cc979e833369aefe5d1e86afcf063f/pkg/config/tide.go#L660-L676">pkg/config/tide.go:660-676</a></code>, <code><a href="https://github.com/kubernetes-sigs/prow/blob/9c8eff7c98cc979e833369aefe5d1e86afcf063f/pkg/config/tide.go#L372-L390">pkg/config/tide.go:372-390</a></code>
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>Tide query data model</h3>
+<ul>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/9c8eff7c98cc979e833369aefe5d1e86afcf063f/pkg/config/tide.go#L42">pkg/config/tide.go:42</a></code>, <code><a href="https://github.com/kubernetes-sigs/prow/blob/9c8eff7c98cc979e833369aefe5d1e86afcf063f/pkg/config/tide.go#L660-L676">pkg/config/tide.go:660-676</a></code>
+</li>
+<li>excerpt:<pre><code>type TideQueries []TideQuery
+
+type TideQuery struct {
+    Author                 string   `json:&quot;author,omitempty&quot;`
+    Labels                 []string `json:&quot;labels,omitempty&quot;`
+    MissingLabels          []string `json:&quot;missingLabels,omitempty&quot;`
+    ExcludedBranches       []string `json:&quot;excludedBranches,omitempty&quot;`
+    IncludedBranches       []string `json:&quot;includedBranches,omitempty&quot;`
+    Milestone              string   `json:&quot;milestone,omitempty&quot;`
+    ReviewApprovedRequired bool     `json:&quot;reviewApprovedRequired,omitempty&quot;`
+    Orgs                   []string `json:&quot;orgs,omitempty&quot;`
+    Repos                  []string `json:&quot;repos,omitempty&quot;`
+    ExcludedRepos          []string `json:&quot;excludedRepos,omitempty&quot;`
+}</code></pre>
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>Config load, shard merge, validation and dedup path</h3>
+<ul>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/9c8eff7c98cc979e833369aefe5d1e86afcf063f/pkg/config/config.go#L1849-L1911">pkg/config/config.go:1849-1911</a></code>, <code><a href="https://github.com/kubernetes-sigs/prow/blob/9c8eff7c98cc979e833369aefe5d1e86afcf063f/pkg/config/config.go#L3497-L3530">pkg/config/config.go:3497-3530</a></code>, <code><a href="https://github.com/kubernetes-sigs/prow/blob/9c8eff7c98cc979e833369aefe5d1e86afcf063f/pkg/config/config.go#L2842-L2846">pkg/config/config.go:2842-2846</a></code>, <code><a href="https://github.com/kubernetes-sigs/prow/blob/9c8eff7c98cc979e833369aefe5d1e86afcf063f/pkg/config/config.go#L3719-L3747">pkg/config/config.go:3719-3747</a></code>, <code><a href="https://github.com/kubernetes-sigs/prow/blob/9c8eff7c98cc979e833369aefe5d1e86afcf063f/pkg/config/tide.go#L855-L887">pkg/config/tide.go:855-887</a></code>
+</li>
+<li>excerpt:<pre><code>// loadConfig: read main config, then walk additional-prow-config-dir and mergeFrom each shard.
+// After merging: parseProwConfig validates queries, loadConfig computes AllRepos and
+// deduplicateTideQueries keyed by tideQueryConfig.
+// Runtime consumers use TideQueries.QueryMap() / QueryMap.ForRepo.</code></pre>
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>Existing job-preset mechanism is only adjacent prior art</h3>
+<ul>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/9c8eff7c98cc979e833369aefe5d1e86afcf063f/pkg/config/jobs.go#L45-L57">pkg/config/jobs.go:45-57</a></code>, <code><a href="https://github.com/kubernetes-sigs/prow/blob/9c8eff7c98cc979e833369aefe5d1e86afcf063f/pkg/config/config.go#L3025-L3070">pkg/config/config.go:3025-3070</a></code>
+</li>
+<li>excerpt:<pre><code>// Presets can be used to re-use settings across multiple jobs.
+// IncludePresets pulls the env, volumes, volumeMounts, tolerations and affinity
+// of other presets into this one.</code></pre>
+</li>
+<li>detail: Job presets are label-matched and merge PodSpecs; they do not provide the name-referenced query-fragment semantics requested here.
+</li></ul>
+<h3><span class="tag c-blue">related-pr</span>PR #1083 implements the requested feature</h3>
+<ul>
+<li>ref: kubernetes-sigs/prow#1083
+</li>
+<li>relevance: Explicitly says "Implements #1082". Adds <code>TideQuerySpec</code> / <code>TideQueryFragment</code> / <code>TideQueryPreset</code>, resolves presets after the shard merge and before dedup, keeps <code>resolvedQueries</code> unexported so saved YAML preserves authored queries and preset references, documents the feature, and adds tests. Open, self-approved, currently <code>/hold</code> pending further testing and scrutiny.
+</li></ul>
+<h2>Resolved</h2>
+<p>None — no finding has been answered or invalidated since triage.</p>
+<h2>Checked</h2>
+<ul>
+<li>Cross-references to #1082 via the issue timeline: only PR #1083.
+</li>
+<li>Keyword searches over all issue states (<code>tide preset</code>, <code>tide query preset</code>, <code>tide query_presets</code>, <code>tide config reuse</code>, <code>tide queries shard</code>): no other matching issue or PR.
+</li>
+<li>Repository scope: Tide code and configuration live in this repo (<code>pkg/config/tide.go</code>, <code>pkg/tide/</code>, <code>cmd/tide</code>, <code>cmd/checkconfig</code>).
+</li>
+<li><code>HasConfigFor</code> (<code><a href="https://github.com/kubernetes-sigs/prow/blob/9c8eff7c98cc979e833369aefe5d1e86afcf063f/pkg/config/config.go#L3596-L3631">pkg/config/config.go:3596-3631</a></code>) still works with <code>TideQuerySpec</code> because selectors stay inline; preset definitions alone define no orgs/repos and therefore do not enable Tide, matching the PR's stated intent.
+</li>
+<li>Deduplication ordering: PR #1083 resolves presets in <code>parseProwConfig</code> before <code>loadConfig</code> calls <code>deduplicateTideQueries</code>, satisfying the issue's requirement.
+</li>
+<li>Serialization: resolved queries live in an unexported <code>resolvedQueries</code> field exposed via <code>ResolvedQueries()</code>, so marshaling emits only authored queries and presets; a round-trip test covers this.
+</li>
+<li>Test coverage on <code>main</code>: query validation and dedup are covered (<code>pkg/config/tide_test.go</code>, <code>pkg/config/config_test.go</code>, <code>cmd/checkconfig/main_test.go</code>); preset behavior is absent. PR #1083 adds <code>pkg/config/tide_query_spec_test.go</code> covering round-trip, slice isolation, composition, scalar-presence conflicts, invalid presets, cross-file references, and reload.
+</li></ul>
+<h2>Next steps</h2>
+<ul>
+<li>Review and land PR #1083; close #1082 as completed once it merges.
+</li>
+<li>Resolve the scope inconsistency: the issue says presets are initially global-only and the docs say to define them in the main Prow configuration, but <code>mergeFrom</code> accepts <code>query_presets</code> from supplemental shards and <code>TestQueryPresetsAcrossFiles</code> exercises cross-file definitions. Either restrict definitions to the main config or document that any loaded file may define them (names remain globally unique).
+</li>
+<li>No label changes needed: <code>kind/feature</code> and <code>area/tide</code> are already applied and correct. Effort Level 3 means neither <code>good-first-issue</code> nor <code>help-wanted</code> is appropriate.
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>Should <code>query_presets</code> be definable only in the main Prow config, or in any loaded supplemental file? PR #1083 currently allows both, while the docs say to define them in the main configuration.
+</li>
+<li>Do we want naming constraints (length or character set) on preset names beyond non-empty and globally unique?
+</li></ul>
+</main></body></html>

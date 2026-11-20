@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#1078</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>Stale queued presubmits run after the base advances</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/issues/1078">kubernetes-sigs/prow#1078</a> · main_sha <code>9c8eff7c98cc</code> · state <code>open</code> · labels <code></code> · triaged_at <code>2026-11-20T00:36:57Z</code></div>
+<div class="badges"><span class="badge c-amber">verdict: needs-discussion</span></div>
+<h2>Verdict</h2>
+<p>Needs discussion: Prow works as designed here; the only defect is that a queued job spends a run that cannot count, because the base moved before it started.</p>
+<p>A presubmit captures its base SHA when the PR event fires and never re-evaluates it. A job held behind <code>max_concurrency</code> therefore runs pre-move base + current PR head. That is the same outcome as a base advance during a run, and Tide's base-SHA validity rule means the result is not evidence for the new base, so Tide re-triggers the job for pooled PRs. The maintainer's reading (2026-11-20) is that this is intended behavior and a mild inefficiency rather than a bug; queueing differs from a running base advance only by the pre-flight window, where something smarter could be done. Disposition (keep as a backlog enhancement vs. close <code>wontfix</code> with documentation) is open.</p>
+<h2>What the issue reports</h2>
+<ul>
+<li>A presubmit that waits in Prow's queue starts with the base SHA from its creation, so it tests stale base + current PR head; the reporter's example ran 4h41m after creation and ~3h40m after another PR merged to <code>main</code>.
+</li>
+<li>The reporter argues the run "can't vote, nor present the fresh state", so the PR needs at least one more run before it can merge.
+</li>
+<li>Requested remedy: stale queued jobs "should be cancelled or superseded / auto rebased".
+</li>
+<li>Scope is presubmits only ("non tide batch jobs"); Tide batch staleness is tracked separately.
+</li>
+<li>The run was created by the trigger plugin, not Tide: labels show <code>created-by-prow</code> and <code>event-GUID</code>, and no <code>created-by-tide</code>.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-blue">reproducibility</span>stale base confirmed from the ProwJob artifacts</h3>
+<ul>
+<li>detail: ProwJob created 2026-11-18T14:19:47Z with <code>prow.k8s.io/is-optional: &quot;false&quot;</code> and no <code>created-by-tide</code>; <code>started.json</code> refs are <code>main:e9b962f598371bf9d002d94536ff0c32eff8fc08,18626:4cca9de8...</code>, so the pod checked out the pre-merge base. Status: <code>pendingTime</code> 19:00:31Z, <code>completionTime</code> 20:34:54Z, state <code>success</code>.
+</li>
+<li>evidence: <code>storage.googleapis.com/kubevirt-prow/pr-logs/pull/kubevirt_kubevirt/18626/pull-kubevirt-e2e-k8s-1.37-sig-compute-serial/2123129241695424512/{prowjob,started}.json</code>
+</li></ul>
+<h3><span class="tag c-blue">reproducibility</span>the delay is a per-job concurrency limit, not a Prow queue</h3>
+<ul>
+<li>detail: spec has <code>max_concurrency: 11</code> and no <code>job_queue_name</code>. Prow has no presubmit queue unless a concurrency limit or <code>job_queue_name</code> is configured; the job sat in <code>TriggeredState</code> while Plank waited for a slot, so it is not a pod-scheduling delay.
+</li>
+<li>evidence: example prowjob.json; <code><a href="https://github.com/kubernetes-sigs/prow/blob/9c8eff7c98cc979e833369aefe5d1e86afcf063f/pkg/plank/reconciler.go#L905-L975">pkg/plank/reconciler.go:905-975</a></code>
+</li></ul>
+<h3><span class="tag c-amber">cause</span>base SHA is captured once, at event time</h3>
+<ul>
+<li>detail: the trigger plugin resolves <code>heads/&lt;base ref&gt;</code> on the PR event and freezes it into <code>refs.base_sha</code>; nothing re-reads the branch while the ProwJob waits.
+</li>
+<li>evidence: <code><a href="https://github.com/kubernetes-sigs/prow/blob/9c8eff7c98cc979e833369aefe5d1e86afcf063f/pkg/plugins/trigger/pull-request.go#L52-L59">pkg/plugins/trigger/pull-request.go:52-59</a></code>, <code><a href="https://github.com/kubernetes-sigs/prow/blob/9c8eff7c98cc979e833369aefe5d1e86afcf063f/pkg/pjutil/pjutil.go#L130-L150">pkg/pjutil/pjutil.go:130-150</a></code>
+</li></ul>
+<h3><span class="tag c-amber">cause</span>supersede requires a newer run to already exist</h3>
+<ul>
+<li>detail: <code>terminateDupes</code> aborts older pending/triggered runs of the same job and PR set; the digest excludes commit SHAs, so a base advance alone supersedes nothing. Replacements come from Tide (pool PRs only), a new PR event, or <code>/test</code>.
+</li>
+<li>evidence: <code><a href="https://github.com/kubernetes-sigs/prow/blob/9c8eff7c98cc979e833369aefe5d1e86afcf063f/pkg/plank/reconciler.go#L438-L450">pkg/plank/reconciler.go:438-450</a></code>, <code><a href="https://github.com/kubernetes-sigs/prow/blob/9c8eff7c98cc979e833369aefe5d1e86afcf063f/pkg/pjutil/abort.go#L61-L118">pkg/pjutil/abort.go:61-118</a></code>
+</li></ul>
+<h3><span class="tag c-amber">cause</span>Tide retests only PRs that are in its pool</h3>
+<ul>
+<li>detail: subpools contain only PRs matching <code>tide.queries</code> with required labels. kubevirt runs Tide (<code>sync_period: 2m</code>), but PR #18626 was not merge-eligible, so no fresh run was created and <code>terminateDupes</code> had no newer run to prefer.
+</li>
+<li>evidence: <code><a href="https://github.com/kubernetes-sigs/prow/blob/9c8eff7c98cc979e833369aefe5d1e86afcf063f/pkg/tide/tide.go#L642-L662">pkg/tide/tide.go:642-662</a></code>
+</li></ul>
+<h3><span class="tag c-amber">cause</span>queueing differs from a running base advance only by the pre-flight window</h3>
+<ul>
+<li>detail: both leave a run pinned to an old base with that base recorded; queueing adds an arbitrarily long wait plus the option to decide before spending the run.
+</li>
+<li>evidence: <code><a href="https://github.com/kubernetes-sigs/prow/blob/9c8eff7c98cc979e833369aefe5d1e86afcf063f/pkg/pod-utils/clone/clone.go#L266-L300">pkg/pod-utils/clone/clone.go:266-300</a></code>, <code><a href="https://github.com/kubernetes-sigs/prow/blob/9c8eff7c98cc979e833369aefe5d1e86afcf063f/pkg/config/config.go#L3533-L3552">pkg/config/config.go:3533-3552</a></code>
+</li></ul>
+<h3><span class="tag c-amber">cause</span>a stale green keeps the PR pooled, so Tide re-triggers and the PR is not stuck</h3>
+<ul>
+<li>detail: <code>filterPR</code> judges required contexts by state only, so green keeps the PR in the pool; <code>prowJobsFromContexts</code> drops it as evidence on the base mismatch, <code>accumulate</code> records the job as missing, and <code>takeAction</code> triggers a fresh run. A stale red behaves like any failing required context (push or <code>/test</code>), not as a distinct failure mode.
+</li>
+<li>evidence: <code><a href="https://github.com/kubernetes-sigs/prow/blob/9c8eff7c98cc979e833369aefe5d1e86afcf063f/pkg/tide/tide.go#L825-L860">pkg/tide/tide.go:825-860</a></code>, <code>:935-959</code>, <code>:1110-1145</code>, <code>:1183-1184</code>, <code>:1653-1655</code>, <code>:1328-1381</code>
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>clonerefs pins the checkout to BaseSHA</h3>
+<ul>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/9c8eff7c98cc979e833369aefe5d1e86afcf063f/pkg/pod-utils/clone/clone.go#L266-L300">pkg/pod-utils/clone/clone.go:266-300</a></code>
+</li>
+<li>excerpt:<pre><code>if refs.BaseSHA != &quot;&quot; {
+    fetchRef = refs.BaseSHA
+    target = refs.BaseSHA
+} else {
+    fetchRef = refs.BaseRef
+    target = &quot;FETCH_HEAD&quot;
+}
+...
+commands = append(commands, g.gitCommand(&quot;checkout&quot;, target))</code></pre>
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>the reported status carries the base SHA</h3>
+<ul>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/9c8eff7c98cc979e833369aefe5d1e86afcf063f/pkg/github/report/report.go#L84-L94">pkg/github/report/report.go:84-94</a></code>
+</li>
+<li>excerpt:<pre><code>Description: config.ContextDescriptionWithBaseSha(pj.Status.Description, refs.BaseSHA),</code></pre>
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>Tide lists ProwJobs by base SHA</h3>
+<ul>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/9c8eff7c98cc979e833369aefe5d1e86afcf063f/pkg/tide/tide.go#L2043-L2056">pkg/tide/tide.go:2043-2056</a></code>, key at <code>:2232-2234</code>
+</li>
+<li>excerpt:<pre><code>ctrlruntimeclient.MatchingFields{cacheIndexName: cacheIndexKey(sp.org, sp.repo, sp.branch, sp.sha)}</code></pre>
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>Plank has no GitHub client today</h3>
+<ul>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/9c8eff7c98cc979e833369aefe5d1e86afcf063f/cmd/prow-controller-manager/main.go#L65">cmd/prow-controller-manager/main.go:65</a>,88</code>
+</li>
+<li>excerpt:<pre><code>github prowflagutil.GitHubOptions // TODO(fejta): remove</code></pre>
+</li></ul>
+<h3><span class="tag c-blue">related-pr</span>PR #1080 is the WIP implementation</h3>
+<ul>
+<li>ref: kubernetes-sigs/prow#1080
+</li>
+<li>relevance: refreshes <code>refs.base_sha</code> in Plank before <code>startPod</code>; review raised job-definition drift, Gerrit presubmits failing the GitHub lookup, and pinned runs (<code>mkpj --base-sha</code>, Deck rerun) being silently re-based.
+</li></ul>
+<h3><span class="tag c-blue">related-issue</span>#650 and PR #744 are the Tide batch analog</h3>
+<ul>
+<li>ref: kubernetes-sigs/prow#650, kubernetes-sigs/prow#744
+</li>
+<li>relevance: obsolete batch ProwJobs not aborted when superseded; same family, different job type.
+</li></ul>
+<h3><span class="tag c-blue">related-issue</span>#986 covers a neighbouring retest gap</h3>
+<ul>
+<li>ref: kubernetes-sigs/prow#986
+</li>
+<li>relevance: manually triggered required presubmits not retested by Tide when the base moves.
+</li></ul>
+<h3><span class="tag c-blue">related-issue</span>#1041 was a base-SHA retest livelock</h3>
+<ul>
+<li>ref: kubernetes-sigs/prow#1041
+</li>
+<li>relevance: closed; shows how delicate Tide's base-SHA retest decisions are.
+</li></ul>
+<h2>Resolved</h2>
+<h3><span class="tag c-amber">cause</span>"Tide will ignore the stale result"</h3>
+<ul>
+<li>detail: withdrawn as overstatement. The green is not evidence for the new base, but it is not discarded: it keeps the PR pooled and Tide re-triggers. See the stale-green finding above.
+</li>
+<li>evidence: <code><a href="https://github.com/kubernetes-sigs/prow/blob/9c8eff7c98cc979e833369aefe5d1e86afcf063f/pkg/tide/tide.go#L1110-L1145">pkg/tide/tide.go:1110-1145</a></code>, <code>:1653-1655</code>
+</li></ul>
+<h3><span class="tag c-amber">cause</span>"a stale red strands the PR"</h3>
+<ul>
+<li>detail: withdrawn. A stale red blocks like any failing required context and is resolved by a push or <code>/test</code>; it is not a separate failure mode.
+</li>
+<li>evidence: <code><a href="https://github.com/kubernetes-sigs/prow/blob/9c8eff7c98cc979e833369aefe5d1e86afcf063f/pkg/tide/tide.go#L825-L860">pkg/tide/tide.go:825-860</a></code>
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li><code>gh api repos/kubernetes-sigs/prow/issues/1078/timeline --paginate</code> — the only cross-reference is PR #1080.
+</li>
+<li><code>gh issue list --search</code> for "stale presubmit", "base sha queued", "presubmit base", "queued job base" — no earlier report of stale queued presubmits.
+</li>
+<li>Ruled out a Tide merge-correctness bug: stale runs cannot add passing evidence (base-keyed index and description check).
+</li>
+<li>Ruled out batch/Tide jobs: #650/#744 are explicitly batch-only; the issue is presubmit-scoped.
+</li>
+<li>Ruled out clonerefs as a culprit: the base pin is intentional and deterministic.
+</li>
+<li>Ruled out pod scheduling: <code>pendingTime</code> proves Plank held the ProwJob, matching <code>max_concurrency: 11</code>.
+</li>
+<li>Confirmed there is no runtime precedent for mutating <code>spec.refs.base_sha</code>; all assignments are at creation or in Tide batch creation.
+</li>
+<li>Confirmed Plank has no GitHub client today, only leftover <code>GitHubOptions</code> flags.
+</li>
+<li>Checked kubevirt's Prow config in <code>kubevirt/project-infra</code>: Tide is enabled for <code>kubevirt/kubevirt</code> (<code>sync_period: 2m</code>, <code>batch_size_limit: 8</code>).
+</li>
+<li>Verified the artifacts directly instead of trusting the issue's evidence table.
+</li>
+<li><code>gh api repos/kubernetes-sigs/prow/issues/comments/7002427182</code> is a bot <code>ok-to-test</code> comment on unrelated PR #1081, not relevant to this issue.
+</li></ul>
+<h2>Next steps</h2>
+<ul>
+<li>Decide disposition with the maintainer: keep as <code>kind/feature</code> + <code>priority/backlog</code>, or close <code>wontfix</code> with a documentation note.
+</li>
+<li>If kept: decide cancel-on-base-push vs. Plank refresh, and tell PR #1080 to wait or narrow to the agreed direction.
+</li>
+<li>Ask the reporter whether the pre-flight saving justifies the complexity, given that a base advance during a running job has the same outcome and no remedy.
+</li>
+<li>Link #986 and #650/#744 from the issue if the maintainer wants the relationships recorded.
+</li>
+<li>If <code>wontfix</code>: document that a queued or concurrency-limited presubmit pins its base SHA and that Tide re-runs it against the current base.
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>Is the pre-flight window worth acting on at all, given that a base advance during a running job produces the same stale result and is not treated as a bug?
+</li>
+<li>If it is: cancel or re-base? Cancelling needs coverage for PRs outside Tide's pool; re-basing needs a guarantee that the job definition still matches the new base.
+</li>
+<li>Should pinned runs (<code>mkpj --base-sha</code>, Deck's original-spec rerun) be excluded explicitly if a refresh is ever implemented?
+</li>
+<li>Should the pinning behavior be documented in user-facing docs, independent of the disposition?
+</li></ul>
+</main></body></html>

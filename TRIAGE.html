@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#1076</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>Support /cherrypick commands in pull request review bodies</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/issues/1076">kubernetes-sigs/prow#1076</a> · main_sha <code>54944683d1f7</code> · state <code>open</code> · triaged_at <code>2026-11-20T00:45:22Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: accepted</span></div>
+<details><summary>Full metadata</summary><pre><code>issue: kubernetes-sigs/prow#1076
+title: &quot;Support /cherrypick commands in pull request review bodies&quot;
+state: open
+labels: 
+main_sha: 54944683d1f737a9ff8c7615ccf8fd6655d1580f
+triaged_at: 2026-11-20T00:45:22Z
+verdict: accepted
+legitimacy: LEGITIMATE
+effort: 2
+recommended_labels: [kind/feature, area/plugins]</code></pre></details>
+<h2>Verdict</h2>
+<p><strong>Accepted</strong> — a valid feature request for the cherrypicker external plugin, already implemented by open PR #1077; what remains is review and maintainer sign-off on the review-lifecycle policy.</p>
+<p>The plugin recognizes <code>/cherrypick</code> only in issue comments and the PR body, using a single regex that already works on any text. Review bodies are dropped twice over: <code>pull_request_review</code> is not dispatched, and merge replay never lists reviews. All the GitHub plumbing (types, client method, webhook dispatch precedent) already exists in <code>pkg/github</code> and <code>pkg/hook</code>, so the change is localized and additive. Effort is Level 2 (moderate): one external plugin plus a per-repo subscription change in test-infra, touching merge-time behavior for every cherrypicker deployment, with policy questions (dismissed reviews, edited bodies) that need a maintainer decision.</p>
+<h2>What the issue reports</h2>
+<ul>
+<li><code>/cherrypick</code> commands written in submitted pull request review bodies are never processed, whether the review is submitted on an open PR or the PR merges later.
+</li>
+<li>The event dispatcher handles <code>issue_comment</code> and <code>pull_request</code> but not <code>pull_request_review</code>; the merge handler collects issue comments, the PR body, and labels but not review bodies.
+</li>
+<li>Repositories also omit <code>pull_request_review</code> from their cherrypicker subscription, which blocks live handling independent of the handler.
+</li>
+<li>Proposed policy: handle a submitted review like a created conversation comment; ignore pending reviews; edits and dismissals do not trigger processing; merge-time collection uses current bodies of all submitted reviews including dismissed ones; inline review comments are out of scope.
+</li>
+<li>Motivated by kubernetes-sigs/kueue#17859, where review-body requests were silently ignored and had to be reposted as a comment.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-amber">cause</span>pull_request_review events never reach the plugin</h3>
+<ul>
+<li>detail: <code>handleEvent</code> switches on <code>issue_comment</code> and <code>pull_request</code> only; every other event type falls through to a debug log, so a submitted review is dropped even when the webhook is delivered.
+</li>
+<li>evidence: <code><a href="https://github.com/kubernetes-sigs/prow/blob/54944683d1f737a9ff8c7615ccf8fd6655d1580f/cmd/external-plugins/cherrypicker/server.go#L155-L185">cmd/external-plugins/cherrypicker/server.go:155-185</a></code>
+<pre><code>	switch eventType {
+	case &quot;issue_comment&quot;:
+	...
+	case &quot;pull_request&quot;:
+	...
+	default:
+		l.Debugf(&quot;skipping event of type %q&quot;, eventType)
+	}</code></pre>
+</li></ul>
+<h3><span class="tag c-amber">cause</span>merge replay ignores review bodies</h3>
+<ul>
+<li>detail: <code>handlePullRequestClosed</code> lists issue comments, prepends the PR body as a synthetic comment, then builds <code>requester -&gt; target branch -&gt; comment</code> and chain maps. It never calls <code>ListReviews</code>, so review-body commands are lost at merge despite the handler running.
+</li>
+<li>evidence: <code><a href="https://github.com/kubernetes-sigs/prow/blob/54944683d1f737a9ff8c7615ccf8fd6655d1580f/cmd/external-plugins/cherrypicker/server.go#L423-L472">cmd/external-plugins/cherrypicker/server.go:423-472</a></code>
+<pre><code>	comments, err := s.ghc.ListIssueComments(org, repo, num)
+	...
+	// treat PR body/description as a comment
+	comments = append([]github.IssueComment{{
+		Body: body,
+		User: pr.User,
+	}}, comments...)</code></pre>
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>the comment path owns all request semantics</h3>
+<ul>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/54944683d1f737a9ff8c7615ccf8fd6655d1580f/cmd/external-plugins/cherrypicker/server.go#L187-L317">cmd/external-plugins/cherrypicker/server.go:187-317</a></code>
+</li>
+<li>excerpt: <code>handleIssueComment</code> implements command parsing, <code>IsMember</code> authorization, open-PR acknowledgement, closed-unmerged rejection, and immediate processing on merged PRs — everything a review request must reuse.
+<pre><code>	// PR is not yet done, inform the user we will remember their instructions and create PRs later.
+	if ic.Issue.State != &quot;closed&quot; {</code></pre>
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>review API plumbing already exists</h3>
+<ul>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/54944683d1f737a9ff8c7615ccf8fd6655d1580f/pkg/github/types.go#L1037-L1073">pkg/github/types.go:1037-1073</a></code>, <code><a href="https://github.com/kubernetes-sigs/prow/blob/54944683d1f737a9ff8c7615ccf8fd6655d1580f/pkg/github/client.go#L2747">pkg/github/client.go:2747</a></code>, <code><a href="https://github.com/kubernetes-sigs/prow/blob/54944683d1f737a9ff8c7615ccf8fd6655d1580f/pkg/hook/server.go#L126">pkg/hook/server.go:126</a></code>, <code><a href="https://github.com/kubernetes-sigs/prow/blob/54944683d1f737a9ff8c7615ccf8fd6655d1580f/pkg/plugins/lgtm/lgtm.go#L168">pkg/plugins/lgtm/lgtm.go:168</a></code>
+</li>
+<li>detail: <code>ReviewEvent</code>, <code>Review</code> with <code>SubmittedAt</code>, and the <code>APPROVED</code>/<code>CHANGES_REQUESTED</code>/<code>COMMENTED</code>/<code>DISMISSED</code>/<code>PENDING</code> states are defined; <code>ListReviews</code> is implemented on the client; <code>pkg/hook</code> already dispatches review events to plugins, with lgtm as precedent. Only cherrypicker's local <code>githubClient</code> interface and switch lack reviews.
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>the command regex needs no change</h3>
+<ul>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/54944683d1f737a9ff8c7615ccf8fd6655d1580f/cmd/external-plugins/cherrypicker/server.go#L45">cmd/external-plugins/cherrypicker/server.go:45</a></code>
+</li>
+<li>excerpt: <code>var cherryPickRe = regexp.MustCompile(</code>(?m)^(?:/cherrypick|/cherry-pick)\s+(.+)$<code>)</code> — line-anchored and applied to arbitrary text, so review bodies parse unchanged.
+</li></ul>
+<h3><span class="tag c-blue">related-code</span>test coverage is partial</h3>
+<ul>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/54944683d1f737a9ff8c7615ccf8fd6655d1580f/cmd/external-plugins/cherrypicker/server_test.go#L311">cmd/external-plugins/cherrypicker/server_test.go:311</a></code> (<code>testCherryPickIC</code>), <code>:489</code> (<code>testCherryPickPR</code>)
+</li>
+<li>detail: live comment requests and merge replay with comments, PR body, labels, and authorization are covered. The fake <code>fghc</code> holds no review data, so pending, dismissed, empty-body, edited-body, and cross-source dedup cases are untested.
+</li></ul>
+<h3><span class="tag c-blue">related-issue</span>motivating incident</h3>
+<ul>
+<li>ref: kubernetes-sigs/kueue#17859
+</li>
+<li>relevance: a review contained <code>/cherrypick release-0.20</code> and <code>/cherrypick release-0.19</code> before merge; both were ignored. A later conversation comment repeating the commands triggered the bot, producing kueue#18839 for release-0.20, while release-0.19 hit a separate content conflict.
+</li></ul>
+<h3><span class="tag c-blue">related-pr</span>implementation PR</h3>
+<ul>
+<li>ref: kubernetes-sigs/prow#1077
+</li>
+<li>relevance: implements live review handling and merge replay (3 files, +253/−9, tests and docs). It is open, non-draft, mergeable, green on unit, race, integration, lint, and image-build jobs, and needs <code>lgtm</code>/<code>approve</code>.
+</li></ul>
+<h2>Resolved</h2>
+<p>None yet — the issue is open, unlabeled, and has no comments.</p>
+<h2>Checked</h2>
+<ul>
+<li>Duplicate search across all states for <code>cherrypick review body</code>, <code>cherrypicker pull_request_review</code>, <code>cherrypick review comment</code>, <code>cherrypicker review</code>: only this issue. #1011 (squashed diff) and #544 (abort on first failure) are unrelated.
+</li>
+<li>Issue timeline cross-references: only PR #1077; no linked issues, no comments, no labels.
+</li>
+<li>kueue's cherrypicker subscription in test-infra <code><a href="https://github.com/kubernetes-sigs/prow/blob/54944683d1f737a9ff8c7615ccf8fd6655d1580f/config/prow/plugins.yaml#L2119-L2126">config/prow/plugins.yaml:2119-2126</a></code> lists <code>issue_comment</code> and <code>pull_request</code> only, confirming the deployment gap.
+</li>
+<li>A <code>pull_request</code> <code>closed</code> event is sufficient for merge-time collection, so review replay needs no subscription change; only live acknowledgement does.
+</li>
+<li>Ruled out a parser change: <code>cherryPickRe</code> already matches review-body text, so <code>parseComment</code> is reusable as-is.
+</li>
+<li>Ruled out a GitHub API limitation: listing reviews returns current bodies of submitted and dismissed reviews, and pending drafts are distinguishable by state.
+</li>
+<li>Considered and rejected a review-specific handler that replies in the review thread: it duplicates authorization and open/merged/closed logic for no functional gain unless maintainers insist review feedback not appear as a PR comment.
+</li></ul>
+<h2>Next steps</h2>
+<ul>
+<li>Review PR #1077; it is green and needs <code>lgtm</code>/<code>approve</code> to merge.
+</li>
+<li>Decide the review-lifecycle policy: whether commands in dismissed reviews still fire at merge (PR #1077's choice) or dismissal revokes the request, and whether the body at merge time is authoritative.
+</li>
+<li>Recommend labels <code>kind/feature</code> and <code>area/plugins</code>; the issue currently has none.
+</li>
+<li>After the handler ships, land a test-infra change adding <code>pull_request_review</code> to cherrypicker subscriptions (starting with <code>kubernetes-sigs/kueue</code>) for live acknowledgement.
+</li>
+<li>Decide whether #1077's chained-branch authorization tightening (only authorized requesters contribute chains) stays bundled or is split out.
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>"Should a <code>/cherrypick</code> in a dismissed review still trigger at merge, or should dismissal retract the request?"
+</li>
+<li>"Is editing the review body before merge the intended way to retract a request, or should edits and dismissals cancel an already-acknowledged command?"
+</li>
+<li>"Should the chained-branch authorization tightening in #1077 land in the same PR, or be split out?"
+</li></ul>
+</main></body></html>

@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#1080</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>WIP: Refresh queued PR presubmits before they start</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1080">kubernetes-sigs/prow#1080</a> · base <code>main</code> · head_sha <code>e205f0d5065f</code> · reviewed_at <code>2026-11-20T00:47:57Z</code></div>
+<div class="badges"><span class="badge c-red">verdict: request-changes</span></div>
+<h2>Verdict</h2>
+<p>Request changes: two confirmed, production-impacting issues were flagged independently by all three reviewers (code quality, maintainability, deployment risk) — the refresh is applied to non-GitHub refs, so every queued Gerrit presubmit fails, and any transient GitHub error terminally fails a required presubmit. The core design also needs an explicit decision on Tide serial jobs, pinned-base reruns, and job-definition skew.</p>
+<p>The mechanics themselves are sound and well tested: the refresh sits in the no-pod branch of <code>syncTriggeredJob</code>, runs after <code>canExecuteConcurrently</code>, persists the refreshed refs before pod creation, and the pod's <code>JOB_SPEC</code> is verified by both a unit test and an end-to-end test. The problems are the eligibility predicate (too broad), the failure policy (terminal on every error), and the semantics of silently rewriting <code>Spec.Refs.BaseSHA</code> for jobs that were deliberately pinned or are owned by another component.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Gives Plank a GitHub client (<code>AddWithGitHubClient</code>) and constructs it in <code>prow-controller-manager</code>.
+</li>
+<li>When a <code>Triggered</code> presubmit is eligible to start (concurrency allows, no pod yet), looks up the current <code>heads/&lt;BaseRef&gt;</code> SHA and compares it with <code>Spec.Refs.BaseSHA</code>.
+</li>
+<li>On a difference, patches <code>Spec.Refs.BaseSHA</code>/<code>BaseLink</code> and requeues, so the pod is created in a later reconcile from the persisted refs.
+</li>
+<li>On a lookup error, marks the ProwJob <code>ErrorState</code> and completes it.
+</li>
+<li>Adds unit tests, an end-to-end integration test, and a <code>git/refs</code> handler to the integration fake GitHub server.
+</li></ul>
+<h2>Findings</h2>
+<h3><span class="tag c-red">blocking</span>Gerrit (non-GitHub) presubmits are failed by the GitHub lookup</h3>
+<ul>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/e205f0d5065fe10535d236ba6d3f71048c23001c/pkg/plank/reconciler.go#L819-L825">pkg/plank/reconciler.go:819-825</a></code>
+</li>
+<li>concern: The predicate only checks <code>Type == PresubmitJob</code> and non-empty <code>Pulls</code>/<code>BaseRef</code>. Gerrit presubmits satisfy all three: <code>Refs.Org</code> is the Gerrit host (<code><a href="https://github.com/kubernetes-sigs/prow/blob/e205f0d5065fe10535d236ba6d3f71048c23001c/pkg/gerrit/adapter/adapter.go#L421">pkg/gerrit/adapter/adapter.go:421</a></code>), they default to the Kubernetes agent (<code><a href="https://github.com/kubernetes-sigs/prow/blob/e205f0d5065fe10535d236ba6d3f71048c23001c/pkg/config/config.go#L3335">pkg/config/config.go:3335</a></code>), and Plank consumes them. <code>GetRef</code> then builds <code>/repos/&lt;gerrit-host&gt;/...</code>, gets a 404, and the error path marks every queued Gerrit presubmit <code>ErrorState</code>. Flagged as critical by all three reviewers. Note that gating on <code>Refs.CloneURI != &quot;&quot;</code> is not sufficient — GitHub jobs can set <code>clone_uri</code> via job config — so use a provider-aware signal or move the refresh to a provider-aware component.
+</li>
+<li>excerpt:<pre><code>if r.githubClient == nil || pj.Spec.Type != prowv1.PresubmitJob || pj.Spec.Refs == nil || len(pj.Spec.Refs.Pulls) == 0 || pj.Spec.Refs.BaseRef == &quot;&quot; {
+    return false, nil
+}
+
+refs := pj.Spec.Refs
+baseSHA, err := r.githubClient.GetRef(refs.Org, refs.Repo, &quot;heads/&quot;+refs.BaseRef)</code></pre>
+</li></ul>
+<h3><span class="tag c-red">blocking</span>Any GitHub error terminally fails a required presubmit</h3>
+<ul>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/e205f0d5065fe10535d236ba6d3f71048c23001c/pkg/plank/reconciler.go#L742-L753">pkg/plank/reconciler.go:742-753</a></code>
+</li>
+<li>concern: A rate limit, 5xx, auth problem, or network blip sets <code>ErrorState</code> + <code>SetComplete()</code>, and crier reports that as a red required check. A GitHub incident can therefore block Tide merges cluster-wide, and authors must repush. Prow normally retries non-terminal reconcile errors; use <code>github.IsNotFound</code> to distinguish a genuinely missing branch and requeue/back off for the rest. Flagged by all three reviewers.
+</li>
+<li>excerpt:<pre><code>updated, err := r.refreshQueuedPresubmitBase(pj)
+if err != nil {
+    pj.Status.State = prowv1.ErrorState
+    pj.SetComplete()
+    pj.Status.Description = fmt.Sprintf(&quot;Failed to refresh presubmit base SHA: %v&quot;, err)</code></pre>
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>Tide serial presubmits are refreshed; Tide can accept the result for the new base</h3>
+<ul>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/e205f0d5065fe10535d236ba6d3f71048c23001c/pkg/plank/reconciler.go#L819">pkg/plank/reconciler.go:819</a></code>
+</li>
+<li>concern: The PR body says Tide behavior is unchanged, but only Tide batches are unaffected (they are <code>BatchJob</code> and skipped by the type check). Tide serial runs are <code>PresubmitJob</code> with <code>created-by-tide=true</code> and are refreshed. Crier stamps the refreshed <code>Refs.BaseSHA</code> into the status description (<code><a href="https://github.com/kubernetes-sigs/prow/blob/e205f0d5065fe10535d236ba6d3f71048c23001c/pkg/github/report/report.go#L90">pkg/github/report/report.go:90</a></code>), which is what Tide reads to decide whether a context passed for the current base — so a job generated from the old base's config can be accepted for the new base. Either skip Tide-labelled jobs or state that this change intentionally covers them.
+</li>
+<li>excerpt:<pre><code>// pkg/tide/tide.go
+pj.Labels[kube.CreatedByTideLabel] = &quot;true&quot;
+
+// pkg/github/report/report.go
+Description: config.ContextDescriptionWithBaseSha(pj.Status.Description, refs.BaseSHA),</code></pre>
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>Only the base SHA is refreshed; the job definition is not</h3>
+<ul>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/e205f0d5065fe10535d236ba6d3f71048c23001c/pkg/plank/reconciler.go#L834-L837">pkg/plank/reconciler.go:834-837</a></code>
+</li>
+<li>concern: The ProwJob spec (commands, podspec, in-repo <code>.prow.yaml</code>-derived fields) is captured at trigger time. After the refresh the pod runs the new base's code with the old job definition, and the result is reported for the new base. If the new base renamed a make target or changed the command, the run can fail for a bogus reason or pass without exercising what the new commit intends. This is the concern raised in issue #1078 and needs a decision (opt-in per repo/job, compare the job definition, or document the limitation).
+</li>
+<li>excerpt:<pre><code>refs.BaseSHA = baseSHA
+refs.BaseLink = fmt.Sprintf(&quot;%s/commit/%s&quot;, refs.RepoLink, baseSHA)</code></pre>
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>Deliberately pinned bases are silently rebased, with no record of the original</h3>
+<ul>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/e205f0d5065fe10535d236ba6d3f71048c23001c/pkg/plank/reconciler.go#L832-L836">pkg/plank/reconciler.go:832-836</a></code>
+</li>
+<li>concern: <code>Deck</code> reruns reuse the original <code>pj.Spec.Refs</code> and require <code>BaseRef</code> (<code><a href="https://github.com/kubernetes-sigs/prow/blob/e205f0d5065fe10535d236ba6d3f71048c23001c/cmd/deck/rerun.go#L265">cmd/deck/rerun.go:265</a></code>), so rerunning an old job now runs its old head on today's base instead of reproducing it; <code>mkpj --base-ref X --base-sha Y</code> is affected too. <code>Spec.Refs.BaseSHA</code> becomes mutable after creation with no annotation preserving the trigger-time value and no opt-out. Decide the contract explicitly and add a pin/annotation, or call out the semantic change.
+</li>
+<li>excerpt:<pre><code>prowJobSpec, labels, annotations, err := getProwJobSpec(pj.Spec.Type, cfg, pj.Spec.Job, pj.Spec.Refs, pj.Labels)</code></pre>
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>PCM now implicitly requires GitHub credentials and an endpoint</h3>
+<ul>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/e205f0d5065fe10535d236ba6d3f71048c23001c/cmd/prow-controller-manager/main.go#L218">cmd/prow-controller-manager/main.go:218</a></code>
+</li>
+<li>concern: <code>prow-controller-manager</code> has never needed GitHub flags (<code>test/integration/config/prow/cluster/prow_controller_manager_deployment.yaml</code> passes none) and <code>Validate()</code> sets <code>AllowAnonymous = true</code> (<code><a href="https://github.com/kubernetes-sigs/prow/blob/e205f0d5065fe10535d236ba6d3f71048c23001c/cmd/prow-controller-manager/main.go#L88">cmd/prow-controller-manager/main.go:88</a></code>). Without <code>--github-endpoint</code>/<code>--github-token-path</code>, GHE refs and private repos 404, and public repos exhaust the 60 req/h anonymous budget almost immediately at scale. There is also no kill switch short of a rollback, and setting <code>--github-token-path</code> to an unmounted file now makes PCM fail to start. Operators need this called out; consider startup validation and a hot-reloadable disable.
+</li>
+<li>excerpt:<pre><code>githubClient, err := o.github.GitHubClient(o.dryRun)
+if err != nil {
+    logrus.WithError(err).Fatal(&quot;Failed to construct GitHub client for Plank&quot;)
+}</code></pre>
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>GitHub call in the reconcile hot path without context propagation</h3>
+<ul>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/e205f0d5065fe10535d236ba6d3f71048c23001c/pkg/plank/reconciler.go#L818-L823">pkg/plank/reconciler.go:818-823</a></code>
+</li>
+<li>concern: <code>refreshQueuedPresubmitBase</code> takes no context and <code>github.Client.GetRef</code> uses <code>context.Background()</code> (<code><a href="https://github.com/kubernetes-sigs/prow/blob/e205f0d5065fe10535d236ba6d3f71048c23001c/pkg/github/client.go#L3703">pkg/github/client.go:3703</a></code>) with a 5-minute request timeout and 8 retries (<code><a href="https://github.com/kubernetes-sigs/prow/blob/e205f0d5065fe10535d236ba6d3f71048c23001c/pkg/github/client.go#L423-L431">pkg/github/client.go:423-431</a></code>). With 10 reconcile workers (<code><a href="https://github.com/kubernetes-sigs/prow/blob/e205f0d5065fe10535d236ba6d3f71048c23001c/pkg/plank/reconciler.go#L110">pkg/plank/reconciler.go:110</a></code>) a degraded GitHub can pin workers and stall all ProwJob reconciliation, not just pod creation. Thread <code>ctx</code> through and use <code>GetRefWithContext</code>.
+</li>
+<li>excerpt:<pre><code>func (r *reconciler) refreshQueuedPresubmitBase(pj *prowv1.ProwJob) (bool, error) {
+    ...
+    baseSHA, err := r.githubClient.GetRef(refs.Org, refs.Repo, &quot;heads/&quot;+refs.BaseRef)</code></pre>
+</li></ul>
+<h3><span class="tag c-amber">should-fix</span>Integration fake server and test setup introduce hidden coupling</h3>
+<ul>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/e205f0d5065fe10535d236ba6d3f71048c23001c/test/integration/cmd/fakeghserver/main.go#L79">test/integration/cmd/fakeghserver/main.go:79</a>,98-104</code>, <code><a href="https://github.com/kubernetes-sigs/prow/blob/e205f0d5065fe10535d236ba6d3f71048c23001c/test/integration/test/plank_base_refresh_test.go#L174-L233">test/integration/test/plank_base_refresh_test.go:174-233</a></code>
+</li>
+<li>concern: <code>refHandler</code> returns <code>fakegithub.TestRef</code> for every ref of every repo, and the new test rewrites the shared <code>prow-controller-manager</code> deployment and waits for two full rollouts. Every other component already points at <code>fakeghserver</code>; if PCM's static integration config ever does too, the parallel <code>pod-utils</code> presubmit tests would have <code>fooHEADsha</code> rewritten to <code>abcde</code> and clonerefs would fail. The negative assertion also relies on a fixed <code>time.Sleep(2s)</code>.
+</li>
+<li>excerpt:<pre><code>return fmt.Sprintf(`{&quot;ref&quot;:&quot;refs/%s&quot;,&quot;object&quot;:{&quot;sha&quot;:&quot;%s&quot;}}`, vars[&quot;ref&quot;], fakegithub.TestRef), http.StatusOK, nil</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">nit</span><code>BaseLink</code> format is hardcoded and assumes a non-empty <code>RepoLink</code></h3>
+<ul>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/e205f0d5065fe10535d236ba6d3f71048c23001c/pkg/plank/reconciler.go#L836">pkg/plank/reconciler.go:836</a></code>
+</li>
+<li>concern: GitHub trigger jobs use <code>/commit/</code>, Tide uses <code>/tree/</code> (<code><a href="https://github.com/kubernetes-sigs/prow/blob/e205f0d5065fe10535d236ba6d3f71048c23001c/pkg/tide/github.go#L560">pkg/tide/github.go:560</a></code>), and <code>mkpj</code> leaves <code>RepoLink</code> empty (<code><a href="https://github.com/kubernetes-sigs/prow/blob/e205f0d5065fe10535d236ba6d3f71048c23001c/cmd/mkpj/main.go#L65-L73">cmd/mkpj/main.go:65-73</a></code>), producing <code>/commit/&lt;sha&gt;</code>. Guard on <code>RepoLink != &quot;&quot;</code> or reuse the existing ref formatting.
+</li>
+<li>excerpt:<pre><code>refs.BaseLink = fmt.Sprintf(&quot;%s/commit/%s&quot;, refs.RepoLink, baseSHA)</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">nit</span>Duplicate entry points and post-construction dependency injection</h3>
+<ul>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/e205f0d5065fe10535d236ba6d3f71048c23001c/pkg/plank/reconciler.go#L107-L116">pkg/plank/reconciler.go:107-116</a>,155-157</code>
+</li>
+<li>concern: <code>Add</code> silently disables the feature via a nil client while <code>AddWithGitHubClient</code> enables it, and <code>add()</code> is now a 12-parameter function. <code>r.githubClient</code> is assigned after <code>newReconciler</code> rather than passed in. A single entry point with an options struct (and a one-method <code>refGetter</code> interface instead of the full <code>github.Client</code>) would age better.
+</li>
+<li>excerpt:<pre><code>func AddWithGitHubClient(...) error {
+    return add(..., &quot;&quot;, ghc)
+}</code></pre>
+</li></ul>
+<h3><span class="tag c-gray">nit</span>Tests encode implementation details and miss the risky paths</h3>
+<ul>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/e205f0d5065fe10535d236ba6d3f71048c23001c/pkg/plank/reconciler_base_test.go#L253-L255">pkg/plank/reconciler_base_test.go:253-255</a></code>
+</li>
+<li>concern: Asserting <code>GetRef</code> was called exactly twice fails on an obvious improvement (one call, start in the same pass). There is no case for Gerrit-shaped refs, Tide-labelled jobs, or <code>podExists</code> (where the refresh must not run) — the non-GitHub omission is why the main regression is invisible to the suite.
+</li>
+<li>excerpt:<pre><code>if baseClient.calls != 2 {
+    t.Errorf(&quot;GetRef called %d times, want once for each pod-free reconciliation&quot;, baseClient.calls)
+}</code></pre>
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>The refresh runs only in the <code>podExists == false</code> branch of <code>syncTriggeredJob</code>, after <code>canExecuteConcurrently</code>; concurrency is re-evaluated on the requeued reconcile.
+</li>
+<li>The refreshed <code>Refs.BaseSHA</code> is persisted before the pod is built, and the pod's <code>JOB_SPEC</code> carries it; verified by both new tests.
+</li>
+<li><code>Patch(..., MergeFrom(prevPJ))</code> is a narrow spec patch; the ProwJob CRD has no spec-immutability validation.
+</li>
+<li><code>pjutil.TerminateOlderJobs</code> digests refs with SHAs excluded, so rewriting <code>BaseSHA</code> does not affect duplicate-job detection.
+</li>
+<li><code>GetRef(&quot;heads/&lt;branch&gt;&quot;)</code> matches existing callers (tide, statusreconciler, mkpj); GETs are permitted in the GitHub client's dry-run mode.
+</li>
+<li>Tide <code>BatchJob</code>s are genuinely unaffected (type check); running/pending pods, periodics, and postsubmits are untouched.
+</li>
+<li>Built and tested locally: <code>gofmt</code>, <code>go vet</code>, <code>go build ./cmd/prow-controller-manager ./pkg/plank</code>, <code>go test ./pkg/plank/...</code>.
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>Should this be opt-in (per repo/job annotation or a <code>Plank</code> config knob) rather than on by default for every presubmit?
+</li>
+<li>Should the refresh live in the trigger path (which knows it is GitHub and can also refresh the job definition) instead of Plank?
+</li>
+<li>Is a bounded number of refresh attempts worth adding, so a branch that moves during every ~1s requeue cannot keep resetting a job indefinitely?
+</li>
+<li>For Deck reruns and <code>mkpj</code> pinned bases, is the intent to reproduce the original run or retest against the current base?
+</li></ul>
+</main></body></html>

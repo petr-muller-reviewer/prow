@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#1090</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>chore(deps): bump google.golang.org/grpc from 1.84.0 to 1.85.0</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1090">kubernetes-sigs/prow#1090</a> · base <code>main</code> · head_sha <code>e9f9ae3981bb</code> · reviewed_at <code>2026-11-23T12:24:55Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span></div>
+<h2>Verdict</h2>
+<p>Safe to bump now — approve.</p>
+<p>Dep-only bump of <code>google.golang.org/grpc</code> <code>v1.84.0 → v1.85.0</code> plus the indirect <code>envoyproxy/go-control-plane/envoy</code> pin that grpc 1.85.0 requires. The release is 27 days old and properly tagged, OSV has no advisories at either version, and none of the changed APIs are used by prow. The server fixes in 1.85 land directly in <code>gangway</code>'s gRPC server (stream-ID handling, <code>HEADERS</code>+<code>EndStream</code> hang, missing <code>:authority</code> rejection, forceful <code>Stop()</code>), so this is a net hardening rather than a risk.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Bumps the direct dependency <code>google.golang.org/grpc</code> from <code>v1.84.0</code> to <code>v1.85.0</code> (<code><a href="https://github.com/kubernetes-sigs/prow/blob/e9f9ae3981bb9eac95483440d9068596af3c077f/go.mod#L74">go.mod:74</a></code>).
+</li>
+<li>Pulls the indirect <code>github.com/envoyproxy/go-control-plane/envoy</code> pin from the <code>v1.39.0</code> tag to pseudo-version <code>v1.39.1-0.20260819172001-e6e3fd93e4be</code>, as required by grpc 1.85.0's own <code>go.mod</code>; nothing in prow selects this version.
+</li>
+<li>Touches only <code>go.mod</code> and <code>go.sum</code> (6 insertions, 6 deletions); no vendor tree exists and no project code or generated artifacts change.
+</li>
+<li>Brings in grpc server hardening (<code>Stop()</code> during <code>GracefulStop()</code>, <code>HEADERS</code>+<code>EndStream</code>, RFC 7540 stream-ID increment, requests without <code>:authority</code>/<code>Host</code>), transport control-buffer throttle tuning, and a retry <code>:authority</code> fix for xDS load balancers (not used here).
+</li></ul>
+<h2>Findings</h2>
+<p>None. Dependency-only bump with no advisories fixed or open, no API removals affecting our import surface, and no project code to review.</p>
+<h2>Checked</h2>
+<ul>
+<li>Freshness: <code>v1.85.0</code> tagged <code>2026-10-27T09:27:04Z</code> (<code>refs/tags/v1.85.0</code>, commit <code>c9ab42c</code>), 27 days before review — enough soak time; real tag, not a pseudo-version.
+</li>
+<li>Directness: direct dependency; <code>go mod why -m google.golang.org/grpc</code> → <code>sigs.k8s.io/prow/cmd/gangway</code> → <code>google.golang.org/grpc</code>.
+</li>
+<li>Import surface: 11 non-vendored files across ~8 packages — <code><a href="https://github.com/kubernetes-sigs/prow/blob/e9f9ae3981bb9eac95483440d9068596af3c077f/cmd/gangway/main.go#L200">cmd/gangway/main.go:200</a></code> (gRPC server, health, reflection), <code>pkg/gangway/gangway_grpc.pb.go</code>, <code>pkg/gangway/gangway.go</code>, <code><a href="https://github.com/kubernetes-sigs/prow/blob/e9f9ae3981bb9eac95483440d9068596af3c077f/pkg/gangway/client/google/google.go#L96">pkg/gangway/client/google/google.go:96</a>,181</code> (TLS and insecure clients), <code><a href="https://github.com/kubernetes-sigs/prow/blob/e9f9ae3981bb9eac95483440d9068596af3c077f/pkg/resultstore/client.go#L45-L49">pkg/resultstore/client.go:45-49</a></code> (OAuth per-RPC credentials), <code>pkg/resultstore/writer/writer.go</code>, <code>pkg/crier/reporters/pubsub/reporter.go</code> (<code>codes</code>/<code>status</code>), <code><a href="https://github.com/kubernetes-sigs/prow/blob/e9f9ae3981bb9eac95483440d9068596af3c077f/pkg/config/gangway.go#L25">pkg/config/gangway.go:25</a></code>, plus two test helpers.
+</li>
+<li>Sensitive paths: yes — network-facing <code>gangway</code> gRPC server plus TLS/OAuth credential handling on clients; changelog changes land in exactly those server-side code paths and are fixes/hardening.
+</li>
+<li>OSV: no advisories for <code>google.golang.org/grpc</code> at <code>v1.84.0</code> or <code>v1.85.0</code>, and none for the envoy pseudo-version.
+</li>
+<li><code>govulncheck</code> module scan at merge-base and PR head: no grpc findings on either side. Both sides report the same unrelated, untouched-module advisories: <code>GO-2026-5932</code> (<code>golang.org/x/crypto v0.58.0</code>) and <code>GO-2023-1901</code> (<code>github.com/tektoncd/pipeline v1.16.0</code>); neither module changes in this PR. Module scan had to run from <code>cmd/gangway</code> because the repo root has no Go files and <code>-scan=module</code> rejects package patterns.
+</li>
+<li>Symbol scan at head was attempted and killed (exit 137, memory limit) after ~2.5 min; partial output contained no grpc findings — only <code>GO-2023-1901</code> at package level with no <code>function</code> (imported/required, not called) and module-level <code>GO-2026-5932</code>. Neither is bump-related.
+</li>
+<li>Changelog: 52 commits, 13 release-note items; new APIs are additive (<code>stats.OutHeader</code> client authority, <code>metadata.ValueFromOutgoingContext</code>); no security advisories and no deprecations or removals affecting our usage (<code>WithInitialWindowSize</code> is not used anywhere in the repo).
+</li>
+<li>Build: <code>go build ./cmd/gangway/... ./pkg/gangway/... ./pkg/resultstore/... ./pkg/crier/reporters/pubsub/... ./pkg/config/...</code> exits 0.
+</li>
+<li>Envoy indirect: pseudo-version from 2026-08-19 replaces tag <code>v1.39.0</code>; reachable only via <code>pkg/io</code> → <code>cloud.google.com/go/storage</code> → <code>grpc/stats/opentelemetry.test</code> → <code>envoy/config/cluster/v3</code>, i.e. test-time only and not linked into prow binaries.
+</li></ul>
+<h2>Open questions</h2>
+<p>None. The envoy pseudo-version is forced by grpc's own <code>go.mod</code>, so there is nothing actionable to raise on this PR.</p>
+<h2>Dependency followups</h2>
+<p>No improvement opportunities identified from this bump.</p>
+<ul>
+<li><code>google.golang.org/grpc</code> <code>v1.84.0 → v1.85.0</code> (direct): the only deprecation in the range is <code>grpc.WithInitialWindowSize</code> / <code>grpc.InitialWindowSize</code>, replaced by <code>WithInitialStreamWindowSize</code> / <code>InitialStreamWindowSize</code>; prow sets no window-size options at all (no non-vendor <code>WindowSize</code> hits). The new APIs have no call site here: <code>metadata.ValueFromOutgoingContext</code> (our <code>metadata</code> use only appends to or creates outgoing context and never reads it back), <code>stats.OutHeader</code> client authority (no <code>grpc/stats</code> handler registered), <code>balancer/autosharding</code>, <code>credentials/google</code> ID-token credentials (not imported; <code>pkg/resultstore/client.go</code> uses the non-deprecated <code>oauth.NewApplicationDefault</code> from the unchanged <code>credentials/oauth</code> package), and the xDS <code>GrpcService</code>/server filter APIs.
+</li>
+<li><code>github.com/envoyproxy/go-control-plane/envoy</code> <code>v1.39.0 → v1.39.1-0.20260819172001-e6e3fd93e4be</code> (indirect): never imported by prow; reachable only through <code>cloud.google.com/go/storage</code> → <code>grpc/stats/opentelemetry.test</code> → <code>envoy/config/cluster/v3</code>, so there is no code of ours to change.
+</li></ul>
+</main></body></html>

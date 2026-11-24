@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#1088</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>chore(deps): bump the aws group across 1 directory with 4 updates</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1088">kubernetes-sigs/prow#1088</a> · base <code>main</code> · head_sha <code>194901aae1c2</code> · reviewed_at <code>2026-11-24T13:08:25Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span></div>
+<h2>Verdict</h2>
+<p>Safe to bump now — dep-only grouped patch bump of AWS SDK v2, no advisories on either side, one behavior change (retry policy) worth a heads-up rather than a hold.</p>
+<p>The four direct modules are the S3 artifact-storage backend (<code>pkg/io/providers/aws.go</code>), which is on a core path (artifact upload/download for deck, plank, <code>pod-utils/gcs</code>, spyglass, resultstore, crier) but is exercised by exactly one provider package. The only change that lands in code we run is Retry Behavior 2.1 becoming the SDK default in v1.48.0; the rest is generated-client/model churn, an S3 Express fix we don't exercise, and an SSO token-refresh fix. Freshness is acceptable: 14–15 days for the core/s3/smithy releases, 8 days for <code>config</code>/<code>credentials</code>, and the group lags the newer upstream patches (config 1.33.21, credentials 1.21.3, s3 1.116.0), so it is not a bleeding-edge pick. <code>go mod tidy -diff</code> is clean for both modules, <code>go build</code>/<code>go test ./pkg/io/...</code> pass, and <code>govulncheck</code> at base vs head shows no new or fixed findings in any AWS module.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Bumps the four direct AWS SDK v2 modules in the root module: <code>aws-sdk-go-v2</code> 1.47.8→1.48.0, <code>config</code> 1.33.17→1.33.19, <code>credentials</code> 1.20.17→1.21.1, <code>service/s3</code> 1.114.9→1.114.10.
+</li>
+<li>Carries the matching fan-out of indirect AWS modules (imds, configsources, endpoints/v2, v4a, accept-encoding, checksum, presigned-url, s3shared, signin, sso, ssooidc, sts, <code>smithy-go</code> 1.28.8→1.28.9) in <code>go.mod</code>/<code>go.sum</code>.
+</li>
+<li>Applies the same version set to <code>hack/tools/go.mod</code>, where all of them are indirect (ko → awslabs ecr-login → config → sts), i.e. build-tooling only.
+</li>
+<li>No project source, tests, config or docs are touched; no <code>vendor/</code> tree in this repo.
+</li></ul>
+<h2>Findings</h2>
+<p>None. No blocking, should-fix, or nit issues.</p>
+<h2>Checked</h2>
+<ul>
+<li>PR classification: dep-only — <code>git diff --stat 901165669..HEAD</code> is exactly <code>go.mod</code>, <code>go.sum</code>, <code>hack/tools/go.mod</code>, <code>hack/tools/go.sum</code>.
+</li>
+<li>Freshness from the module proxy: <code>aws-sdk-go-v2</code> v1.48.0 and <code>service/s3</code> v1.114.10 are 2026-11-10 (14 days), <code>smithy-go</code> v1.28.9 is 2026-11-09 (15 days), <code>config</code> v1.33.19 and <code>credentials</code> v1.21.1 are 2026-11-16 (8 days). All real tags, no pseudo-versions.
+</li>
+<li>Not the freshest upstream: config v1.33.21, credentials v1.21.3, s3 v1.116.0 already exist (11-17…11-19), so the picked versions have a further patch round of soak.
+</li>
+<li>OSV (<code>api.osv.dev</code>) for old and new versions of all four direct modules plus <code>smithy-go</code>, <code>sts</code>, <code>sso</code>, <code>ssooidc</code>, <code>signin</code>, <code>feature/ec2/imds</code>: zero advisories on both sides. Nothing fixed, nothing left open.
+</li>
+<li><code>govulncheck</code> (v1.10.0, DB 2026-11-23): <code>-scan module</code> cannot run here (fails with <code>no Go files in /workspace</code> — no package at the module root, and patterns are rejected in module mode), so a package-level scan was used instead. Base <code>901165669</code> and PR head produce identical findings — 17 entries, all <code>GO-2023-1901</code> (tektoncd/pipeline) and <code>GO-2026-5932</code> (golang.org/x/crypto); none in any AWS module, so no new reachable vulns and none fixed. The head scan also type-checks the whole tree, so the bump builds.
+</li>
+<li>Usage: <code>pkg/io/providers/aws.go</code> (plus <code>aws_test.go</code>) is the only importer — <code>config.LoadDefaultConfig</code>, optional <code>credentials.NewStaticCredentialsProvider</code>, <code>s3.NewFromConfig</code> with path-style/custom endpoint and optional insecure TLS, wrapped by <code>gocloud.dev/blob/s3blob</code> (<code><a href="https://github.com/kubernetes-sigs/prow/blob/194901aae1c24f5c113493c1ea50c446272972a7/aws.go#L60-L112">aws.go:60-112</a></code>). Consumed through <code>pkg/io</code> by deck, plank, <code>pod-utils/gcs</code> upload, spyglass, resultstore and crier. Sensitive domain (credentials, TLS, network, object I/O), light code footprint, heavy path when S3 is the configured backend.
+</li>
+<li><code>aws-sdk-go-v2</code> v1.48.0 changelog: Retry Behavior 2.1 is now the default (<code>AWS_NEW_RETRIES_2026</code> removed) — unmodeled HTTP 429s, including from IMDS and the endpoint credentials provider, retry as throttling; 50 ms base backoff (1 s for throttling); <code>x-amz-retry-after</code> honored; <code>StandardOptions.RetryTimeoutCost</code>/<code>Timeouts</code> deprecated and unused. We use the default retryer with no overrides, so max attempts stay at 3 and only timing/429 handling shifts. This is the one behavior change we exercise.
+</li>
+<li><code>service/s3</code> v1.114.10: only the S3 Express <code>CreateSession</code> signing/cache-key fix; we do not use S3 Express (explicit endpoints, path style), so no impact.
+</li>
+<li><code>config</code> v1.33.19: dependency updates only. <code>credentials</code> v1.21.1: SSO login-token refresh uses the token's <code>signInRegion</code> — SSO profiles only, not the in-cluster IMDS/static-credential path.
+</li>
+<li><code>smithy-go</code> v1.28.9: SigV4 canonical query params sorted after URI-encoding (aws-http-auth v1.2.2), schema-serde fixes for awsQuery/XML, and a nil-pointer marshal panic fix. S3 is restxml and we sign path-style requests — correctness fix, negligible risk.
+</li>
+<li><code>hack/tools</code>: all AWS modules indirect via ko → ecr-login; no runtime effect.
+</li>
+<li>Verification: <code>go mod tidy -diff</code> clean for <code>go.mod</code> and <code>hack/tools/go.mod</code>; <code>go build ./pkg/io/...</code> and <code>go test ./pkg/io/...</code> pass; <code>go.mod</code>/<code>go.sum</code> diff contains only the expected AWS versions.
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>Retry Behavior 2.1 lands in every AWS call in this bump, including S3 uploads against non-AWS S3 gateways (the OCI/Swift setups that already need <code>request_checksum_calculation: when_required</code>). Do we have any S3 e2e that exercises throttling/429 against such a gateway, or is the plan to rely on the two weeks of upstream soak? If not, that is the one thing I would watch after merge.
+</li>
+<li>The group is two patch rounds behind upstream (<code>config</code> 1.33.21, <code>credentials</code> 1.21.3, <code>s3</code> 1.116.0). Fine to merge as-is and let the next dependabot run pick those up — flagging only so nobody assumes this is the latest.
+</li></ul>
+<h2>Dependency followups</h2>
+<p>No improvement opportunities identified (0 accepted, 0 skipped). Examined the full changelog range of every bumped module and cross-referenced it against our only importer, <code>pkg/io/providers/aws.go</code> (plus <code>aws_test.go</code>):</p>
+<ul>
+<li><code>aws-sdk-go-v2</code> v1.47.8→v1.48.0 — Retry Behavior 2.1 default is automatic (we set no retry options, so nothing to drop or adopt); <code>StandardOptions.RetryTimeoutCost</code>/<code>Timeouts</code> are the only new deprecations and we never construct retry options; S3 Express signing, schema-serde awsquery and nil-pointer marshal fixes touch APIs we don't use.
+</li>
+<li><code>service/s3</code> v1.114.9→v1.114.10 — S3 Express <code>CreateSession</code> fix only; we use plain path-style S3 via <code>s3blob</code>.
+</li>
+<li><code>config</code> v1.33.17→v1.33.19 — dependency-update entries only.
+</li>
+<li><code>credentials</code> v1.20.17→v1.21.1 — retry-default rollover plus an SSO <code>signInRegion</code> token-refresh fix; we use static credentials / the default chain, not SSO profiles.
+</li>
+<li><code>smithy-go</code> v1.28.8→v1.28.9 — SigV4 canonical query-parameter ordering fix (automatic), awsQuery/XML schema-serde fixes (S3 is restxml), and a marshal panic fix for pointer-receiver <code>Marshaler</code> types we don't define.
+</li>
+<li>Transitive-only AWS modules (eventstream, imds, configsources, endpoints/v2, v4a, accept-encoding, checksum, presigned-url, s3shared, signin, sso, ssooidc, sts) and <code>hack/tools</code> — patch-level dependency-update churn with nothing we call directly.
+</li></ul>
+<p>Grepped our tree for every deprecated symbol in the new versions (<code>EndpointResolver</code>, <code>RetryMode</code>/<code>RetryMaxAttempts</code> overrides, <code>StandardOptions.*</code>, <code>aws.Config</code> literals, <code>aws/retry</code> imports): no matches outside <code>vendor/</code>.</p>
+</main></body></html>

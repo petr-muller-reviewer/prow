@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#1008</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>peribolos: add end-of-run change report</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1008">kubernetes-sigs/prow#1008</a> · base <code>main</code> · head_sha <code>570bc96db9af</code> · reviewed_at <code>2026-11-23T17:31:44Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span></div>
+<details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#1008
+title: &quot;peribolos: add end-of-run change report&quot;
+head_sha: 570bc96db9af8d5921df6d0a9ac9a326a45aa66a
+base: main
+reviewed_at: 2026-11-23T17:31:44Z
+verdict: approve
+refresh_log:
+  - at: 2026-11-23T17:31:44Z
+    old_sha: 570bc96db9af8d5921df6d0a9ac9a326a45aa66a
+    new_sha: 570bc96db9af8d5921df6d0a9ac9a326a45aa66a
+    summary: &quot;Full re-review of the same head, with each saved finding and earlier GitHub thread checked.&quot;</code></pre></details>
+<h2>Verdict</h2>
+<p><strong>Approve.</strong> The maintainer discussion identified follow-ups for report delivery, completeness, and coverage, plus a separate team reconciliation bug. The report path collision is optional hardening.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Adds an opt-in <code>--report-path</code> flag for a versioned JSON file describing applied changes in confirm mode and a best-effort plan in dry-run.
+</li>
+<li>Reports org metadata, memberships, teams, team repo permissions, repositories, collaborators, and org-role assignments with per-action totals.
+</li>
+<li>Records changes after successful calls and emits a partial report when an org aborts.
+</li>
+<li>Since the previous local review at 2026-11-23 17:25:48 UTC, the head remains <code>570bc96db</code> and the PR remains open. GitHub shows no new commits, comments, reviews, or issue events in that interval. <a href="https://github.com/kubernetes-sigs/prow/pull/1008">PR #1008</a>
+</li></ul>
+<h2>Resolved</h2>
+<h3>Earlier local findings</h3>
+<ul>
+<li><strong><code>none</code> recorded as an add or update — fixed.</strong> An existing collaborator, pending invitation, or team-repo grant is recorded as a removal when its deletion succeeds. An absent grant produces no entry. The focused tests cover existing and absent direct grants in both paths. <code><a href="https://github.com/kubernetes-sigs/prow/blob/570bc96db9af8d5921df6d0a9ac9a326a45aa66a/cmd/peribolos/main.go#L1681-L1689">cmd/peribolos/main.go:1681-1689</a></code>, <code><a href="https://github.com/kubernetes-sigs/prow/blob/570bc96db9af8d5921df6d0a9ac9a326a45aa66a/cmd/peribolos/main.go#L1947-L1951">cmd/peribolos/main.go:1947-1951</a></code>, <code><a href="https://github.com/kubernetes-sigs/prow/blob/570bc96db9af8d5921df6d0a9ac9a326a45aa66a/cmd/peribolos/report_test.go#L556-L652">cmd/peribolos/report_test.go:556-652</a></code>.
+</li>
+<li><strong>Empty permission recorded without an API call — fixed.</strong> The planning switches skip empty or unsupported values before scheduling a change. The null-input completeness question is captured in Followups. <code><a href="https://github.com/kubernetes-sigs/prow/blob/570bc96db9af8d5921df6d0a9ac9a326a45aa66a/cmd/peribolos/main.go#L1691-L1700">cmd/peribolos/main.go:1691-1700</a></code>, <code><a href="https://github.com/kubernetes-sigs/prow/blob/570bc96db9af8d5921df6d0a9ac9a326a45aa66a/cmd/peribolos/main.go#L1944-L1958">cmd/peribolos/main.go:1944-1958</a></code>.
+</li>
+<li><strong>Dry-run docs claimed parity for existing objects — fixed in the user docs.</strong> The narrower accuracy claim covers rename and cascading-delete examples as well as new objects. <code><a href="https://github.com/kubernetes-sigs/prow/blob/570bc96db9af8d5921df6d0a9ac9a326a45aa66a/site/content/en/docs/components/cli-tools/peribolos.md#L196-L202">site/content/en/docs/components/cli-tools/peribolos.md:196-202</a></code>.
+</li>
+<li><strong>Silent partial reports — partially fixed.</strong> An aborted org and the dry-run team-member error path set <code>complete: false</code>. The repo invitation listing and swallowed org membership 404 still need the same signal. <code><a href="https://github.com/kubernetes-sigs/prow/blob/570bc96db9af8d5921df6d0a9ac9a326a45aa66a/cmd/peribolos/main.go#L241-L244">cmd/peribolos/main.go:241-244</a></code>, <code><a href="https://github.com/kubernetes-sigs/prow/blob/570bc96db9af8d5921df6d0a9ac9a326a45aa66a/cmd/peribolos/main.go#L1825-L1834">cmd/peribolos/main.go:1825-1834</a></code>.
+</li>
+<li><strong>Forward compatibility for unknown kinds, actions, and summary keys — fixed.</strong> Both the user docs and the schema comment require tolerance for new enum values and summary keys. <code><a href="https://github.com/kubernetes-sigs/prow/blob/570bc96db9af8d5921df6d0a9ac9a326a45aa66a/site/content/en/docs/components/cli-tools/peribolos.md#L234-L239">site/content/en/docs/components/cli-tools/peribolos.md:234-239</a></code>, <code><a href="https://github.com/kubernetes-sigs/prow/blob/570bc96db9af8d5921df6d0a9ac9a326a45aa66a/cmd/peribolos/report.go#L214-L227">cmd/peribolos/report.go:214-227</a></code>.
+</li>
+<li><strong>Code comments, help, and tests promised mode parity — fixed.</strong> The <code>change</code> comment and flag help call dry-run best-effort. The tests explain why an all-success fake cannot validate live parity. <code><a href="https://github.com/kubernetes-sigs/prow/blob/570bc96db9af8d5921df6d0a9ac9a326a45aa66a/cmd/peribolos/report.go#L50-L67">cmd/peribolos/report.go:50-67</a></code>, <code><a href="https://github.com/kubernetes-sigs/prow/blob/570bc96db9af8d5921df6d0a9ac9a326a45aa66a/cmd/peribolos/main.go#L106">cmd/peribolos/main.go:106</a></code>, <code><a href="https://github.com/kubernetes-sigs/prow/blob/570bc96db9af8d5921df6d0a9ac9a326a45aa66a/cmd/peribolos/report_test.go#L411-L419">cmd/peribolos/report_test.go:411-419</a></code>.
+</li>
+<li><strong>Misspelled permission accepted by the CLI — refuted.</strong> The parser rejects <code>rwite</code> before report creation. YAML null is accepted and remains relevant to the completeness follow-up. <code><a href="https://github.com/kubernetes-sigs/prow/blob/570bc96db9af8d5921df6d0a9ac9a326a45aa66a/pkg/github/types.go#L570-L578">pkg/github/types.go:570-578</a></code>.
+</li>
+<li><strong>Report file permissions — dropped.</strong> The observed mode of <code>0644</code> follows the process umask of <code>022</code>. The maintainer declined this hardening. <code><a href="https://github.com/kubernetes-sigs/prow/blob/570bc96db9af8d5921df6d0a9ac9a326a45aa66a/cmd/peribolos/main.go#L219">cmd/peribolos/main.go:219</a></code>.
+</li></ul>
+<h3>Earlier GitHub review threads</h3>
+<ul>
+<li><strong>Inconsistent recording after mutation failures — fixed at the existing recorder sites.</strong> The batch paths and membership paths now record after checking the call result. The independently identified invitation-cleanup gap is an omitted recording site. <code><a href="https://github.com/kubernetes-sigs/prow/blob/570bc96db9af8d5921df6d0a9ac9a326a45aa66a/cmd/peribolos/report.go#L150-L161">cmd/peribolos/report.go:150-161</a></code>, <code><a href="https://github.com/kubernetes-sigs/prow/blob/570bc96db9af8d5921df6d0a9ac9a326a45aa66a/cmd/peribolos/main.go#L1792-L1796">cmd/peribolos/main.go:1792-1796</a></code>, <code><a href="https://github.com/kubernetes-sigs/prow/blob/570bc96db9af8d5921df6d0a9ac9a326a45aa66a/cmd/peribolos/main.go#L1998-L2002">cmd/peribolos/main.go:1998-2002</a></code>. <a href="https://github.com/kubernetes-sigs/prow/pull/1008#discussion_r4260862502">Recording rule thread</a>
+</li>
+<li><strong>Squash merge fields and internal tracker — fixed as a comment change.</strong> The comment names the pre-existing <code>Defined()</code> limitation and removes the internal reference. A squash-title/message-only delta still reaches neither the API nor the report. <code><a href="https://github.com/kubernetes-sigs/prow/blob/570bc96db9af8d5921df6d0a9ac9a326a45aa66a/cmd/peribolos/main.go#L1455-L1460">cmd/peribolos/main.go:1455-1460</a></code>, <code><a href="https://github.com/kubernetes-sigs/prow/blob/570bc96db9af8d5921df6d0a9ac9a326a45aa66a/pkg/github/types.go#L488-L517">pkg/github/types.go:488-517</a></code>. <a href="https://github.com/kubernetes-sigs/prow/pull/1008#discussion_r4260862999">Squash field thread</a>
+</li>
+<li><strong>Inconsistent identifiers — fixed for logins and documented for teams.</strong> Logins now use their normalized form across kinds. Team entries still use config or display names and <code>org_role_team</code> still uses a slug, so joining those entries requires a mapping. The reviewer asked for at least this documentation. <code><a href="https://github.com/kubernetes-sigs/prow/blob/570bc96db9af8d5921df6d0a9ac9a326a45aa66a/cmd/peribolos/report.go#L73-L92">cmd/peribolos/report.go:73-92</a></code>, <code><a href="https://github.com/kubernetes-sigs/prow/blob/570bc96db9af8d5921df6d0a9ac9a326a45aa66a/site/content/en/docs/components/cli-tools/peribolos.md#L227-L228">site/content/en/docs/components/cli-tools/peribolos.md:227-228</a></code>. <a href="https://github.com/kubernetes-sigs/prow/pull/1008#discussion_r4260863893">Identifier thread</a>
+</li>
+<li><strong>Late destination errors and the <code>--dump</code> combination — fixed as requested.</strong> Opening the file precedes reconciliation and flags reject <code>--dump</code> with <code>--report-path</code>. Opening early exposes the aliasing problem documented in Followups. <code><a href="https://github.com/kubernetes-sigs/prow/blob/570bc96db9af8d5921df6d0a9ac9a326a45aa66a/cmd/peribolos/main.go#L146-L148">cmd/peribolos/main.go:146-148</a></code>, <code><a href="https://github.com/kubernetes-sigs/prow/blob/570bc96db9af8d5921df6d0a9ac9a326a45aa66a/cmd/peribolos/main.go#L211-L230">cmd/peribolos/main.go:211-230</a></code>. <a href="https://github.com/kubernetes-sigs/prow/pull/1008#discussion_r4260866314">Destination thread</a>
+</li>
+<li><strong>Mixed JSON types for <code>before</code> and <code>after</code> — fixed.</strong> Both fields are scalar strings, with a separate <code>changed_fields</code> array. <code><a href="https://github.com/kubernetes-sigs/prow/blob/570bc96db9af8d5921df6d0a9ac9a326a45aa66a/cmd/peribolos/report.go#L95-L107">cmd/peribolos/report.go:95-107</a></code>. <a href="https://github.com/kubernetes-sigs/prow/pull/1008#discussion_r4260866732">Field type thread</a>
+</li>
+<li><strong>Versioning rules only in a Go comment — fixed.</strong> The user guide covers the flag, an example, the kinds and their identifiers, and the consumer compatibility rules. <code><a href="https://github.com/kubernetes-sigs/prow/blob/570bc96db9af8d5921df6d0a9ac9a326a45aa66a/site/content/en/docs/components/cli-tools/peribolos.md#L190-L239">site/content/en/docs/components/cli-tools/peribolos.md:190-239</a></code>. <a href="https://github.com/kubernetes-sigs/prow/pull/1008#discussion_r4260868023">Documentation thread</a>
+</li>
+<li><strong>Initial dry-run divergence examples — addressed.</strong> All four examples are documented, including the synthetic default branch and pending-role cases. <code><a href="https://github.com/kubernetes-sigs/prow/blob/570bc96db9af8d5921df6d0a9ac9a326a45aa66a/site/content/en/docs/components/cli-tools/peribolos.md#L196-L202">site/content/en/docs/components/cli-tools/peribolos.md:196-202</a></code>. <a href="https://github.com/kubernetes-sigs/prow/pull/1008#discussion_r4451018044">First dry-run thread</a>
+</li>
+<li><strong>Follow-up dry-run divergence and silent skips — partially fixed.</strong> The document adds existing-object divergences and the team failure sets <code>complete: false</code>. Two swallowed-error paths still report completion, as described in Followups. <code><a href="https://github.com/kubernetes-sigs/prow/blob/570bc96db9af8d5921df6d0a9ac9a326a45aa66a/site/content/en/docs/components/cli-tools/peribolos.md#L196-L204">site/content/en/docs/components/cli-tools/peribolos.md:196-204</a></code>, <code><a href="https://github.com/kubernetes-sigs/prow/blob/570bc96db9af8d5921df6d0a9ac9a326a45aa66a/cmd/peribolos/main.go#L1825-L1834">cmd/peribolos/main.go:1825-1834</a></code>. <a href="https://github.com/kubernetes-sigs/prow/pull/1008#discussion_r4462967850">Follow-up dry-run thread</a>
+</li>
+<li><strong><code>none</code> classification and empty-permission phantom entries — fixed.</strong> The reporter now distinguishes removing an existing grant from a converged configuration, and an empty permission schedules no change. <a href="https://github.com/kubernetes-sigs/prow/pull/1008#discussion_r4462968978">Permission thread</a>
+</li>
+<li><strong>Unknown <code>kind</code>, <code>action</code>, and summary values — fixed.</strong> The published contract and the schema comment specify how consumers should handle them. <a href="https://github.com/kubernetes-sigs/prow/pull/1008#discussion_r4462969171">Schema thread</a>
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li>Reviewed the full five-file diff from merge base <code>0edcac618455b9e7716a08be480d6984ef996eb1</code> to <code>570bc96db9af8d5921df6d0a9ac9a326a45aa66a</code> (+1404/-118), pinned against GitHub's current base <code>b8bd4f20e</code>.
+</li>
+<li><code>go test ./cmd/peribolos/ -count=1</code>, <code>go test ./pkg/github/ -run &#x27;^TestRepoPermissionLevel$&#x27; -count=1</code>, and <code>git diff --check 0edcac618455...HEAD</code> passed.
+</li>
+<li>Ran local CLI checks for aliased config and token paths, output mode, report write failure, and misspelled versus null YAML permissions. The API reconciliation findings follow from inspection of the call paths and test fakes.
+</li>
+<li>The GitHub lint, unit, race, integration, image-build, and CLA checks were green. Tide was pending.
+</li></ul>
+<h2>Standards</h2>
+<p>No documented standards violations found in <code>CONTRIBUTING.md</code> or <code>.golangci.yml</code>. The new permission allowlists repeat the GitHub type registry and each mutation dispatch switch. If those lists drift, neither execution switch rejects an unhandled permission, so it can fall through to recording with a nil error. An explicit executed-and-succeeded check would protect the recording contract. <code><a href="https://github.com/kubernetes-sigs/prow/blob/570bc96db9af8d5921df6d0a9ac9a326a45aa66a/pkg/github/types.go#L556-L563">pkg/github/types.go:556-563</a></code>, <code><a href="https://github.com/kubernetes-sigs/prow/blob/570bc96db9af8d5921df6d0a9ac9a326a45aa66a/cmd/peribolos/main.go#L1695-L1700">cmd/peribolos/main.go:1695-1700</a></code>, <code><a href="https://github.com/kubernetes-sigs/prow/blob/570bc96db9af8d5921df6d0a9ac9a326a45aa66a/cmd/peribolos/main.go#L1749-L1795">cmd/peribolos/main.go:1749-1795</a></code>, <code><a href="https://github.com/kubernetes-sigs/prow/blob/570bc96db9af8d5921df6d0a9ac9a326a45aa66a/cmd/peribolos/main.go#L1953-L1958">cmd/peribolos/main.go:1953-1958</a></code>, <code><a href="https://github.com/kubernetes-sigs/prow/blob/570bc96db9af8d5921df6d0a9ac9a326a45aa66a/cmd/peribolos/main.go#L1983-L2001">cmd/peribolos/main.go:1983-2001</a></code>.</p>
+<h2>Spec</h2>
+<p>Reviewed against the <a href="https://github.com/kubernetes-sigs/prow/pull/1008">PR description</a> and the amended user guide. The follow-ups apply the guide's best-effort dry-run contract. The opt-in claim also has two intentional reconciliation exceptions from the feedback commits. Explicit <code>none</code> can now skip an unnecessary delete even with the report off, and an empty team description alone skips a PATCH that cannot send that value. <code><a href="https://github.com/kubernetes-sigs/prow/blob/570bc96db9af8d5921df6d0a9ac9a326a45aa66a/cmd/peribolos/main.go#L1867-L1875">cmd/peribolos/main.go:1867-1875</a></code>, <code><a href="https://github.com/kubernetes-sigs/prow/blob/570bc96db9af8d5921df6d0a9ac9a326a45aa66a/cmd/peribolos/main.go#L1947-L1951">cmd/peribolos/main.go:1947-1951</a></code>.</p>
+<h2>Followups</h2>
+<h3>Report errors should exit nonzero</h3>
+<p>A requested report can fail during write or close after reconciliation. A local run targeting <code>/dev/full</code> logged ENOSPC and exited zero. Return a nonzero status and identify which operation failed. Preserve both errors when reconciliation and report delivery fail. <code><a href="https://github.com/kubernetes-sigs/prow/blob/570bc96db9af8d5921df6d0a9ac9a326a45aa66a/cmd/peribolos/main.go#L241-L273">cmd/peribolos/main.go:241-273</a></code>.</p>
+<h3>Mark skipped reconciliation incomplete</h3>
+<p>Mark the report incomplete when listing repository invitations fails or an org membership update returns a swallowed 404. With null YAML permissions, Peribolos warns and leaves any existing grant alone. Decide whether this skip should also mark the report incomplete. If useful, clarify the user guide so it names the conditions that set <code>complete: false</code> and distinguishes them from ordinary dry-run discrepancies. <code><a href="https://github.com/kubernetes-sigs/prow/blob/570bc96db9af8d5921df6d0a9ac9a326a45aa66a/cmd/peribolos/main.go#L813-L823">cmd/peribolos/main.go:813-823</a></code>, <code><a href="https://github.com/kubernetes-sigs/prow/blob/570bc96db9af8d5921df6d0a9ac9a326a45aa66a/cmd/peribolos/main.go#L1642-L1648">cmd/peribolos/main.go:1642-1648</a></code>, <code><a href="https://github.com/kubernetes-sigs/prow/blob/570bc96db9af8d5921df6d0a9ac9a326a45aa66a/cmd/peribolos/main.go#L1691-L1700">cmd/peribolos/main.go:1691-1700</a></code>, <code><a href="https://github.com/kubernetes-sigs/prow/blob/570bc96db9af8d5921df6d0a9ac9a326a45aa66a/cmd/peribolos/main.go#L1953-L1958">cmd/peribolos/main.go:1953-1958</a></code>, <code><a href="https://github.com/kubernetes-sigs/prow/blob/570bc96db9af8d5921df6d0a9ac9a326a45aa66a/site/content/en/docs/components/cli-tools/peribolos.md#L196-L204">site/content/en/docs/components/cli-tools/peribolos.md:196-204</a></code>.</p>
+<h3>Account for successful failed-invitation cleanup</h3>
+<p>Peribolos can successfully delete a failed invitation before attempting a reinvite. The deletion is omitted from the report. A failed reinvite can leave the changes array empty despite the deletion. Record the deletion as invitation cleanup or explicitly scope that operation out of the documented coverage. <code><a href="https://github.com/kubernetes-sigs/prow/blob/570bc96db9af8d5921df6d0a9ac9a326a45aa66a/cmd/peribolos/main.go#L802-L823">cmd/peribolos/main.go:802-823</a></code>.</p>
+<h3>Preserve a nested team's configured parent on metadata edits</h3>
+<p>Track this as an independent reconciliation bug. The existing team PATCH sets <code>parent_team_id: null</code> on a description-only edit when the current parent matches the configured parent. This can detach the team while the report lists only <code>description</code>. Send the configured parent ID on the PATCH and test that request. <code><a href="https://github.com/kubernetes-sigs/prow/blob/570bc96db9af8d5921df6d0a9ac9a326a45aa66a/cmd/peribolos/main.go#L1877-L1908">cmd/peribolos/main.go:1877-1908</a></code>, <code><a href="https://github.com/kubernetes-sigs/prow/blob/570bc96db9af8d5921df6d0a9ac9a326a45aa66a/pkg/github/client.go#L4072-L4080">pkg/github/client.go:4072-4080</a></code>.</p>
+<h3>Optionally guard against an output path that aliases an input</h3>
+<p>I reproduced the overwrite with each of a temporary config and a temporary token. The destination must resolve to an input file for this to happen. As optional hardening, compare file identities before truncating the destination. <code><a href="https://github.com/kubernetes-sigs/prow/blob/570bc96db9af8d5921df6d0a9ac9a326a45aa66a/cmd/peribolos/main.go#L201-L224">cmd/peribolos/main.go:201-224</a></code>.</p>
+</main></body></html>

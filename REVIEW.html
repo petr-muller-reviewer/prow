@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#1085</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>config: detect unknown fields in supplemental Prow configs</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1085">kubernetes-sigs/prow#1085</a> · base <code>main</code> · head_sha <code>09a13a0ac303</code> · reviewed_at <code>2026-11-20T13:41:39Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span><span class="badge c-green">gate: merge</span></div>
+<details><summary>Full metadata</summary><pre><code>pr: kubernetes-sigs/prow#1085
+title: &quot;config: detect unknown fields in supplemental Prow configs&quot;
+head_sha: 09a13a0ac303fd1eb6514591281c140dd54e7842
+base: main
+reviewed_at: 2026-11-20T13:41:39Z
+verdict: approve
+gate:
+  decision: merge
+  gated_at: 2026-11-20T13:48:01Z
+  gated_head_sha: 09a13a0ac303fd1eb6514591281c140dd54e7842
+  reviewed_head_sha: 09a13a0ac303fd1eb6514591281c140dd54e7842</code></pre></details>
+<h2>Gate</h2>
+<p><strong>Decision: merge.</strong> No gating finding remains, the PR head is unchanged since review, and the only behavior change is that <code>LoadStrict</code> now honors strict decoding for supplemental shards—the PR's intended, opt-in behavior.</p>
+<h3>Findings disposition</h3>
+<ul>
+<li>None outstanding. <code>REVIEW.md</code> has no <code>blocking</code> or <code>should-fix</code> findings; its one question about default <code>unknown-fields</code> coverage is resolved (shard validation belongs in the opt-in <code>unknown-fields-all</code>). There are no GitHub reviews, inline comments, or human issue comments with feedback.
+</li></ul>
+<h3>Merge risk</h3>
+<ul>
+<li><strong>Behavioral (low):</strong> <code>LoadStrict</code> (<code><a href="https://github.com/kubernetes-sigs/prow/blob/09a13a0ac303fd1eb6514591281c140dd54e7842/pkg/config/config.go#L1686">pkg/config/config.go:1686</a></code>) now rejects unknown fields in supplemental Prow shards instead of silently ignoring them. In-tree blast radius is only <code>checkconfig</code>'s opt-in <code>unknown-fields-all</code> path (<code><a href="https://github.com/kubernetes-sigs/prow/blob/09a13a0ac303fd1eb6514591281c140dd54e7842/cmd/checkconfig/main.go#L372-L375">cmd/checkconfig/main.go:372-375</a></code>); Prow controllers use permissive <code>Load</code>, so deployed instances are unaffected. Out-of-tree importers of <code>LoadStrict</code> that pass supplemental dirs would see the stricter behavior.
+</li>
+<li><strong>Config compatibility (low):</strong> users running <code>checkconfig --warnings=unknown-fields-all</code> may see new failures for shards carrying unknown or non-Prow keys (shards decode into <code>ProwConfig</code>, which has no <code>prow_ignored</code> escape hatch). Opt-in check; documented shard fields only; accepted as intended. Worth mentioning in the release note for checkconfig users.
+</li>
+<li><strong>No API signature, flag/default, CRD, wire-format, or data-migration changes.</strong> The one-line non-test change only forwards existing YAML options.
+</li></ul>
+<h3>Gating list</h3>
+<ul>
+<li>None. Merge.
+</li></ul>
+<h2>Verdict</h2>
+<p>Approve. Passing the caller's YAML options through to supplemental shard decoding makes <code>LoadStrict</code>—and therefore checkconfig's <code>unknown-fields-all</code>—reject unknown fields in shards while <code>Load</code> keeps its permissive behavior. The tests cover both modes plus the configmap <code>..</code>/suffix filtering that must stay intact.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Threads <code>yamlOpts</code> into the <code>yamlToConfig</code> call that decodes each supplemental Prow shard in <code>loadConfig</code>.
+</li>
+<li>Makes <code>LoadStrict</code> strict about unknown fields in shard files, with the failing shard path preserved by <code>yamlToConfig</code>'s existing <code>error unmarshalling %s</code> wrapping.
+</li>
+<li>Keeps <code>Load</code> permissive, since it still passes no YAML options.
+</li>
+<li>Adds a config-package test covering strict failure, permissive load plus merge, and ignored <code>..</code>-prefixed/wrong-suffix files.
+</li>
+<li>Extends the checkconfig regression test so <code>unknown-fields-all</code> reports an unknown shard field for both the default and a custom filename suffix.
+</li></ul>
+<h2>Findings</h2>
+<p>None. The change is scoped correctly and the tests cover the relevant behavior.</p>
+<h2>Resolved</h2>
+<h3><span class="tag c-blue">question</span>Default <code>unknown-fields</code> still does not validate shards</h3>
+<ul>
+<li>where: <code><a href="https://github.com/kubernetes-sigs/prow/blob/09a13a0ac303fd1eb6514591281c140dd54e7842/cmd/checkconfig/main.go#L368-L384">cmd/checkconfig/main.go:368-384</a></code>
+</li>
+<li>resolution: Discussed with the maintainer; <code>unknown-fields-all</code> is the intended home for shard validation. Keeping the default <code>unknown-fields</code> limited to the main config avoids changing default checkconfig behavior. No change requested.
+</li>
+<li>note: Because <code>unknown-fields-all</code> is opt-in, new strictness for shards carrying extra non-Prow keys (there is no <code>prow_ignored</code> escape hatch in <code>ProwConfig</code>) is acceptable.
+</li></ul>
+<h2>Checked</h2>
+<ul>
+<li><code>yamlToConfig</code> already wraps decode failures as <code>error unmarshalling &lt;path&gt;: ...</code>, so the shard path reaches both <code>LoadStrict</code> and checkconfig errors; both new tests assert it.
+</li>
+<li><code>Load</code> passes nil options, so permissive decoding and merging are unchanged; the new test confirms a known shard field still merges.
+</li>
+<li>Supplemental discovery still skips <code>..</code>-prefixed paths (configmap atomic-update symlinks) and files with the wrong suffix before decoding; the new test covers both.
+</li>
+<li><code>LoadStrict</code> has no production callers besides checkconfig, so controller runtime behavior is unaffected.
+</li>
+<li><code>go test ./pkg/config/ ./cmd/checkconfig/</code>, <code>go vet</code> on both packages, and <code>gofmt -l</code> on the changed files all pass.
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li>None.
+</li></ul>
+</main></body></html>

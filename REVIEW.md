@@ -3,8 +3,13 @@ pr: kubernetes-sigs/prow#1052
 title: "peribolos: support members and commit signoff org settings"
 head_sha: 9eb63ba114c7b5dfe71f3d8c1d0242213f673244
 base: main
-reviewed_at: 2026-11-13T17:17:08Z
+reviewed_at: 2026-11-26T17:59:56Z
 verdict: approve
+gate:
+  decision: merge
+  gated_at: 2026-11-26T18:19:46Z
+  gated_head_sha: 9eb63ba114c7b5dfe71f3d8c1d0242213f673244
+  reviewed_head_sha: 9eb63ba114c7b5dfe71f3d8c1d0242213f673244
 refresh_log:
   - at: 2026-11-04T13:13:20Z
     from_sha: 9d87cb7376064c590601de2a52aab7ca0c4eb701
@@ -14,9 +19,46 @@ refresh_log:
     from_sha: 9eb63ba114c7b5dfe71f3d8c1d0242213f673244
     to_sha: 9eb63ba114c7b5dfe71f3d8c1d0242213f673244
     summary: "No code changes; rh-hemartin pinged cblecker for another look. Findings and verdict unchanged."
+  - at: 2026-11-26T17:59:56Z
+    from_sha: 9eb63ba114c7b5dfe71f3d8c1d0242213f673244
+    to_sha: 9eb63ba114c7b5dfe71f3d8c1d0242213f673244
+    summary: "No code changes; rh-hemartin pinged petr-muller. Findings and verdict unchanged."
 ---
 
 # Review
+
+## Gate
+
+**Decision: merge.** Every gating finding is addressed at `9eb63ba1`, and the change is additive from
+both the config-schema and the library-surface point of view.
+
+cblecker's five inline comments (the PATCH echo of `members_can_create_internal_repositories`, gofmt,
+the untested nil branch, the silent skip, and the legacy-flag interaction) each have a code or
+documentation answer, and the two findings left in this review are cosmetic or documentation-only.
+What an operator will actually see is new `--dump` keys and the new fields echoed in org PATCH bodies
+with the values read from `GET /orgs/{org}` - an echo, not a change.
+
+**Gating list:** none.
+
+**Merge risk (independent pass):**
+
+- `pkg/github/types.go:1235-1241` adds exported fields to `github.Organization`. Additive only, and
+  every in-tree composite literal is keyed (`cmd/peribolos/main_test.go`), so no consumer breaks.
+  Blast radius: anything decoding org payloads simply gains fields; unkeyed literals outside the repo
+  would be the only way to notice, and `go vet` rejects those.
+- `pkg/config/org/org.go:49-53` adds org config keys, all `*bool` + `omitempty`, so an existing
+  config keeps its behaviour (`nil` = leave the setting alone). No schema or default change.
+- `peribolos --dump` now emits `members_can_create_public_repositories`,
+  `members_can_create_private_repositories`, `members_can_fork_private_repositories` and
+  `web_commit_signoff_required` for every org, plus `members_can_create_internal_repositories` on
+  enterprise plans. Downstream config repos (e.g. `kubernetes/org`) will show a diff on the next
+  dump and then converge - worth a release note, not a merge blocker.
+- Every org metadata PATCH now carries those four fields with the GET values. That is a no-op for a
+  well-behaved org, but it does mean any org whose plan rejects one of them would 422 on an unrelated
+  edit - the same failure class the internal-repository field had, and the reason the enterprise gate
+  exists there. Only `members_can_create_internal_repositories` was confirmed enterprise-gated, and
+  the author validated the legacy-field interaction against a free org; one `--fix-org` run against a
+  non-enterprise org before the next peribolos rollout would close that residual doubt.
 
 ## Verdict
 
@@ -52,6 +94,9 @@ Since previous review:
   both-nil means no change); `gofmt` was applied to both type files.
 - Second refresh (2026-11-13): no code changes, the head is still `9eb63ba11`; `rh-hemartin` pinged
   `cblecker` for another look. No findings changed.
+- Third refresh (2026-11-26): still no code changes and still `9eb63ba11`; `rh-hemartin` pinged
+  `petr-muller`. The PR has been open and review-clean since 2026-11-04; it is waiting on a human
+  LGTM, not on code work.
 
 ## Findings
 

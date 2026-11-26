@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kubernetes-sigs/prow#1087</title><style>
+:root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code-bg:#f6f8fa;
+  --link:#0969da; --red:#cf222e; --amber:#9a6700; --green:#1a7f37; --blue:#0969da; --gray:#59636e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1;
+  --border:#3d444d; --code-bg:#151b23; --link:#4493f8; --red:#f85149; --amber:#d29922;
+  --green:#3fb950; --blue:#4493f8; --gray:#9198a1; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; line-height:1.3; }
+h2 { font-size:1.25rem; margin:2.25rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.05rem; margin:1.5rem 0 .5rem; }
+h4 { font-size:1rem; margin:1.25rem 0 .5rem; }
+a { color:var(--link); }
+code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.875em; }
+code { background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+pre { background:var(--code-bg); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; line-height:1.45; }
+pre code { background:none; padding:0; }
+blockquote { margin:0; padding:0 1rem; color:var(--muted); border-left:3px solid var(--border); }
+ul, ol { padding-left:1.5rem; }
+.meta { color:var(--muted); font-size:.9rem; margin:.25rem 0 1rem; }
+.meta code { font-size:.85em; }
+.badges { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; }
+.badge, .tag { display:inline-block; border:1px solid currentColor; border-radius:999px;
+  padding:.05rem .6rem; font-size:.8rem; font-weight:600; white-space:nowrap; }
+.tag { margin-right:.4rem; vertical-align:.1em; }
+.c-red { color:var(--red); } .c-amber { color:var(--amber); } .c-green { color:var(--green); }
+.c-blue { color:var(--blue); } .c-gray { color:var(--gray); }
+details { margin:1rem 0; } summary { cursor:pointer; color:var(--muted); font-size:.9rem; }
+</style></head><body><main>
+<h1>chore(deps): bump github.com/prometheus/common from 0.73.1 to 0.74.0 in the prometheus group across 1 directory</h1>
+<div class="meta"><a href="https://github.com/kubernetes-sigs/prow/pull/1087">kubernetes-sigs/prow#1087</a> · base <code>main</code> · head_sha <code>213274a82926</code> · reviewed_at <code>2026-11-26T17:04:57Z</code></div>
+<div class="badges"><span class="badge c-green">verdict: approve</span></div>
+<h2>Verdict</h2>
+<p>Approve: dep-only bump with no advisories on the new versions, and the one API Prow exercises from <code>prometheus/common</code> is unchanged.</p>
+<p>Dependabot moves <code>github.com/prometheus/common</code> from <code>v0.73.1</code> to <code>v0.74.0</code> in the main module and in <code>hack/tools</code>, dragging <code>github.com/pandatix/go-abnf</code> (0.5.3 → 0.5.5) and <code>go.yaml.in/yaml/v2</code> (2.4.4 → 2.4.5) along. Nothing outside <code>go.mod</code>/<code>go.sum</code> changes. OSV reports no advisories at either version for any of the three modules, <code>govulncheck -scan module</code> is clean for them at base and head, and the release's substantive changes (a new OpenMetrics 2.0 ABNF decoder, Prometheus text format 1.0.0 support, <code>config.Secret</code> moving to its own package) all live in code paths Prow never calls. The single direct usage site still compiles and behaves identically.</p>
+<h2>What this PR does</h2>
+<ul>
+<li>Bumps <code>github.com/prometheus/common</code> <code>v0.73.1 → v0.74.0</code> — direct in <code><a href="https://github.com/kubernetes-sigs/prow/blob/213274a829267ad8b749256a114ae16b1a99922a/go.mod#L52">go.mod:52</a></code>, indirect in <code><a href="https://github.com/kubernetes-sigs/prow/blob/213274a829267ad8b749256a114ae16b1a99922a/hack/tools/go.mod#L267">hack/tools/go.mod:267</a></code>.
+</li>
+<li>Bumps <code>github.com/pandatix/go-abnf</code> <code>v0.5.3 → v0.5.5</code>, pulled in by <code>expfmt</code>'s new OpenMetrics 2.0 parser.
+</li>
+<li>Bumps <code>go.yaml.in/yaml/v2</code> <code>v2.4.4 → v2.4.5</code> (fix release, no API change).
+</li>
+<li>Touches only <code>go.mod</code>, <code>go.sum</code>, <code>hack/tools/go.mod</code>, <code>hack/tools/go.sum</code> — no project source, so this is a dep-only review.
+</li></ul>
+<h2>Findings</h2>
+<p>None.</p>
+<h2>Checked</h2>
+<ul>
+<li><strong>Freshness</strong>: <code>v0.74.0</code> is a real tag published 2026-11-12T10:52Z (14 days old at review time), not a pseudo-version and not yanked. <code>go-abnf v0.5.5</code> is from 2026-10-31, <code>go.yaml.in/yaml/v2 v2.4.5</code> from 2026-11-02. Only note is that <code>v0.74.0</code> is exactly at the two-week mark, so soak time is adequate rather than generous.
+</li>
+<li><strong>Usage surface</strong>: <code>github.com/prometheus/common</code> is imported in exactly one file — <code><a href="https://github.com/kubernetes-sigs/prow/blob/213274a829267ad8b749256a114ae16b1a99922a/pkg/metrics/push.go#L31-L32">pkg/metrics/push.go:31-32</a></code> (<code>expfmt</code>, <code>model</code>) — the pushgateway client. Call sites: <code><a href="https://github.com/kubernetes-sigs/prow/blob/213274a829267ad8b749256a114ae16b1a99922a/pkg/metrics/push.go#L52">pkg/metrics/push.go:52</a></code> <code>model.UTF8Validation.IsValidLabelName</code> (already the non-deprecated successor API), <code><a href="https://github.com/kubernetes-sigs/prow/blob/213274a829267ad8b749256a114ae16b1a99922a/pkg/metrics/push.go#L67">pkg/metrics/push.go:67</a></code> <code>expfmt.NewEncoder</code> with <code>expfmt.NewFormat(expfmt.TypeProtoDelim)</code>, <code><a href="https://github.com/kubernetes-sigs/prow/blob/213274a829267ad8b749256a114ae16b1a99922a/pkg/metrics/push.go#L89">pkg/metrics/push.go:89</a></code> the same format string as the Content-Type header. Light, non-sensitive exposure: encoding only, no decoding of untrusted input, no auth/TLS/exec.
+</li>
+<li><strong>Vulnerabilities</strong>: OSV query at <code>v0.73.1</code> and <code>v0.74.0</code> for <code>prometheus/common</code>, and at both versions of <code>go-abnf</code> and <code>yaml/v2</code> — no advisories, so nothing fixed and nothing open. <code>govulncheck -scan module</code> from <code>pkg/metrics</code> (the module root has no Go files, which makes a root-level module scan error out) reports no findings for the bumped modules on either base or head.
+</li>
+<li><strong>Symbol-level <code>govulncheck ./...</code></strong>: identical advisories at base and head, none in bumped modules — <code>GO-2023-1901</code> (<code>tektoncd/pipeline v1.16.0</code>, reached via <code>init</code>/<code>DeepCopyInto</code> chains from <code>cmd/deck</code>, <code>cmd/pipeline</code>, <code>pkg/metrics</code>, test helpers) and <code>GO-2026-5932</code> (<code>x/crypto v0.58.0</code> openpgp, module-level only, not called). Both are pre-existing and untouched by this PR.
+</li>
+<li><strong>Changelog v0.73.1..v0.74.0</strong>: new <code>expfmt/openmetrics_2_0_parse.go</code> (ABNF OM 2.0 decoder, adds the <code>go-abnf</code> dependency), Prometheus text format 1.0.0 (<code>FmtText_1_0_0</code>, new <code>NewDecoder</code>/<code>ResponseFormat</code> branches), <code>config.Secret</code> moved to <code>config/secret</code> (breaking for importers of <code>prometheus/common/config</code> — Prow imports it nowhere), <code>x/net</code>/<code>x/oauth2</code> bumps (Prow already pins <code>golang.org/x/net v0.62.0</code> and <code>golang.org/x/oauth2 v0.38.0</code> per <code><a href="https://github.com/kubernetes-sigs/prow/blob/213274a829267ad8b749256a114ae16b1a99922a/go.mod#L65-L66">go.mod:65-66</a></code>, so no MVS movement), and the <code>yaml/v2</code> bump.
+</li>
+<li><strong>Behavior of the exercised path</strong>: <code>expfmt.NewFormat(TypeProtoDelim)</code> and the encoder are untouched by the diff (<code>expfmt/expfmt.go</code> only adds constants and keeps <code>TypeTextPlain</code> on 0.0.4 for compatibility; <code>expfmt/encode.go</code> only extends the accepted-format lists). The new decode branches are unreachable from Prow.
+</li>
+<li><strong>Transitive <code>go-abnf v0.5.5</code></strong>: no direct imports in Prow; only the OM 2.0 parser that Prow never invokes (lookahead performance, nullable-element validation, fuzz infra).
+</li>
+<li><strong>Transitive <code>go.yaml.in/yaml/v2 v2.4.5</code></strong>: reached only via <code>sigs.k8s.io/yaml v1.6.0</code> (42 files, including <code>cmd/checkconfig</code> config parsing); the release's "YAML unmarshaler validation bypass" fix targets <code>UnmarshalYAML</code>, which Prow neither implements nor reaches through <code>sigs.k8s.io/yaml</code>'s YAML→JSON path. Harmless and mildly beneficial.
+</li>
+<li><strong>Build</strong>: <code>go build ./pkg/metrics/... ./cmd/checkconfig/...</code> passes at the PR head.
+</li></ul>
+<h2>Open questions</h2>
+<ul>
+<li><code>v0.74.0</code> landed 14 days ago. Is that enough soak for you, or would you rather let it sit another week? Nothing in the diff argues for urgency.
+</li></ul>
+<h2>Dependency followups</h2>
+<p>No followup opportunities. Examined <code>prometheus/common v0.73.1 → v0.74.0</code> (every release line in the range), <code>pandatix/go-abnf v0.5.3 → v0.5.5</code>, and <code>go.yaml.in/yaml/v2 v2.4.4 → v2.4.5</code>. The range adds no <code>Deprecated:</code> markers (the only ones in <code>expfmt/encode.go</code>, <code>Negotiate</code>/<code>NegotiateIncludingOpenMetrics</code>, predate v0.73.1 and are never called by Prow), the remaining new features are decode/serve-side APIs without a Prow call site (Prow only encodes delimited protobuf for the pushgateway), and the two transitive bumps are internal or bugfix-only.</p>
+</main></body></html>
